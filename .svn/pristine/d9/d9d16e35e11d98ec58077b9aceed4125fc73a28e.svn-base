@@ -1,0 +1,27 @@
+#ifndef _UTILS_H_
+#define _UTILS_H_
+#include <irrlicht.h>
+
+using namespace irr;
+
+class geometry_scene;
+class LineHolder;
+class polyfold;
+
+bool WriteGeometryToFile(std::string fname, geometry_scene* geo_scene);
+bool ReadGeometryFromFile(std::string fname, geometry_scene* geo_scene);
+
+bool WriteSceneNodesToFile(std::string fname, geometry_scene* geo_scene);
+bool ReadSceneNodesFromFile(std::string fname, geometry_scene* geo_scene);
+
+void MakeCircleImages(video::IVideoDriver* driver);
+void addDrawLines(polyfold& pf, LineHolder& graph,LineHolder& graph1,LineHolder& graph2);
+irr::video::IImage* makeCircleImage(video::IVideoDriver* driver,int width, f32 radius, video::SColor);
+irr::video::IImage* makeSolidColorImage(video::IVideoDriver* driver, video::SColor col);
+video::SColor makeUniqueColor();
+
+void do_test_loop(polyfold pf, int f_i, int p_i, LineHolder& graph, LineHolder& graph2);
+
+irr::video::IImage* makeAlphaImage(video::IVideoDriver* driver,video::ITexture* texture, int alpha);
+
+#endif

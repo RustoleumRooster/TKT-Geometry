@@ -1,0 +1,581 @@
+
+#include <irrlicht.h>
+#include <iostream>
+#include "csg_classes.h"
+#include "clip_functions.h"
+#include "tolerances.h"
+
+using namespace irr;
+
+void do_topology_groups(polyfold& pf4, polyfold& pf2, int rule, int rule2, LineHolder& graph)
+{
+    pf4.apply_topology_groups(pf2, rule2, graph);
+
+    if(rule == GEO_SUBTRACT)
+        for(int e_i = 0; e_i<pf4.edges.size(); e_i++)
+        {
+            if(pf4.edges[e_i].topo_group == 1 || pf4.edges[e_i].topo_group == 0)
+            {
+                pf4.edges[e_i].topo_group = !pf4.edges[e_i].topo_group;
+            }
+        }
+}
+
+
+void do_self_intersections(polyfold& pf)
+{
+    if(pf.faces.size()==0)
+        return;
+
+    for(int face_i=0;face_i<pf.faces.size()-1;face_i++)
+        for(int face_j=face_i+1;face_j<pf.faces.size();face_j++)
+        {
+            poly_face f=pf.faces[face_i];
+            poly_face f2=pf.faces[face_j];
+
+            core::vector3df i_point;
+            core::vector3df i_vec;
+
+            core::plane3df f_plane = core::plane3df(f.m_center,f.m_normal);
+            core::plane3df f2_plane = core::plane3df(f2.m_center,f2.m_normal);
+
+            if(f_plane.getIntersectionWithPlane(f2_plane,i_point,i_vec) && is_parallel_normal(f.m_normal,f2.m_normal) == false)
+            {
+                for(int e_i : pf.faces[face_i].edges)
+                {
+                    bool b1 = false;
+                    bool b2 = false;
+
+                    for(int v_j: pf.faces[face_j].vertices)
+                        if(v_j==pf.edges[e_i].v0)
+                            b1=true;
+
+                    for(int v_j: pf.faces[face_j].vertices)
+                        if(v_j==pf.edges[e_i].v1)
+                            b2=true;
+
+                    if(b1 && b2)
+                    {
+                        core::vector3df v0 = pf.getVertex(e_i,0).V + (pf.getVertex(e_i,1).V - pf.getVertex(e_i,0).V)*0.5;
+
+                        if(pf.is_point_on_face(face_j,v0))
+                        {
+                            pf.faces[face_j].addEdge(e_i);
+                        }
+                    }
+                }
+
+                for(int e_j : pf.faces[face_j].edges)
+                {
+                    bool b1 = false;
+                    bool b2 = false;
+
+                    for(int v_i: pf.faces[face_i].vertices)
+                        if(v_i==pf.edges[e_j].v0)
+                            b1=true;
+
+                    for(int v_i: pf.faces[face_i].vertices)
+                        if(v_i==pf.edges[e_j].v1)
+                            b2=true;
+
+                    if(b1 && b2)
+                    {
+                        core::vector3df v0 = pf.getVertex(e_j,0).V + (pf.getVertex(e_j,1).V - pf.getVertex(e_j,0).V)*0.5;
+
+                        if(pf.is_point_on_face(face_i,v0))
+                        {
+                            pf.faces[face_i].addEdge(e_j);
+                        }
+                    }
+                }
+            }
+        }
+}
+
+
+
+void do_common_topology(polyfold& pf, polyfold& pf2, polyfold& pf4, polyfold& pf5, LineHolder& graph)
+{
+    for(int face_i=0;face_i<pf.faces.size();face_i++)
+        for(int face_j=0;face_j<pf2.faces.size();face_j++)
+        {
+            poly_face f=pf.faces[face_i];
+            poly_face f2=pf2.faces[face_j];
+
+            core::vector3df i_point;
+            core::vector3df i_vec;
+
+            core::plane3df f_plane = core::plane3df(f.m_center,f.m_normal);
+            core::plane3df f2_plane = core::plane3df(f2.m_center,f2.m_normal);
+
+            if(f_plane.getIntersectionWithPlane(f2_plane,i_point,i_vec) && is_parallel_normal(f.m_normal,f2.m_normal) == false)
+            {
+                polyfold verts;
+                for(int v_i : pf4.faces[face_i].vertices)
+                {
+                    core::vector3df v = pf4.vertices[v_i].V;
+                    if(is_coplanar_point(f2_plane,v) && pf5.is_point_on_face(face_j,v))
+                    {
+                        verts.get_point_or_add(v);
+                        //graph.points.push_back(v);
+                    }
+                }
+
+                for(int v_j : pf5.faces[face_j].vertices)
+                {
+                    core::vector3df v = pf5.vertices[v_j].V;
+                    if(is_coplanar_point(f_plane,v) && pf.is_point_on_face(face_i,v))
+                    {
+                        verts.get_point_or_add(v);
+                        //graph.points.push_back(v);
+                    }
+                }
+
+                if(verts.vertices.size()>1)
+                {
+                    sort_inline_vertices(verts);
+                    for(int i=0;i<verts.vertices.size()-1;i++)
+                    {
+
+                        //graph.points.push_back(verts.vertices[i+1].V);
+                        //graph.lines.push_back(core::line3df(verts.vertices[i].V,verts.vertices[i+1].V));
+
+                        core::vector3df r = verts.vertices[i].V + (verts.vertices[i+1].V - verts.vertices[i].V)*0.5;
+
+                        //if(pf5.is_point_on_face(face_j,r))
+                        //  graph.points.push_back(r);
+
+                        if(pf.is_point_on_face(face_i,r) &&
+                          ( pf5.is_point_on_face(face_j,r)  ))
+                        {
+                            int v0 = pf4.get_point_or_add(verts.vertices[i].V);
+                            int v1 = pf4.get_point_or_add(verts.vertices[i+1].V);
+                            int w0 = pf5.get_point_or_add(verts.vertices[i].V);
+                            int w1 = pf5.get_point_or_add(verts.vertices[i+1].V);
+
+                            //graph.points.push_back(verts.vertices[i].V);
+                            //graph.points.push_back(verts.vertices[i+1].V);
+                            //graph.lines.push_back(core::line3df(verts.vertices[i].V,verts.vertices[i+1].V));
+
+                            if(pf4.find_edge(v0,v1)!=-1)
+                            {
+                                graph.lines.push_back(core::line3df(verts.vertices[i].V,verts.vertices[i+1].V));
+                            }
+
+                            int new_e;
+
+                            if(pf4.find_edge(v0,v1)==-1)
+                            {
+                                new_e = pf4.get_edge_or_add(v0,v1,3);
+                                pf4.faces[face_i].addEdge(new_e);
+                            }
+                            else
+                            {
+                                new_e = pf4.find_edge(v0,v1);
+                                pf4.edges[new_e].topo_group=3;
+                            }
+
+                            if(pf5.find_edge(w0,w1)==-1)
+                            {
+                                new_e = pf5.get_edge_or_add(w0,w1,3);
+                                pf5.faces[face_j].addEdge(new_e);
+                            }
+                            else
+                            {
+                                new_e = pf5.find_edge(w0,w1);
+                                pf5.edges[new_e].topo_group=3;
+                                pf5.faces[face_j].addEdge(new_e);
+                            }
+
+                        }
+                    }
+                }
+            }
+        }
+
+     for(int face_i=0;face_i<pf.faces.size();face_i++)
+        for(int face_j=0;face_j<pf2.faces.size();face_j++)
+        {
+            poly_face f=pf.faces[face_i];
+            poly_face f2=pf2.faces[face_j];
+
+            core::plane3df f_plane = core::plane3df(f.m_center,f.m_normal);
+            core::plane3df f2_plane = core::plane3df(f2.m_center,f2.m_normal);
+
+           if(is_coplanar_point(f_plane,pf5.faces[face_j].m_center) && is_parallel_normal(pf4.faces[face_i].m_normal,pf2.faces[face_j].m_normal))
+            {
+                for(int e_i: pf5.faces[face_j].edges)
+                {
+                   core::vector3df v0 = pf5.getVertex(e_i,0).V;
+                   core::vector3df v1 = pf5.getVertex(e_i,1).V;
+                   core::vector3df r = v0 + (v1 - v0)*0.5;
+                   int v_i0 = pf4.find_point(v0);
+                   int v_i1 = pf4.find_point(v1);
+
+                   if( v_i0 != -1 && v_i1 !=-1 && pf.is_point_on_face(face_i,r))
+                        {
+                            int new_e = pf4.get_edge_or_add(v_i0,v_i1,3);
+                            pf4.edges[new_e].topo_group=3;
+                            pf4.faces[face_i].addEdge(new_e);
+                        }
+                    //graph.lines.push_back(core::line3df(v0,v1));
+                }
+                for(int e_i: pf4.faces[face_i].edges)
+                {
+                    core::vector3df v0 = pf4.getVertex(e_i,0).V;
+                    core::vector3df v1 = pf4.getVertex(e_i,1).V;
+                    core::vector3df r = v0 + (v1 - v0)*0.5;
+                    int v_i0 = pf5.find_point(v0);
+                    int v_i1 = pf5.find_point(v1);
+
+                    if( v_i0 != -1 && v_i1 !=-1 && pf2.is_point_on_face(face_j,r))
+                    {
+                        int new_e = pf5.get_edge_or_add(v_i0,v_i1,3);
+                        pf5.edges[new_e].topo_group=3;
+                        pf5.faces[face_j].addEdge(new_e);
+                    }
+                }
+            }
+        }
+}
+
+
+void do_initial_topology(polyfold& pf, polyfold& pf2, polyfold& pf4, polyfold& pf5,LineHolder& graph)
+{
+    for(int face_j=0;face_j<pf2.faces.size();face_j++)
+    {
+        poly_face f2=pf2.faces[face_j];
+        core::plane3df f2_plane = core::plane3df(f2.m_center,f2.m_normal);
+        core::vector3df ipoint;
+
+        for(int e_i=0; e_i<pf4.edges.size(); e_i++)
+        {
+            core::vector3df v0 = pf4.getVertex(e_i,0).V;
+            core::vector3df v1 = pf4.getVertex(e_i,1).V;
+            if(line_intersects_plane(f2_plane,v0,v1,ipoint) && pf4.edges[e_i].topo_group != -1
+                && pf5.is_point_on_face(face_j,ipoint))
+            {
+                int new_v = pf4.get_point_or_add(ipoint);
+
+                if(new_v == pf4.edges[e_i].v0)
+                {
+                    v0 = pf4.getVertex(e_i,0).V;
+                    v1 = pf4.getVertex(e_i,1).V;
+                }
+                else
+                {
+                    v1 = pf4.getVertex(e_i,0).V;
+                    v0 = pf4.getVertex(e_i,1).V;
+                }
+
+                if(pf4.edges[e_i].topo_group ==2)
+                {
+                    if(pf5.is_point_on_face(face_j,ipoint))
+                    {
+                        //graph.points.push_back(v1);
+                        int RES = pf5.classify_point(face_j,v0,v1,graph);
+
+                        if(RES == TOP_FRONT)
+                            pf4.edges[e_i].topo_group=0;
+                        else if(RES == TOP_BEHIND)
+                            pf4.edges[e_i].topo_group=1;
+                    }
+                }
+
+                new_v = pf5.get_point_or_add(ipoint);
+                pf5.faces[face_j].addVertex(new_v);
+            }
+        }
+    }
+}
+
+int do_intersections_and_bisect2(polyfold& pf, polyfold& pf2, polyfold& pf4, polyfold& pf5,LineHolder& graph)
+{
+    int n_intersections=0;
+
+    for(poly_edge &edge : pf4.edges)
+    {
+        edge.topo_group=2;
+    }
+
+    for(poly_edge &edge : pf5.edges)
+    {
+        edge.topo_group=2;
+    }
+
+    //intersections and bisect - pf4
+
+    for(int face_j=0;face_j<pf5.faces.size();face_j++)
+    {
+        poly_face f2=pf5.faces[face_j];
+        core::plane3df f2_plane = core::plane3df(f2.m_center,f2.m_normal);
+        core::vector3df ipoint;
+        for(int e_i=0; e_i<pf4.edges.size(); e_i++)
+        {
+
+            core::vector3df v0=pf4.getVertex(e_i,0).V;
+            core::vector3df v1=pf4.getVertex(e_i,1).V;
+
+            //graph.lines.push_back(core::line3df(v0,v1));
+            if(line_intersects_plane(f2_plane,v0,v1,ipoint) && pf4.edges[e_i].topo_group != -1
+               && pf5.is_point_on_face(face_j,ipoint))
+            {
+                core::vector3df linevec = v0-v1;
+                linevec.normalize();
+                int new_v = pf4.get_point_or_add(ipoint);
+                pf4.bisect_edge(e_i,new_v,2,2);
+                n_intersections++;
+                //graph.points.push_back(pf4.vertices[new_v].V);
+            }
+        }
+    }
+
+    //intersections and bisect - pf5
+    for(int face_j=0;face_j<pf.faces.size();face_j++)
+    {
+        poly_face f=pf.faces[face_j];
+        core::plane3df f_plane = core::plane3df(f.m_center,f.m_normal);
+        core::vector3df ipoint;
+
+        for(int e_i=0; e_i<pf5.edges.size(); e_i++)
+        {
+            core::vector3df v0=pf5.getVertex(e_i,0).V;
+            core::vector3df v1=pf5.getVertex(e_i,1).V;
+            if(line_intersects_plane(f_plane,v0,v1,ipoint) && pf5.edges[e_i].topo_group != -1
+               && pf.is_point_on_face(face_j,ipoint))
+            {
+
+                int new_v = pf5.get_point_or_add(ipoint);
+                pf5.bisect_edge(e_i,new_v,2,2);
+                n_intersections++;
+            }
+        }
+    }
+
+    for(int v_i=0; v_i<pf5.vertices.size(); v_i++)
+    {
+        if(pf4.find_point(pf5.vertices[v_i].V) == -1)
+           {
+            int new_v = -1;
+            for(int f_i=0; f_i<pf4.faces.size(); f_i++)
+                {
+                    if(pf4.point_is_coplanar(f_i,pf5.vertices[v_i].V) &&
+                       pf4.is_point_on_face(f_i,pf5.vertices[v_i].V))
+                    {
+                        new_v = pf4.get_point_or_add(pf5.vertices[v_i].V);
+                        pf4.faces[f_i].addVertex(new_v);
+                    }
+                }
+            if(new_v != -1)
+                for(int e_i=0; e_i<pf4.edges.size(); e_i++)
+                    {
+                        if(pf4.point_is_on_edge(e_i,pf5.vertices[v_i].V))
+                        {
+                            pf4.bisect_edge(e_i,new_v,2,2);
+                            n_intersections++;
+                        }
+                    }
+           }
+    }
+
+    for(int v_i=0; v_i<pf4.vertices.size(); v_i++)
+    {
+        if(pf5.find_point(pf4.vertices[v_i].V) == -1)
+        {
+        int new_v=-1;
+        for(int f_i=0; f_i<pf5.faces.size(); f_i++)
+            {
+                if(pf5.point_is_coplanar(f_i,pf4.vertices[v_i].V) &&
+                   pf5.is_point_on_face(f_i,pf4.vertices[v_i].V))
+                {
+                    new_v = pf5.get_point_or_add(pf4.vertices[v_i].V);
+                    pf5.faces[f_i].addVertex(new_v);
+                }
+            }
+
+        if(new_v != -1)
+            for(int e_i=0; e_i<pf5.edges.size(); e_i++)
+            {
+                if(pf5.point_is_on_edge(e_i,pf4.vertices[v_i].V))
+                {
+                    pf5.bisect_edge(e_i,new_v,2,2);
+                    n_intersections++;
+                }
+            }
+        }
+    }
+
+    return n_intersections;
+}
+
+void do_self_topology_loops(polyfold& pf, polyfold pf0, LineHolder &graph)
+{
+    LineHolder nograph;
+
+    for(int f_i=0; f_i < pf.faces.size(); f_i++)
+        for(int p_i=0; p_i < pf.faces[f_i].loops.size(); p_i++)
+        {
+            core::vector3df v1;
+
+            pf.faces[f_i].loops[p_i].topo_group = LOOP_UNDEF;
+            pf.set_loop_solid(f_i,p_i);
+
+            int e_i = pf.find_edge(pf.faces[f_i].loops[p_i].vertices[0],pf.faces[f_i].loops[p_i].vertices[1]);
+
+
+            if(pf.faces[f_i].loops[p_i].type == LOOP_INNER && pf.get_facial_point(f_i,e_i,p_i,v1,nograph))
+            {
+                // graph.points.push_back(v1);
+                if(pf0.is_point_on_face(f_i,v1))
+                {
+                    pf.faces[f_i].loops[p_i].topo_group = LOOP_SOLID;
+                }
+                else
+                {
+                    pf.faces[f_i].loops[p_i].topo_group = LOOP_HOLLOW;
+
+                }
+            }
+            else if(pf.faces[f_i].loops[p_i].type == LOOP_INNER) std::cout<<"*warning pf "<<f_i<<", "<<e_i<<"\n";
+        }
+}
+
+void do_clear_redundant_inner_loops(polyfold& pf, int f_i)
+{
+    //N.B. must call sort_inner_loops first
+
+    int depth=0;
+
+    for(int p=0;p<pf.faces[f_i].loops.size();p++)
+    {
+        if(pf.faces[f_i].loops[p].vertices.size() > 0 && pf.faces[f_i].loops[p].depth > depth)
+            depth = pf.faces[f_i].loops[p].depth;
+    }
+
+    while(depth>0)
+    {
+        for(int p_i=0;p_i<pf.faces[f_i].loops.size();p_i++)
+        {
+            if(pf.faces[f_i].loops[p_i].vertices.size() > 0 && pf.faces[f_i].loops[p_i].depth == depth)
+            {
+                for(int p_j=0;p_j<pf.faces[f_i].loops.size();p_j++)
+                {
+                    if(p_j != p_i && pf.faces[f_i].loops[p_j].depth == depth-1 &&
+                       pf.faces[f_i].loops[p_i].topo_group == pf.faces[f_i].loops[p_j].topo_group &&
+                       pf.is_inner_loop(f_i,p_i,p_j))
+                    {
+                        pf.faces[f_i].loops[p_i].vertices.clear();
+                    }
+                }
+            }
+        }
+        depth--;
+    }
+}
+
+
+int classify_loop(polyfold& pf, int f_i, int p_i, polyfold& pf2, int rule,int rule2, LineHolder& graph)
+{
+    std::vector<int> tempv = pf.faces[f_i].loops[p_i].vertices;
+    tempv.push_back(tempv[0]);
+
+    int e_i;
+
+    for(int i=0; i < tempv.size()-1; i++)
+        {
+            e_i = pf.find_edge(pf.vertices[tempv[i]].V,pf.vertices[tempv[i+1]].V);
+            if(pf.edges[e_i].topo_group == TOP_FRONT || pf.edges[e_i].topo_group == TOP_BEHIND)
+                return pf.edges[e_i].topo_group;
+        }
+
+    e_i = pf.find_edge(tempv[0],tempv[1]);
+    core::vector3df v1;
+
+    LineHolder nograph;
+
+    if(pf.get_facial_point(f_i,e_i,p_i,v1,nograph))
+    {
+        //graph.points.push_back(v1);
+        //for(int v_i : pf.faces[f_i].loops[p_i].vertices)
+        //    graph.points.push_back(pf.vertices[v_i].V);
+
+        int RES = pf2.classify_point(v1,nograph);
+
+        if(RES==TOP_UNDEF)
+        {
+            RES = pf2.classify_point(v1,graph);
+            graph.points.push_back(v1);
+            std::cout<<" classify point returned UNDEF, using default value\n";
+
+            if(pf2.topology == TOP_CONCAVE)
+                RES = TOP_BEHIND;
+            else if(pf2.topology == TOP_CONVEX)
+                RES = TOP_FRONT;
+            else
+            {
+                std::cout<<" *error, topology undefined: "<<pf2.topology<<"\n";
+                RES = TOP_UNDEF;
+            }
+        }
+
+        if(rule == GEO_SUBTRACT)
+            RES = !RES;
+
+        return RES;
+    }
+
+    std::cout<<"*Error classify_loop*\n";
+    return TOP_UNDEF;
+}
+
+void polyfold::finalize_clipped_poly()
+{
+
+    for(int f_i=0;f_i<this->faces.size();f_i++)
+    {
+        this->sort_loops_inner(f_i);
+
+        do_clear_redundant_inner_loops(*this,f_i);
+
+        for(int p_i=0;p_i<this->faces[f_i].loops.size();p_i++)
+            {
+                if( this->faces[f_i].loops[p_i].topo_group == LOOP_HOLLOW && this->faces[f_i].loops[p_i].depth == 0)
+                {
+                    this->faces[f_i].loops[p_i].vertices.clear();
+                }
+            }
+    }
+
+    this->reduce_edges_vertices2();
+
+    for(int i=0;i<this->faces.size();i++)
+    {
+        for(int p=0;p<this->faces[i].loops.size();p++)
+        {
+            if(this->faces[i].loops[p].vertices.size()>0)
+            {
+                if(this->faces[i].loops[p].topo_group==LOOP_HOLLOW)
+                    this->set_loop_open(i,p);   //note, this also calculates loop bounding box :)
+                else
+                    this->set_loop_solid(i,p);
+            }
+        }
+    }
+
+    this->recalc_bbox();
+}
+
+void polyfold::remove_empty_faces()
+{
+    std::vector<poly_face> new_faces;
+    for(int f_i=0;f_i<this->faces.size();f_i++)
+    {
+        if(this->faces[f_i].loops.size() > 0)
+        {
+            new_faces.push_back(this->faces[f_i]);
+        }
+    }
+    this->faces = new_faces;
+}
+
+

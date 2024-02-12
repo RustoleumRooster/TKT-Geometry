@@ -1,0 +1,17 @@
+#ifndef _CLIP_FUNCTIONS_H_
+#define _CLIP_FUNCTIONS_H_
+
+#include "csg_classes.h"
+
+void do_intersections_and_bisect(polyfold& pf, polyfold& pf2, polyfold& pf4, polyfold& pf5,LineHolder& graph);
+int do_intersections_and_bisect2(polyfold& pf, polyfold& pf2, polyfold& pf4, polyfold& pf5,LineHolder& graph);
+void do_common_topology(polyfold& pf, polyfold& pf2, polyfold& pf4, polyfold& pf5, LineHolder& graph);
+void do_topology_groups(polyfold& pf4, polyfold& pf2, int rule, int rule2, LineHolder& graph);
+void do_self_topology_loops(polyfold& pf, polyfold pf0,LineHolder&);
+void do_clear_redundant_inner_loops(polyfold& pf, int f_i);
+int do_classify_point(polyfold pf, core::vector3df v0);
+int classify_loop(polyfold& pf, int f_i, int p_i, polyfold& pf2, int rule,int rule2, LineHolder& graph);
+void do_self_intersections(polyfold& pf);
+void do_initial_topology(polyfold& pf, polyfold& pf2, polyfold& pf4, polyfold& pf5,LineHolder& graph);
+
+#endif

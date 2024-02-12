@@ -1,0 +1,385 @@
+#ifndef _CSG_CLASSES_H_
+#define _CSG_CLASSES_H_
+#include <vector>
+#include <irrlicht.h>
+#include "CMeshSceneNode.h"
+#include "texture_picker.h"
+#include "Reflection.h"
+
+using namespace irr;
+
+class poly_vert
+{
+    public:
+    bool is_touching_face = false;
+    irr::core::vector3df V;
+    poly_vert() {}
+    poly_vert(f32 x, f32 y, f32 z)
+    {
+        V.X = x;
+        V.Y = y;
+        V.Z = z;
+    }
+    REFLECT();
+};
+
+#define LOOP_INNER 0
+#define LOOP_OUTER 1
+#define LOOP_SOLID 0
+#define LOOP_HOLLOW 1
+#define LOOP_GHOST_SOLID 2
+#define LOOP_GHOST_HOLLOW 3
+#define LOOP_UNDEF -1
+#define TOP_CONCAVE 0
+#define TOP_CONVEX 1
+#define TOP_UNDEF -1
+#define TOP_FRONT 0
+#define TOP_BEHIND 1
+
+#define EDGE_UNDEF -1
+#define EDGE_CONCAVE 0
+#define EDGE_CONVEX 1
+#define EDGE_SIMPLE 2
+#define EDGE_COMPLEX 3
+
+#define GEO_ADD 0
+#define GEO_SUBTRACT 1
+
+#define GEO_SOLID 0
+#define GEO_EMPTY 1
+#define GEO_RED 2
+#define GEO_SEMISOLID 3
+#define GEO_NONSOLID 4
+
+
+class poly_loop
+{
+    public:
+
+    std::vector<int> vertices;
+    int type=0;
+    int topo_group=-1;
+    int depth=0;
+    char flags=0;   //a temporary variable
+
+    f32 min_x=0;
+    f32 max_x=0;
+    f32 min_z=0;
+    f32 max_z=0;
+
+    void reverse()
+    {
+        std::vector<int> tvec;
+        for(int j = this->vertices.size()-1; j>=0;j--)
+        {
+            tvec.push_back(this->vertices[j]);
+        }
+        this->vertices = tvec;
+    }
+
+    REFLECT();
+};
+
+
+enum
+{
+    SURFACE_GROUP_STANDARD = 0,
+    SURFACE_GROUP_CYLINDER,
+    SURFACE_GROUP_SPHERE,
+    SURFACE_GROUP_DOME
+};
+
+class surface_group
+{
+    public:
+    int type;
+    core::vector3df point = core::vector3df(0,0,0);
+    core::vector3df vec = core::vector3df(0,0,0);
+    core::vector3df vec1 = core::vector3df(0,0,0);
+
+    REFLECT()
+};
+
+class poly_face
+{
+    public:
+    std::vector<int> edges;
+    std::vector<int> vertices;
+    std::vector<poly_loop> loops;
+    core::vector3df m_normal = core::vector3df(0,0,0);
+    core::vector3df m_center = core::vector3df(0,0,0);
+
+    //std::string texture_name;
+    core::stringw texture_name;
+    int texture_index;    //for serialization only
+
+    int original_face=0;
+    int original_brush=0;
+    int surface_group=0;
+    int material_group=0;
+    core::vector3df uv_origin = core::vector3df(0,0,0);
+    bool bFlippedNormal=false;
+    int topo_group = 0;
+    //**any new variables need to be manually copied in make_result and add_pfold**
+
+    core::matrix4 uv_mat;
+    core::matrix4 uv_mat0;  //a temp variable
+    bool temp_b=false;      //a temp variable
+
+    poly_face()
+    {
+        uv_mat.setTranslation(core::vector3df(0,0,0));
+        uv_mat.setScale(core::vector3df(1,1,1));
+        uv_mat.setRotationAxisRadians(0,core::vector3df(0,0,1));
+    }
+
+    core::matrix4 get2Dmat()
+    {
+        core::matrix4 R;
+
+        R.buildRotateFromTo(this->getOrientingNormal(),core::vector3df(0,1,0));
+        return R;
+    }
+
+    core::vector3df getOrientingNormal();
+
+    void addVertex(int new_v)
+    {
+         for(int v_i : this->vertices)
+            if(new_v == v_i)
+                return;
+         this->vertices.push_back(new_v);
+    }
+
+    void addEdge(int e)
+    {
+        for(int e_i : edges)
+            if(e_i == e)
+                return;
+        edges.push_back(e);
+    }
+
+    void clear()
+    {
+        edges.clear();
+        vertices.clear();
+        loops.clear();
+    }
+    void flip_normal()
+    {
+        m_normal*=-1;
+        bFlippedNormal=!bFlippedNormal;
+    }
+
+    REFLECT()
+};
+
+class poly_edge
+{
+    public:
+    int v0=-1;
+    int v1=-1;
+    int topo_group=0;
+    int conv=TOP_UNDEF;
+    int p2; //a temporary variable used in loop calculations
+
+    poly_edge(int v0_, int v1_)
+    {
+        v0 = v0_;
+        v1 = v1_;
+    }
+
+    poly_edge(int v0_, int v1_, int top)
+    {
+        v0 = v0_;
+        v1 = v1_;
+        topo_group=top;
+    }
+};
+
+class LineHolder
+{
+    public:
+    std::vector<core::line3df> lines;
+    std::vector<core::vector3df> points;
+    void rotate(core::matrix4);
+};
+
+
+class triangle
+{
+public:
+   int A=-1;
+   int B=-1;
+   int C=-1;
+};
+
+class triangle_holder
+{
+    public:
+    std::vector<core::vector3df> vertices;
+    std::vector<triangle> triangles;
+    std::vector<int> f_index;
+
+    int get_point_or_add(core::vector3df);
+};
+
+
+class polyfold
+{
+    public:
+
+    std::vector<poly_edge> edges;
+    std::vector<poly_face> faces;
+    std::vector<poly_vert> vertices;
+    std::vector<surface_group> surface_groups;
+    core::aabbox3df bbox;
+
+    int topology = -1; //0 concave, 1 convex, -1 unknown
+    int n_mesh_buffers=0;
+
+    void draw(video::IVideoDriver* driver, const video::SMaterial material, bool);
+    poly_vert getVertex(int,int,int);
+    poly_vert getVertex(int,int);
+
+    void calc_center(int f_i);
+    void calc_center(poly_face& face);
+    void calc_normal(int f_i);
+
+    void recalc_bbox();
+    void recalc_bbox_and_loops();
+
+    bool is_closed_loop(int f_i, int p_i);
+    bool is_clockwise_loop(int f_i, int p_i);
+    void calc_loop_bbox(int f_i, int p_i);
+    void calc_loop_bbox(poly_face& face, poly_loop &loop);
+    void set_loop_solid(int f_i, int p_i);
+    void set_loop_open(int f_i, int p_i);
+    void sort_loops(int f_i);
+    void sort_loops_inner(int f_i);
+
+    int left_right_test(int f_i, int p_i, f32 vx, f32 vz, bool is_open = false, int = 2);
+
+    bool is_point_on_face(int f_i, core::vector3df v);
+    bool is_point_in_loop(int f_i, int p_i, core::vector3df v);
+
+    bool point_is_on_edge(int, core::vector3df v );
+    bool point_is_coplanar(int face, core::vector3df v );
+
+    std::vector<int> get_connecting_edges(int edge_no);
+    int get_edge_loop_no(int face_i, int e_i);
+    std::vector<int> get_vert_loop_no(int face_i, int v_i);
+
+    void merge_faces2();
+
+    //========================================
+    // Trianglize
+    triangle_holder trianglize(int face_i, scene::SMeshBuffer*, LineHolder &graph, LineHolder&);
+
+    //========================================
+    // Helpful functions for clipping
+    bool bisect_edge(int e_i,int v_i, int g1, int g2);
+    bool apply_topology_groups(polyfold&, int default_group, LineHolder& graph);
+    void propagate_topo_group(int e_i, int v0);
+    void remove_empty_faces();
+    void finalize_clipped_poly();
+
+    //========================================
+    // Classify topology of points and edges
+    std::vector<core::vector3df> get_edge_slip_vectors(int e_i);
+
+    int classify_point(int face_i, core::vector3df v0, core::vector3df v1, LineHolder&);
+    int classify_point(core::vector3df v0, LineHolder& graph);
+    int classify_point_edge(int v_i, core::vector3df v0, core::vector3df v1);
+    int classify_point_face(int v_i, core::vector3df point);
+
+    void classify_edges(LineHolder& graph);
+    int classify_edge(int edge);
+
+    //========================================
+    //Get a point inside of a loop
+    bool get_facial_point(int face_i, int edge_i, int loop_i, core::vector3df & ret, LineHolder &graph);
+
+    //========================================
+    //Main Functions for Loop Calculations
+    void calc_loops4(int f_i,LineHolder& graph);
+    void do_loops(int f_i, int e_0, LineHolder& graph);
+    void add_loop_from_edges(int face_i, std::vector<int> e_vec, bool is_left);
+    std::vector<int> get_loop_going_left(int f_i, int v_0, int e_0, int v_1,LineHolder& graph);
+    std::vector<int> get_loop_going_right(int f_i, int v_0, int e_0, int v_1,LineHolder& graph);
+    int get_next_loop_edge_going_right(int f_i, int e_i, int v_i);
+    int get_next_loop_edge_going_left(int f_i, int e_i, int v_i);
+
+    //========================================
+    //Helpful Functions for Loop Calculations
+    std::vector<int> get_all_loop_edges(int f_i, int p_i);
+    std::vector<int> get_all_connected_edges(int f_i, int e_0);
+    std::vector<int> search_connected_edges(polyfold &pf, int f_i, int e_0);
+    int get_opposite_end(int e_i, int v_i);
+    int get_opposite_end(poly_edge edge, int v_i);
+    std::vector<int> get_all_edges_from_point(int e_i, int v);
+    std::vector<int> get_edges_from_point(int f_i, int v);
+    std::vector<int> get_edges_from_point(int f_i, int e_0, int v);
+    std::vector<int> get_edges_from_2edges(int f_i, int e_0, int e_1);
+
+    bool is_inner_loop(int f_i, int p_i, int p_j);
+    void meld_loops(int f_i, bool cull_inner_loops = true);
+    //void merge_loops();
+
+    //========================================
+    //Core Functions
+    int get_point_or_add(core::vector3df);
+    int get_edge_or_add(int,int,int);
+    int find_edge(int, int);
+    int find_edge(core::vector3df v0, core::vector3df v1);
+    bool edge_exists(int,int);
+    int find_point(core::vector3df);
+
+    //An important function. Eliminate all excess vertices and rebuild edges from loops only
+    void reduce_edges_vertices2();
+
+    void simplify_edges();
+
+    bool getSurfaceVectors(int f_i,core::vector3df &a, core::vector3df &b);
+    surface_group getFaceSurfaceGroup(int f_i);
+
+    //========================================
+    //Topology functions
+    void make_convex();
+    void make_convex2(LineHolder& graph);
+    void make_concave();
+    void recalc_faces();
+
+    void rotate(core::matrix4 MAT);
+    void translate(core::matrix4 MAT);
+
+    void operator=(polyfold other)
+    {
+        edges = other.edges;
+        faces = other.faces;
+        surface_groups = other.surface_groups;
+        vertices = other.vertices;
+        topology = other.topology;
+        bbox = other.bbox;
+    }
+
+    REFLECT()
+};
+
+bool BoxIntersectsWithBox(const core::aabbox3d<f32>& A, const core::aabbox3d<f32>& B);
+void order_line_intersections(core::vector3df origin, std::vector<core::vector3df>& intersection_points);
+
+void add_pfold(polyfold,polyfold&);
+
+bool line_intersects_plane(core::plane3df, core::vector3df v0, core::vector3df v1, core::vector3df& ipoint);
+void sort_inline_vertices(polyfold& pf);
+
+bool vec_is_left_from(core::vector3df v0, core::vector3df v1);
+bool vec_is_right_from(core::vector3df v0, core::vector3df v1);
+bool line_intersects_line(core::line2df line_1, core::line2df line_2,core::vector2df&);
+bool is_left_from(core::vector3df v0, core::vector3df v1, core::vector3df straight, core::vector3df N);
+bool is_identical_loop(polyfold pf, poly_loop loop_a, polyfold pf2, poly_loop loop_b);
+
+void make_meshbuffer_from_triangles(std::vector<triangle_holder>, scene::SMeshBuffer*);
+
+#endif

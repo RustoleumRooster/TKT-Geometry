@@ -1,0 +1,14 @@
+
+uniform mat4 mWorldView;
+uniform mat4 mProj;
+uniform mat4 mWorldView2;
+uniform mat4 mProj2;
+
+varying vec4 v;
+
+void main(void)
+{
+	gl_Position = mProj * mWorldView * gl_Vertex;
+
+	v= mProj2 * mWorldView2 * gl_Vertex;
+}

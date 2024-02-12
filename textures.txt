@@ -1,0 +1,9 @@
+8
+C:/Users/Natan/Documents/codeblocks/media/textures/temple_floor.jpg
+C:/Users/Natan/Documents/codeblocks/media/textures/temple_wall.jpg
+C:/Users/Natan/Documents/codeblocks/media/textures/greek_cornice.jpg
+C:/Users/Natan/Documents/codeblocks/CSG/wall.bmp
+C:/Users/Natan/Documents/codeblocks/media/textures/ganesha_stone1.jpg
+C:/Users/Natan/Documents/codeblocks/CSG/water3.jpg
+C:/Users/Natan/Documents/codeblocks/media/textures/kama_sutra.jpg
+C:/Users/Natan/Documents/codeblocks/CSG/terrain2.jpg

@@ -1,0 +1,47 @@
+
+uniform int nLights;
+uniform vec3 LightPos[8];
+uniform int LightRadius[8];
+
+varying vec3 v0;
+
+uniform sampler2D myTexture2;
+
+varying vec4 v;
+void main (void)
+{
+
+    vec2 texCoords = (v.xy /v.w )* 0.5 + vec2(0.5,0.5);
+
+    vec4 col2;
+
+    col2 = vec4(0,0,0,0);
+
+    float light=0.1;
+//
+	for(int i=0; i<nLights; i++)
+	{
+    		vec3 r = (v0-LightPos[i]);
+    		float d = length(r);
+
+		if(d>LightRadius[i])
+		{
+			light += 0;
+		}
+		else
+		{
+			d = 1 - (d / LightRadius[i]);
+			d = d*d;
+        		light += d;
+		}
+	}
+
+	clamp(light,0,1);
+//
+
+    col2=vec4(light,light,light,light);
+    //if(texCoords.y>0 && texCoords.y <1 && texCoords.x> 0 && texCoords.x <1)
+    //col2 = texture2D(myTexture2,texCoords);
+   
+    gl_FragColor = col2;
+}

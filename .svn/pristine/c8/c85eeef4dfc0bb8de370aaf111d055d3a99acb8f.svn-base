@@ -1,0 +1,699 @@
+
+#include "node_properties.h"
+#include <irrlicht.h>
+#include "reflected_nodes.h"
+#include "edit_classes.h"
+#include "geometry_scene.h"
+#include "Reflection.h"
+#include "scrollbar2.h"
+#include "ex_gui_elements.h"
+
+using namespace irr;
+
+extern IrrlichtDevice* device;
+
+//geometry_scene*                 NodeProperties_Tool::g_scene = NULL;
+//irr::gui::IGUIEnvironment*      NodeProperties_Tool::env = NULL;
+
+NodeProperties_Base* NodeProperties_Tool::base = NULL;
+multi_tool_panel* NodeProperties_Tool::panel = NULL;
+//reflect::TypeDescriptor_Struct* NodeProperties_Base::commonType = NULL;
+
+
+void NodePropertiesEditArea::show(std::vector<reflect::TypeDescriptor_Struct*> typeDescriptors, void* obj)
+{
+    int NEXT_ID = GUI_ID_REFLECTED_BASE;
+    int ypos = 4;
+    int x_offset = 60;
+
+    core::rect<s32> pr(0,0,getRelativePosition().getWidth(),getMaxFormsHeight());
+    edit_panel = new gui::IGUIElement(gui::EGUIET_ELEMENT,Environment,this,-1,pr);
+
+    for(reflect::TypeDescriptor_Struct* typeDesc : typeDescriptors)
+    {
+       // if(typeDesc->members.size()==0)
+       //     continue;
+
+        std::wstring txt0 = typeDesc->expanded ? L"-" : L"+";
+
+        Environment->addButton(core::rect<s32>(core::vector2di(28,ypos),core::vector2di(20+24,ypos+16)),
+                                            edit_panel,NEXT_ID,txt0.c_str());
+
+        expand_button_Ids.push_back(NEXT_ID);
+
+        NEXT_ID++;
+
+        std::wstring txt(typeDesc->alias,typeDesc->alias+strlen(typeDesc->alias));
+        Environment->addStaticText(txt.c_str(),core::rect<s32>(core::vector2di(24+24,ypos),core::dimension2du(120,ypos+28)),false,false,edit_panel,-1);
+
+        ypos+=24;
+
+        Reflected_GUI_Edit_Form* form = new Reflected_GUI_Edit_Form(Environment,edit_panel,g_scene,NEXT_ID,
+                                            core::rect<s32>(core::vector2di(x_offset,ypos),core::dimension2du(96,ypos+100)));
+
+        form->column_left_begin = 0;//28;
+        form->column_left_end = 160;
+        form->column_middle_begin = 160;
+        form->column_middle_end = 160;
+        form->column_right_begin = 150;
+        //form->column_right_end = 220;
+
+        form->column_right_end = getRelativePosition().getWidth()-x_offset-4;
+
+        NEXT_ID++;
+
+        if(true)
+        {
+            typeDesc->addFormWidget(form,NULL,std::vector<int>{},0,typeDesc->expanded,true,0);
+            NEXT_ID = form->ShowWidgets(NEXT_ID);
+
+            ypos += form->getTotalHeight();
+        }
+
+        forms.push_back(form);
+        bringToFront(form);
+    }
+
+    f32 lr =  (f32)getEditAreaHeight() / (f32)getFormsHeight();
+
+    if(lr < 1.0)
+    {
+        my_scrollbar = new CGUIScrollBar2(false,Environment,edit_panel,GUI_ID_TEXTURE_SCROLL_BAR,core::rect<s32>(0,0,16,getEditAreaHeight()));
+        my_scrollbar->drop();
+
+        my_scrollbar->setMax(256);
+        my_scrollbar->setLargeStep(64);
+
+        int slider_len = (getEditAreaHeight()-32)*lr;
+        ((CGUIScrollBar2*)my_scrollbar)->setDrawHeight(slider_len);
+
+        f32 new_scroll_pos = (f32)scroll_offset * 256.0 / (f32)((getFormsHeight() - getEditAreaHeight()));
+
+        int old_offset = scroll_offset;
+        scroll_offset=0;
+
+        my_scrollbar->setPos(new_scroll_pos);
+        setEditAreaScrollPos(old_offset);
+    }
+    else
+    {
+        my_scrollbar = NULL;
+    }
+
+    if(typeDescriptors.size()>0)
+    {
+        int n = typeDescriptors.size()-1;
+        std::wstring txt(typeDescriptors[n]->alias,typeDescriptors[n]->alias+strlen(typeDescriptors[n]->alias));
+        txt += std::wstring(L" properties");
+        my_base->setName(txt);
+    }
+    else
+        my_base->setName(std::wstring(L"Properties"));
+
+    OK_BUTTON_ID = NEXT_ID;
+
+    ypos += 40;
+
+    core::rect<s32> button_r(core::vector2di(x_offset+160,getEditAreaHeight()+4),
+                    core::vector2di(edit_panel->getRelativePosition().LowerRightCorner.X,getEditAreaHeight()+38));
+    //Environment->addButton(),this,OK_BUTTON_ID,L"Apply");
+
+    Flat_Button* ok_button = new Flat_Button(Environment,this,OK_BUTTON_ID,button_r);
+    ok_button->setText(L"Apply");
+    ok_button->drop();
+
+    my_typeDescriptors = typeDescriptors;
+
+    //================Initial Pass
+    if(typeDescriptors.size() > 0 && temp_object == NULL)
+    {
+        readwrite.clear();
+
+        Reflected_SceneNode* node_0 = g_scene->getSelectedSceneNode(0);
+
+        for(int n_i : g_scene->getSelectedNodes())
+        {
+            g_scene->getSceneNodes()[n_i]->preEdit();
+        }
+
+        if( g_scene->getSelectedNodes().size()>1 )
+        {
+            for(int i=0;i<typeDescriptors.size();i++)
+            {
+                Reflected_GUI_Edit_Form* form = forms[i];
+
+                FormField* f = form->edit_fields;
+                while(f)
+                {
+                    bool b=true;
+
+                    for(int n_i : g_scene->getSelectedNodes())
+                    {
+                        Reflected_SceneNode* node = g_scene->getSceneNodes()[n_i];
+                        if(f->is_equal(node,node_0)==false)
+                        {
+                            b=false;
+                        }
+                    }
+
+                    readwrite.push_back(b);
+
+                    f=f->next;
+                }
+            }
+        }
+        else
+        {
+            for(int i=0;i<typeDescriptors.size();i++)
+            {
+                Reflected_GUI_Edit_Form* form = forms[i];
+
+                FormField* f = form->edit_fields;
+                while(f)
+                {
+                    readwrite.push_back(true);
+                    f=f->next;
+                }
+            }
+        }
+
+        //if(obj == NULL)
+        {
+            temp_object = malloc(typeDescriptors[typeDescriptors.size()-1]->size);
+
+            for(reflect::TypeDescriptor_Struct* typeDesc : typeDescriptors)
+            {
+                typeDesc->copy(temp_object,node_0);
+            }
+        }
+    }
+
+    int f_c=0;
+    for(int i=0;i<typeDescriptors.size();i++)
+        {
+            Reflected_GUI_Edit_Form* form = forms[i];
+
+            FormField* f = form->edit_fields;
+            while(f)
+            {
+                f->bWrite = readwrite[f_c];
+
+                f_c++;
+                f=f->next;
+            }
+        }
+    /*
+    int depth=0;
+    for(int i=0;i<typeDescriptors.size();i++)
+        {
+            Reflected_GUI_Edit_Form* form = forms[i];
+
+            FormField* f = form->edit_fields;
+            while(f)
+            {
+                depth = std::max(depth,f->tree_pos.size());
+                f=f->next;
+            }
+        }*/
+
+    //for(int j=depth;j>0;j--)
+    //{
+    for(int i=0;i<forms.size();i++)
+    {
+        Reflected_GUI_Edit_Form* form = forms[i];
+
+        FormField* f = form->edit_fields;
+        while(f)
+        {
+            if(f->bWrite)
+            {
+                f->setActive(true);
+                f->readValue(temp_object);
+            }
+            else
+            {
+                f->setActive(false);
+            }
+            f=f->next;
+        }
+    }
+}
+
+int NodePropertiesEditArea::getMaxFormsHeight()
+{
+    return getRelativePosition().getHeight()-40;
+    //return 400;
+}
+
+int NodePropertiesEditArea::getEditAreaHeight()
+{
+    return std::min(getFormsHeight(),getMaxFormsHeight());
+}
+
+void NodePropertiesEditArea::refresh()
+{
+    core::list<gui::IGUIElement*> child_list = this->getChildren();
+    core::list<gui::IGUIElement*>::Iterator it = child_list.begin();
+
+    for(;it != child_list.end();++it)
+    {
+//        if(*it != this->getCloseButton())
+            this->removeChild(*it);
+    }
+
+    if(this->temp_object)
+    {
+        write(this->temp_object);
+    }
+
+    for(Reflected_GUI_Edit_Form* form : forms)
+    {
+       // form->remove();
+        form->drop();
+    }
+
+    forms.clear();
+    expand_button_Ids.clear();
+
+    //IGUIElement* ok_button = getElementFromId(OK_BUTTON_ID);
+
+    //if(ok_button)
+    //    ok_button->remove();
+    std::vector<reflect::TypeDescriptor_Struct*> common_types = NodePropertiesEditArea::GetTypeDescriptors(g_scene);
+    show(common_types, this->temp_object);
+}
+
+int NodePropertiesEditArea::getFormsHeight()
+{
+    int y= forms.size()*24+8;
+
+    for(Reflected_GUI_Edit_Form* f: forms)
+        y+=f->getTotalHeight();
+
+    return y;
+}
+
+void NodePropertiesEditArea::draw()
+{
+    core::rect<s32> r = getAbsolutePosition();
+    r.LowerRightCorner.Y = r.UpperLeftCorner.Y + getEditAreaHeight();
+    gui::IGUISkin* skin = Environment->getSkin();
+
+    r.LowerRightCorner.X -=1;
+    skin->draw3DSunkenPane(this,skin->getColor(EGDC_3D_FACE),true,true,r);
+
+    gui::IGUIElement::draw();
+}
+
+
+NodePropertiesEditArea::NodePropertiesEditArea(gui::IGUIEnvironment* env, gui::IGUIElement* parent,NodeProperties_Base* base_,s32 id,core::rect<s32> rect)
+    : gui::IGUIElement(gui::EGUIET_ELEMENT,env,parent,id,rect), my_base(base_)
+{
+    MyEventReceiver* receiver = (MyEventReceiver*)device->getEventReceiver();
+    receiver->Register(this);
+}
+
+NodePropertiesEditArea::~NodePropertiesEditArea()
+{
+    MyEventReceiver* receiver = (MyEventReceiver*)device->getEventReceiver();
+    receiver->UnRegister(this);
+
+    for(Reflected_GUI_Edit_Form* form : forms)
+    {
+        if(form)
+            form->drop();
+    }
+
+    if(temp_object)
+    {
+        free(temp_object);
+    }
+}
+
+void NodePropertiesEditArea::click_OK()
+{
+    for(int n_i : g_scene->getSelectedNodes())
+    {
+        //write(g_scene->getSceneNodes()[n_i]);
+/*
+        for(reflect::TypeDescriptor_Struct* typeDesc : my_typeDescriptors)
+        {
+            for(reflect::Member &M : typeDesc->members)
+            {
+                if(M.readwrite)
+                {
+                    //std::cout<<"writing "<<M.name<<"\n";
+                    M.copy(g_scene->getSceneNodes()[n_i],temp_object);
+                }
+            }
+
+            //typeDesc->dump(g_scene->getSceneNodes()[n_i],0);
+        }*/
+        Reflected_SceneNode* node = g_scene->getSceneNodes()[n_i];
+
+        for(int i=0;i<forms.size();i++)
+        {
+            reflect::TypeDescriptor_Struct* typeDesc = my_typeDescriptors[i];
+            Reflected_GUI_Edit_Form* form = forms[i];
+
+            FormField* f = form->edit_fields;
+            while(f)
+            {
+                //reflect::Member* M = typeDesc->getTreeNode(f->tree_pos);
+                if(f->bWrite)
+                    f->copy(node,temp_object);
+                f=f->next;
+            }
+        }
+
+        g_scene->getSceneNodes()[n_i]->postEdit();
+    }
+
+    //this->remove();
+}
+
+void NodePropertiesEditArea::write(void* obj)
+{
+    for(Reflected_GUI_Edit_Form* form : forms)
+    {
+        if(form && obj)
+            form->write(obj);
+    }
+}
+
+FormField* NodePropertiesEditArea::getFieldFromId(int id)
+{
+    for(Reflected_GUI_Edit_Form* form : forms)
+    {
+        FormField* ff = form->getFieldFromId(id);
+        if(ff)
+            return ff;
+    }
+    return NULL;
+}
+
+
+int NodePropertiesEditArea::getFormFromId(int id)
+{
+    for(int i=0;i<forms.size();i++)
+    {
+        FormField* ff = forms[i]->getFieldFromId(id);
+        if(ff)
+            return i;
+    }
+    return -1;
+}
+
+void NodePropertiesEditArea::setEditAreaScrollPos(int pos)
+{
+    core::list<gui::IGUIElement*> child_list = edit_panel->getChildren();
+    core::list<gui::IGUIElement*>::Iterator it = child_list.begin();
+
+    int move_dist = scroll_offset-pos;
+    scroll_offset -= move_dist;
+
+    for(;it != child_list.end();++it)
+    {
+        if(*it != my_scrollbar)
+        {
+            (*it)->move(core::vector2di(0,( move_dist) ));
+        }
+    }
+}
+
+bool NodePropertiesEditArea::OnEvent(const SEvent& event)
+{
+    if(event.EventType == EET_GUI_EVENT)
+    {
+        s32 id = event.GUIEvent.Caller->getID();
+
+        switch(event.GUIEvent.EventType)
+        {
+            case EGET_SCROLL_BAR_CHANGED:
+            {
+                if(id == GUI_ID_TEXTURE_SCROLL_BAR)
+                {
+                    int desired_offset = (getFormsHeight() - getEditAreaHeight()) * (f32)(my_scrollbar->getPos()) /256.0 ;
+                    f32 pos = (f32)desired_offset * 256.0 / (f32)((getFormsHeight() - getEditAreaHeight()));
+
+                    setEditAreaScrollPos(desired_offset);
+
+                    return true;
+                }
+            } break;
+            case EGET_ELEMENT_FOCUS_LOST:
+            {/*
+                std::cout<<Environment->getFocus()<<"\n";
+                if(event.GUIEvent.Caller->getType() == gui::EGUIET_EDIT_BOX)
+                {
+                    refresh();
+                    return false;
+                }*/
+
+                return false;
+            } break;
+            case EGET_ELEMENT_FOCUSED:
+            {
+                if(event.GUIEvent.Element &&
+                   (event.GUIEvent.Element->getType() == gui::EGUIET_EDIT_BOX))// ||
+                  // (event.GUIEvent.Element->getType() == gui::EGUIET_COMBO_BOX)    )
+                {
+                    s32 lost_focus_id = event.GUIEvent.Element->getID();
+                    int form_i = getFormFromId(lost_focus_id);
+
+
+                    //FormField* ff = forms[form_i]->edit_fields;
+                    //while(ff)
+                    //{
+                    // for(int i=0;i<ff->tree_pos.size();i++)
+                    //    std::cout<<ff->tree_pos[i]<<" ";
+                    // std::cout<<"\n";
+                    // ff = ff->next;
+                    //}
+
+                    FormField* field = getFieldFromId(lost_focus_id);
+                    //std::cout<<"---\n";
+                    if(field && field->bWrite)
+                    {
+                        while(field)
+                        {
+                            field->readValue(temp_object);
+                            //for(int i=0;i<field->tree_pos.size();i++)
+                            //    std::cout<<field->tree_pos[i]<<" ";
+                            //std::cout<<"\n";
+                             field = forms[form_i]->getParentField(field);
+                        }
+                    }
+                }
+                return false;
+
+            } break;
+            case EGET_BUTTON_CLICKED:
+            {
+                if(id==OK_BUTTON_ID)
+                {
+                    click_OK();
+                    return true;
+                }
+                else
+                {
+                    for(int i=0;i<forms.size();i++)
+                    {
+                        if(id==expand_button_Ids[i])
+                        {
+                            my_typeDescriptors[i]->expanded = ! my_typeDescriptors[i]->expanded;
+                            refresh();
+                            return true;
+                        }
+                        else
+                        {
+                            FormField* field = forms[i]->getFieldFromId(id);
+                            if(field)
+                            {
+                                if(field->getButtonType() == FORM_FIELD_EXPAND_BUTTON)
+                                {
+                                    ((ExButton_FormField*)field)->toggle(my_typeDescriptors[i]);
+                                    refresh();
+                                }
+                                else if(field->getButtonType() ==  FORM_FIELD_BUTTON)
+                                {
+                                    field->clickButton();
+                                    field->bWrite = true;
+                                }
+                                return true;
+                            }
+                        }
+                    }
+                }
+                break;
+            } break;
+            case EGET_COMBO_BOX_CHANGED:
+            case EGET_CHECKBOX_CHANGED:
+            case EGET_EDITBOX_CHANGED:
+            {
+                FormField* field = getFieldFromId(id);
+                if(field)
+                {
+                    field->setActive(true);
+                    field->bWrite = true;
+
+                    int f_c=0;
+                    for(int i=0;i<forms.size();i++)
+                    {
+                        Reflected_GUI_Edit_Form* form = forms[i];
+
+                        FormField* f = form->edit_fields;
+                        while(f)
+                        {
+                            if(f==field)
+                                readwrite[f_c] = true;
+                            f_c++;
+                            f=f->next;
+                        }
+                    }
+
+                    field->writeValue(temp_object);
+                }
+            } break;
+        }
+    }
+    else if(event.EventType == EET_MOUSE_INPUT_EVENT)
+    {
+        switch(event.MouseInput.Event)
+        {
+            case EMIE_LMOUSE_PRESSED_DOWN:
+                std::cout<<"click\n";
+                break;
+        }
+    }
+    else if(event.EventType == irr::EET_USER_EVENT)
+    {
+        switch(event.UserEvent.UserData1)
+        {
+            case USER_EVENT_SELECTION_CHANGED:
+            {
+                //std::cout<<"Node Properties: selection changed\n";
+                if(temp_object)
+                {
+                    free(temp_object);
+                    temp_object = NULL;
+                }
+
+                refresh();
+                return true;
+            }
+        }
+    }
+
+    return false;
+    //gui::IGUIElement::OnEvent(event);
+}
+
+
+std::vector<reflect::TypeDescriptor_Struct*> NodePropertiesEditArea::GetTypeDescriptors(geometry_scene* geo_scene)
+{
+    if(geo_scene->getSelectedNodes().size() == 0)
+        return std::vector<reflect::TypeDescriptor_Struct*>{};
+
+    Reflected_SceneNode* node_0 = geo_scene->getSelectedSceneNode(0);
+
+    std::vector<reflect::TypeDescriptor_Struct*> common_types;
+
+    reflect::TypeDescriptor_Struct* typeDescriptor = node_0->GetDynamicReflection();
+
+     auto IsOfType = [](Reflected_SceneNode* node,reflect::TypeDescriptor_Struct* typeDesc) -> bool{
+        reflect::TypeDescriptor_Struct* td = node->GetDynamicReflection();
+        while(td != NULL)
+        {
+            if(td == typeDesc)
+                return true;
+            td = td->inherited_type;
+        }
+        return false;
+    };
+
+    while(typeDescriptor != NULL)
+    {
+        bool b = true;
+        for(int n_i : geo_scene->getSelectedNodes())
+        {
+            if(IsOfType(geo_scene->getSceneNodes()[n_i],typeDescriptor) == false)
+                b=false;
+        }
+
+        if(b)
+        {
+            common_types.push_back(typeDescriptor);
+        }
+
+        typeDescriptor = typeDescriptor->inherited_type;
+    }
+    std::vector<reflect::TypeDescriptor_Struct*> ret;
+
+    for(int i=common_types.size()-1;i>=0;i--)
+    {
+        if(common_types[i]->members.size() > 0)
+            ret.push_back(common_types[i]);
+    }
+
+   return ret;
+}
+
+/*
+NodePropertiesEditWidget::NodePropertiesEditWidget(gui::IGUIEnvironment* env, gui::IGUIElement* parent,NodeProperties_Base* base_,s32 id,core::rect<s32> rect)
+    : gui::IGUIElement(gui::EGUIET_ELEMENT,env,parent,id,rect), my_base(base_)
+{
+
+}
+
+NodePropertiesEditWidget::~NodePropertiesEditWidget()
+{
+
+}
+
+void NodePropertiesEditWidget::show()
+{
+
+}
+
+bool NodePropertiesEditWidget::OnEvent(const SEvent& event)
+{
+
+}
+*/
+
+void NodeProperties_Base::initialize(std::wstring name_, int my_id, gui::IGUIEnvironment* env_, geometry_scene* g_scene_,multi_tool_panel* panel_ )
+{
+    tool_base::initialize(name_,my_id,env_,g_scene_,panel_);
+}
+
+//
+//
+//  NodeProperties_Base
+//
+
+
+void NodeProperties_Base::show()
+{
+    //NodePropertiesEditArea* win = new NodePropertiesEditArea(env,env->getRootGUIElement(),-1,core::rect<s32>(140,200,16+196,64+196));
+    //win->setText(L"Properties");
+    //win->g_scene = g_scene;
+
+    core::rect<s32> client_rect(core::vector2di(0,0),
+                                core::dimension2du(this->panel->getClientRect()->getAbsolutePosition().getWidth(),
+                                                   this->panel->getClientRect()->getAbsolutePosition().getHeight()));
+    /*
+    core::rect<s32> client_rect = this->panel->getClientRect()->getRelativePosition();
+    client*/
+
+    //std::cout<<client_rect.UpperLeftCorner.Y<<" UL.Y\n";
+
+    NodePropertiesEditArea* edit_area = new NodePropertiesEditArea(env,this->panel->getClientRect(),this,GUI_ID_NODE_PROPERTIES_BASE,client_rect);
+
+    edit_area->g_scene = g_scene;
+    std::vector<reflect::TypeDescriptor_Struct*> common_types = NodePropertiesEditArea::GetTypeDescriptors(g_scene);
+    edit_area->show(common_types, NULL);
+
+    edit_area->drop();
+}
+

@@ -1,0 +1,531 @@
+# depslib dependency file v1.0
+1684557394 source:c:\users\natan\documents\codeblocks\csg\main.cpp
+	<irrlicht.h>
+	<iostream>
+	"driverChoice.h"
+	"csg_classes.h"
+	"geometry_scene.h"
+	"CMeshSceneNode.h"
+	"edit_env.h"
+	"utils.h"
+	"CameraPanel.h"
+	"texture_picker.h"
+	"create_primitives.h"
+	"texture_adjust.h"
+	"node_properties.h"
+	"material_groups.h"
+	"Reflection.h"
+	"GUI_tools.h"
+	"vtoolbar.h"
+	"ex_gui_elements.h"
+
+1683435732 c:\users\natan\documents\codeblocks\csg\csg_classes.h
+	<vector>
+	<irrlicht.h>
+	"CMeshSceneNode.h"
+	"texture_picker.h"
+	"Reflection.h"
+
+1684091507 source:c:\users\natan\documents\codeblocks\csg\csg_classes.cpp
+	<irrlicht.h>
+	<iostream>
+	"csg_classes.h"
+	"tolerances.h"
+
+1663700151 source:c:\users\natan\documents\codeblocks\csg\unused.cpp
+	"csg_classes.h"
+	<irrlicht.h>
+	<iostream>
+
+1683674319 source:c:\users\natan\documents\codeblocks\csg\csg_prims.cpp
+	<iostream>
+	"csg_classes.h"
+
+1683152268 source:c:\users\natan\documents\codeblocks\csg\clip_poly.cpp
+	<irrlicht.h>
+	<iostream>
+	"csg_classes.h"
+	"edit_env.h"
+	"tolerances.h"
+
+1683832118 source:c:\users\natan\documents\codeblocks\csg\triangle.cpp
+	<irrlicht.h>
+	<iostream>
+	"csg_classes.h"
+	"tolerances.h"
+	"geometry_scene.h"
+
+1663459215 source:c:\users\natan\documents\codeblocks\csg\geometrynode.cpp
+	<irrlicht.h>
+	"GeometryNode.h"
+
+1663459204 c:\users\natan\documents\codeblocks\csg\geometrynode.h
+	<irrlicht.h>
+
+1683677297 source:c:\users\natan\documents\codeblocks\csg\cmeshscenenode.cpp
+	"CMeshSceneNode.h"
+	"IVideoDriver.h"
+	"ISceneManager.h"
+	"S3DVertex.h"
+	"ICameraSceneNode.h"
+	"IMeshCache.h"
+	"IAnimatedMesh.h"
+	"IMaterialRenderer.h"
+	"IFileSystem.h"
+	"CShadowVolumeSceneNode.h"
+	<irrlicht.h>
+	"CMeshSceneNode.h"
+	<iostream>
+	"utils.h"
+
+1683677388 c:\users\natan\documents\codeblocks\csg\cmeshscenenode.h
+	"IMeshSceneNode.h"
+	"IMesh.h"
+
+1669858313 source:c:\users\natan\documents\codeblocks\csg\shapes.cpp
+
+1683154375 source:c:\users\natan\documents\codeblocks\csg\clip2.cpp
+	<irrlicht.h>
+	<iostream>
+	"csg_classes.h"
+	"tolerances.h"
+
+1669161389 source:c:\users\natan\documents\codeblocks\csg\unused2.cpp
+
+1672163313 source:c:\users\natan\documents\codeblocks\csg\clip3.cpp
+	<irrlicht.h>
+	<iostream>
+	"csg_classes.h"
+
+1673554709 source:c:\users\natan\documents\codeblocks\csg\unused3.cpp
+
+1684040208 source:c:\users\natan\documents\codeblocks\csg\edit_env.cpp
+	"edit_env.h"
+	<irrlicht.h>
+	<iostream>
+	"CameraPanel.h"
+	"CGUIWindow.h"
+	"csg_classes.h"
+	"utils.h"
+	"edit_classes.h"
+	"create_primitives.h"
+	"texture_picker.h"
+	"GUI_tools.h"
+
+1684557394 c:\users\natan\documents\codeblocks\csg\edit_env.h
+	<irrlicht.h>
+	<iostream>
+	<list>
+	"csg_classes.h"
+
+1683833340 source:c:\users\natan\documents\codeblocks\csg\utils.cpp
+	<irrlicht.h>
+	<iostream>
+	<fstream>
+	"csg_classes.h"
+	"utils.h"
+	"geometry_scene.h"
+	"edit_env.h"
+	"reflected_nodes.h"
+	"Reflection.h"
+	"CPLYMeshWriter.h"
+
+1683692760 c:\users\natan\documents\codeblocks\csg\utils.h
+	<irrlicht.h>
+
+1684120157 source:c:\users\natan\documents\codeblocks\csg\camerapanel.cpp
+	"CameraPanel.h"
+	<irrlicht.h>
+	<iostream>
+	"edit_env.h"
+	"CMeshBuffer.h"
+	"utils.h"
+	"texture_adjust.h"
+	"reflected_nodes.h"
+	"node_properties.h"
+	"material_groups.h"
+
+1683699739 c:\users\natan\documents\codeblocks\csg\camerapanel.h
+	<irrlicht.h>
+	<iostream>
+	"csg_classes.h"
+	"geometry_scene.h"
+	"CMeshSceneNode.h"
+
+1684100735 source:c:\users\natan\documents\codeblocks\csg\camerapanel2d.cpp
+	"CameraPanel.h"
+	<irrlicht.h>
+	<iostream>
+	"edit_env.h"
+	"CMeshBuffer.h"
+	"utils.h"
+	"node_properties.h"
+
+1672374466 source:c:\users\natan\documents\codeblocks\csg\unused4.cpp
+
+1351991290 source:c:\users\natan\documents\codeblocks\csg\cguiwindow.cpp
+	"CGUIWindow.h"
+	"IGUISkin.h"
+	"IGUIEnvironment.h"
+	"IVideoDriver.h"
+	"IGUIButton.h"
+	"IGUIFont.h"
+	"IGUIFontBitmap.h"
+
+1351991278 c:\users\natan\documents\codeblocks\csg\cguiwindow.h
+	"IrrCompileConfig.h"
+	"IGUIWindow.h"
+
+1673550168 source:c:\users\natan\documents\codeblocks\csg\clip4.cpp
+	<irrlicht.h>
+	<iostream>
+	"csg_classes.h"
+	"clip_functions.h"
+	"tolerances.h"
+
+1675417793 source:c:\users\natan\documents\codeblocks\csg\clip5.cpp
+	<irrlicht.h>
+	<iostream>
+	"csg_classes.h"
+	"geometry_scene.h"
+	"clip_functions.h"
+	"tolerances.h"
+
+1675421630 c:\users\natan\documents\codeblocks\csg\clip_functions.h
+	"csg_classes.h"
+
+1683156273 source:c:\users\natan\documents\codeblocks\csg\clip_functions.cpp
+	<irrlicht.h>
+	<iostream>
+	"csg_classes.h"
+	"clip_functions.h"
+	"tolerances.h"
+
+1672889775 c:\users\natan\documents\codeblocks\csg\tolerances.h
+
+1680665363 source:c:\users\natan\documents\codeblocks\csg\unused5.cpp
+
+1675418067 source:c:\users\natan\documents\codeblocks\csg\clip00.cpp
+	<irrlicht.h>
+	<iostream>
+	"csg_classes.h"
+	"geometry_scene.h"
+	"clip_functions.h"
+	"tolerances.h"
+
+1684122268 source:c:\users\natan\documents\codeblocks\csg\texture_picker.cpp
+	<irrlicht.h>
+	<iostream>
+	"edit_env.h"
+	"geometry_scene.h"
+	"texture_picker.h"
+	"texture_icon.h"
+	"scrollbar2.h"
+
+1684100712 c:\users\natan\documents\codeblocks\csg\texture_picker.h
+	<irrlicht.h>
+	"CGUIWindow.h"
+	<iostream>
+	"GUI_tools.h"
+
+1684122485 source:c:\users\natan\documents\codeblocks\csg\texture_icon.cpp
+	<irrlicht.h>
+	<iostream>
+	"edit_env.h"
+	"texture_icon.h"
+	"texture_picker.h"
+
+1683434792 c:\users\natan\documents\codeblocks\csg\texture_icon.h
+	<irrlicht.h>
+
+1684021248 c:\users\natan\documents\codeblocks\csg\geometry_scene.h
+	<vector>
+	<irrlicht.h>
+	"csg_classes.h"
+	"CMeshSceneNode.h"
+	"texture_picker.h"
+	"BufferManager.h"
+	"reflected_nodes.h"
+	"material_groups.h"
+
+1684539540 source:c:\users\natan\documents\codeblocks\csg\geometry_scene.cpp
+	<irrlicht.h>
+	<iostream>
+	"csg_classes.h"
+	"geometry_scene.h"
+	"edit_env.h"
+	"tolerances.h"
+	"texture_picker.h"
+	"BufferManager.h"
+	"material_groups.h"
+
+1683152284 source:c:\users\natan\documents\codeblocks\csg\clip11.cpp
+	<irrlicht.h>
+	<iostream>
+	"csg_classes.h"
+	"geometry_scene.h"
+	"clip_functions.h"
+	"tolerances.h"
+
+1684460795 source:c:\users\natan\documents\codeblocks\csg\edit_classes.cpp
+	"edit_env.h"
+	<irrlicht.h>
+	<iostream>
+	<sstream>
+	<iomanip>
+	"CameraPanel.h"
+	"CGUIWindow.h"
+	"csg_classes.h"
+	"utils.h"
+	"edit_classes.h"
+	"ex_gui_elements.h"
+	"CGUIEditBox2.h"
+
+1684205762 source:c:\users\natan\documents\codeblocks\csg\refl_primitives.cpp
+	<irrlicht.h>
+	"Reflection.h"
+
+1684287510 c:\users\natan\documents\codeblocks\csg\reflection.h
+	<vector>
+	<iostream>
+	<string>
+	<cstddef>
+	<fstream>
+	<irrlicht.h>
+
+1684361971 c:\users\natan\documents\codeblocks\csg\edit_classes.h
+	<vector>
+	<iostream>
+	<irrlicht.h>
+	"reflection.h"
+	"CGUIWindow.h"
+
+1683304150 source:c:\users\natan\documents\codeblocks\csg\create_primitives.cpp
+	<irrlicht.h>
+	"edit_classes.h"
+	"reflection.h"
+	"create_primitives.h"
+	"geometry_scene.h"
+
+1683431473 c:\users\natan\documents\codeblocks\csg\create_primitives.h
+	"edit_classes.h"
+	<irrlicht.h>
+
+1683167257 c:\users\natan\documents\codeblocks\csg\texture_adjust.h
+	<irrlicht.h>
+	"CGUIWindow.h"
+	"reflection.h"
+
+1684340519 source:c:\users\natan\documents\codeblocks\csg\texture_adjust.cpp
+	"texture_adjust.h"
+	"edit_classes.h"
+	"edit_env.h"
+	"geometry_scene.h"
+	<irrlicht.h>
+
+1351991288 source:c:\users\natan\documents\codeblocks\csg\cguiimage.cpp
+	"CGUIImage.h"
+	"IGUISkin.h"
+	"IGUIEnvironment.h"
+	"IVideoDriver.h"
+
+1351991288 c:\users\natan\documents\codeblocks\csg\cguiimage.h
+	"IrrCompileConfig.h"
+	"IGUIImage.h"
+
+1351991288 c:\users\natan\documents\codeblocks\csg\cguieditbox.h
+	"IrrCompileConfig.h"
+	"IGUIEditBox.h"
+	"irrArray.h"
+	"IOSOperator.h"
+
+1678045881 source:c:\users\natan\documents\codeblocks\csg\cguieditbox.cpp
+	"CGUIEditBox.h"
+	"IGUISkin.h"
+	"IGUIEnvironment.h"
+	"IGUIFont.h"
+	"IVideoDriver.h"
+	"rect.h"
+	"os.h"
+	"Keycodes.h"
+
+1351991292 c:\users\natan\documents\codeblocks\csg\os.h
+	"IrrCompileConfig.h"
+	"irrTypes.h"
+	"irrString.h"
+	"path.h"
+	"ILogger.h"
+	"ITimer.h"
+
+1371492560 source:c:\users\natan\documents\codeblocks\csg\os.cpp
+	"os.h"
+	"irrString.h"
+	"IrrCompileConfig.h"
+	"irrMath.h"
+	<SDL/SDL_endian.h>
+	<stdlib.h>
+	<libkern/OSByteOrder.h>
+	<sys/endian.h>
+	<byteswap.h>
+	<xtl.h>
+	<windows.h>
+	<time.h>
+	<stdio.h>
+	<time.h>
+	<sys/time.h>
+
+1684468440 source:c:\users\natan\documents\codeblocks\csg\buffermanager.cpp
+	<irrlicht.h>
+	"CMeshSceneNode.h"
+	"BufferManager.h"
+	"csg_classes.h"
+	"geometry_scene.h"
+	"material_groups.h"
+
+1684467974 c:\users\natan\documents\codeblocks\csg\buffermanager.h
+	<irrlicht.h>
+	<vector>
+	<array>
+	"CMeshSceneNode.h"
+	"texture_picker.h"
+	"edit_env.h"
+
+1684557749 source:c:\users\natan\documents\codeblocks\csg\reflected_nodes.cpp
+	<irrlicht.h>
+	"reflection.h"
+	"reflected_nodes.h"
+	"CameraPanel.h"
+	"utils.h"
+	"geometry_scene.h"
+	"GUI_tools.h"
+
+1684361938 c:\users\natan\documents\codeblocks\csg\reflected_nodes.h
+	<irrlicht.h>
+	"CGUIWindow.h"
+	"Reflection.h"
+	"GUI_tools.h"
+
+1684350488 c:\users\natan\documents\codeblocks\csg\node_properties.h
+	<irrlicht.h>
+	"edit_classes.h"
+	"GUI_tools.h"
+
+1684377649 source:c:\users\natan\documents\codeblocks\csg\node_properties.cpp
+	"node_properties.h"
+	<irrlicht.h>
+	"reflected_nodes.h"
+	"edit_classes.h"
+	"geometry_scene.h"
+	"Reflection.h"
+	"scrollbar2.h"
+	"ex_gui_elements.h"
+
+1351991280 source:c:\users\natan\documents\codeblocks\csg\cplymeshwriter.cpp
+	"IrrCompileConfig.h"
+	"CPLYMeshWriter.h"
+	"os.h"
+	"IMesh.h"
+	"IMeshBuffer.h"
+	"IWriteFile.h"
+
+1351991290 c:\users\natan\documents\codeblocks\csg\cplymeshwriter.h
+	"IMeshWriter.h"
+
+1684557871 source:c:\users\natan\documents\codeblocks\csg\material_groups.cpp
+	<irrlicht.h>
+	"material_groups.h"
+	"edit_env.h"
+	"edit_classes.h"
+	"geometry_scene.h"
+
+1684559233 c:\users\natan\documents\codeblocks\csg\material_groups.h
+	<irrlicht.h>
+	<iostream>
+	<vector>
+	"Reflection.h"
+	"GUI_tools.h"
+
+1683156512 source:c:\users\natan\documents\codeblocks\csg\unused7.cpp
+
+1684364602 c:\users\natan\documents\codeblocks\csg\gui_tools.h
+	<irrlicht.h>
+	<vector>
+	<string>
+
+1684558481 source:c:\users\natan\documents\codeblocks\csg\gui_tools.cpp
+	<irrlicht.h>
+	<iostream>
+	"GUI_tools.h"
+
+1684087185 source:c:\users\natan\documents\codeblocks\csg\vtoolbar.cpp
+	<irrlicht.h>
+	"vtoolbar.h"
+	<iostream>
+
+1684041469 c:\users\natan\documents\codeblocks\csg\vtoolbar.h
+	"IGUIToolbar.h"
+
+1684054336 c:\users\natan\documents\codeblocks\csg\scrollbar2.h
+	<irrlicht.h>
+
+1351991278 source:c:\users\natan\documents\codeblocks\csg\cguibutton.cpp
+	"CGUIButton.h"
+	"IGUISkin.h"
+	"IGUIEnvironment.h"
+	"IVideoDriver.h"
+	"IGUIFont.h"
+	"os.h"
+
+1351991278 c:\users\natan\documents\codeblocks\csg\cguibutton.h
+	"IrrCompileConfig.h"
+	"IGUIButton.h"
+	"IGUISpriteBank.h"
+	"SColor.h"
+
+1684109993 source:c:\users\natan\documents\codeblocks\csg\scrollbar2.cpp
+	"scrollbar2.h"
+	<irrlicht.h>
+	"os.h"
+	"CGUIButton.h"
+	<iostream>
+
+1684378388 source:c:\users\natan\documents\codeblocks\csg\ex_gui_elements.cpp
+	<irrlicht.h>
+	"ex_gui_elements.h"
+	<iostream>
+
+1684376873 c:\users\natan\documents\codeblocks\csg\ex_gui_elements.h
+	<irrlicht.h>
+	"CGUIButton.h"
+	"CGUISkin.h"
+	<string>
+
+1351991288 source:c:\users\natan\documents\codeblocks\csg\cguiskin.cpp
+	"CGUISkin.h"
+	"IGUIFont.h"
+	"IGUISpriteBank.h"
+	"IGUIElement.h"
+	"IVideoDriver.h"
+	"IAttributes.h"
+
+1351991278 c:\users\natan\documents\codeblocks\csg\cguiskin.h
+	"IrrCompileConfig.h"
+	"IGUISkin.h"
+	"irrString.h"
+
+1684380264 source:c:\users\natan\documents\codeblocks\csg\cguieditbox2.cpp
+	"CGUIEditBox2.h"
+	"IGUISkin.h"
+	"IGUIEnvironment.h"
+	"IGUIFont.h"
+	"IVideoDriver.h"
+	"rect.h"
+	"os.h"
+	"Keycodes.h"
+
+1684379311 c:\users\natan\documents\codeblocks\csg\cguieditbox2.h
+	<irrlicht.h>
+	"CGUIEditBox2.h"
+	"irrArray.h"
+	"IOSOperator.h"
+

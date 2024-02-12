@@ -1,0 +1,238 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>17.0</VCProjectVersion>
+    <ProjectGuid>{9A5B4563-F534-4D0B-B225-70A2B1478D21}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <LinkIncremental>true</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <LinkIncremental>true</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <LinkIncremental>true</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <LinkIncremental>true</LinkIncremental>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <WarningLevel>Level3</WarningLevel>
+      <AdditionalIncludeDirectories>C:\Users\nateh\Documents\Visual Studio 2022\irrlicht\include;C:\Users\nateh\eigen;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+    </ClCompile>
+    <Link>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <SubSystem>Console</SubSystem>
+      <AdditionalLibraryDirectories>C:\Users\nateh\Documents\Visual Studio 2022\irrlicht\lib\Win32-visualStudio\Irrlicht.lib;%(AdditionalDependencies)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>C:\Users\nateh\Documents\Visual Studio 2022\irrlicht\lib\Win32-visualStudio\Irrlicht.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <WarningLevel>Level3</WarningLevel>
+      <AdditionalIncludeDirectories>C:\Users\nateh\Documents\Visual Studio 2022\irrlicht\include;C:\Users\nateh\eigen;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <SubSystem>Console</SubSystem>
+      <AdditionalDependencies>C:\Users\nateh\Documents\Visual Studio 2022\irrlicht\lib\Win64-visualStudio\Irrlicht.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <WarningLevel>Level3</WarningLevel>
+      <AdditionalIncludeDirectories>C:\Users\nateh\Documents\Visual Studio 2022\irrlicht\include;C:\Users\nateh\eigen;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <SubSystem>Console</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <AdditionalDependencies>C:\Users\nateh\Documents\Visual Studio 2022\irrlicht\lib\Win32-visualStudio\Irrlicht.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>C:\Projects\Irrlicht-Trunk\lib\Win32-visualstudio\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <WarningLevel>Level3</WarningLevel>
+      <AdditionalIncludeDirectories>C:\Users\nateh\Documents\Visual Studio 2022\irrlicht\include;C:\Users\nateh\eigen;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <SubSystem>Console</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <AdditionalDependencies>C:\Users\nateh\Documents\Visual Studio 2022\irrlicht\lib\Win64-visualStudio\Irrlicht.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="BufferManager.cpp" />
+    <ClCompile Include="build_meshes.cpp" />
+    <ClCompile Include="BVH.cpp" />
+    <ClCompile Include="calc_loops.cpp" />
+    <ClCompile Include="CameraPanel.cpp" />
+    <ClCompile Include="CameraPanel2D.cpp" />
+    <ClCompile Include="CGUIButton.cpp" />
+    <ClCompile Include="CGUIEditBox2.cpp" />
+    <ClCompile Include="CGUIImage.cpp" />
+    <ClCompile Include="CGUISkin.cpp" />
+    <ClCompile Include="CGUIWindow.cpp" />
+    <ClCompile Include="clip.cpp" />
+    <ClCompile Include="clip2.cpp" />
+    <ClCompile Include="clip_functions.cpp" />
+    <ClCompile Include="clip_poly.cpp" />
+    <ClCompile Include="clip_test.cpp" />
+    <ClCompile Include="CMeshSceneNode.cpp" />
+    <ClCompile Include="CPLYMeshWriter.cpp" />
+    <ClCompile Include="create_primitives.cpp" />
+    <ClCompile Include="csg_classes.cpp" />
+    <ClCompile Include="csg_prims.cpp" />
+    <ClCompile Include="edit_classes.cpp" />
+    <ClCompile Include="edit_env.cpp" />
+    <ClCompile Include="ex_gui_elements.cpp" />
+    <ClCompile Include="file_open.cpp" />
+    <ClCompile Include="GeometryNode.cpp" />
+    <ClCompile Include="geometry_ops.cpp" />
+    <ClCompile Include="geometry_scene.cpp" />
+    <ClCompile Include="geo_scene_settings.cpp" />
+    <ClCompile Include="GUI_tools.cpp" />
+    <ClCompile Include="LightMaps.cpp" />
+    <ClCompile Include="LightMaps_Rendering.cpp" />
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="material_groups.cpp" />
+    <ClCompile Include="NodeInstancesTool.cpp" />
+    <ClCompile Include="node_properties.cpp" />
+    <ClCompile Include="os.cpp" />
+    <ClCompile Include="points_lines_planes.cpp" />
+    <ClCompile Include="reflected_nodes.cpp" />
+    <ClCompile Include="Refl_Primitives.cpp" />
+    <ClCompile Include="scrollbar2.cpp" />
+    <ClCompile Include="shapes.cpp" />
+    <ClCompile Include="NodeClassesTool.cpp" />
+    <ClCompile Include="uv_tool.cpp" />
+    <ClCompile Include="texture_adjust.cpp" />
+    <ClCompile Include="texture_icon.cpp" />
+    <ClCompile Include="texture_picker.cpp" />
+    <ClCompile Include="triangle.cpp" />
+    <ClCompile Include="utils.cpp" />
+    <ClCompile Include="vertices_and_edges.cpp" />
+    <ClCompile Include="vtoolbar.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="BufferManager.h" />
+    <ClInclude Include="build_meshes.h" />
+    <ClInclude Include="BVH.h" />
+    <ClInclude Include="CameraPanel.h" />
+    <ClInclude Include="CGUIButton.h" />
+    <ClInclude Include="CGUIEditBox2.h" />
+    <ClInclude Include="CGUIImage.h" />
+    <ClInclude Include="CGUISkin.h" />
+    <ClInclude Include="CGUIWindow.h" />
+    <ClInclude Include="clip_functions.h" />
+    <ClInclude Include="clip_functions2.h" />
+    <ClInclude Include="clip_functions3.h" />
+    <ClInclude Include="CMeshSceneNode.h" />
+    <ClInclude Include="CPLYMeshWriter.h" />
+    <ClInclude Include="create_primitives.h" />
+    <ClInclude Include="csg_classes.h" />
+    <ClInclude Include="edit_classes.h" />
+    <ClInclude Include="edit_env.h" />
+    <ClInclude Include="ex_gui_elements.h" />
+    <ClInclude Include="file_open.h" />
+    <ClInclude Include="GeometryNode.h" />
+    <ClInclude Include="geometry_scene.h" />
+    <ClInclude Include="geo_scene_settings.h" />
+    <ClInclude Include="GUI_tools.h" />
+    <ClInclude Include="LightMaps.h" />
+    <ClInclude Include="material_groups.h" />
+    <ClInclude Include="NodeClassesTool.h" />
+    <ClInclude Include="NodeInstancesTool.h" />
+    <ClInclude Include="node_properties.h" />
+    <ClInclude Include="os.h" />
+    <ClInclude Include="reflected_nodes.h" />
+    <ClInclude Include="Reflection.h" />
+    <ClInclude Include="reflect_custom_types.h" />
+    <ClInclude Include="scrollbar2.h" />
+    <ClInclude Include="ShaderCallbacks.h" />
+    <ClInclude Include="texture_adjust.h" />
+    <ClInclude Include="texture_icon.h" />
+    <ClInclude Include="texture_picker.h" />
+    <ClInclude Include="tolerances.h" />
+    <ClInclude Include="tree_struct.h" />
+    <ClInclude Include="triangle.h" />
+    <ClInclude Include="utils.h" />
+    <ClInclude Include="uv_tool.h" />
+    <ClInclude Include="vtoolbar.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="tutorial.html" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

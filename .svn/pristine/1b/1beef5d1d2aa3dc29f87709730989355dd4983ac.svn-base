@@ -1,0 +1,356 @@
+
+#include <irrlicht.h>
+#include <iostream>
+#include "csg_classes.h"
+#include "geometry_scene.h"
+#include "clip_functions.h"
+#include "tolerances.h"
+
+polyfold make_result(polyfold& pf4, polyfold& pf5, polyfold pf, polyfold pf2, int rule, int rule2, bool overwrite, clip_results& results, LineHolder &graph)
+{
+    LineHolder nograph;
+
+    polyfold positive;
+    polyfold negative;
+
+    positive.vertices = pf4.vertices;
+    negative.vertices = pf4.vertices;
+
+    for(int f_i=0; f_i < pf4.faces.size(); f_i++)
+    {
+        core::plane3df f_plane = core::plane3df(pf4.faces[f_i].m_center,pf4.faces[f_i].m_normal);
+        poly_face f_p;
+        poly_face f_n;
+        f_p.m_center = pf4.faces[f_i].m_center;
+        f_p.m_normal = pf4.faces[f_i].m_normal;
+        f_n.m_center = pf4.faces[f_i].m_center;
+        f_n.m_normal = pf4.faces[f_i].m_normal;
+        f_p.bFlippedNormal = pf4.faces[f_i].bFlippedNormal;
+        f_n.bFlippedNormal = pf4.faces[f_i].bFlippedNormal;
+
+        if(pf4.faces[f_i].loops.size()>0)
+        {
+            for(int p_i=0; p_i < pf4.faces[f_i].loops.size(); p_i++)
+            {
+                if(pf4.faces[f_i].loops[p_i].vertices.size()>0 && pf4.faces[f_i].loops[p_i].topo_group != LOOP_UNDEF)
+                {
+                    for(int f_j=0; f_j < pf5.faces.size(); f_j++)
+                    {
+                        if(is_coplanar_point(f_plane,pf5.faces[f_j].m_center) &&
+                           is_parallel_normal(pf4.faces[f_i].m_normal,pf5.faces[f_j].m_normal))
+                            {
+                                for(int p_j=0; p_j < pf5.faces[f_j].loops.size(); p_j++)
+                                {
+                                    if(pf5.faces[f_j].loops[p_j].vertices.size() > 0 &&
+                                       pf5.faces[f_j].loops[p_j].topo_group != LOOP_UNDEF &&
+                                       is_identical_loop(pf4, pf4.faces[f_i].loops[p_i],pf5, pf5.faces[f_j].loops[p_j]))
+                                    {
+                                        if(pf4.faces[f_i].m_normal.dotProduct(pf5.faces[f_j].m_normal) > 0)
+                                        {
+                                            if(pf5.faces[f_j].loops[p_j].topo_group==LOOP_SOLID && pf4.faces[f_i].loops[p_i].topo_group==LOOP_SOLID)
+                                            {
+                                                if(pf4.faces[f_i].loops[p_i].flags==0)
+                                                {
+                                                    if(overwrite)
+                                                        f_p.loops.push_back( pf4.faces[f_i].loops[p_i]);
+                                                    else
+                                                        f_n.loops.push_back( pf4.faces[f_i].loops[p_i]);
+
+                                                    pf5.faces[f_j].loops[p_j].flags=1;
+                                                }
+                                                else
+                                                {
+                                                    if(overwrite)
+                                                        f_n.loops.push_back( pf4.faces[f_i].loops[p_i]);
+                                                    else
+                                                        f_p.loops.push_back( pf4.faces[f_i].loops[p_i]);
+                                                }
+
+                                                goto FinishedWithLoop2;
+                                            }
+                                            else if(pf5.faces[f_j].loops[p_j].topo_group==LOOP_HOLLOW && pf4.faces[f_i].loops[p_i].topo_group==LOOP_SOLID)
+                                            {
+                                                core::vector3df v1;
+                                                int e_j = pf5.find_edge(pf5.faces[f_j].loops[p_j].vertices[0],pf5.faces[f_j].loops[p_j].vertices[1]);
+                                                if(pf5.get_facial_point(f_j,e_j,p_j,v1,graph))
+                                                {
+                                                    if(rule==GEO_ADD)
+                                                    {
+                                                        if(pf2.classify_point(v1,graph) == TOP_FRONT)
+                                                            f_p.loops.push_back( pf4.faces[f_i].loops[p_i]);
+                                                        else
+                                                            f_n.loops.push_back( pf4.faces[f_i].loops[p_i]);
+                                                    }
+                                                    else
+                                                    {
+                                                        if(pf2.classify_point(v1,graph) == TOP_FRONT)
+                                                            f_n.loops.push_back( pf4.faces[f_i].loops[p_i]);
+                                                        else
+                                                            f_p.loops.push_back( pf4.faces[f_i].loops[p_i]);
+                                                    }
+                                                }
+                                                goto FinishedWithLoop2;
+                                            }
+                                            else if(pf5.faces[f_j].loops[p_j].topo_group==LOOP_SOLID && pf4.faces[f_i].loops[p_i].topo_group==LOOP_HOLLOW)
+                                            {
+                                                f_n.loops.push_back( pf4.faces[f_i].loops[p_i]);
+                                                    goto FinishedWithLoop2;
+                                            }
+                                            else if(pf5.faces[f_j].loops[p_j].topo_group==LOOP_HOLLOW && pf4.faces[f_i].loops[p_i].topo_group==LOOP_HOLLOW)
+                                            {
+                                                f_n.loops.push_back( pf4.faces[f_i].loops[p_i]);
+                                                goto FinishedWithLoop2;
+                                            }
+                                        }
+                                        else
+                                        {
+                                            if(pf5.faces[f_j].loops[p_j].topo_group==LOOP_SOLID && pf4.faces[f_i].loops[p_i].topo_group==LOOP_SOLID)
+                                            {
+                                                f_n.loops.push_back( pf4.faces[f_i].loops[p_i]);
+                                                goto FinishedWithLoop2;
+                                            }
+                                            else if(pf5.faces[f_j].loops[p_j].topo_group==LOOP_HOLLOW && pf4.faces[f_i].loops[p_i].topo_group==LOOP_SOLID)
+                                            {
+                                                core::vector3df v1;
+                                                int e_j = pf5.find_edge(pf5.faces[f_j].loops[p_j].vertices[0],pf5.faces[f_j].loops[p_j].vertices[1]);
+                                                if(pf5.get_facial_point(f_j,e_j,p_j,v1,nograph))
+                                                {
+                                                    if(rule==GEO_ADD)
+                                                    {
+                                                        if(pf2.classify_point(v1,graph) == TOP_FRONT)
+                                                            f_p.loops.push_back( pf4.faces[f_i].loops[p_i]);
+                                                        else
+                                                            f_n.loops.push_back( pf4.faces[f_i].loops[p_i]);
+                                                    }
+                                                    else
+                                                    {
+                                                        if(pf2.classify_point(v1,graph) == TOP_FRONT)
+                                                            f_n.loops.push_back( pf4.faces[f_i].loops[p_i]);
+                                                        else
+                                                            f_p.loops.push_back( pf4.faces[f_i].loops[p_i]);
+                                                    }
+                                                }
+                                                goto FinishedWithLoop2;
+                                            }
+                                            else if(pf5.faces[f_j].loops[p_j].topo_group==LOOP_SOLID && pf4.faces[f_i].loops[p_i].topo_group==LOOP_HOLLOW)
+                                            {
+                                                f_n.loops.push_back( pf4.faces[f_i].loops[p_i]);
+                                                goto FinishedWithLoop2;
+                                            }
+                                            else if(pf5.faces[f_j].loops[p_j].topo_group==LOOP_HOLLOW && pf4.faces[f_i].loops[p_i].topo_group==LOOP_HOLLOW)
+                                            {
+                                                f_n.loops.push_back( pf4.faces[f_i].loops[p_i]);
+                                                goto FinishedWithLoop2;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                    }
+
+                    int RES = classify_loop(pf4,f_i,p_i,pf5,rule,rule2,graph);
+
+                    if(RES==TOP_FRONT)
+                    {
+                        if(pf4.faces[f_i].loops[p_i].topo_group==LOOP_SOLID)
+                            f_p.loops.push_back( pf4.faces[f_i].loops[p_i]);
+                        else if(pf4.faces[f_i].loops[p_i].topo_group==LOOP_HOLLOW)
+                            f_n.loops.push_back( pf4.faces[f_i].loops[p_i]);
+                    }
+                    else if(RES==TOP_BEHIND)
+                    {
+                        f_n.loops.push_back( pf4.faces[f_i].loops[p_i]);
+                    }
+                }
+                FinishedWithLoop2:
+                int z=0;
+            }
+        }
+        positive.faces.push_back(f_p);
+        negative.faces.push_back(f_n);
+    }
+
+    positive.reduce_edges_vertices2();
+    negative.reduce_edges_vertices2();
+
+    for(int f_i=0;f_i<positive.faces.size();f_i++)
+        positive.meld_loops(f_i);
+
+    for(int f_i=0;f_i<negative.faces.size();f_i++)
+        negative.meld_loops(f_i);
+
+    polyfold result;
+
+    int nPositive=0;
+    for(int i=0;i<pf4.faces.size();i++)
+    {
+        poly_face f;
+        f.m_center = pf4.faces[i].m_center;
+        f.m_normal = pf4.faces[i].m_normal;
+        f.bFlippedNormal = pf4.faces[i].bFlippedNormal;
+        f.surface_group = pf4.faces[i].surface_group;
+        f.material_group = pf4.faces[i].material_group;
+        f.original_brush = pf4.faces[i].original_brush;
+        f.original_face = pf4.faces[i].original_face;
+        f.uv_mat = pf4.faces[i].uv_mat;
+        f.uv_origin = pf4.faces[i].uv_origin;
+
+        for(int p=0;p<positive.faces[i].loops.size();p++)
+        {
+            {
+                poly_loop loop;
+                for(int v_i=0;v_i<positive.faces[i].loops[p].vertices.size();v_i++)
+                {
+                    core::vector3df V = positive.vertices[positive.faces[i].loops[p].vertices[v_i]].V;
+                    int v = result.get_point_or_add(V);
+                    loop.vertices.push_back(v);
+                }
+                loop.topo_group=LOOP_SOLID;
+                f.loops.push_back(loop);
+            }
+        }
+
+        for(int p=0;p<negative.faces[i].loops.size();p++)
+        {
+            poly_loop loop;
+            for(int v_i=0;v_i<negative.faces[i].loops[p].vertices.size();v_i++)
+            {
+                core::vector3df V = negative.vertices[negative.faces[i].loops[p].vertices[v_i]].V;
+                int v = result.get_point_or_add(V);
+                loop.vertices.push_back(v);
+            }
+            loop.topo_group=LOOP_HOLLOW;
+            f.loops.push_back(loop);
+        }
+        result.faces.push_back(f);
+    }
+
+    result.finalize_clipped_poly();
+
+    return result;
+}
+
+void clip_poly(polyfold& pf, polyfold& pf2, int rule, int base_type, clip_results& results, LineHolder &graph)
+{
+    LineHolder nograph;
+
+    polyfold pf4 = pf;
+    polyfold pf5 = pf2;
+    polyfold ret;
+
+    do_self_intersections(pf4);
+    do_self_intersections(pf5);
+
+    int n_intersections = do_intersections_and_bisect2(pf,pf2,pf4,pf5,graph);
+
+    results.n_intersections = n_intersections;
+    if(n_intersections == 0)
+    {
+        return;
+    }
+
+    pf4.classify_edges(nograph);
+    pf5.classify_edges(nograph);
+
+    do_common_topology(pf,pf2,pf4,pf5,graph);
+
+    do_initial_topology(pf,pf2,pf4,pf5,nograph);
+    do_initial_topology(pf2,pf,pf5,pf4,nograph);
+
+    do_topology_groups(pf4,pf5,rule,base_type,nograph);
+    do_topology_groups(pf5,pf4,rule,base_type,nograph);
+
+    for(int f_i=0; f_i<pf4.faces.size();f_i++)
+    {
+        pf4.calc_loops4(f_i,nograph);
+        pf4.sort_loops(f_i);
+    }
+
+    for(int f_i=0; f_i<pf5.faces.size();f_i++)
+    {
+        pf5.calc_loops4(f_i,nograph);
+        pf5.sort_loops(f_i);
+    }
+
+    do_self_topology_loops(pf4,pf,nograph);
+    do_self_topology_loops(pf5,pf2,nograph);
+
+    for(int f_i=0; f_i < pf4.faces.size(); f_i++)
+        for(int p_i=0; p_i < pf4.faces[f_i].loops.size(); p_i++)
+            pf4.faces[f_i].loops[p_i].flags=0;
+
+
+    for(int f_i=0; f_i < pf5.faces.size(); f_i++)
+        for(int p_i=0; p_i < pf5.faces[f_i].loops.size(); p_i++)
+            pf5.faces[f_i].loops[p_i].flags=0;
+
+
+    polyfold result1 = make_result(pf4,pf5,pf,pf2,rule,true,base_type,results,nograph);
+    polyfold result2 = make_result(pf5,pf4,pf2,pf,rule,true,base_type,results,nograph);
+
+    result1.surface_groups = pf.surface_groups;
+    result2.surface_groups = pf2.surface_groups;
+
+
+    pf = result1;
+    pf2 = result2;
+}
+
+void clip_poly_single(polyfold& pf, polyfold& pf2, int rule, int base_type, clip_results& results, LineHolder &graph)
+{
+    LineHolder nograph;
+
+    polyfold pf4 = pf;
+    polyfold pf5 = pf2;
+    polyfold ret;
+
+    do_self_intersections(pf4);
+    do_self_intersections(pf5);
+
+    int n_intersections = do_intersections_and_bisect2(pf,pf2,pf4,pf5,graph);
+
+    results.n_intersections = n_intersections;
+    if(n_intersections == 0)
+    {
+        return;
+    }
+
+    pf4.classify_edges(nograph);
+    pf5.classify_edges(nograph);
+
+    do_common_topology(pf,pf2,pf4,pf5,graph);
+
+    do_initial_topology(pf,pf2,pf4,pf5,nograph);
+
+    do_topology_groups(pf4,pf5,rule,base_type,nograph);
+
+    for(int f_i=0; f_i<pf4.faces.size();f_i++)
+    {
+        pf4.calc_loops4(f_i,nograph);
+        pf4.sort_loops(f_i);
+    }
+
+    for(int f_i=0; f_i<pf5.faces.size();f_i++)
+    {
+        pf5.calc_loops4(f_i,nograph);
+        pf5.sort_loops(f_i);
+    }
+
+    do_self_topology_loops(pf4,pf,nograph);
+    do_self_topology_loops(pf5,pf2,nograph);
+
+    for(int f_i=0; f_i < pf4.faces.size(); f_i++)
+        for(int p_i=0; p_i < pf4.faces[f_i].loops.size(); p_i++)
+            pf4.faces[f_i].loops[p_i].flags=0;
+
+    for(int f_i=0; f_i < pf5.faces.size(); f_i++)
+        for(int p_i=0; p_i < pf5.faces[f_i].loops.size(); p_i++)
+            pf5.faces[f_i].loops[p_i].flags=0;
+
+    polyfold result = make_result(pf4,pf5,pf,pf2,rule,false,base_type,results,nograph);
+
+    result.surface_groups = pf.surface_groups;
+
+    pf = result;
+}
+

@@ -1,0 +1,550 @@
+#ifndef _REFLECTION2_H_
+#define _REFLECTION2_H_
+
+#include <vector>
+#include <iostream>
+#include <string>
+#include <cstddef>
+#include <fstream>
+
+#include <irrlicht.h>
+
+//class Reflected_GUI_Edit_Form;
+
+class Reflected_GUI_Edit_Form;
+namespace reflect {
+
+//--------------------------------------------------------
+// Base class of all type descriptors
+//--------------------------------------------------------
+
+struct TypeDescriptor_Struct;
+
+struct TypeDescriptor {
+
+    const char* name;
+    const char* alias;
+    size_t size;
+
+    TypeDescriptor(const char* name, size_t size) : name{name}, size{size} {}
+    virtual ~TypeDescriptor() {}
+    virtual std::string getFullName() const { return name; }
+
+    virtual void dump(const void* obj, int indentLevel = 0) const = 0;
+    virtual void addFormWidget(Reflected_GUI_Edit_Form*, TypeDescriptor_Struct*, std::vector<int> tree, size_t offset, bool bVisible, bool bEditable, int tab) {
+    }
+
+    virtual bool expandable(){return false;}
+
+    virtual void serialize(std::ofstream& f, const void* obj)
+    {
+        f.write((char*)obj,size);
+    }
+
+    virtual void deserialize(std::ifstream& f, void* obj)
+    {
+        f.read((char*)obj,size);
+    }
+
+    virtual bool isEqual(const void* obj, const void* obj2)
+    {
+        return memcmp(obj,obj2,size)==0;
+    }
+
+    virtual copy(void* obj, const void* obj2)
+    {
+        memcpy(obj,obj2,size);
+    }
+
+    virtual void setReadWrite(bool rw){
+    }
+
+    virtual void setIfNotEqual(const void* obj, const void* obj2) {
+    }
+
+};
+
+//--------------------------------------------------------
+// Finding type descriptors
+//--------------------------------------------------------
+
+// Declare the function template that handles primitive types such as int, std::string, etc.:
+template <typename T>
+TypeDescriptor* getPrimitiveDescriptor();
+
+// A helper class to find TypeDescriptors in different ways:
+struct DefaultResolver {
+    template <typename T> static char func(decltype(&T::Reflection));
+    template <typename T> static int func(...);
+    template <typename T>
+    struct IsReflected {
+        enum { value = (sizeof(func<T>(nullptr)) == sizeof(char)) };
+    };
+
+    // This version is called if T has a static member named "Reflection":
+    template <typename T, typename std::enable_if<IsReflected<T>::value, int>::type = 0>
+    static TypeDescriptor* get() {\
+            return &T::Reflection;
+    }
+
+    // This version is called otherwise:
+    template <typename T, typename std::enable_if<!IsReflected<T>::value, int>::type = 0>
+    static TypeDescriptor* get() {
+        return getPrimitiveDescriptor<T>();
+    }
+};
+
+// This is the primary class template for finding all TypeDescriptors:
+template <typename T>
+struct TypeResolver {
+    static TypeDescriptor* get() {
+        return DefaultResolver::get<T>();
+    }
+};
+
+//--------------------------------------------------------
+// Type descriptors for user-defined structs/classes
+//--------------------------------------------------------
+
+struct Member {
+         struct Attribute {
+            int A;
+            int B;
+            int C;
+            int D;
+            };
+        const char* name;
+        size_t offset;
+        TypeDescriptor* type;
+        std::vector<Attribute> attributes;
+        bool expanded;   //for editor widgets
+        bool readwrite;  //for editor widgets
+
+        void* get(const void* obj)
+        {
+            return (char*)obj+offset;
+        }
+
+        bool isEqual(const void* obj, const void* obj2)
+        {
+            return type->isEqual((char*)obj+offset,(char*)obj2+offset);
+        }
+
+        void copy(void* obj, const void* obj2)
+        {
+            type->copy((char*)obj+offset,(char*)obj2+offset);
+        }
+
+        void setReadWrite(bool rw)
+        {
+            readwrite = rw;
+            type->setReadWrite(rw);
+        }
+
+        void setIfNotEqual(const void* obj, const void* obj2)
+        {
+            if(type->isEqual((char*)obj,(char*)obj2)==false)
+            {
+
+                std::cout<<obj<<" / "<<obj2<<"  "<<name<<" !=\n";
+                readwrite = false;
+            }
+            else
+                std::cout<<obj<<" / "<<obj2<<"  "<<name<<" ==\n";
+
+            type->setIfNotEqual(obj,obj2);
+        }
+    };
+
+struct TypeDescriptor_Struct : TypeDescriptor {
+
+    TypeDescriptor_Struct* inherited_type;
+    std::vector<Member> members;
+    bool expanded;
+
+    TypeDescriptor_Struct(void (*init)(TypeDescriptor_Struct*)) : TypeDescriptor{nullptr, 0} {
+        init(this);
+    }
+   // TypeDescriptor_Struct(const char* name, size_t size, const std::initializer_list<Member>& init) : TypeDescriptor{nullptr, 0}, members{init} {
+   // }
+    virtual void dump(const void* obj, int indentLevel) const override {
+        std::cout << name <<" "<<obj<<" {" << std::endl;
+        for (const Member& member : members) {
+            std::cout << std::string(4 * (indentLevel + 1), ' ') << member.name << " = ";
+            member.type->dump((char*) obj + member.offset, indentLevel + 1);
+            std::cout<<"("<<member.offset<<")";
+            std::cout << std::endl;
+        }
+        std::cout << std::string(4 * indentLevel, ' ') << "}";
+    }
+
+    virtual void setReadWrite(bool rw)
+    {
+        for(Member &m : members)
+            m.setReadWrite(rw);
+    }
+
+    virtual void setIfNotEqual(const void* obj, const void* obj2)
+    {
+        for(Member &m : members)
+            m.setIfNotEqual((char*)obj + m.offset, (char*)obj2 + m.offset);
+    }
+
+    Member* getTreeNode(std::vector<int> tree_pos)
+    {
+        if(tree_pos.size() > 0)
+        {
+            reflect::TypeDescriptor_Struct* t = this;
+
+            for(int i=0; i<tree_pos.size()-1; i++)
+            {
+                int m_i = tree_pos[i];
+                t = (reflect::TypeDescriptor_Struct*)t->members[m_i].type;
+            }
+            int m_0 = tree_pos[tree_pos.size()-1];
+
+            return &t->members[m_0];
+        }
+        else
+            return NULL;
+    }
+
+   // virtual void addFormWidgets(std::string name, Reflected_GUI_Edit_Form* win, bool bEditable)
+    virtual void addFormWidget(Reflected_GUI_Edit_Form* win, TypeDescriptor_Struct* type_struct, std::vector<int> tree, size_t offset, bool bVisible, bool bEditable, int tab);
+    /*{
+        std::cout<<name<<" adding widgets...\n";
+
+        for(int i=0;i<members.size();i++)
+        {
+            std::cout<<members[i].name<<"\n";
+            members[i].type->addFormWidget(win,this,i, bEditable);
+        }
+    }*/
+
+    virtual void serialize(std::ofstream& f, const void* obj)
+    {
+        for (const Member& member : members)
+        {
+            member.type->serialize(f,(char*) obj + member.offset);
+        }
+    }
+
+    virtual void deserialize(std::ifstream& f, void* obj)
+    {
+        for (const Member& member : members)
+        {
+            member.type->deserialize(f,(char*) obj + member.offset);
+        }
+    }
+};
+
+struct TypeDescriptor_Color_Struct : TypeDescriptor_Struct
+{
+    TypeDescriptor_Color_Struct(void (*init)(TypeDescriptor_Struct*)) : TypeDescriptor_Struct(init) {}
+    virtual void addFormWidget(Reflected_GUI_Edit_Form* win, TypeDescriptor_Struct* type_struct, std::vector<int> tree, size_t offset, bool bVisible, bool bEditable, int tab);
+};
+
+#define REFLECT() \
+    friend struct reflect::DefaultResolver; \
+    static reflect::TypeDescriptor_Struct Reflection; \
+    static void initReflection(reflect::TypeDescriptor_Struct*);
+
+#define REFLECT_STRUCT_BEGIN(type) \
+    reflect::TypeDescriptor_Struct type::Reflection{type::initReflection}; \
+    void type::initReflection(reflect::TypeDescriptor_Struct* typeDesc) { \
+        using T = type; \
+        typeDesc->name = #type; \
+        typeDesc->size = sizeof(T); \
+        typeDesc->inherited_type = NULL; \
+        typeDesc->members = {
+
+#define REFLECT_STRUCT_MEMBER(name) \
+            {#name, offsetof(T, name), reflect::TypeResolver<decltype(T::name)>::get()},
+
+#define REFLECT_STRUCT_END() \
+        }; \
+    }
+
+
+#define REFLECT2() \
+    virtual reflect::TypeDescriptor_Struct* GetDynamicReflection(); \
+    friend struct reflect::DefaultResolver; \
+    static reflect::TypeDescriptor_Struct Reflection; \
+    static void initReflection(reflect::TypeDescriptor_Struct*); \
+    static Reflected_SceneNode* create_self(ISceneManager* smgr, int id, const core::vector3df& pos); \
+
+#define REFLECT_STRUCT2_BEGIN(type) \
+    reflect::TypeDescriptor_Struct type::Reflection{type::initReflection}; \
+    Reflected_SceneNode* type::create_self(ISceneManager* smgr, int id, const core::vector3df& pos){ \
+        return new type(smgr,id,pos);\
+        }\
+    reflect::TypeDescriptor_Struct* type::GetDynamicReflection() {\
+        return &type::Reflection;\
+        }\
+    void type::initReflection(reflect::TypeDescriptor_Struct* typeDesc) { \
+        using T = type; \
+        typeDesc->name = #type; \
+        typeDesc->size = sizeof(T); \
+        typeDesc->inherited_type = NULL; \
+        typeDesc->alias = typeDesc->name;
+
+#define ALIAS(name) \
+        typeDesc->alias = name;
+
+#define INHERIT_FROM(name) \
+        typeDesc->inherited_type = (reflect::TypeDescriptor_Struct*)reflect::TypeResolver<name>::get();
+    //    for(reflect::TypeDescriptor_Struct::Member member : typeDesc->inherited_type->members) \
+    //        typeDesc->members.push_back(member); \
+
+#define REFLECT_STRUCT2_MEMBER(name) \
+        typeDesc->members.push_back(reflect::Member{#name, offsetof(T, name), reflect::TypeResolver<decltype(T::name)>::get()});
+
+#define REFLECT_STRUCT2_END() \
+    }
+
+//=========================
+
+#define REFLECT_MULTI_CHOICE() \
+    friend struct reflect::DefaultResolver; \
+    static reflect::TypeDescriptor_MultiOption Reflection; \
+    static void initReflection(reflect::TypeDescriptor_MultiOption*);
+
+#define REFLECT_MULTI_STRUCT_BEGIN(type) \
+    reflect::TypeDescriptor_MultiOption type::Reflection{type::initReflection}; \
+    void type::initReflection(reflect::TypeDescriptor_MultiOption* typeDesc) { \
+    using T = type; \
+    typeDesc->name = #type; \
+    typeDesc->size = sizeof(T); \
+    typeDesc->labels = {
+
+#define REFLECT_MULTI_STRUCT_LABEL(name) \
+            name,
+
+#define REFLECT_MULTI_STRUCT_END() \
+        }; \
+    }
+
+
+//--------------------------------------------------------
+// Type descriptors for std::vector
+//--------------------------------------------------------
+
+
+struct TypeDescriptor_MultiOption : TypeDescriptor {
+
+    std::vector<std::string> labels;
+
+    TypeDescriptor_MultiOption(void (*init)(TypeDescriptor_MultiOption*)) : TypeDescriptor{nullptr, 0} {
+        init(this);
+    }
+
+    virtual void dump(const void* obj, int indentLevel) const override;
+    virtual void addFormWidget(Reflected_GUI_Edit_Form*, TypeDescriptor_Struct*, std::vector<int> tree, size_t offset, bool bVisible, bool bEditable, int tab) override;
+};
+
+struct TypeDescriptor_StdVector : TypeDescriptor {
+    TypeDescriptor* itemType;
+    size_t (*getSize)(const void*);
+    const void* (*getItem)(const void*, size_t);
+    void* (*getItem_nc)(void*, size_t);
+    void (*allocate)(void*, size_t);
+
+    template <typename ItemType>
+    TypeDescriptor_StdVector(ItemType*)
+        : TypeDescriptor{"std::vector<>", sizeof(std::vector<ItemType>)},
+                         itemType{TypeResolver<ItemType>::get()} {
+        getSize = [](const void* vecPtr) -> size_t {
+            const auto& vec = *(const std::vector<ItemType>*) vecPtr;
+            return vec.size();
+        };
+        getItem = [](const void* vecPtr, size_t index) -> const void* {
+            const auto& vec = *(const std::vector<ItemType>*) vecPtr;
+            return &vec[index];
+        };
+        getItem_nc = [](void* vecPtr, size_t index) -> void* {
+            auto& vec = *(std::vector<ItemType>*) vecPtr;
+            return &vec[index];
+        };
+        allocate = [](void* vecPtr, size_t new_size) {
+            auto& vec = *(std::vector<ItemType>*) vecPtr;
+            vec.resize(new_size);
+        };
+    }
+    virtual std::string getFullName() const override {
+        return std::string("std::vector<") + itemType->getFullName() + ">";
+    }
+    virtual void dump(const void* obj, int indentLevel) const override {
+        size_t numItems = getSize(obj);
+        std::cout << getFullName();
+        if (numItems == 0) {
+            std::cout << "{}";
+        } else {
+            std::cout << "{" << std::endl;
+            for (size_t index = 0; index < numItems; index++) {
+                std::cout << std::string(4 * (indentLevel + 1), ' ') << "[" << index << "] ";
+                itemType->dump(getItem(obj, index), indentLevel + 1);
+                std::cout << std::endl;
+            }
+            std::cout << std::string(4 * indentLevel, ' ') << "}";
+        }
+    }
+    virtual void serialize(std::ofstream& f, const void* obj) override
+    {
+        size_t numItems = getSize(obj);
+
+        f.write((char*)&numItems,sizeof(size_t));
+        for (size_t index = 0; index < numItems; index++)
+        {
+            itemType->serialize(f,getItem(obj, index));
+        }
+    }
+
+    virtual void deserialize(std::ifstream& f, void* obj) override
+    {
+        size_t numItems;
+        f.read((char*)&numItems,sizeof(size_t));
+
+        allocate(obj,numItems);
+        for (size_t index = 0; index < numItems; index++)
+        {
+            itemType->deserialize(f,getItem_nc(obj, index));
+        }
+    }
+};
+
+// Partially specialize TypeResolver<> for std::vectors:
+template <typename T>
+class TypeResolver<std::vector<T>> {
+public:
+    static TypeDescriptor* get() {
+        static TypeDescriptor_StdVector typeDesc{(T*) nullptr};
+        return &typeDesc;
+    }
+};
+
+struct TypeDescriptor_Float : TypeDescriptor {
+    TypeDescriptor_Float() : TypeDescriptor{"float", sizeof(irr::f32)} {
+    }
+    virtual void dump(const void* obj, int /* unused */) const override {
+        std::cout << "float{" << *(const irr::f32*) obj << "}";
+    }
+    virtual void addFormWidget(Reflected_GUI_Edit_Form*, TypeDescriptor_Struct*, std::vector<int> tree, size_t offset, bool bVisible, bool bEditable, int tab) override;
+
+    /*
+    virtual bool isEqual(void* obj, void* obj2) {
+        return *(const irr::f32*) obj == *(const irr::f32*)obj2;
+        }*/
+};
+
+struct TypeDescriptor_Int : TypeDescriptor {
+    TypeDescriptor_Int() : TypeDescriptor{"int", sizeof(int)} {
+    }
+    virtual void dump(const void* obj, int /* unused */) const override {
+        std::cout << "int{" << *(const int*) obj << "}";
+    }
+
+    virtual void addFormWidget(Reflected_GUI_Edit_Form*, TypeDescriptor_Struct*, std::vector<int> tree, size_t offset, bool bVisible, bool bEditable, int tab) override;
+
+    /*
+    virtual bool isEqual(void* obj, void* obj2) {
+        return *(const int*) obj == *(const int*)obj2;
+        }*/
+};
+
+
+struct TypeDescriptor_Byte : TypeDescriptor {
+    TypeDescriptor_Byte() : TypeDescriptor{"char", sizeof(char)} {
+    }
+    virtual void dump(const void* obj, int /* unused */) const override {
+        std::cout << "char{" << *(const char*) obj << "}";
+    }
+
+    virtual void addFormWidget(Reflected_GUI_Edit_Form*, TypeDescriptor_Struct*, std::vector<int> tree, size_t offset, bool bVisible, bool bEditable, int tab) override;
+
+    /*
+    virtual bool isEqual(void* obj, void* obj2) {
+        return *(const int*) obj == *(const int*)obj2;
+        }*/
+};
+
+struct TypeDescriptor_Bool : TypeDescriptor {
+    TypeDescriptor_Bool() : TypeDescriptor{"bool", sizeof(bool)} {
+    }
+    virtual void dump(const void* obj, int /* unused */) const override {
+        std::cout << "bool{" << *(const bool*) obj << "}";
+    }
+
+    virtual void addFormWidget(Reflected_GUI_Edit_Form*, TypeDescriptor_Struct*, std::vector<int> tree, size_t offset, bool bVisible, bool bEditable, int tab) override;
+    /*
+    virtual bool isEqual(void* obj, void* obj2) {
+        return *(const bool*) obj == *(const bool*)obj2;
+        }*/
+};
+
+struct TypeDescriptor_Vector2 : TypeDescriptor {
+    TypeDescriptor_Vector2() : TypeDescriptor{"vector2", sizeof(irr::core::vector2df)} {
+    }
+    virtual void dump(const void* obj, int /* unused */) const override {
+        std::cout << "vector2{" << *(const bool*) obj << "}";
+    }
+
+    virtual void addFormWidget(Reflected_GUI_Edit_Form*, TypeDescriptor_Struct*, std::vector<int> tree, size_t offset, bool bVisible, bool bEditable, int tab) override;
+};
+
+
+struct TypeDescriptor_Vector3 : TypeDescriptor {
+    TypeDescriptor_Vector3() : TypeDescriptor{"vector3", sizeof(irr::core::vector3df)} {
+    }
+    virtual void dump(const void* obj, int /* unused */) const override {
+        std::cout << "vector3{" <<  *(const float*) obj << "," <<
+                                    *(const float*) (obj + sizeof(float)) << "," <<
+                                    *(const float*) (obj + sizeof(float)*2)<<
+                                                        "}";
+    }
+
+    virtual bool expandable(){return true;}
+    virtual void addFormWidget(Reflected_GUI_Edit_Form*, TypeDescriptor_Struct*, std::vector<int> tree, size_t offset, bool bVisible, bool bEditable, int tab) override;
+};
+
+
+struct TypeDescriptor_Matrix4 : TypeDescriptor {
+    TypeDescriptor_Matrix4() : TypeDescriptor{"matrix4", sizeof(irr::core::matrix4)} {
+    }
+    virtual void dump(const void* obj, int /* unused */) const override {
+        std::cout << "Matrix4{" <<  *(const float*) obj << "," <<
+                                    *(const float*) (obj + sizeof(float)) << "," <<
+                                    *(const float*) (obj + sizeof(float)*2)<<
+                                                        "}";
+    }
+
+    virtual bool expandable(){return true;}
+    virtual void addFormWidget(Reflected_GUI_Edit_Form*, TypeDescriptor_Struct*, std::vector<int> tree, size_t offset, bool bVisible, bool bEditable, int tab) override
+    {}
+};
+
+
+struct TypeDescriptor_SColor : TypeDescriptor {
+    TypeDescriptor_SColor() : TypeDescriptor{"SColor", sizeof(irr::core::vector2df)} {
+    }
+    virtual void dump(const void* obj, int /* unused */) const override {
+        std::cout << "SColor{" << *(const char*) obj << "}";
+    }
+
+    virtual bool expandable(){return true;}
+    virtual void addFormWidget(Reflected_GUI_Edit_Form*, TypeDescriptor_Struct*, std::vector<int> tree, size_t offset, bool bVisible, bool bEditable, int tab) override;
+};
+
+struct TypeDescriptor_Texture : TypeDescriptor {
+    TypeDescriptor_Texture() : TypeDescriptor{"Texture", sizeof(irr::core::vector2df)} {
+    }
+    virtual void dump(const void* obj, int /* unused */) const override {
+        std::cout << "Texture{" << *(const irr::video::ITexture**) obj << "}";
+    }
+
+    virtual bool expandable(){return true;}
+    virtual void addFormWidget(Reflected_GUI_Edit_Form*, TypeDescriptor_Struct*, std::vector<int> tree, size_t offset, bool bVisible, bool bEditable, int tab) override;
+};
+
+} // namespace reflect
+
+#endif

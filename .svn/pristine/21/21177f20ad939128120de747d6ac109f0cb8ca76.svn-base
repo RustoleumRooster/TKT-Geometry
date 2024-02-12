@@ -1,0 +1,30 @@
+
+uniform mat4 mWorldView;
+uniform mat4 mProj;
+
+//uniform vec3 mLightPos;
+uniform float intensity;
+
+//varying float light;
+varying vec3 v;
+
+void main(void)
+{
+	gl_Position = mProj * mWorldView * gl_Vertex;
+	gl_TexCoord[0] = gl_MultiTexCoord0;
+	v = gl_Vertex.xyz;
+
+	//vec3 pos = gl_Vertex.xyz;
+
+	//vec3 r = (pos- mLightPos);
+	//float d = length(r);
+
+	//if(d>200.0) 
+	//    light = 0;
+	//else
+	//    light = d/200;
+	
+	//light = pos.x;
+	//light = 1.0;
+	//light = d;
+}

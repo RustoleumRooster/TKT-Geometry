@@ -1,0 +1,118 @@
+#ifndef _NODE_PROPERTIES_H_
+#define _NODE_PROPERTIES_H_
+
+#include <irrlicht.h>
+#include "edit_classes.h"
+#include "GUI_tools.h"
+
+using namespace irr;
+
+class geometry_scene;
+
+namespace reflect {
+    class TypeDescriptor_Struct;
+}
+
+struct ExpandButton
+{
+
+};
+
+class Reflected_SceneNode;
+class NodeProperties_Base;
+
+class NodePropertiesEditArea : public irr::gui::IGUIElement
+{
+public:
+    NodePropertiesEditArea(gui::IGUIEnvironment* env, gui::IGUIElement* parent,NodeProperties_Base*,s32 id,core::rect<s32> rect);
+    ~NodePropertiesEditArea();
+
+    virtual void draw();
+
+    static std::vector<reflect::TypeDescriptor_Struct*> GetTypeDescriptors(geometry_scene*);
+
+    void show(std::vector<reflect::TypeDescriptor_Struct*> typeDescriptors, void* obj);
+    void refresh();
+    virtual void click_OK();
+    virtual bool OnEvent(const SEvent& event);
+    virtual void write(void* obj);
+
+    int scroll_pos;
+    int scroll_offset=0;
+    int old_forms_height=0;
+    void setEditAreaScrollPos(int pos);
+
+    int getMaxFormsHeight();
+    int getFormsHeight();
+    int getEditAreaHeight();
+    FormField* getFieldFromId(int id);
+    int getFormFromId(int id);
+
+    int OK_BUTTON_ID=0;
+
+    std::vector<Reflected_GUI_Edit_Form*> forms;
+    std::vector<reflect::TypeDescriptor_Struct*> my_typeDescriptors;
+    std::vector<int> expand_button_Ids;
+    std::vector<bool> readwrite;
+
+    gui::IGUIElement* edit_panel=NULL;
+    gui::IGUIScrollBar* my_scrollbar=NULL;
+    geometry_scene* g_scene=NULL;
+    NodeProperties_Base* my_base;
+
+    void* temp_object=NULL;
+};
+/*
+class NodePropertiesEditWidget : public irr::gui::IGUIElement
+{
+public:
+    NodePropertiesEditWidget(gui::IGUIEnvironment* env, gui::IGUIElement* parent,NodeProperties_Base*,s32 id,core::rect<s32> rect);
+    ~NodePropertiesEditWidget();
+
+    void show();
+    virtual bool OnEvent(const SEvent& event);
+
+    gui::IGUIScrollBar* my_scrollbar=NULL;
+    NodePropertiesEditArea* edit_area=NULL;
+    NodeProperties_Base* my_base=NULL;
+};*/
+
+class NodeProperties_Base : public tool_base
+{
+public:
+    virtual void initialize(std::wstring name_,int my_id,gui::IGUIEnvironment* env_, geometry_scene* g_scene_, multi_tool_panel*);
+    virtual void show();
+
+};
+
+class NodeProperties_Tool
+{
+
+public:
+    static void initialize(NodeProperties_Base* base_, multi_tool_panel* panel_)
+    {
+        base = base_;
+        panel = panel_;
+    }
+    static show()
+    {
+        panel->add_tool(base);
+    }
+
+    static NodeProperties_Base* base;
+    static multi_tool_panel* panel;
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+#endif

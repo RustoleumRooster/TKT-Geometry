@@ -1,0 +1,14 @@
+#ifndef _TOLERANCES_H_
+#define _TOLERANCES_H_
+
+
+bool is_same_point(core::vector3df v0, core::vector3df v1);
+bool is_same_point(core::vector2df v0, core::vector2df v1);
+bool is_same_point(f32 f1, f32 f2);
+bool is_colinear_point(core::line3df, core::vector3df);
+bool is_coplanar_point(core::plane3df, core::vector3df);
+
+//assumes normalized
+bool is_parallel_normal(core::vector3df,core::vector3df);
+
+#endif

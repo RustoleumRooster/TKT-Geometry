@@ -1,0 +1,33 @@
+
+uniform sampler2D myTexture;
+
+uniform vec3 LightPos;
+uniform int LightRadius;
+
+varying vec3 v;
+
+void main (void)
+{
+    	vec4 col = texture2D(myTexture, vec2(gl_TexCoord[0]));
+
+	float light=0.0;
+
+
+    	vec3 r = (v-LightPos);
+    	float d = length(r);
+
+	if(d>LightRadius)
+	{
+		light += 0;
+	}
+	else
+	{
+		d = 1 - (d / LightRadius);
+		d = d*d;
+        	light += d;
+	}
+
+	clamp(light,0,1);
+
+    	gl_FragColor = col * light;
+}

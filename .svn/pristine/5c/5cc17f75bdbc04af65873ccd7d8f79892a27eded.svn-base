@@ -1,0 +1,613 @@
+#include "edit_env.h"
+#include <irrlicht.h>
+#include <iostream>
+
+#include "CameraPanel.h"
+#include "CGUIWindow.h"
+#include "csg_classes.h"
+#include "utils.h"
+#include "edit_classes.h"
+//#include "reflection.h"
+#include "create_primitives.h"
+#include "texture_picker.h"
+#include "GUI_tools.h"
+
+extern IrrlichtDevice* device;
+using namespace irr;
+using namespace core;
+using namespace gui;
+extern geometry_scene* g_scene;
+extern TestPanel* ContextMenuOwner;
+
+
+struct CubeOptions
+{
+    int value;
+    REFLECT_MULTI_CHOICE()
+};
+
+REFLECT_MULTI_STRUCT_BEGIN(CubeOptions)
+REFLECT_MULTI_STRUCT_LABEL("default")
+REFLECT_MULTI_STRUCT_LABEL("Option A")
+REFLECT_MULTI_STRUCT_LABEL("Option B")
+REFLECT_MULTI_STRUCT_END()
+
+
+struct TestCube
+{
+    bool isEnabled;
+    int height;
+    int width;
+    int length;
+    video::SColor color;
+    video::ITexture* texture;
+    core::vector3df scale;
+    //CubeOptions type;
+    //CubeOptions subtype;
+
+    REFLECT()
+};
+
+REFLECT_STRUCT_BEGIN(TestCube)
+REFLECT_STRUCT_MEMBER(isEnabled)
+REFLECT_STRUCT_MEMBER(height)
+REFLECT_STRUCT_MEMBER(width)
+REFLECT_STRUCT_MEMBER(length)
+
+REFLECT_STRUCT_MEMBER(color)
+REFLECT_STRUCT_MEMBER(texture)
+
+REFLECT_STRUCT_MEMBER(scale)
+//REFLECT_STRUCT_MEMBER(type)
+//REFLECT_STRUCT_MEMBER(subtype)
+REFLECT_STRUCT_END()
+
+
+
+
+void do_add_geometry()
+{
+    if(g_scene)
+    {
+        g_scene->add(g_scene->elements[0].brush);
+    }
+}
+
+void do_subtract_geometry()
+{
+    if(g_scene)
+    {
+        g_scene->subtract(g_scene->elements[0].brush);
+    }
+}
+
+
+void do_add_semisolid_geometry()
+{
+    if(g_scene)
+    {
+        g_scene->add_semisolid(g_scene->elements[0].brush);
+    }
+}
+
+void do_intersect_brush()
+{
+    if(g_scene)
+    {
+        g_scene->intersect_active_brush();
+    }
+}
+
+
+void do_clip_brush()
+{
+    if(g_scene)
+    {
+        g_scene->clip_active_brush();
+    }
+}
+
+void do_rebuild()
+{
+    if(g_scene)
+    {
+        g_scene->rebuild_geometry();
+    }
+}
+
+void do_new_scene()
+{
+    if(g_scene)
+    {
+        g_scene->clear_scene();
+    }
+}
+
+void do_toggle_progressive_build()
+{
+    if(g_scene)
+    {
+        g_scene->toggle_progressive_build();
+
+        gui::IGUIEnvironment* gui = device->getGUIEnvironment();
+        gui::IGUIContextMenu* menu = (gui::IGUIContextMenu*)gui->getRootGUIElement()->getElementFromId(GUI_ID_MAIN_MENU);
+        gui::IGUIContextMenu* submenu = menu->getSubMenu(2);
+        submenu->setItemChecked(0,g_scene->progressive_build_enabled());
+    }
+}
+
+void do_save()
+{
+    if(g_scene)
+    {
+        g_scene->WriteSceneNodesToFile("nodes.dat");
+        g_scene->WriteTextures("textures.txt");
+        g_scene->Write2("refl_serial.dat");
+    }
+}
+
+void do_file_save_as()
+{
+    std::cout<<"save as: not implemented\n";
+}
+
+void do_file_open()
+{
+    gui::IGUIEnvironment* env = device->getGUIEnvironment();
+    gui::IGUIFileOpenDialog* fopen = env->addFileOpenDialog(L"Open File",true,0,GUI_ID_FILE_OPEN_DIALOGUE);
+}
+
+void do_set_grid_snap(int snap)
+{
+    gui::IGUIEnvironment* env = device->getGUIEnvironment();
+    gui::IGUIElement* root = env->getRootGUIElement();
+    CameraQuad* quad = (CameraQuad*)root->getElementFromId(GUI_ID_CAMERA_QUAD);
+    quad->setGridSnap(snap);
+
+    gui::IGUIContextMenu* menu = (gui::IGUIContextMenu*)env->getRootGUIElement()->getElementFromId(GUI_ID_MAIN_MENU);
+    gui::IGUIContextMenu* submenu = menu->getSubMenu(1);
+    submenu=submenu->getSubMenu(0);
+    submenu->setItemChecked(0,snap==2);
+    submenu->setItemChecked(1,snap==4);
+    submenu->setItemChecked(2,snap==8);
+    submenu->setItemChecked(3,snap==16);
+}
+
+void do_set_rotate_snap(f32 snap)
+{
+    gui::IGUIEnvironment* env = device->getGUIEnvironment();
+    gui::IGUIElement* root = env->getRootGUIElement();
+    CameraQuad* quad = (CameraQuad*)root->getElementFromId(GUI_ID_CAMERA_QUAD);
+    quad->setRotateSnap(snap);
+
+    gui::IGUIContextMenu* menu = (gui::IGUIContextMenu*)env->getRootGUIElement()->getElementFromId(GUI_ID_MAIN_MENU);
+    gui::IGUIContextMenu* submenu = menu->getSubMenu(1);
+    submenu=submenu->getSubMenu(1);
+    submenu->setItemChecked(0,snap==1.875);
+    submenu->setItemChecked(1,snap==3.75);
+    submenu->setItemChecked(2,snap==7.5);
+    submenu->setItemChecked(3,snap==15.0);
+}
+
+TestCube refl_cube{true,64,256,128,NULL};
+
+class Test_EditWindow : public EditWindow
+{
+public:
+    Test_EditWindow(gui::IGUIEnvironment* env, gui::IGUIElement* parent, geometry_scene* g_scene,s32 id,core::rect<s32> rect)
+    : EditWindow(env,parent,g_scene,id,rect){}
+
+private:
+    virtual void click_OK();
+};
+
+void refl_test_write(Test_EditWindow* win)
+{
+    win->write(&refl_cube);
+}
+
+void Test_EditWindow::click_OK()
+{
+    refl_test_write(this);
+    this->remove();
+}
+
+void do_refl_test()
+{
+
+    //refl_cube.texture = NULL;
+    std::cout<<"OK\n";
+    gui::IGUIEnvironment* env = device->getGUIEnvironment();
+    gui::IGUIElement* root = env->getRootGUIElement();
+
+    Test_EditWindow* win = new Test_EditWindow(env,env->getRootGUIElement(),g_scene,-1,core::rect<s32>(140,200,16+196,64+196));
+    win->setText(L"Reflected GUI");
+
+    //std::cout<<g_scene<<"\n";
+    reflect::TypeDescriptor_Struct* typeDesc = (reflect::TypeDescriptor_Struct*)reflect::TypeResolver<TestCube>::get();
+
+    //typeDesc->dump(&refl_cube,0);
+
+    win->Show(typeDesc, &refl_cube);
+    win->drop();
+}
+
+void do_add_plane_test()
+{
+    if(g_scene)
+    {
+        g_scene->add_plane(g_scene->elements[0].brush);
+    }
+}
+
+void do_texture_picker_test()
+{
+    TexturePicker_Tool::show();
+}
+
+
+void OnMenuItemSelected(IGUIContextMenu* menu)
+{
+    s32 id = menu->getItemCommandId(menu->getSelectedItem());
+    gui::IGUIEnvironment* env = device->getGUIEnvironment();
+    gui::IGUIElement* root = env->getRootGUIElement();
+    gui::IGUIElement* quad = (CameraQuad*)root->getElementFromId(GUI_ID_CAMERA_QUAD,true);
+    switch(id)
+    {
+    case GUI_ID_VIEWPORT_2D_RIGHTCLICK_MENU_ITEM_GRID_TOGGLE:
+    case GUI_ID_VIEWPORT_2D_RIGHTCLICK_MENU_ITEM_VIEW_BRUSHES:
+    case GUI_ID_VIEWPORT_2D_RIGHTCLICK_MENU_ITEM_VIEW_GEOMETRY:
+    case GUI_ID_VIEWPORT_2D_RIGHTCLICK_MENU_ITEM_DELETE_BRUSH:
+    case GUI_ID_VIEWPORT_2D_RIGHTCLICK_MENU_ITEM_MAKE_RED_BRUSH:
+    case GUI_ID_VIEWPORT_2D_RIGHTCLICK_MENU_ITEM_NODE_PROPERTIES:
+        {
+            TestPanel_2D* panel2D = (TestPanel_2D*)quad->getElementFromId(GUI_ID_PANEL_2D);
+            if(panel2D && panel2D == ContextMenuOwner)
+            {
+                SEvent event;
+                event.EventType = EET_GUI_EVENT;
+                event.GUIEvent.Caller = menu;
+                event.GUIEvent.Element = 0;
+                event.GUIEvent.EventType = EGET_MENU_ITEM_SELECTED;
+                panel2D->OnEvent(event);
+            }
+            else
+            {
+                panel2D = (TestPanel_2D*)quad->getElementFromId(GUI_ID_PANEL_2D_1);
+                if(panel2D && panel2D == ContextMenuOwner)
+                {
+                SEvent event;
+                event.EventType = EET_GUI_EVENT;
+                event.GUIEvent.Caller = menu;
+                event.GUIEvent.Element = 0;
+                event.GUIEvent.EventType = EGET_MENU_ITEM_SELECTED;
+                panel2D->OnEvent(event);
+                }
+                else
+                {
+                    panel2D = (TestPanel_2D*)quad->getElementFromId(GUI_ID_PANEL_2D_2);
+                    if(panel2D && panel2D == ContextMenuOwner)
+                    {
+                    SEvent event;
+                    event.EventType = EET_GUI_EVENT;
+                    event.GUIEvent.Caller = menu;
+                    event.GUIEvent.Element = 0;
+                    event.GUIEvent.EventType = EGET_MENU_ITEM_SELECTED;
+                    panel2D->OnEvent(event);
+                    }
+                }
+            }
+        }
+        break;
+    case GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_GRID_TOGGLE:
+    case GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_VIEW_BRUSHES:
+    case GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_VIEW_GEOMETRY:
+    case GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_VIEW_LOOPS:
+    case GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_VIEW_TRIANGLES:
+    case GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_VIEW_RENDER:
+    case GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_VIEW_RENDER_FINAL:
+    case GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_VIEW_UNLIT:
+	case GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_VIEW_DYNAMIC_LIGHT:
+    case GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_SET_TEXTURE:
+    case GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_ADJUST_TEXTURE:
+    case GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_CHOOSE_TEXTURE:
+    case GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_ADD_LIGHT:
+    case GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_ADD_NODE:
+    case GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_NODE_PROPERTIES:
+    case GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_DELETE_NODE:
+    case GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_MATERIAL_GROUP:
+    case GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_FULLSCREEN_TOGGLE:
+    case GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_TEST:
+        {
+            TestPanel_3D* panel3D = (TestPanel_3D*)quad->getElementFromId(GUI_ID_PANEL_3D);
+            if(panel3D && panel3D == ContextMenuOwner)
+            {
+                SEvent event;
+                event.EventType = EET_GUI_EVENT;
+                event.GUIEvent.Caller = menu;
+                event.GUIEvent.Element = 0;
+                event.GUIEvent.EventType = EGET_MENU_ITEM_SELECTED;
+                panel3D->OnEvent(event);
+            }
+        }
+        break;
+    case GUI_ID_MENU_BUILD_PROGRESSIVE_BUILD:
+        {
+            do_toggle_progressive_build();
+            break;
+        }
+    case GUI_ID_MENU_BUILD_BUILD_FINAL:
+        {
+            //do_build_final_mesh();
+            break;
+        }
+    case GUI_ID_MENU_FILE_NEW:
+        {
+            do_new_scene();
+            break;
+        }
+    case GUI_ID_MENU_FILE_OPEN:
+        {
+            do_file_open();
+            break;
+        }
+    case GUI_ID_MENU_FILE_SAVE_AS:
+        {
+            do_file_save_as();
+            break;
+        }
+    case GUI_ID_MENU_EDIT_SNAP_2:
+        do_set_grid_snap(2);
+        break;
+    case GUI_ID_MENU_EDIT_SNAP_4:
+        do_set_grid_snap(4);
+        break;
+    case GUI_ID_MENU_EDIT_SNAP_8:
+        do_set_grid_snap(8);
+        break;
+    case GUI_ID_MENU_EDIT_SNAP_16:
+        do_set_grid_snap(16);
+        break;
+    case GUI_ID_MENU_EDIT_ROTATE_1875:
+        do_set_rotate_snap(1.875);
+        break;
+    case GUI_ID_MENU_EDIT_ROTATE_375:
+        do_set_rotate_snap(3.75);
+        break;
+    case GUI_ID_MENU_EDIT_ROTATE_75:
+        do_set_rotate_snap(7.5);
+        break;
+    case GUI_ID_MENU_EDIT_ROTATE_15:
+        do_set_rotate_snap(15.0);
+        break;
+    }
+}
+
+bool MyEventReceiver::OnEvent(const SEvent& event)
+{
+    if(event.EventType == EET_GUI_EVENT)
+    {
+        s32 id = event.GUIEvent.Caller->getID();
+        gui::IGUIEnvironment* env = device->getGUIEnvironment();
+
+
+        switch(event.GUIEvent.EventType)
+        {
+            case EGET_MENU_ITEM_SELECTED:
+            {
+                OnMenuItemSelected((gui::IGUIContextMenu*)event.GUIEvent.Caller);
+            }
+            break;
+            case EGET_BUTTON_CLICKED:
+            {
+                switch(id)
+                {
+                    case GUI_ID_BUTTON_CUBE:
+                        GeometryFactory::MakeCubeWindow();
+                        std::cout<<"Cube\n";
+                        break;
+                    case GUI_ID_BUTTON_CYLINDER:
+                        GeometryFactory::MakeCylinderWindow();
+                        std::cout<<"Cylinder\n";
+                        break;
+                    case GUI_ID_BUTTON_SPHERE:
+                        GeometryFactory::MakeSphereWindow();
+                        std::cout<<"Sphere\n";
+                        break;
+                    case GUI_ID_BUTTON_CONE:
+                        GeometryFactory::MakeConeWindow();
+                        std::cout<<"Cone\n";
+                        break;
+                    case GUI_ID_BUTTON_PLANE:
+                        GeometryFactory::MakePlaneWindow();
+                        std::cout<<"Plane\n";
+                        break;
+                    case GUI_ID_BUTTON_ADD:
+                        do_add_geometry();
+                        std::cout<<"Add Geometry\n";
+                        break;
+                    case GUI_ID_BUTTON_SUBTRACT:
+                        do_subtract_geometry();
+                        std::cout<<"Subtract Geometry\n";
+                        break;
+                     case GUI_ID_BUTTON_SEMISOLID:
+                        do_add_semisolid_geometry();
+                        std::cout<<"Add Semisolid Geometry\n";
+                        break;
+                    case GUI_ID_BUTTON_INTERSECT:
+                        do_intersect_brush();
+                        std::cout<<"Intersect Active Brush\n";
+                        break;
+                    case GUI_ID_BUTTON_CLIP:
+                        do_clip_brush();
+                        std::cout<<"Intersect Active Brush\n";
+                        break;
+                    case GUI_ID_BUTTON_REBUILD:
+                        do_rebuild();
+                        std::cout<<"Rebuild\n";
+                        break;
+                    case GUI_ID_BUTTON_SAVE:
+                        do_save();
+                        std::cout<<"Save\n";
+                        break;
+                    case GUI_ID_BUTTON_TEXTURES:
+                        TexturePicker_Tool::show();
+                        break;
+                    case GUI_ID_BUTTON_NODES:
+                        ListReflectedNodes_Tool::show();
+                        break;
+                }
+            }
+            break;
+            case EGET_FILE_SELECTED:
+            {
+                if(id==GUI_ID_FILE_OPEN_DIALOGUE)
+                   {
+                        gui::IGUIFileOpenDialog* fopen  = (gui::IGUIFileOpenDialog*)event.GUIEvent.Caller;
+                        if(fopen)
+                        {
+                            std::cout<<"error- file open not implemented :P\n";
+                        }
+                   }
+            }
+            break;
+        }
+
+    }
+
+    // Remember the mouse state
+    if (event.EventType == irr::EET_MOUSE_INPUT_EVENT)
+    {
+        switch(event.MouseInput.Event)
+        {
+        case EMIE_LMOUSE_PRESSED_DOWN:
+            MouseState.LeftButtonDown = true;
+            break;
+
+        case EMIE_LMOUSE_LEFT_UP:
+            MouseState.LeftButtonDown = false;
+            break;
+
+        case EMIE_MOUSE_MOVED:
+            MouseState.Position.X = event.MouseInput.X;
+            MouseState.Position.Y = event.MouseInput.Y;
+            break;
+
+        case EMIE_MOUSE_WHEEL:
+            if(event.MouseInput.Wheel > 0)
+                MouseState.WheelPos++;
+            else
+                MouseState.WheelPos--;
+            break;
+
+        case EMIE_RMOUSE_LEFT_UP:
+            MouseState.RightButtonDown = false;
+            break;
+
+        case EMIE_RMOUSE_PRESSED_DOWN:
+            MouseState.RightButtonDown = true;
+            break;
+
+        default:
+            // We won't use the wheel
+            break;
+        }
+    }
+    else if(event.EventType ==   irr::EET_KEY_INPUT_EVENT)
+    {
+            KeyIsDown[event.KeyInput.Key] = event.KeyInput.PressedDown;
+    }
+    else if(event.EventType == irr::EET_USER_EVENT)
+    {
+        for(auto it = receivers.begin(); it != receivers.end(); ++it)
+            (*it)->OnEvent(event);
+    }
+
+    return false;
+}
+/*
+bool hasModalDialogue()
+{
+    if(!device)
+        return false;
+    gui::IGUIEnvironment* env = device->getGUIEnvironment();
+    gui::IGUIElement* focused = env->getFocus();
+    while(focused)
+    {
+        if(focused->isVisible() && focused->hasType(gui::EGUIET_MODAL_SCREEN))
+           return true;
+        focused = focused->getParent();
+    }
+    return false;
+}*/
+
+//==================================================================================================
+//
+//
+
+
+bool GetPlaneClickVector(dimension2d<u32> screenSize, scene::ICameraSceneNode * camera, int clickx, int clicky, vector3df &hit_vec)
+{
+    const scene::SViewFrustum* frustum = camera->getViewFrustum();
+    const core::vector3df cameraPosition = camera->getAbsolutePosition();
+
+    vector3df vNearLeftDown = frustum->getNearLeftDown();
+    vector3df vNearRightDown = frustum->getNearRightDown();
+    vector3df vNearLeftUp = frustum->getNearLeftUp();
+    vector3df vNearRightUp = frustum->getNearRightUp();
+
+    f32 t_X = (f32)clickx / screenSize.Width;
+    f32 t_Y = 1.0 - (f32)clicky / screenSize.Height;
+
+    //screen space: Y is horizontal axis
+    vector3df X_vec = (vNearRightDown - vNearLeftDown) * t_X;
+    vector3df Y_vec = (vNearLeftUp - vNearLeftDown) * t_Y;
+    vector3df target = vNearLeftDown + Y_vec + X_vec;
+
+    vector3df ray = target-cameraPosition;
+    ray.normalize();
+
+    //world space: Y is vertical axis
+    if(ray.Y < 0)
+    {
+        f32 t_Y = - (target.Y - 0.0) / ray.Y;
+        hit_vec = target + (ray*t_Y);
+
+        return true;
+    }
+    return false;
+}
+
+
+bool GetAnyPlaneClickVector(dimension2d<u32> screenSize, scene::ICameraSceneNode * camera, core::plane3df plane, int clickx, int clicky, vector3df &hit_vec)
+{
+    const scene::SViewFrustum* frustum = camera->getViewFrustum();
+    const core::vector3df cameraPosition = camera->getAbsolutePosition();
+
+    vector3df vNearLeftDown = frustum->getNearLeftDown();
+    vector3df vNearRightDown = frustum->getNearRightDown();
+    vector3df vNearLeftUp = frustum->getNearLeftUp();
+    vector3df vNearRightUp = frustum->getNearRightUp();
+
+    f32 t_X = (f32)clickx / screenSize.Width;
+    f32 t_Y = 1.0 - (f32)clicky / screenSize.Height;
+
+    //screen space: Y is horizontal axis
+    vector3df X_vec = (vNearRightDown - vNearLeftDown) * t_X;
+    vector3df Y_vec = (vNearLeftUp - vNearLeftDown) * t_Y;
+    vector3df target = vNearLeftDown + Y_vec + X_vec;
+
+    vector3df ray = target-cameraPosition;
+    ray.normalize();
+
+    //World Space
+    core::vector3df hitvec;
+
+    if(plane.getIntersectionWithLine(cameraPosition,ray,hitvec))
+        {
+         hit_vec = hitvec;
+         return true;
+        }
+
+    return false;
+}
