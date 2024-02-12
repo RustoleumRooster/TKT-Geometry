@@ -1,6 +1,0 @@
-# depslib dependency file v1.0
-1659504932 source:c:\users\natan\documents\codeblocks\projection\main.cpp
-	<irrlicht.h>
-	<iostream>
-	"driverChoice.h"
-
