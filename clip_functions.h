@@ -4,8 +4,7 @@
 #include "csg_classes.h"
 
 #define BVH_OPTIMIZE
-#define OPTIMIZE_LOOPS
-//#define OPTIMIZE_CLASSIFY_EDGES
+
 
 #define FACE_GEOMETRY_CHANGED true
 #define FACE_GEOMETRY_UNCHANGED false
@@ -27,6 +26,7 @@ int do_intersections_and_bisect(polyfold& pf, polyfold& pf2, polyfold& pf4, poly
 
 void do_self_topology_loops(polyfold& pf, const polyfold& pf0, LineHolder&);
 void do_clear_redundant_inner_loops(polyfold& pf, int f_i);
+void meld_loops(polyfold& pf, int f_i);
 bool is_identical_loop(const polyfold& pf, const poly_loop& loop_a, const polyfold& pf2, const poly_loop& loop_b);
 
 template<bool>
@@ -104,11 +104,8 @@ void polyfold::finalize_clipped_poly(const polyfold& pf, LineHolder& graph)
 {
     for (int f_i = 0; f_i < this->faces.size(); f_i++)
     {
-
-#ifdef OPTIMIZE_LOOPS
         if (pf.faces[f_i].temp_b == FACE_GEOMETRY_UNCHANGED)
             continue;
-#endif
 
         do_clear_redundant_inner_loops(*this, f_i);
 
@@ -144,11 +141,8 @@ void polyfold::finalize_clipped_poly(const polyfold& pf, LineHolder& graph)
 
     for (int i = 0; i < this->faces.size(); i++)
     {
-
-#ifdef OPTIMIZE_LOOPS
         if (pf.faces[i].temp_b == FACE_GEOMETRY_UNCHANGED)
             continue;
-#endif
 
         for (int p = 0; p < this->faces[i].loops.size(); p++)
         {

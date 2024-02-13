@@ -150,8 +150,6 @@ void common_topology_inner_loop_2(polyfold& pf, polyfold& pf2, polyfold& pf4, po
     }
 }
 
-
-
 int do_intersections_and_bisect(polyfold& pf, polyfold& pf2, polyfold& pf4, polyfold& pf5, poly_intersection_info& intersect_info, LineHolder& graph)
 {
     int n_intersections=0;
@@ -319,9 +317,7 @@ void do_self_topology_loops(polyfold& pf, const polyfold& pf0, LineHolder &graph
 
     for (int f_i = 0; f_i < pf.faces.size(); f_i++)
     {
-#ifdef OPTIMIZE_LOOPS
         if (pf.faces[f_i].temp_b == FACE_GEOMETRY_CHANGED)
-#endif
         {
             for (int p_i = 0; p_i < pf.faces[f_i].loops.size(); p_i++)
             {
@@ -519,7 +515,7 @@ int sync_vertices(polyfold& pf4, polyfold& pf5)
 }
 
 template<>
-int do_intersections_and_bisect<true>(polyfold& pf4, polyfold& pf5, poly_intersection_info& intersect_info, LineHolder& graph)
+int do_intersections_and_bisect<true>(polyfold& pf4, polyfold& pf5, LineHolder& graph)
 {
     int n_intersections = 0;
 
@@ -570,7 +566,7 @@ int do_intersections_and_bisect<true>(polyfold& pf4, polyfold& pf5, poly_interse
 }
 
 template<>
-int do_intersections_and_bisect<false>(polyfold& pf4, polyfold& pf5, poly_intersection_info& intersect_info, LineHolder& graph)
+int do_intersections_and_bisect<false>(polyfold& pf4, polyfold& pf5, LineHolder& graph)
 {
     int n_intersections = 0;
 
@@ -602,5 +598,88 @@ int do_intersections_and_bisect<false>(polyfold& pf4, polyfold& pf5, poly_inters
         }
     }
     return n_intersections;
+}
+
+void meld_loops(polyfold& pf, int f_i)
+{
+    for (int e_i : pf.faces[f_i].edges)
+        pf.edges[e_i].p2 = 0;
+
+    int meld_count = 0;
+
+    for (int p = 0; p < pf.faces[f_i].loops.size(); p++)
+    {
+        pf.set_loop_solid(f_i, p);
+
+        std::vector<int> tempv = pf.faces[f_i].loops[p].vertices;
+        tempv.push_back(tempv[0]);
+
+        for (int i = 0; i < tempv.size() - 1; i++)
+        {
+            int e_i = pf.find_edge(f_i, tempv[i], tempv[i + 1]);
+
+            if (tempv[i] == pf.edges[e_i].v0) //v0 to v1
+            {
+                if (pf.edges[e_i].p2 == 0)
+                    pf.edges[e_i].p2 = 1;
+                else if (pf.edges[e_i].p2 == 2)
+                {
+                    meld_count++;
+                    pf.edges[e_i].p2 = 3;
+                }
+            }
+            else //v1 to v0
+            {
+                if (pf.edges[e_i].p2 == 0)
+                    pf.edges[e_i].p2 = 2;
+                else if (pf.edges[e_i].p2 == 1)
+                {
+                    meld_count++;
+                    pf.edges[e_i].p2 = 3;
+                }
+            }
+        }
+    }
+
+    if (meld_count > 0)
+    {
+        std::vector<int> new_edges;
+
+        for (int e_i : pf.faces[f_i].edges)
+        {
+            if (pf.edges[e_i].p2 == 1 || pf.edges[e_i].p2 == 2)
+                new_edges.push_back(e_i);
+        }
+
+        pf.faces[f_i].edges = new_edges;
+
+        for (int e_0 : pf.faces[f_i].edges)
+        {
+            if (pf.edges[e_0].p2 == 1)
+                pf.edges[e_0].p2 = 2;
+            else if (pf.edges[e_0].p2 == 2)
+                pf.edges[e_0].p2 = 1;
+        }
+
+        pf.faces[f_i].loops.clear();
+
+        LineHolder nograph;
+        for (int e_0 : pf.faces[f_i].edges)
+        {
+            if (pf.edges[e_0].p2 < 3 && pf.edges[e_0].p2 != -1 && pf.edges[e_0].topo_group != -1)
+            {
+                pf.do_loops(f_i, e_0, nograph);
+            }
+        }
+
+        //if (cull_inner_loops)
+        for (int p = 0; p < pf.faces[f_i].loops.size(); p++)
+        {
+            if (pf.faces[f_i].loops[p].type == LOOP_OUTER)
+            {
+                pf.faces[f_i].loops[p].vertices.clear();
+            }
+        }
+    }
 }
 

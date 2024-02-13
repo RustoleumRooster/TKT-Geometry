@@ -7,7 +7,7 @@
 #include "BVH.h"
 
 template<bool bAccelerate>
-int do_intersections_and_bisect(polyfold& pf4, polyfold& pf5, poly_intersection_info& intersect_info, LineHolder& graph);
+int do_intersections_and_bisect(polyfold& pf4, polyfold& pf5, LineHolder& graph);
 
 int sync_vertices(polyfold& pf4, polyfold& pf5);
 

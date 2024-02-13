@@ -405,9 +405,9 @@ class polyfold
 
     //========================================
     //Defined in clip_poly
-    bool get_point_in_loop(int face_i, int loop_i, core::vector3df& out, LineHolder& graph);
-    bool get_facial_point(int face_i, int edge_i, int loop_i, core::vector3df & ret, LineHolder &graph);
-    bool get_facial_point(int face_i, int loop_i, core::vector3df& ret,  LineHolder& graph);
+    bool get_point_in_loop(int face_i, int loop_i, core::vector3df& out, LineHolder& graph) const;
+    bool get_facial_point(int face_i, int edge_i, int loop_i, core::vector3df & ret, LineHolder &graph) const;
+    bool get_facial_point(int face_i, int loop_i, core::vector3df& ret,  LineHolder& graph) const;
 
     //Defined in clip2
     void sort_loops_inner(int f_i);
@@ -428,7 +428,6 @@ class polyfold
     void get_all_edges_from_point_accelerated(int e_0, int v, std::vector<int>& ret) const;
     std::vector<int> get_edges_from_point(int f_i, int v) const;
     std::vector<int> get_edges_from_point(int f_i, int e_0, int v) const;
-    void meld_loops(int f_i, bool cull_inner_loops = true);
 
     bool is_inner_loop(int f_i, int p_i, int p_j);
     //std::vector<int> get_edges_from_2edges(int f_i, int e_0, int e_1);

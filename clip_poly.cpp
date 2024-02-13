@@ -61,35 +61,9 @@ void polyfold::deduplicate_edges_vertices_accelerated()
             new_verts.push_back(vertices[v_i].V);
             vertices_BVH.indices[node.first_prim] = new_verts.size() - 1;
             node.n_prims = 1;
-            /*
-            if (new_verts.size() - 1 == 161 || new_verts.size() - 1 == 48)
-            {
-                std::cout << "=====> " << i << " ";
-                std::cout << node.surface_area() << "\n";
-            }*/
-
-            // std::cout << i << ": " << vertices[v_i].V.X << "," << vertices[v_i].V.Y << ","<< vertices[v_i].V.Z << " ";
-             //std::cout << node.aabbMin[0] << "," << node.aabbMin[1] << "," << node.aabbMin[2] << " ";
-             //std::cout << node.aabbMax[0] << "," << node.aabbMax[1] << "," << node.aabbMax[2] << "\n ";
-        }/*
-        else if (node.left_node == 102 || node.right_node == 327 || node.right_node == 102 || node.left_node == 327)
-        {
-            std::cout << "hello " <<node.left_node<<","<<node.right_node<<" " << i << " " << node.surface_area() << "\n";
-        }*/
-    }
-
-    /*
-    for (int i = 0; i < vertices_BVH.node_count; i++)
-    {
-        BVH_node& node = vertices_BVH.nodes[i];
-        if (node.isLeafNode())
-        {
-            u16 v_i = vertices_BVH.indices[node.first_prim];
-            std::cout << i<<": "<<new_verts[v_i].V.X << "," << new_verts[v_i].V.Y << "," << new_verts[v_i].V.Z << "\n ";
-            std::cout << node.aabbMin[0] << "," << node.aabbMin[1] << "," << node.aabbMin[2] << " ";
-            std::cout << node.aabbMax[0] << "," << node.aabbMax[1] << "," << node.aabbMax[2] << "\n ";
+           
         }
-    }*/
+    }
 
     edges_BVH.invalidate();
     edges_BVH.build(vertices.data(), this->edges.data(), this->edges.size());
@@ -143,30 +117,14 @@ void polyfold::deduplicate_edges_vertices_accelerated()
                     new_verts[v_i1].grow(&aabb);
                     std::vector<u16> hits;
                     edges_BVH.intersect(aabb, hits);
-                    //int count = 0;
                     for (u16 e_i : hits)
                     {
                         if ((new_edges[e_i].v0 == v_i && new_edges[e_i].v1 == v_i1) || (new_edges[e_i].v1 == v_i && new_edges[e_i].v0 == v_i1) &&
                             (new_edges[e_i].topo_group != -1))
                         {
                             faces[f_i].edges.push_back(e_i);
-                            //count++;
                         }
                     }
-                    //std::cout << count << "";
-                    /*
-                    if (count > 1)
-                    {
-                        for (u16 e_i : hits)
-                        {
-                            if ((new_edges[e_i].v0 == v_i && new_edges[e_i].v1 == v_i1) || (new_edges[e_i].v1 == v_i && new_edges[e_i].v0 == v_i1) &&
-                                (new_edges[e_i].topo_group != -1))
-                            {
-                                std::cout << e_i <<", "<< new_edges[e_i].v0 << " " << new_edges[e_i].v1 << " dup\n";
-
-                            }
-                        }
-                    }*/
                 }
             }
 
@@ -477,7 +435,7 @@ std::vector<int> polyfold::get_vert_loop_no(int f_i, int my_v) const
 }
 
 
-bool polyfold::get_point_in_loop(int face_i, int loop_i, core::vector3df& out, LineHolder& graph)
+bool polyfold::get_point_in_loop(int face_i, int loop_i, core::vector3df& out, LineHolder& graph) const
 {
     for (int i = 0; i < faces[face_i].loops[loop_i].vertices.size(); i++)
     {
@@ -510,7 +468,7 @@ bool polyfold::get_point_in_loop(int face_i, int loop_i, core::vector3df& out, L
     return false;
 }
 
-bool polyfold::get_facial_point(int face_i, int loop_i, core::vector3df& out, LineHolder& graph)
+bool polyfold::get_facial_point(int face_i, int loop_i, core::vector3df& out, LineHolder& graph) const
 {
     for (int i = 0; i < faces[face_i].loops[loop_i].vertices.size(); i++)
     {
@@ -539,7 +497,6 @@ bool polyfold::get_facial_point(int face_i, int loop_i, core::vector3df& out, Li
             out = ret;
             return true;
         }
-       // std::cout << "x";
         //graph.points.push_back(ret);
         //graph.lines.push_back(core::line3df(vertices[v_0].V, vertices[v_1].V));
     }
@@ -547,8 +504,8 @@ bool polyfold::get_facial_point(int face_i, int loop_i, core::vector3df& out, Li
     return false;
 }
 
-//This function is known to fail in some cases XD (tiny slivers)
-bool polyfold::get_facial_point(int face_i, int edge_i, int loop_i, core::vector3df & out, LineHolder &graph)
+//This function is known to fail in some cases (tiny slivers)
+bool polyfold::get_facial_point(int face_i, int edge_i, int loop_i, core::vector3df & out, LineHolder &graph) const
 {
     int ev_0 = this->edges[edge_i].v0;
     int ev_1 = this->edges[edge_i].v1;
@@ -627,7 +584,6 @@ std::vector<int> polyfold::get_all_loop_edges(int f_i, int p_i)
     return ret;
 }*/
 
-
 int polyfold::edge_classification(int edge)
 {
     if (edges[edge].conv == EDGE_UNDEF)
@@ -635,8 +591,3 @@ int polyfold::edge_classification(int edge)
 
     return edges[edge].conv;
 }
-
-
-//=======================================================================================================
-
-

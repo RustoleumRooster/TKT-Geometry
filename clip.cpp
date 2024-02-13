@@ -265,13 +265,13 @@ void make_result(polyfold& pf4, polyfold& pf5, polyfold& pf, polyfold& pf2, int 
     for (int f_i = 0; f_i < positive.faces.size(); f_i++)
     {
         if(positive.faces[f_i].loops.size() > 1)
-            positive.meld_loops(f_i);
+            meld_loops(positive,f_i);
     }
 
     for (int f_i = 0; f_i < negative.faces.size(); f_i++)
     {
         if (negative.faces[f_i].loops.size() > 1)
-            negative.meld_loops(f_i);
+            meld_loops(negative, f_i);
     }
 
     pf.rebuild_loops_copy_verts<bAccelerate>(pf4);

@@ -561,10 +561,8 @@ int polyfold::find_edge_accelerated(int v0, int v1, std::vector<u16>& hits) cons
     aabb_struct aabb;
 
     vertices[v0].grow(&aabb);
-    //vertices[v1].grow(&aabb);
 
     hits.clear();
-   // std::vector<u16> hits;
 
     edges_BVH.intersect(aabb, hits);
 
@@ -584,10 +582,8 @@ int polyfold::find_edge_accelerated(core::vector3df v0, core::vector3df v1, std:
     aabb_struct aabb;
 
     poly_vert(v0).grow(&aabb);
-    //poly_vert(v1).grow(&aabb);
 
     hits.clear();
-    //std::vector<u16> hits;
 
     edges_BVH.intersect(aabb, hits);
 
@@ -619,10 +615,7 @@ bool polyfold::is_point_in_loop(int f_i, int p_i, core::vector3df v) const
         return false;
         }
 
-    //if(this->is_closed_loop(f_i,p_i))
-        return (this->left_right_test(f_i, p_i, V.X,V.Z)==1);
-   // else
-   //     return (this->left_right_test(f_i, p_i, V.X,V.Z,true)==0);
+    return (this->left_right_test(f_i, p_i, V.X,V.Z)==1);
 }
 
 bool polyfold::is_point_on_face(int f_i, core::vector3df v) const
