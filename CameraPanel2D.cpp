@@ -316,7 +316,6 @@ bool TestPanel_2D::OnEvent(const SEvent& event)
                             else if(geo_scene->getBrushSelection().size()>0 && bCtrlDown==true &&
                                     geo_scene->getBrushSelection().size()==1)
                             {
-                                std::cout << "yerrr\n";
                                 vDragVertexOriginalPosition = this->geo_scene->getSelectedVertex();
                                 bDragVertex=true;
                             }

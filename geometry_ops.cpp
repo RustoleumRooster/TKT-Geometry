@@ -486,16 +486,6 @@ void geometry_scene::rebuild_geometry(bool only_build_new_geometry)
 
         if (num >= 0)
         {
-            /*
-            poly_intersection_info intersect_info;
-
-            combo.build_edges_BVH();
-            combo.build_faces_BVH();
-
-            this->elements[i].brush.faces_BVH.intersect_2(combo.edges_BVH, intersect_info.faces_edges);
-            this->elements[i].brush.edges_BVH.intersect_2(combo.faces_BVH, intersect_info.edges_faces);
-            this->elements[i].brush.faces_BVH.intersect_2(combo.faces_BVH, intersect_info.faces_faces);*/
-
             if (this->elements[i].type == GEO_SEMISOLID)
             {
                 if (this->elements[i].brush.topology == TOP_CONVEX ||
@@ -508,8 +498,9 @@ void geometry_scene::rebuild_geometry(bool only_build_new_geometry)
                 }
                 else //Neither Convex or Concave, ie plane geometry
                 {
+                    std::cout << "Plane Geometry\n";
                     this->elements[i].geometry = this->elements[i].brush;
-                    clip_poly_single(this->elements[i].geometry, combo, GEO_ADD, this->base_type, results, nograph);
+                    clip_poly_accelerated_single(this->elements[i].geometry, combo, GEO_ADD, this->base_type, results, nograph);
                 }
             }
         }

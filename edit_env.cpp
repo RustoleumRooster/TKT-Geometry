@@ -503,8 +503,8 @@ bool MyEventReceiver::OnEvent(const SEvent& event)
                         //Geo_Settings_Tool::show();
                         //Material_Buffers_Tool::show();
                         //Node_Instances_Tool::show();
-                        //g_scene->clip_active_brush_plane_geometry();
-                        UV_Editor_Tool::show();
+                        g_scene->clip_active_brush_plane_geometry();
+                        //UV_Editor_Tool::show();
                         break;
                     case GUI_ID_BUTTON_NODES:
                         ListReflectedNodes_Tool::show();

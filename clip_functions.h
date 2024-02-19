@@ -37,6 +37,7 @@ int classify_loop(polyfold& pf, int f_i, int p_i, polyfold& pf2, int rule, int r
 
 void clip_poly_no_acceleration(polyfold& pf, polyfold& pf2, int rule, int base_type, clip_results& results, LineHolder& graph);
 void clip_poly_accelerated(polyfold& pf, polyfold& pf2, int rule, int base_type, clip_results& results, LineHolder& graph);
+void clip_poly_accelerated_single(polyfold& pf, polyfold& pf2, int rule, int base_type, clip_results& results, LineHolder& graph);
 
 template<bool bAccelerate>
 int classify_loop(polyfold& pf, int f_i, int p_i, polyfold& pf2, int rule, int rule2, LineHolder& graph)
