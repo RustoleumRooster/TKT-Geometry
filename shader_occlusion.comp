@@ -1,0 +1,357 @@
+#version 450
+#extension GL_KHR_shader_subgroup_basic : enable
+#extension GL_KHR_shader_subgroup_arithmetic : enable
+
+layout (binding = 0) uniform raytraceParams 
+{
+	vec3 pos;
+	vec3 normal;
+	vec3 tan;
+	vec3 bitan;
+	vec3 v0;
+	vec3 v1;
+	vec3 v2;
+	vec3 v3;
+
+	uint n_rays;
+	uint n_triangles;
+	uint n_vertices;
+
+	uint face_vertex_offset;
+	uint face_index_offset;
+	uint face_n_indices;
+	
+	uint lm_width;
+	uint lm_height;
+	uvec2 lm_v0;
+	uvec2 lm_v1;
+} params;
+
+layout(std140, binding = 1) readonly buffer indexUBO
+{
+	uint global_indices[];
+};
+
+layout(std140, binding = 2) readonly buffer vertUBO
+{
+	vec3 global_vertices[];
+};
+
+//an output buffer for debugging
+layout(std140, binding = 3) buffer hitResults
+{
+	vec3 hits[];
+};
+
+layout(binding = 4, rgba8) uniform image2D imageOut;
+
+uint[2] tea(uint v[2])
+{
+	uint v0 = v[0];
+	uint v1 = v[1];
+	uint delta = 0x9E3779B9;
+	uint k0 = 0xA341316C;
+	uint k1 = 0xC8013EA4;
+	uint k2 = 0xAD90777D;
+	uint k3 = 0x7E95761E;
+	uint sum = 0;
+
+	for(int i=0;i<6;i++)
+	{
+		sum+=delta;
+		v0+= ((v1<<4) + k0) ^ (v1+sum) ^ ((v1>>5) + k1);
+		v1+= ((v0<<4) + k2) ^ (v0+sum) ^ ((v0>>5) + k3);
+	}
+
+	return uint[2](v0,v1);
+}
+
+float random_to_float01(uint random)
+{
+	uint u = random >> 9 | 0x3F800000;
+	return uintBitsToFloat(u) - 1.0;
+}
+
+shared vec3 triangle_verts[384];
+
+bool trace_face_hit(inout vec3 hitvec, in float best_in, vec3 eye, vec3 ray)
+{
+	vec3 edge1, edge2, rayVecXe2, s, sXe1;
+	float det, invDet, u, v, best;
+	best = best_in;
+
+	for(int i=0; i<params.face_n_indices; i+=3)
+		{
+		uint id0 = params.face_index_offset + i;
+		uint id1 = params.face_index_offset + i + 1;
+		uint id2 = params.face_index_offset + i + 2;
+
+		edge1 = triangle_verts[(id1)] - triangle_verts[id0];
+		edge2 = triangle_verts[(id2)] - triangle_verts[id0];
+		rayVecXe2 = cross(ray,edge2);
+		det = dot(edge1,rayVecXe2);
+
+		if(det > -0.00001 && det < 0.00001)
+			continue;
+
+		invDet = 1.0 / det;
+		s = eye - triangle_verts[id0];
+		u = invDet * dot(s,rayVecXe2);
+
+		if( u < 0.0 || u > 1.0) 
+			continue;
+
+		sXe1 = cross(s,edge1);
+		v = invDet * dot(ray,sXe1);
+
+		if(v < 0.0 || u+v > 1.0) 
+			continue;
+
+		float t = invDet * dot(edge2,sXe1);
+
+		if(t > 0.00001 && t < best)
+			{
+				hitvec = eye + ray * t;
+				best = t;
+			}
+		}
+
+		return (best < best_in);
+}
+
+uint trace_scene_hit(inout vec3 hitvec, in float best_in, in vec3 eye, in vec3 ray)
+{
+	vec3 edge1, edge2, rayVecXe2, s, sXe1;
+	float det, invDet, u, v, best;
+
+	best = best_in;
+
+	for(int i=0; i<params.n_triangles; i++)
+		{
+
+		edge1 = triangle_verts[(i*3) + 1] - triangle_verts[i*3];
+		edge2 = triangle_verts[(i*3) + 2] - triangle_verts[i*3];
+		rayVecXe2 = cross(ray,edge2);
+		det = dot(edge1,rayVecXe2);
+
+		if(det > -0.00001 && det < 0.00001)
+			continue;
+
+		invDet = 1.0 / det;
+		s = eye - triangle_verts[i*3];
+		u = invDet * dot(s,rayVecXe2);
+
+		if( u < 0.0 || u > 1.0) 
+			continue;
+
+		sXe1 = cross(s,edge1);
+		v = invDet * dot(ray,sXe1);
+
+		if(v < 0.0 || u+v > 1.0) 
+			continue;
+
+		float t = invDet * dot(edge2,sXe1);
+
+		if(t > 0.001 && t < best)
+			{
+				hitvec = eye + ray * t;
+				best=t;
+			}
+		}
+
+		return (best < best_in) ? 1 : 0;
+}
+
+vec3 rand_hemisphere_ray(in vec3 N, in vec3 Tan, in vec3 BiTan, inout uint seed)
+{
+	uint[2] V = tea(uint[2](seed,0));
+
+	float theta = acos( random_to_float01(V[0]) );
+	float omega = (random_to_float01(V[1]) * 3.1415926535 * 2);
+	
+	float x = sin(theta)*cos(omega);
+	float y = sin(theta)*sin(omega);
+	float z = cos(theta);
+
+	vec3 ray = Tan*x + BiTan*y + N*z;
+	ray = normalize(ray);
+
+	seed = V[1];
+
+	return ray;
+}
+
+vec3 get_vec3_from_uv(in float u, in float v)
+{
+	return params.v0 + (params.v1 - params.v0)*u + (params.v3 - params.v0)*v;
+}
+
+layout (local_size_x = 32, local_size_y = 8, local_size_z = 1) in;
+
+shared uint ix_0;
+shared uint iy_0;
+shared uint count;
+shared uint mask[32*8];
+
+
+void main()
+{
+	uint ix = gl_LocalInvocationID.x;
+	uint iy = gl_LocalInvocationID.y;
+	uint thread_id = iy * gl_WorkGroupSize.x + ix;
+	uint work_length = 32;
+	uint work_height = 8;
+
+
+	//=================================
+	// Initial tasks
+	//
+
+	if(thread_id < params.n_triangles * 3)
+	{
+		uint v_index = global_indices[thread_id];
+		triangle_verts[thread_id] = global_vertices[v_index];
+	}
+
+	if(32*8 + thread_id < params.n_triangles * 3)
+	{
+		uint v_index = global_indices[32*8 + thread_id];
+		triangle_verts[32*8 + thread_id] = global_vertices[v_index];
+	}
+
+	if(ix==0 && iy==0)
+	{
+		ix_0 = gl_WorkGroupID.x*32;
+		iy_0 = gl_WorkGroupID.y*8;
+		count = 0;
+	}
+	
+	barrier();
+
+	float u_length = length(params.v1 - params.v0);
+	float v_length = length(params.v3 - params.v0);
+
+	vec3 V0;
+
+	while(iy_0 < work_height + gl_WorkGroupID.y*8)
+	{
+		while(ix_0 < work_length + gl_WorkGroupID.x*32)
+		{
+
+			//=================================
+			// Shoot a line toward the quad determine which pixels are actually on the face
+			//
+
+			if(ix_0+ix < params.lm_width && iy_0+iy < params.lm_height)
+			{
+				float u = ix_0+ix;
+				u /= params.lm_width;
+
+				float v = iy_0+iy;
+				v /= params.lm_height;
+
+				V0 = params.v0 + (params.v1 - params.v0)*u + (params.v3 - params.v0)*v + params.normal*10.0;
+
+				vec3 hit;
+				bool bHit = trace_face_hit(hit, 99999, V0, -params.normal);
+
+				mask[thread_id] = bHit? 1 : 0;
+	
+				//=================================
+				// Now do the raytrace for reach pixel
+				//
+
+				uint pixels_per_subgroup =  32;
+				uint rand_state = thread_id;
+
+				barrier();
+
+				//======================================
+				// Each subgroup handles 32 pixels
+				//
+				for(int i=0; i<32; i++)
+				{
+					uint pixel_x = i;
+					uint pixel_y = gl_SubgroupID;
+
+					u = ix_0+pixel_x;
+					u /= params.lm_width;
+	
+					v = iy_0+pixel_y;
+					v /= params.lm_height;
+
+					float subgroup_total=0;
+					vec3 pos = get_vec3_from_uv(u,v);
+
+					//======================================
+					// Each thread shoots __ rays per pixel
+					//
+
+					for(int j=0; j<24; j++)
+					{
+						vec3 ray = rand_hemisphere_ray(params.normal,params.tan,params.bitan,rand_state);
+
+						uint hit_score = 1;
+
+						if( mask[pixel_x + 32 * pixel_y] == 1 )
+							hit_score = trace_scene_hit(hit,110,pos,ray);
+
+						subgroupBarrier();
+
+						subgroup_total += subgroupAdd(hit_score);
+					}
+
+					subgroupBarrier();
+
+						if(subgroupElect())
+						{
+							float intensity = 1.0 - (subgroup_total / (32*24));
+							imageStore(imageOut,ivec2(params.lm_v0.x+ix_0+pixel_x,params.lm_v0.y+iy_0+pixel_y),vec4(intensity,mask[pixel_x + 32 * pixel_y],intensity,1));
+						}
+
+					subgroupBarrier();
+
+				}//for
+			}//if
+
+			barrier();
+
+			if(ix==0 && iy==0)
+			{
+				count += 1;
+				ix_0 += gl_WorkGroupSize.x;
+			}
+
+			barrier();
+		}//while
+
+		if(ix==0 && iy==0)
+			{
+				iy_0 += gl_WorkGroupSize.y;
+				ix_0 = gl_WorkGroupID.x*32;
+			}
+
+		barrier();
+	}//while
+
+
+	/*
+	while(iy_0 < work_height + gl_WorkGroupID.y*8)
+	{
+		while(ix_0 < work_length + gl_WorkGroupID.x*32)
+		{
+
+			//=================================
+			// Shoot a line toward the quad determine which pixels are actually on the face
+			//
+
+			if(ix_0+ix < params.lm_width && iy_0+iy < params.lm_height)
+			{
+			}*/
+		
+
+}
+
+
+
+
