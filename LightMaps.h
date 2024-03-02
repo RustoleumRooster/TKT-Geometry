@@ -44,6 +44,7 @@ public:
 	//void render_face(core::vector3df v0, int f_i, video::IImage* lightmap_section, int Radius, core::dimension2du lightmap_dim, LineHolder& graph);
 
 	void calc_lightmaps(int method);
+	void calc_lightmap_tcoords();
 
 	video::ITexture* getTexture() {
 		return Texture;

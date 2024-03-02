@@ -264,13 +264,22 @@ void GenLightMaps::set_mesh_tcoords(const MeshBuffer_Chunk& chunk, const matrix4
 
 		//vtx->TCoords2.set(pos.X/ortho_width, 1.0 - pos.Y/ortho_height);
 
-		f32 xcoord = ((f32)pos.X / ortho_width) * texture_block.getWidth() / lightmap_dim.Width;
-		xcoord += (f32)texture_block.UpperLeftCorner.X / lightmap_dim.Width;
+		f32 xcoord0 = ((f32)pos.X / ortho_width) * texture_block.getWidth() / lightmap_dim.Width;
+		xcoord0 += (f32)texture_block.UpperLeftCorner.X / lightmap_dim.Width;
 
-		f32 ycoord = ((f32)pos.Y / ortho_height) * texture_block.getHeight() / lightmap_dim.Height;;
-		ycoord += (f32)texture_block.UpperLeftCorner.Y / lightmap_dim.Height;
+		f32 ycoord0 = ((f32)pos.Y / ortho_height) * texture_block.getHeight() / lightmap_dim.Height;;
+		ycoord0 += (f32)texture_block.UpperLeftCorner.Y / lightmap_dim.Height;
 
+		
+		f32 xcoord = ((f32)pos.X / ortho_width) * (texture_block.getWidth()-2.0) / lightmap_dim.Width;
+		xcoord += (1.0 + (f32)texture_block.UpperLeftCorner.X) / lightmap_dim.Width;
+
+		f32 ycoord = ((f32)pos.Y / ortho_height) * (texture_block.getHeight()-2.0) / lightmap_dim.Height;
+		ycoord += (1.0 + (f32)texture_block.UpperLeftCorner.Y) / lightmap_dim.Height;
+		
 		vtx->TCoords2.set(xcoord, ycoord);
+
+		std::cout << xcoord0 << "," << ycoord0 << " ("<< xcoord << "," << ycoord <<")\n";
 
 		//std::cout << pos.X / ortho_width << ", " << 1.0 - pos.Y / ortho_height << "\n";
 		//std::cout << (f32)texture_block.UpperLeftCorner.X / lightmap_image->getDimension().Width
@@ -342,6 +351,51 @@ rect<f32> GenLightMaps::get_2D_bounding_box(poly_face* f)
 	}
 
 	return face_bbox;
+}
+
+void GenLightMaps::calc_lightmap_tcoords()
+{
+	std::vector<TextureMaterial> material_groups;
+
+	material_groups = geo_scene->edit_meshnode_interface.getMaterialsUsed();
+	polyfold* pf = geo_scene->get_total_geometry();
+
+	for (int i = 0; i < material_groups.size(); i++)
+	{
+		core::dimension2d<u32> lm_size(material_groups[i].lightmap_size, material_groups[i].lightmap_size);
+
+		for (int j = 0; j < material_groups[i].faces.size(); j++)
+		{
+			int f_j = material_groups[i].faces[j];
+			poly_face* f = &geo_scene->get_total_geometry()->faces[f_j];
+
+			vector3df points[5];
+
+			rect<f32> bbox_2D = get_2D_bounding_box(f);
+
+			get_bounding_quad(geo_scene->get_total_geometry(), f, bbox_2D, points);
+
+			points[4] = points[0] + points[1] + points[2] + points[3];
+			points[4] /= 4;
+
+			matrix4 VIEW, PROJ;
+			VIEW.buildCameraLookAtMatrixLH(points[4] + f->m_normal * 100, points[4],
+				is_parallel_normal(f->m_normal, vector3df(0.0, 1.0, 0.0)) ? vector3df(0.5, 1.0, 0.0) : vector3df(0.0, 1.0, 0.0));
+
+			f32 ortho_size = calculate_actual_ortho_size(VIEW, points, bbox_2D.getWidth(), bbox_2D.getHeight());
+
+			PROJ.buildProjectionMatrixOrthoLH(ortho_size, ortho_size, 0, 10000);
+
+			core::matrix4 tcoord_transform;
+			tcoord_transform.setbyproduct_nocheck(PROJ, VIEW);
+
+			MeshBuffer_Chunk chunk = geo_scene->edit_meshnode_interface.get_mesh_buffer_by_face(f_j);
+			set_mesh_tcoords(chunk, tcoord_transform, material_groups[i].blocks[j], bbox_2D.getWidth(), bbox_2D.getHeight(), lm_size);
+
+			chunk = geo_scene->final_meshnode_interface.get_mesh_buffer_by_face(f_j);
+			set_mesh_tcoords(chunk, tcoord_transform, material_groups[i].blocks[j], bbox_2D.getWidth(), bbox_2D.getHeight(), lm_size);
+		}
+	}
 }
 
 
@@ -623,7 +677,7 @@ struct texture_block
 
 	void set_coords(vector2d<u16> origin)
 	{
-		coords = rect<u16>(origin, dimension2d<u16>(size, size));
+		coords = rect<u16>(origin, dimension2d<u16>(size -1, size -1));
 
 		if(quad[0])
 			quad[0]->set_coords(origin);

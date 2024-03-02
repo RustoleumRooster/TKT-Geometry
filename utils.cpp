@@ -1416,6 +1416,11 @@ bool Save_Geometry_File::export_model(io::path fname)
                 {
                     core::rect<u16> rect = materials_used[m_i].blocks[i];
 
+                    rect.UpperLeftCorner.X += 1;
+                    rect.UpperLeftCorner.Y += 1;
+                    rect.LowerRightCorner.X -= 1;
+                    rect.LowerRightCorner.Y -= 1;
+
                     for (int j = chunk.begin_i; j < chunk.end_i; j++)
                     {
                         u16 idx = chunk.buffer->getIndices()[j];
@@ -1510,7 +1515,7 @@ bool Save_Geometry_File::export_model_2(io::path fname)
                 }
 
                 model.faces_info[c].normal = g_scene->get_total_geometry()->faces[f_i].m_normal;
-                model.faces_info[c].lightmap_resolution = g_scene->get_total_geometry()->faces[f_i].lightmap_res;
+                model.faces_info[c].lightmap_resolution = g_scene->get_total_geometry()->faces[f_i].lightmap_res - 2;
 
                 core::vector3df verts[4];
                 core::rectf bbox2d = GenLightMaps::get_2D_bounding_box(&g_scene->get_total_geometry()->faces[f_i]);
@@ -1560,10 +1565,10 @@ bool Save_Geometry_File::export_model_2(io::path fname)
             {
                 //std::cout << face_number_ref[materials_used[i].faces[j]] << ", ";
                 model.lightmaps_info[i].faces[j] = face_number_ref[materials_used[i].faces[j]];
-                model.lightmaps_info[i].lightmap_block_UL[j].X = materials_used[i].blocks[j].UpperLeftCorner.X;
-                model.lightmaps_info[i].lightmap_block_UL[j].Y = materials_used[i].blocks[j].UpperLeftCorner.Y;
-                model.lightmaps_info[i].lightmap_block_BR[j].X = materials_used[i].blocks[j].LowerRightCorner.X;
-                model.lightmaps_info[i].lightmap_block_BR[j].Y = materials_used[i].blocks[j].LowerRightCorner.Y;
+                model.lightmaps_info[i].lightmap_block_UL[j].X = materials_used[i].blocks[j].UpperLeftCorner.X + 1;
+                model.lightmaps_info[i].lightmap_block_UL[j].Y = materials_used[i].blocks[j].UpperLeftCorner.Y + 1;
+                model.lightmaps_info[i].lightmap_block_BR[j].X = materials_used[i].blocks[j].LowerRightCorner.X - 1;
+                model.lightmaps_info[i].lightmap_block_BR[j].Y = materials_used[i].blocks[j].LowerRightCorner.Y - 1;
             }
             //std::cout << "\n";
         }

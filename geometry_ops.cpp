@@ -8,6 +8,8 @@
 #include "BufferManager.h"
 #include "material_groups.h"
 #include "BVH.h"
+#include "LightMaps.h"
+
 #include <chrono>
 
 #include "clip_functions.h"
@@ -544,6 +546,10 @@ void geometry_scene::rebuild_geometry(bool only_build_new_geometry)
 
     INC_TIMER(generate_meshes_time)
 
+    //GenLightMaps* LM = LightMaps_Tool::getLightmaps();
+
+    //if(LM)
+    //    LM->calc_lightmap_tcoords();
 
     SEvent event;
     event.EventType = EET_USER_EVENT;
