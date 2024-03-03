@@ -48,6 +48,86 @@ core::vector3df poly_face::getOrientingNormal() const
         return m_normal;*/
 }
 
+void poly_face::get3DBoundingQuad(vector3df* points) const
+{
+    vector3df bitan = m_normal.crossProduct(m_tangent);
+
+    points[0] = m_center + m_tangent * bbox2d.UpperLeftCorner.X +
+        bitan * bbox2d.UpperLeftCorner.Y;
+
+    points[1] = m_center + m_tangent * bbox2d.UpperLeftCorner.X +
+        bitan * bbox2d.LowerRightCorner.Y;
+
+    points[2] = m_center + m_tangent * bbox2d.LowerRightCorner.X +
+        bitan * bbox2d.LowerRightCorner.Y;
+
+    points[3] = m_center + m_tangent * bbox2d.LowerRightCorner.X +
+        bitan * bbox2d.UpperLeftCorner.Y;
+}
+
+void polyfold::calc_tangent(int f_i)
+{
+    core::vector3df best_bitan;
+    core::vector3df best_tan;
+    f32 best_area;
+    rectf best_box;
+
+    for (int i = 0; i < faces[f_i].edges.size(); i++)
+    {
+        int e_i = faces[f_i].edges[i];
+
+        core::vector3df tan = getVertex(e_i, 1).V - getVertex(e_i, 0).V;
+        tan.normalize();
+
+        core::vector3df bitan = faces[f_i].m_normal.crossProduct(tan);
+
+        f32 umin = 0.0;
+        f32 umax = 0.0;
+        f32 vmin = 0.0;
+        f32 vmax = 0.0;
+
+        for (int j = 0; j < faces[f_i].vertices.size(); j++)
+        {
+            int v_i = faces[f_i].vertices[j];
+
+            core::vector3df r = vertices[v_i].V - faces[f_i].m_center;
+
+            f32 u = r.dotProduct(tan);
+            f32 v = r.dotProduct(bitan);
+
+            if (j == 0)
+            {
+                umin = u;
+                umax = u;
+                vmin = v;
+                vmax = v;
+            }
+            else
+            {
+                umin = fmin(umin, u);
+                umax = fmax(umax, u);
+                vmin = fmin(vmin, v);
+                vmax = fmax(vmax, v);
+            }
+        }
+
+        f32 area = (umax - umin) * (vmax - vmin);
+
+        if (i == 0 || area < best_area)
+        {
+            best_area = area;
+            best_bitan = bitan;
+            best_tan = tan;
+            best_box.UpperLeftCorner = vector2df(umin, vmin);
+            best_box.LowerRightCorner = vector2df(umax, vmax);
+        }
+    }
+    //std::cout << best_box.UpperLeftCorner.X << "," << best_box.UpperLeftCorner.Y<<"  "
+    //    << best_box.LowerRightCorner.X << ","<<best_box.LowerRightCorner.Y << "\n";
+    faces[f_i].bbox2d = best_box;
+    faces[f_i].m_tangent = best_tan;
+}
+
 void polyfold::rotate(core::matrix4 MAT)
 {
     for(poly_vert & vert: vertices)

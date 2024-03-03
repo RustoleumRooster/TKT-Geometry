@@ -154,6 +154,8 @@ class poly_face
     std::vector<poly_loop> loops;
     core::vector3df m_normal = core::vector3df(0,0,0);
     core::vector3df m_center = core::vector3df(0,0,0);
+    core::vector3df m_tangent = core::vector3df(0, 0, 0); //not reflected
+    core::rectf bbox2d; //not reflected
 
     //std::string texture_name;
     core::stringw texture_name;
@@ -166,7 +168,7 @@ class poly_face
     int surface_group=0;
     int material_group=0;
     core::vector3df uv_origin = core::vector3df(0,0,0);
-    bool bFlippedNormal=false;
+    bool bFlippedNormal=false; //To be removed. Only retained for compatability
     int topo_group = 0;
     //**any new variables may need to be manually copied in make_result and add_pfold**
 
@@ -199,6 +201,8 @@ class poly_face
     core::matrix4 get2Dmat() const;
 
     core::vector3df getOrientingNormal() const;
+
+    void get3DBoundingQuad(vector3df* points) const;
 
     void addVertex(int new_v)
     {
@@ -334,6 +338,7 @@ class polyfold
     void calc_center(int f_i);
     void calc_center(poly_face& face);
     void calc_normal(int f_i);
+    void calc_tangent(int f_i);
 
     void recalc_bbox();
     void recalc_bbox_and_loops();

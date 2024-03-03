@@ -1403,8 +1403,9 @@ bool Save_Geometry_File::export_model(io::path fname)
                 int buffer_no = g_scene->final_meshnode_interface.get_buffer_index_by_face(f_i);
 
                 core::vector3df verts[4];
-                core::rectf bbox2d = GenLightMaps::get_2D_bounding_box(&g_scene->get_total_geometry()->faces[f_i]);
-                GenLightMaps::get_bounding_quad(g_scene->get_total_geometry(), &g_scene->get_total_geometry()->faces[f_i], bbox2d, verts);
+
+                g_scene->get_total_geometry()->calc_tangent(f_i);
+                g_scene->get_total_geometry()->faces[f_i].get3DBoundingQuad(verts);
 
                 core::vector3df u_vec = verts[1] - verts[0];
                 core::vector3df v_vec = verts[3] - verts[0];
@@ -1492,6 +1493,7 @@ bool Save_Geometry_File::export_model_2(io::path fname)
         int c = 0;
         for (int f_i = 0; f_i < g_scene->get_total_geometry()->faces.size(); f_i++)
         {
+            
             if (g_scene->get_total_geometry()->faces[f_i].loops.size() > 0)
             {
                 face_number_ref[f_i] = c;
@@ -1518,8 +1520,9 @@ bool Save_Geometry_File::export_model_2(io::path fname)
                 model.faces_info[c].lightmap_resolution = g_scene->get_total_geometry()->faces[f_i].lightmap_res - 2;
 
                 core::vector3df verts[4];
-                core::rectf bbox2d = GenLightMaps::get_2D_bounding_box(&g_scene->get_total_geometry()->faces[f_i]);
-                GenLightMaps::get_bounding_quad(g_scene->get_total_geometry(), &g_scene->get_total_geometry()->faces[f_i], bbox2d, verts);
+
+                g_scene->get_total_geometry()->calc_tangent(f_i);
+                g_scene->get_total_geometry()->faces[f_i].get3DBoundingQuad(verts);
 
                 model.faces_info[c].bounding_rect.v0 = verts[0];
                 model.faces_info[c].bounding_rect.v1 = verts[1];
@@ -1544,7 +1547,6 @@ bool Save_Geometry_File::export_model_2(io::path fname)
 
                     model.vertex_buffers[c].vertices[j].tex_coords_1 = core::vector2df(u, v);
                 }
-
                 c++;
             }
         }
