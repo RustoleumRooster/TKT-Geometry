@@ -8,7 +8,6 @@
 #include "reflected_nodes.h"
 #include "node_properties.h"
 #include "material_groups.h"
-#include "LightMaps.h"
 #include "BVH.h"
 
 extern IrrlichtDevice* device;
@@ -402,17 +401,13 @@ void TestPanel::draw()
 			const video::SColor Colors[] = {Color,Color,Color,Color};
             if (false)//(bTest)
             {
-                video::ITexture* tex = LightMaps_Tool::getLightmaps()->getIntermediateTexture();
-                //video::ITexture* tex = LightMaps_Tool::getLightmaps()->getOrthoTexture();
-
-                //video::ITexture* tex = LightMaps_Tool::getLightmaps()->getLightmap(0);
-
+                /*
                 if (tex)
                 {
                     driver->draw2DImage(tex, AbsoluteRect,
                         core::rect<s32>(core::position2d<s32>(0, 0), core::dimension2di(tex->getOriginalSize())),
                         &AbsoluteClippingRect, Colors, UseAlphaChannel);
-                }
+                }*/
             }
             else
                 driver->draw2DImage(Texture, AbsoluteRect,

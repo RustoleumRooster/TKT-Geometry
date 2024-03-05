@@ -2,7 +2,6 @@
 #define _ShaderCallbacks_H_
 
 #include <irrlicht.h>
-#include "LightMaps.h"
 
 extern IrrlichtDevice* device;
 
@@ -197,7 +196,7 @@ public:
 
 	virtual void OnSetConstants(video::IMaterialRendererServices* services,
 		s32 userData)
-	{
+	{/*
 		video::IVideoDriver* driver = services->getVideoDriver();
 
 		core::matrix4 worldView = driver->getTransform(video::ETS_VIEW);
@@ -221,6 +220,7 @@ public:
 
 		services->setPixelShaderConstant("LightPos", reinterpret_cast<f32*>(&pos), 3);
 		services->setPixelShaderConstant("LightRadius", reinterpret_cast<int*>(&radius), 1);
+		*/
 	}
 };
 
@@ -261,6 +261,7 @@ public:
 	virtual void OnSetConstants(video::IMaterialRendererServices* services,
 		s32 userData)
 	{
+		/*
 		video::IVideoDriver* driver = services->getVideoDriver();
 
 		core::matrix4 worldView = driver->getTransform(video::ETS_VIEW);
@@ -286,7 +287,7 @@ public:
 		s32 TextureLayerID = 0;
 
 		services->setPixelShaderConstant("myTexture2", &TextureLayerID, 1);
-
+		*/
 
 	}
 
@@ -366,14 +367,6 @@ public:
 
 		core::matrix4 invWorldMat;
 		driver->getTransform(video::ETS_WORLD).getInverse(invWorldMat);
-
-		int* nTriangles;
-		core::vector3df* vertices;
-		core::vector3df* normals;
-
-		nTriangles = LightMaps_Tool::getLightmaps()->GetNTriangles();
-		vertices = LightMaps_Tool::getLightmaps()->GetVertices();
-		normals = LightMaps_Tool::getLightmaps()->GetNormals();
 
 		//if(driver->getDynamicLightCount()>0)
 		{

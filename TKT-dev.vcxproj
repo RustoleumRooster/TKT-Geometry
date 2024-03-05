@@ -162,7 +162,6 @@
     <ClCompile Include="geo_scene_settings.cpp" />
     <ClCompile Include="GUI_tools.cpp" />
     <ClCompile Include="LightMaps.cpp" />
-    <ClCompile Include="LightMaps_Rendering.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="material_groups.cpp" />
     <ClCompile Include="NodeInstancesTool.cpp" />

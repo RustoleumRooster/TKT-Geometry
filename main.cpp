@@ -21,7 +21,6 @@
 #include "NodeInstancesTool.h"
 #include "file_open.h"
 #include "uv_tool.h"
-#include "LightMaps.h"
 #include "ShaderCallbacks.h"
 
 #include "clip_functions.h"

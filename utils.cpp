@@ -11,7 +11,6 @@
 #include "CPLYMeshWriter.h"
 #include "file_open.h"
 #include "CameraPanel.h"
-#include "LightMaps.h"
 
 extern IrrlichtDevice* device;
 

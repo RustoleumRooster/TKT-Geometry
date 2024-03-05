@@ -8,7 +8,6 @@
 #include "BufferManager.h"
 #include "material_groups.h"
 #include "BVH.h"
-#include "LightMaps.h"
 
 #include <chrono>
 

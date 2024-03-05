@@ -19,7 +19,6 @@
 #include "uv_tool.h"
 #include "vtoolbar.h"
 #include "ex_gui_elements.h"
-#include "LightMaps.h"
 
 extern IrrlichtDevice* device;
 using namespace irr;
@@ -510,10 +509,6 @@ bool MyEventReceiver::OnEvent(const SEvent& event)
                         ListReflectedNodes_Tool::show();
                         break;
                     case GUI_ID_BUTTON_LIGHTS:
-                        GenLightMaps* LM = LightMaps_Tool::getLightmaps();
-                        //std::cout << "start lightmaps\n";
-                        LM->init();
-                        LM->calc_lightmaps(0);
                         break;
                 }
             }
