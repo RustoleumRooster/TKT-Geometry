@@ -25,8 +25,6 @@ TKT is a full featured level editor built on the Irrlicht 3D game engine, intend
 
 Irrlicht engine trunk version, available at https://irrlicht.sourceforge.io/ (may be compatible with Irrlicht 1.84).
 
-Currently exists Eigen (https://eigen.tuxfamily.org/) dependency, but this will be removed soon as lighting calculations are being moved to Vulkan.
-
 C++ 14
 
 # Implementation details
