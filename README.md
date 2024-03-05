@@ -1,4 +1,4 @@
-# TKT-Geometry version by Rustoleum Rooster aka Rusty Rooster
+# TKT-Geometry by Rustoleum Rooster aka Rusty Rooster
 Code is copyright 2022-2024. Version 0.9
 
 TKT is a full featured level editor built on the Irrlicht 3D game engine, intended to provide a way to easily create maps for Irrlicht games. The philosphy behind TKT is that every game should have a level editor which is closely integrated with the engine and with the game's own functionality. TKT encompasses geometry and physical level design, lighting and lightmaps, as well as the ability to create complex scenes with models, actors, effects, factories, etc, and can be extended to support new kinds of materials and game logic.
