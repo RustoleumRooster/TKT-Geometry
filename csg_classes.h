@@ -161,7 +161,8 @@ class poly_face
     core::stringw texture_name;
     int texture_index;    //for serialization only
     int lightmap_index = -1;
-    int lightmap_res = 128;
+    int lightmap_res = 128; //deprecated
+    dimension2du lightmap_dim; //not reflected
 
     int original_face=0;
     int original_brush=0;

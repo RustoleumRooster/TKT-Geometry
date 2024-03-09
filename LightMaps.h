@@ -7,8 +7,10 @@
 
 class geometry_scene;
 
-u16 lightmaps_guessLMres(geometry_scene*, int f_j);
-void lightmaps_divideMaterialGroups(geometry_scene*, std::vector<TextureMaterial>& material_groups);
+void guess_lightmaps_dimension(geometry_scene* geo_scene, int f_j);
+void lightmaps_divideMaterialGroups2(geometry_scene* geo_scene, std::vector<TextureMaterial>& material_groups);
+
+
 
 
 #endif

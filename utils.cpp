@@ -1048,8 +1048,8 @@ REFLECT_STRUCT_END()
 
 REFLECT_STRUCT_BEGIN(Face_Info_Struct)
     REFLECT_STRUCT_MEMBER(normal)
+    REFLECT_STRUCT_MEMBER(tangent)
     REFLECT_STRUCT_MEMBER(bounding_rect)
-    REFLECT_STRUCT_MEMBER(lightmap_resolution)
 REFLECT_STRUCT_END()
 
 REFLECT_STRUCT_BEGIN(LightMaps_Info_Struct)
@@ -1516,7 +1516,7 @@ bool Save_Geometry_File::export_model_2(io::path fname)
                 }
 
                 model.faces_info[c].normal = g_scene->get_total_geometry()->faces[f_i].m_normal;
-                model.faces_info[c].lightmap_resolution = g_scene->get_total_geometry()->faces[f_i].lightmap_res - 2;
+                model.faces_info[c].tangent = g_scene->get_total_geometry()->faces[f_i].m_tangent;
 
                 core::vector3df verts[4];
 
@@ -1561,17 +1561,14 @@ bool Save_Geometry_File::export_model_2(io::path fname)
             model.lightmaps_info[i].lightmap_block_BR.resize(materials_used[i].faces.size());
             model.lightmaps_info[i].size = materials_used[i].lightmap_size;
 
-            //std::cout << "faces = " << materials_used[i].lightmap_size<<", " << materials_used[i].faces.size() << "\n";
             for (int j = 0; j < materials_used[i].faces.size(); j++)
             {
-                //std::cout << face_number_ref[materials_used[i].faces[j]] << ", ";
                 model.lightmaps_info[i].faces[j] = face_number_ref[materials_used[i].faces[j]];
                 model.lightmaps_info[i].lightmap_block_UL[j].X = materials_used[i].blocks[j].UpperLeftCorner.X + 1;
                 model.lightmaps_info[i].lightmap_block_UL[j].Y = materials_used[i].blocks[j].UpperLeftCorner.Y + 1;
                 model.lightmaps_info[i].lightmap_block_BR[j].X = materials_used[i].blocks[j].LowerRightCorner.X - 1;
                 model.lightmaps_info[i].lightmap_block_BR[j].Y = materials_used[i].blocks[j].LowerRightCorner.Y - 1;
             }
-            //std::cout << "\n";
         }
 
         ofstream wf(fname.c_str(), ios::out | ios::binary);

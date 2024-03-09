@@ -78,8 +78,8 @@ struct Face_Bounding_Rect_Struct
 struct Face_Info_Struct
 {
     reflect::vector3 normal;
+    reflect::vector3 tangent;
     Face_Bounding_Rect_Struct bounding_rect;
-    u16 lightmap_resolution;
     
     REFLECT()
 };

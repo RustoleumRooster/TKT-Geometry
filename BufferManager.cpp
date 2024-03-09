@@ -55,8 +55,11 @@ void MeshNode_Interface::refresh_material_groups(geometry_scene* geo_scene)
         pf->faces[f_i].texture_name = geo_scene->elements[brush_j].brush.faces[face_j].texture_name;
         pf->faces[f_i].temp_b = false;
 
-        if(lightmaps)
-            pf->faces[f_i].lightmap_res = lightmaps_guessLMres(geo_scene, f_i);
+        if(pf->faces[f_i].loops.size() > 0)
+        {
+            pf->calc_tangent(f_i);
+            guess_lightmaps_dimension(geo_scene, f_i);
+        }
     }
 
     for (int f_i = 0; f_i < pf->faces.size(); f_i++)
@@ -85,10 +88,7 @@ void MeshNode_Interface::refresh_material_groups(geometry_scene* geo_scene)
         }
     }
 
-    if (lightmaps != NULL)
-    {
-        lightmaps_divideMaterialGroups(geo_scene,materials_used);
-    }
+    lightmaps_divideMaterialGroups2(geo_scene, materials_used);
 
     for (int i = 0; i < materials_used.size(); i++)
     {

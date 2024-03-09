@@ -52,17 +52,55 @@ void poly_face::get3DBoundingQuad(vector3df* points) const
 {
     vector3df bitan = m_normal.crossProduct(m_tangent);
 
-    points[0] = m_center + m_tangent * bbox2d.UpperLeftCorner.X +
+    //  v0------v1
+    //  |        |
+    //  |        |
+    //  v3------v2
+
+    vector3df v0 = m_center + m_tangent * bbox2d.UpperLeftCorner.X +
         bitan * bbox2d.UpperLeftCorner.Y;
 
-    points[1] = m_center + m_tangent * bbox2d.UpperLeftCorner.X +
+    vector3df v1 = m_center + m_tangent * bbox2d.UpperLeftCorner.X +
         bitan * bbox2d.LowerRightCorner.Y;
 
-    points[2] = m_center + m_tangent * bbox2d.LowerRightCorner.X +
+    vector3df v2 = m_center + m_tangent * bbox2d.LowerRightCorner.X +
         bitan * bbox2d.LowerRightCorner.Y;
 
-    points[3] = m_center + m_tangent * bbox2d.LowerRightCorner.X +
+    vector3df v3 = m_center + m_tangent * bbox2d.LowerRightCorner.X +
         bitan * bbox2d.UpperLeftCorner.Y;
+
+    if (vector3df(v1 - v0).getLength() > vector3df(v3 - v0).getLength())
+    {
+        points[0] = v0;
+        points[1] = v1;
+        points[2] = v2;
+        points[3] = v3;
+    }
+    else
+    {
+        points[0] = v3;
+        points[1] = v0;
+        points[2] = v1;
+        points[3] = v2;
+    }
+
+}
+
+void recenter_box(const vector3df& tan, const vector3df& bitan, rectf& box, vector3df& center)
+{
+    vector3df upper_left = center + tan * box.UpperLeftCorner.X +
+        bitan * box.UpperLeftCorner.Y;
+
+    vector3df lower_right = center + tan * box.LowerRightCorner.X +
+        bitan * box.LowerRightCorner.Y;
+
+    center = upper_left + (lower_right - upper_left) * 0.5;
+
+    f32 width = box.getWidth();
+    f32 height = box.getHeight();
+
+    box.UpperLeftCorner = vector2df(-width * 0.5, -height * 0.5);
+    box.LowerRightCorner = vector2df(width * 0.5, height * 0.5);
 }
 
 void polyfold::calc_tangent(int f_i)
@@ -116,16 +154,31 @@ void polyfold::calc_tangent(int f_i)
         if (i == 0 || area < best_area)
         {
             best_area = area;
-            best_bitan = bitan;
-            best_tan = tan;
-            best_box.UpperLeftCorner = vector2df(umin, vmin);
-            best_box.LowerRightCorner = vector2df(umax, vmax);
+
+            if ((umax - umin) < (vmax - vmin))
+            {
+                best_tan = faces[f_i].m_normal.crossProduct(tan);
+                best_bitan = tan;
+                best_box.UpperLeftCorner = vector2df(vmin, umin);
+                best_box.LowerRightCorner = vector2df(vmax, umax);
+            }
+            else
+            {
+                best_tan = tan;
+                best_bitan = bitan;
+                best_box.UpperLeftCorner = vector2df(umin, vmin);
+                best_box.LowerRightCorner = vector2df(umax, vmax);
+            }
         }
     }
-    //std::cout << best_box.UpperLeftCorner.X << "," << best_box.UpperLeftCorner.Y<<"  "
-    //    << best_box.LowerRightCorner.X << ","<<best_box.LowerRightCorner.Y << "\n";
+
+    vector3df new_center = faces[f_i].m_center;
+
+    recenter_box(best_tan, best_bitan, best_box, new_center);
+    
     faces[f_i].bbox2d = best_box;
     faces[f_i].m_tangent = best_tan;
+    faces[f_i].m_center = new_center;
 }
 
 void polyfold::rotate(core::matrix4 MAT)

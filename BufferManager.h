@@ -36,8 +36,6 @@ struct TextureMaterial
     std::vector<core::rect<u16>> blocks;
 };
 
-class GenLightMaps;
-
 class MeshNode_Interface
 {
 public:
@@ -66,10 +64,6 @@ public:
 
     std::vector<TextureMaterial> getMaterialsUsed(){return materials_used;}
 
-    void setLightMaps(GenLightMaps* lightmaps_) {
-        lightmaps = lightmaps_;
-    }
-
 protected:
 
     virtual void generate_mesh_buffer(geometry_scene* geo_scene,SMesh*)=0;
@@ -85,7 +79,6 @@ protected:
     video::IVideoDriver* driver=NULL;
     TexturePicker* texture_picker=NULL;
     MyEventReceiver* event_receiver=NULL;
-    GenLightMaps* lightmaps = NULL;
 
     video::E_MATERIAL_TYPE base_material_type;
     video::E_MATERIAL_TYPE special_material_type;
