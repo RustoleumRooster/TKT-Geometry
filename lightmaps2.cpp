@@ -15,16 +15,16 @@ void guess_lightmaps_dimension(geometry_scene* geo_scene, int f_j)
 	polyfold* pf = geo_scene->get_total_geometry();
 	poly_face* f = &pf->faces[f_j];
 
-	std::cout << f_j << " " << f->bbox2d.getWidth() << "," << f->bbox2d.getHeight() << "\n";
+	//std::cout << f_j << " " << f->bbox2d.getWidth() << "," << f->bbox2d.getHeight() << "\n";
 
 	double log_width = log2(f->bbox2d.getWidth());
 	u16 lwi = static_cast<u16>(floor(log_width));
-	lwi -= 3;
+	lwi -= 2;
 	lwi = lwi > 2 ? lwi : 2;
 
 	double log_height = log2(f->bbox2d.getHeight());
 	u16 lhi = static_cast<u16>(floor(log_height));
-	lhi -= 3;
+	lhi -= 2;
 	lhi = lhi > 2 ? lhi : 2;
 
 	f->lightmap_dim = dimension2du(exp2(lwi), exp2(lhi));

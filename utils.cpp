@@ -1403,9 +1403,8 @@ bool Save_Geometry_File::export_model(io::path fname)
 
                 core::vector3df verts[4];
 
-                g_scene->get_total_geometry()->calc_tangent(f_i);
                 g_scene->get_total_geometry()->faces[f_i].get3DBoundingQuad(verts);
-
+                
                 core::vector3df u_vec = verts[1] - verts[0];
                 core::vector3df v_vec = verts[3] - verts[0];
 
@@ -1438,8 +1437,6 @@ bool Save_Geometry_File::export_model(io::path fname)
                             (rect.UpperLeftCorner.Y + v * rect.getHeight()) / materials_used[m_i].lightmap_size
                         );
 
-                        //std::cout << buffer_no << ", " << idx << " ("<< model.vertex_buffers[buffer_no].vertices.size() <<" )  ";
-                        //std::cout << tex_coord.X << "," << tex_coord.Y << "\n";
                         model.vertex_buffers[buffer_no].vertices[idx].tex_coords_1 = tex_coord;
                     }
                 }
@@ -1520,7 +1517,6 @@ bool Save_Geometry_File::export_model_2(io::path fname)
 
                 core::vector3df verts[4];
 
-                g_scene->get_total_geometry()->calc_tangent(f_i);
                 g_scene->get_total_geometry()->faces[f_i].get3DBoundingQuad(verts);
 
                 model.faces_info[c].bounding_rect.v0 = verts[0];

@@ -57,7 +57,6 @@ void MeshNode_Interface::refresh_material_groups(geometry_scene* geo_scene)
 
         if(pf->faces[f_i].loops.size() > 0)
         {
-            pf->calc_tangent(f_i);
             guess_lightmaps_dimension(geo_scene, f_i);
         }
     }
