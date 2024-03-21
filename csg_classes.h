@@ -203,7 +203,7 @@ class poly_face
 
     core::vector3df getOrientingNormal() const;
 
-    void get3DBoundingQuad(vector3df* points) const;
+    void get3DBoundingQuad(vector3df* points, int v0_idx = 0) const;
 
     void addVertex(int new_v)
     {
@@ -470,7 +470,7 @@ class polyfold
     void simplify_edges(); //currently unused
 
     bool getSurfaceVectors(int f_i,core::vector3df &a, core::vector3df &b);
-    surface_group getFaceSurfaceGroup(int f_i);
+    surface_group* getFaceSurfaceGroup(int f_i);
 
     //========================================
     //Topology functions

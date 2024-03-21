@@ -658,7 +658,8 @@ void geometry_scene::buildSceneGraph(bool finalMesh, bool addObjects, bool addLi
         {
             scene::IMeshBuffer* buffer = my_MeshNode->getMesh()->getMeshBuffer(i);
             //int f_i = final_meshnode_interface.get_material_reference_face(i); 
-            int f_i = final_meshnode_interface.getMaterialsUsed()[i].faces[0];
+            //int f_i = final_meshnode_interface.getMaterialsUsed()[i].faces[0];
+            int f_i = final_meshnode_interface.getMaterialsUsed()[i].records[0].face;
             material_groups_base->apply_material_to_buffer(buffer,pf->faces[f_i].material_group,addLights);
             
         }

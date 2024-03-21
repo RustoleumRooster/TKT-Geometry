@@ -135,10 +135,11 @@ private:
 class Save_Geometry_File : public irr::IEventReceiver
 {
 public:
-	Save_Geometry_File(geometry_scene* gs);
+	Save_Geometry_File(geometry_scene* gs, bool show = true );
 	~Save_Geometry_File();
 
 	virtual bool OnEvent(const SEvent& event);
+    bool Export(io::path fname);
 
 private:
 

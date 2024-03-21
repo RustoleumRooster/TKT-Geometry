@@ -1301,21 +1301,44 @@ void Open_Geometry_File::LoadProject(geometry_scene* gs, io::path folder)
 //  Save Geometry File
 //
 
-Save_Geometry_File::Save_Geometry_File(geometry_scene* gs)
+Save_Geometry_File::Save_Geometry_File(geometry_scene* gs, bool show)
 {
     g_scene = gs;
 
-    MyEventReceiver* receiver = (MyEventReceiver*)device->getEventReceiver();
-    receiver->Register(this);
+    
 
     FileSystem = device->getFileSystem();
 
-    File_Open_Tool::show("Save Project");
+    if (show)
+    {
+        MyEventReceiver* receiver = (MyEventReceiver*)device->getEventReceiver();
+        receiver->Register(this);
+
+        File_Open_Tool::show("Save Project");
+    }
+
 }
 
 Save_Geometry_File::~Save_Geometry_File()
 {
     //std::cout << "Save Geometry File... going out of scope\n";
+}
+
+bool Save_Geometry_File::Export(io::path folder)
+{
+    io::path restore_path = FileSystem->getWorkingDirectory();
+
+    std::cout << " >>>>> writing files to " << folder.c_str() << "\n";
+
+    FileSystem->changeWorkingDirectoryTo(folder);
+
+    export_model("model.dat");
+    export_model_2("model2.dat");
+    WriteModelTextures("model_textures.txt");
+
+    FileSystem->changeWorkingDirectoryTo(restore_path);
+
+    return true;
 }
 
 bool Save_Geometry_File::OnEvent(const SEvent& event)
@@ -1394,16 +1417,17 @@ bool Save_Geometry_File::export_model(io::path fname)
 
         for (int m_i = 0; m_i < materials_used.size(); m_i++)
         {
-            for (int i = 0; i < materials_used[m_i].faces.size(); i++)
+            for (int i = 0; i < materials_used[m_i].records.size(); i++)
             {
-                int f_i = materials_used[m_i].faces[i];
+                int f_i = materials_used[m_i].records[i].face;
 
                 MeshBuffer_Chunk chunk = g_scene->final_meshnode_interface.get_mesh_buffer_by_face(f_i);
                 int buffer_no = g_scene->final_meshnode_interface.get_buffer_index_by_face(f_i);
 
                 core::vector3df verts[4];
 
-                g_scene->get_total_geometry()->faces[f_i].get3DBoundingQuad(verts);
+                int v0_idx = materials_used[m_i].records[i].face_v0_index;
+                g_scene->get_total_geometry()->faces[f_i].get3DBoundingQuad(verts,v0_idx);
                 
                 core::vector3df u_vec = verts[1] - verts[0];
                 core::vector3df v_vec = verts[3] - verts[0];
@@ -1411,15 +1435,21 @@ bool Save_Geometry_File::export_model(io::path fname)
                 u_vec.normalize();
                 v_vec.normalize();
 
-                if (i < materials_used[m_i].blocks.size())
+                u_vec.X = fabs(u_vec.X) < 0.00001 ? 0 : u_vec.X;
+                u_vec.Y = fabs(u_vec.Y) < 0.00001 ? 0 : u_vec.Y;
+                v_vec.X = fabs(v_vec.X) < 0.00001 ? 0 : v_vec.X;
+                v_vec.Y = fabs(v_vec.Y) < 0.00001 ? 0 : v_vec.Y;
+
+                if (i < materials_used[m_i].records.size())
                 {
-                    core::rect<u16> rect = materials_used[m_i].blocks[i];
+                    core::rect<u16> rect = materials_used[m_i].records[i].block;
 
-                    rect.UpperLeftCorner.X += 1;
-                    rect.UpperLeftCorner.Y += 1;
-                    rect.LowerRightCorner.X -= 1;
-                    rect.LowerRightCorner.Y -= 1;
+                    rect.UpperLeftCorner.X += 0;
+                    rect.UpperLeftCorner.Y += 0;
+                    rect.LowerRightCorner.X -= 0;
+                    rect.LowerRightCorner.Y -= 0;
 
+                    
                     for (int j = chunk.begin_i; j < chunk.end_i; j++)
                     {
                         u16 idx = chunk.buffer->getIndices()[j];
@@ -1438,6 +1468,8 @@ bool Save_Geometry_File::export_model(io::path fname)
                         );
 
                         model.vertex_buffers[buffer_no].vertices[idx].tex_coords_1 = tex_coord;
+
+                        //std::cout << 128 * tex_coord.X << "/" << 128 * tex_coord.Y << "\n";
                     }
                 }
             }
@@ -1487,83 +1519,91 @@ bool Save_Geometry_File::export_model_2(io::path fname)
         face_number_ref.resize(g_scene->get_total_geometry()->faces.size());
 
         int c = 0;
-        for (int f_i = 0; f_i < g_scene->get_total_geometry()->faces.size(); f_i++)
+
+        std::vector<TextureMaterial> materials_used = g_scene->final_meshnode_interface.getMaterialsUsed();
+
+        for (int m_i = 0; m_i < materials_used.size(); m_i++)
         {
-            
-            if (g_scene->get_total_geometry()->faces[f_i].loops.size() > 0)
+            for (int i = 0; i < materials_used[m_i].records.size(); i++)
             {
-                face_number_ref[f_i] = c;
+                int f_i = materials_used[m_i].records[i].face;
 
-                int idx = g_scene->edit_meshnode_interface.get_buffer_index_by_face(f_i);
-                CMeshBuffer<video::S3DVertex2TCoords>* mesh_buffer = (CMeshBuffer<video::S3DVertex2TCoords>*)mesh->getMeshBuffer(idx);
-
-                model.vertex_buffers[c].vertices.resize(mesh_buffer->getVertexCount());
-
-                for (int j = 0; j < mesh_buffer->getVertexCount(); j++)
+                if (g_scene->get_total_geometry()->faces[f_i].loops.size() > 0)
                 {
-                    model.vertex_buffers[c].vertices[j].pos = mesh_buffer->Vertices[j].Pos;
-                    model.vertex_buffers[c].vertices[j].tex_coords_0 = mesh_buffer->Vertices[j].TCoords;
+                    face_number_ref[f_i] = c;
+
+                    int idx = g_scene->edit_meshnode_interface.get_buffer_index_by_face(f_i);
+                    CMeshBuffer<video::S3DVertex2TCoords>* mesh_buffer = (CMeshBuffer<video::S3DVertex2TCoords>*)mesh->getMeshBuffer(idx);
+
+                    model.vertex_buffers[c].vertices.resize(mesh_buffer->getVertexCount());
+
+                    for (int j = 0; j < mesh_buffer->getVertexCount(); j++)
+                    {
+                        model.vertex_buffers[c].vertices[j].pos = mesh_buffer->Vertices[j].Pos;
+                        model.vertex_buffers[c].vertices[j].tex_coords_0 = mesh_buffer->Vertices[j].TCoords;
+                    }
+
+                    model.vertex_buffers[c].indices.resize(mesh_buffer->getIndexCount());
+
+                    for (int j = 0; j < mesh_buffer->getIndexCount(); j++)
+                    {
+                        model.vertex_buffers[c].indices[j] = mesh_buffer->Indices[j];
+                    }
+
+                    model.faces_info[c].normal = g_scene->get_total_geometry()->faces[f_i].m_normal;
+                    model.faces_info[c].tangent = g_scene->get_total_geometry()->faces[f_i].m_tangent;
+
+                    core::vector3df verts[4];
+
+                    int v0_idx = materials_used[m_i].records[i].face_v0_index;
+                    g_scene->get_total_geometry()->faces[f_i].get3DBoundingQuad(verts,v0_idx);
+
+                    model.faces_info[c].bounding_rect.v0 = verts[0];
+                    model.faces_info[c].bounding_rect.v1 = verts[1];
+                    model.faces_info[c].bounding_rect.v2 = verts[2];
+                    model.faces_info[c].bounding_rect.v3 = verts[3];
+
+                    core::vector3df u_vec = verts[1] - verts[0];
+                    core::vector3df v_vec = verts[3] - verts[0];
+
+                    u_vec.normalize();
+                    v_vec.normalize();
+
+                    for (int j = 0; j < mesh_buffer->getVertexCount(); j++)
+                    {
+                        core::vector3df V = mesh_buffer->Vertices[j].Pos;
+
+                        float_t u = core::vector3df(V - verts[0]).dotProduct(u_vec) / core::vector3df(verts[1] - verts[0]).getLength();
+                        float_t v = core::vector3df(V - verts[0]).dotProduct(v_vec) / core::vector3df(verts[3] - verts[0]).getLength();
+
+                        u = fabs(u) < 0.00001 ? 0 : u;
+                        v = fabs(v) < 0.00001 ? 0 : v;
+
+                        model.vertex_buffers[c].vertices[j].tex_coords_1 = core::vector2df(u, v);
+                    }
+                    c++;
                 }
-
-                model.vertex_buffers[c].indices.resize(mesh_buffer->getIndexCount());
-
-                for (int j = 0; j < mesh_buffer->getIndexCount(); j++)
-                {
-                    model.vertex_buffers[c].indices[j] = mesh_buffer->Indices[j];
-                }
-
-                model.faces_info[c].normal = g_scene->get_total_geometry()->faces[f_i].m_normal;
-                model.faces_info[c].tangent = g_scene->get_total_geometry()->faces[f_i].m_tangent;
-
-                core::vector3df verts[4];
-
-                g_scene->get_total_geometry()->faces[f_i].get3DBoundingQuad(verts);
-
-                model.faces_info[c].bounding_rect.v0 = verts[0];
-                model.faces_info[c].bounding_rect.v1 = verts[1];
-                model.faces_info[c].bounding_rect.v2 = verts[2];
-                model.faces_info[c].bounding_rect.v3 = verts[3];
-
-                core::vector3df u_vec = verts[1] - verts[0];
-                core::vector3df v_vec = verts[3] - verts[0];
-
-                u_vec.normalize();
-                v_vec.normalize();
-
-                for (int j = 0; j < mesh_buffer->getVertexCount(); j++)
-                {
-                    core::vector3df V = mesh_buffer->Vertices[j].Pos;
-                   
-                    float_t u = core::vector3df(V - verts[0]).dotProduct(u_vec) / core::vector3df(verts[1] - verts[0]).getLength();
-                    float_t v = core::vector3df(V - verts[0]).dotProduct(v_vec) / core::vector3df(verts[3] - verts[0]).getLength();
-
-                    u = fabs(u) < 0.00001 ? 0 : u;
-                    v = fabs(v) < 0.00001 ? 0 : v;
-
-                    model.vertex_buffers[c].vertices[j].tex_coords_1 = core::vector2df(u, v);
-                }
-                c++;
             }
         }
 
         model.lightmaps_info.resize(g_scene->edit_meshnode_interface.getMaterialsUsed().size());
 
-        std::vector<TextureMaterial> materials_used = g_scene->edit_meshnode_interface.getMaterialsUsed();
-
         for (int i = 0; i < materials_used.size(); i++)
         {
-            model.lightmaps_info[i].faces.resize(materials_used[i].faces.size());
-            model.lightmaps_info[i].lightmap_block_UL.resize(materials_used[i].faces.size());
-            model.lightmaps_info[i].lightmap_block_BR.resize(materials_used[i].faces.size());
+            int n_lightmaps = materials_used[i].records.size();
+
+            model.lightmaps_info[i].faces.resize(n_lightmaps);
+            model.lightmaps_info[i].lightmap_block_UL.resize(n_lightmaps);
+            model.lightmaps_info[i].lightmap_block_BR.resize(n_lightmaps);
             model.lightmaps_info[i].size = materials_used[i].lightmap_size;
 
-            for (int j = 0; j < materials_used[i].faces.size(); j++)
+            for (int j = 0; j < n_lightmaps; j++)
             {
-                model.lightmaps_info[i].faces[j] = face_number_ref[materials_used[i].faces[j]];
-                model.lightmaps_info[i].lightmap_block_UL[j].X = materials_used[i].blocks[j].UpperLeftCorner.X + 1;
-                model.lightmaps_info[i].lightmap_block_UL[j].Y = materials_used[i].blocks[j].UpperLeftCorner.Y + 1;
-                model.lightmaps_info[i].lightmap_block_BR[j].X = materials_used[i].blocks[j].LowerRightCorner.X - 1;
-                model.lightmaps_info[i].lightmap_block_BR[j].Y = materials_used[i].blocks[j].LowerRightCorner.Y - 1;
+                model.lightmaps_info[i].faces[j] = face_number_ref[materials_used[i].records[j].face];
+                model.lightmaps_info[i].lightmap_block_UL[j].X = materials_used[i].records[j].block.UpperLeftCorner.X + 0;
+                model.lightmaps_info[i].lightmap_block_UL[j].Y = materials_used[i].records[j].block.UpperLeftCorner.Y + 0;
+                model.lightmaps_info[i].lightmap_block_BR[j].X = materials_used[i].records[j].block.LowerRightCorner.X - 0;
+                model.lightmaps_info[i].lightmap_block_BR[j].Y = materials_used[i].records[j].block.LowerRightCorner.Y - 0;
             }
         }
 

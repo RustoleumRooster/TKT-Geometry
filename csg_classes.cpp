@@ -48,7 +48,7 @@ core::vector3df poly_face::getOrientingNormal() const
         return m_normal;*/
 }
 
-void poly_face::get3DBoundingQuad(vector3df* points) const
+void poly_face::get3DBoundingQuad(vector3df* points, int v0_idx) const
 {
     vector3df bitan = m_normal.crossProduct(m_tangent);
 
@@ -56,20 +56,26 @@ void poly_face::get3DBoundingQuad(vector3df* points) const
     //  |        |
     //  |        |
     //  v3------v2
+    vector3df v[4];
 
-    vector3df v0 = m_center + m_tangent * bbox2d.UpperLeftCorner.X +
+    v[0] = m_center + m_tangent * bbox2d.UpperLeftCorner.X +
         bitan * bbox2d.UpperLeftCorner.Y;
 
-    vector3df v1 = m_center + m_tangent * bbox2d.UpperLeftCorner.X +
+    v[1] = m_center + m_tangent * bbox2d.UpperLeftCorner.X +
         bitan * bbox2d.LowerRightCorner.Y;
 
-    vector3df v2 = m_center + m_tangent * bbox2d.LowerRightCorner.X +
+    v[2] = m_center + m_tangent * bbox2d.LowerRightCorner.X +
         bitan * bbox2d.LowerRightCorner.Y;
 
-    vector3df v3 = m_center + m_tangent * bbox2d.LowerRightCorner.X +
+    v[3] = m_center + m_tangent * bbox2d.LowerRightCorner.X +
         bitan * bbox2d.UpperLeftCorner.Y;
+    
+    points[0] = v[(4 - v0_idx) % 4];
+    points[1] = v[(5 - v0_idx) % 4];
+    points[2] = v[(6 - v0_idx) % 4];
+    points[3] = v[(7 - v0_idx) % 4];
 
-    if (vector3df(v1 - v0).getLength() > vector3df(v3 - v0).getLength())
+    /*if (vector3df(v1 - v0).getLength() > vector3df(v3 - v0).getLength())
     {
         points[0] = v0;
         points[1] = v1;
@@ -82,7 +88,7 @@ void poly_face::get3DBoundingQuad(vector3df* points) const
         points[1] = v0;
         points[2] = v1;
         points[3] = v2;
-    }
+    }*/
 
 }
 
@@ -156,6 +162,7 @@ void polyfold::calc_tangent(int f_i)
             best_area = area;
 
             if ((umax - umin) < (vmax - vmin))
+            //    if(false)
             {
                 best_tan = faces[f_i].m_normal.crossProduct(tan);
                 best_bitan = tan;
@@ -175,7 +182,7 @@ void polyfold::calc_tangent(int f_i)
     vector3df new_center = faces[f_i].m_center;
 
     recenter_box(best_tan, best_bitan, best_box, new_center);
-    
+
     faces[f_i].bbox2d = best_box;
     faces[f_i].m_tangent = best_tan;
     faces[f_i].m_center = new_center;
@@ -1217,12 +1224,10 @@ void polyfold::build_vertices_BVH()
     vertices_BVH.build(vertices.data(), vertices.size());
 }
 
-
-
-surface_group polyfold::getFaceSurfaceGroup(int f_i)
+surface_group* polyfold::getFaceSurfaceGroup(int f_i)
 {
     int sfg = this->faces[f_i].surface_group;
-    return this->surface_groups[sfg];
+    return &this->surface_groups[sfg];
 }
 
 bool polyfold::getSurfaceVectors(int f_i,core::vector3df &a, core::vector3df &b)

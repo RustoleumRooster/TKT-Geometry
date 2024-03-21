@@ -53,7 +53,6 @@ void MeshNode_Interface::refresh_material_groups(geometry_scene* geo_scene)
 
         pf->faces[f_i].material_group = geo_scene->elements[brush_j].brush.faces[face_j].material_group;
         pf->faces[f_i].texture_name = geo_scene->elements[brush_j].brush.faces[face_j].texture_name;
-        pf->faces[f_i].temp_b = false;
 
         if(pf->faces[f_i].loops.size() > 0)
         {
@@ -91,8 +90,13 @@ void MeshNode_Interface::refresh_material_groups(geometry_scene* geo_scene)
 
     for (int i = 0; i < materials_used.size(); i++)
     {
-       // std::cout << i << ": " << materials_used[i].texture->getName().getPath().c_str() << " ";
-       // std::cout << materials_used[i].faces.size() << " faces, LM ";
+        std::cout << i << ": " << materials_used[i].texture->getName().getPath().c_str() << " ";
+        std::cout << materials_used[i].records.size() << " records, LM \n";
+        for (int j = 0; j < materials_used[i].records.size(); j++)
+        {
+            std::cout <<" "<< materials_used[i].records[j].face << ": ";
+            std::cout <<" "<< materials_used[i].records[j].block.UpperLeftCorner.X << "/" << materials_used[i].records[j].block.LowerRightCorner.X << "\n";
+        }
        // std::cout << materials_used[i].lightmap_size << "x" << materials_used[i].lightmap_size << "\n";
     }
 
@@ -558,15 +562,15 @@ public:
     core::vector3df iY;
     core::vector3df r0;
 
-    void init(polyfold* pf_,surface_group sfg)
+    void init(polyfold* pf_,surface_group* sfg)
     {
         pf = pf_;
 
-        v0 = sfg.vec1;
-        iY = sfg.vec.crossProduct(sfg.vec1);
+        v0 = sfg->vec1;
+        iY = sfg->vec.crossProduct(sfg->vec1);
         iY.normalize();
 
-        r0 = sfg.point;
+        r0 = sfg->point;
     }
     virtual triangle_holder get_triangles(std::vector<int> surface)
     {
@@ -630,6 +634,11 @@ void MeshNode_Interface_Final::generate_mesh_buffer(geometry_scene* geo_scene, S
 
 	//std::cout<<"geometry uses "<<materials_used.size()<<" material groups\n";
 
+    for (int f_i = 0; f_i < pf->faces.size(); f_i++)
+    {
+        pf->faces[f_i].temp_b = false;
+    }
+
 	this->face_to_mb_buffer.assign(pf->faces.size(),-1);
 	this->face_to_mb_begin.assign(pf->faces.size(),0);
 	this->face_to_mb_end.assign(pf->faces.size(),0);
@@ -648,15 +657,17 @@ void MeshNode_Interface_Final::generate_mesh_buffer(geometry_scene* geo_scene, S
 
         std::vector<triangle_holder> triangle_groups;
         //for(int f_i =0 ;f_i<pf->faces.size(); f_i++)
-        for(int f_i : materials_used[t_i].faces)
+        for(auto rec : materials_used[t_i].records)
         {
+            int f_i = rec.face;
+
             if(pf->faces[f_i].loops.size() > 0 && pf->faces[f_i].temp_b==false)
             {
                 video::ITexture* tex_j = driver->getTexture(pf->faces[f_i].texture_name.c_str());
 
                 if(tex_j == materials_used[t_i].texture && pf->faces[f_i].material_group == materials_used[t_i].materialGroup)
                 {
-                    switch(pf->getFaceSurfaceGroup(f_i).type)
+                    switch(pf->getFaceSurfaceGroup(f_i)->type)
                     {
                     case SURFACE_GROUP_STANDARD:
                     case SURFACE_GROUP_CUSTOM_UVS_BRUSH:
@@ -733,13 +744,13 @@ void MeshNode_Interface_Final::generate_mesh_buffer(geometry_scene* geo_scene, S
 
         make_meshbuffer_from_triangles(triangle_groups,buffer);
 
-       // std::cout<<"buffer "<<t_i<<" has "<<buffer->getVertexCount()<<" vertices and "<<buffer->getIndexCount()<<" indices\n";
+        //std::cout<<"buffer "<<t_i<<" has "<<buffer->getVertexCount()<<" vertices and "<<buffer->getIndexCount()<<" indices\n";
         tot_i+=buffer->getIndexCount();
         tot_v+=buffer->getVertexCount();
         materials_used[t_i].n_vertexes = buffer->getVertexCount();
 
         mesh->addMeshBuffer(buffer);
     }   //material groups (unique textures used)
-   // std::cout<<materials_used.size()<<" buffers with "<<tot_v<<" vertices and "<<tot_i<<" indices\n";
+    std::cout<<materials_used.size()<<" buffers with "<<tot_v<<" vertices and "<<tot_i<<" indices\n";
     geo_scene->setFinalMeshDirty(false);
 }

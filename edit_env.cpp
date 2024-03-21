@@ -509,6 +509,12 @@ bool MyEventReceiver::OnEvent(const SEvent& event)
                         ListReflectedNodes_Tool::show();
                         break;
                     case GUI_ID_BUTTON_LIGHTS:
+                       // Save_Geometry_File::Export("/export");
+                        Save_Geometry_File* save = new Save_Geometry_File(g_scene, false);
+                        save->Export("../projects/export");
+                        //MyEventReceiver* receiver = (MyEventReceiver*)device->getEventReceiver();
+                        //receiver->UnRegisterFromInsideEvent(save);
+                        delete save;
                         break;
                 }
             }

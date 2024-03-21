@@ -24,6 +24,13 @@ struct MeshBuffer_Chunk
 
 struct TextureMaterial
 {
+    struct lightmap_record
+    {
+        int face;
+        int face_v0_index;
+        rect<u16> block;
+    };
+
     video::ITexture* texture;
     int materialGroup;
     int n_faces;
@@ -33,8 +40,12 @@ struct TextureMaterial
     int lightmap_size;
 
     std::vector<int> faces;
-    std::vector<core::rect<u16>> blocks;
+    //std::vector<core::rect<u16>> blocks;
+    //std::vector<int> face_v0_index;
+
+    std::vector<lightmap_record> records;
 };
+
 
 class MeshNode_Interface
 {
