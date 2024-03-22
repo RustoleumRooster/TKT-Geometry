@@ -294,7 +294,7 @@ void geometry_scene::subtract(polyfold pf)
 void geometry_scene::build_intersecting_target(const polyfold& pf, polyfold& out)
 {
     std::vector<polyfold*> polies;
-    //std::vector<int> touched_brushes;
+
     int num = 0;
     for (int j = 1; j < elements.size(); j++)
     {
@@ -308,8 +308,6 @@ void geometry_scene::build_intersecting_target(const polyfold& pf, polyfold& out
                 //this->elements[j].geometry.faces[f_j].original_brush = j;
                 //this->elements[j].geometry.faces[f_j].original_face = this->elements[j].geometry.faces[f_j].surface_group;
             }
-
-            //touched_brushes.push_back(j);
 
             polies.push_back(&elements[j].geometry);
 

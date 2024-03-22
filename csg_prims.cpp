@@ -278,6 +278,8 @@ polyfold make_cylinder(int height, int radius, int faces)
     sg.point = get_center(pf);
     sg.vec = core::vector3df(0,1,0);
     sg.vec1 = core::vector3df(0,0,1);
+    sg.height = height;
+    sg.radius = radius;
 
     pf.surface_groups.push_back(sg);
 

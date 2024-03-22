@@ -1769,6 +1769,14 @@ void TestPanel_3D::SetViewStyle(s32 vtype)
         {
         //std::cout << "loops\n";
         bShowGeometry=true;
+        graph.lines.clear();
+        graph2.lines.clear();
+        graph3.lines.clear();
+
+        for (geo_element el : geo_scene->elements)
+        {
+            el.geometry.addDrawLinesEdges(graph2);
+        }
 
         geo_scene->drawGraph(graph);
 

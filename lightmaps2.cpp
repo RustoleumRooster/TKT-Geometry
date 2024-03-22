@@ -13,15 +13,21 @@ using namespace core;
 
 class map_cylinder_to_uv
 {
-	vector3df iY,v0,v1,r0;
-
 public:
+
+	vector3df iY,v0,v1,r0;
+	f32 m_height, m_radius;
+
+	f32 height() { return m_height; }
+	f32 width() { return m_radius * 2 * 3.14; }
 
 	void init(const surface_group* sg)
 	{
 		r0 = sg->point;
 		v0 = sg->vec;
 		v1 = sg->vec1;
+		m_height = sg->height;
+		m_radius = sg->radius;
 
 		iY = v0.crossProduct(v1);
 		iY.normalize();
@@ -59,6 +65,8 @@ class map_sphere_to_uv
 
 public:
 	map_sphere_to_uv() {}
+	f32 width() { return 16; }
+	f32 height() { return 16; }
 
 	void init(surface_group* sg)
 	{
@@ -102,6 +110,9 @@ class map_dome_to_uv
 
 public:
 
+	f32 width() { return 16; }
+	f32 height() { return 16; }
+
 	void init(surface_group* sg)
 	{
 		sfg = sg;
@@ -123,25 +134,23 @@ public:
 	}
 };
 
+f32 reduce_dimension_base2(f32 dim, int n = 1)
+{
+	double log_width = log2(dim);
+	u16 lwi = static_cast<u16>(floor(log_width));
+	lwi -= n;
+	lwi = lwi > n ? lwi : n;
+
+	return exp2(lwi);
+}
 
 void guess_lightmaps_dimension(geometry_scene* geo_scene, int f_j)
 {
 	polyfold* pf = geo_scene->get_total_geometry();
 	poly_face* f = &pf->faces[f_j];
 
-	//std::cout << f_j << " " << f->bbox2d.getWidth() << "," << f->bbox2d.getHeight() << "\n";
-
-	double log_width = log2(f->bbox2d.getWidth());
-	u16 lwi = static_cast<u16>(floor(log_width));
-	lwi -= 2;
-	lwi = lwi > 2 ? lwi : 2;
-
-	double log_height = log2(f->bbox2d.getHeight());
-	u16 lhi = static_cast<u16>(floor(log_height));
-	lhi -= 2;
-	lhi = lhi > 2 ? lhi : 2;
-
-	f->lightmap_dim = dimension2du(exp2(lwi), exp2(lhi));
+	f->lightmap_dim = dimension2du(reduce_dimension_base2(f->bbox2d.getWidth(),2), 
+		reduce_dimension_base2(f->bbox2d.getHeight(),2));
 }
 
 struct texture_block2
@@ -424,14 +433,17 @@ void initialize_special_block(geometry_scene* geo_scene, int f_i, back_type ret,
 	std::vector<int> surface = geo_scene->getSurfaceFromFace(f_i);
 	lm_block b;
 	b.face = -1;
-	b.width = 64;
-	b.height = 64;
-	extent_2D ex;
-
 	polyfold* pf = geo_scene->get_total_geometry();
 
 	surface_group* sfg = pf->getFaceSurfaceGroup(f_i);
 	mapper.init(sfg);
+
+	b.width = reduce_dimension_base2(mapper.width(),2);
+	b.height = reduce_dimension_base2(mapper.height(),2);
+
+	extent_2D ex;
+
+	std::cout << "h=" << b.height << ", w=" << b.width << "\n";
 
 	for (int b_i : surface)
 	{
@@ -455,9 +467,19 @@ void initialize_special_block(geometry_scene* geo_scene, int f_i, back_type ret,
 
 			sb.v0_index = 0;
 
+			int rect_target_corner;
+
+			if (b.width > b.height)
+			{
+				rect_target_corner = 0;
+			}
+			else
+				rect_target_corner = 1;
+
+
 			for (int i = 0; i < 3; i++)
 			{
-				vector2df v0 = mapper.calc(pf->faces[b_i].m_normal, points[1]);
+				vector2df v0 = mapper.calc(pf->faces[b_i].m_normal, points[rect_target_corner]);
 
 				if (fabs(v0.X - sex.min_x) < 0.00001 && fabs(v0.Y - sex.min_y) < 0.00001)
 					break;
@@ -563,6 +585,7 @@ void initialize_block(geometry_scene* geo_scene, int f_i, back_type ret)
 		} break;
 		case SURFACE_GROUP_CYLINDER:
 		{
+			
 			map_cylinder_to_uv mapper;
 			initialize_special_block(geo_scene, f_i, ret, mapper);
 

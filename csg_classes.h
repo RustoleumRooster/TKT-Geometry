@@ -143,6 +143,8 @@ public:
     core::vector3df vec1 = core::vector3df(0,0,0);
     //std::vector<core::vector2df> texcoords;
     std::vector<point_texcoord> texcoords;
+    int height;
+    int radius;
     REFLECT()
 };
 
