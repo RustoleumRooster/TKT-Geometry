@@ -11,6 +11,7 @@ class geometry_scene;
 class scene::IMeshBuffer;
 
 void make_meshbuffer_from_triangles(const std::vector<triangle_holder>&, scene::IMeshBuffer*);
+void make_meshbuffer_from_triangles(const triangle_holder&, scene::IMeshBuffer*);
 
 void calculate_meshbuffer_uvs_cube(geometry_scene* g_scene, int b_i, int f_i, scene::IMeshBuffer* buffer);
 void calculate_meshbuffer_uvs_cylinder(geometry_scene* g_scene, int b_i, int f_i, scene::IMeshBuffer* buffer);

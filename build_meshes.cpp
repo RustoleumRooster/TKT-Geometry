@@ -62,6 +62,57 @@ void make_meshbuffer_from_triangles(const std::vector<triangle_holder>& triangle
     buffer->recalculateBoundingBox();
 }
 
+void make_meshbuffer_from_triangles(const triangle_holder& t_h, scene::IMeshBuffer* buffer)
+{
+    if (!buffer)
+        return;
+
+    f32 pi = 3.141592653;
+
+    core::array<video::S3DVertex2TCoords>* Vertices = (core::array<video::S3DVertex2TCoords>*) & ((scene::CMeshBuffer<video::S3DVertex2TCoords>*)buffer)->Vertices;
+    core::array<u16>* Indices = (core::array<u16>*) & ((scene::CMeshBuffer<video::S3DVertex2TCoords>*)buffer)->Indices;
+
+    Vertices->clear();
+    Indices->clear();
+
+    std::vector<core::vector3df> vecs;
+    std::vector<u16> inds;
+
+    int index_count = 0;
+    int vertex_total = 0;
+
+    for (core::vector3df v : t_h.vertices)
+    {
+        vecs.push_back(v);
+    }
+
+    for (triangle T : t_h.triangles)
+    {
+        inds.push_back(T.A + vertex_total);
+        inds.push_back(T.B + vertex_total);
+        inds.push_back(T.C + vertex_total);
+    }
+    vertex_total = vecs.size();
+
+    Vertices->reallocate(vecs.size());
+    Indices->reallocate(inds.size());
+
+    for (core::vector3df v : vecs)
+    {
+        video::S3DVertex2TCoords vtx;
+        vtx.Color.set(255, 255, 255, 255);
+        vtx.Pos = v;
+        Vertices->push_back(vtx);
+    }
+
+    for (u16 index : inds)
+    {
+        Indices->push_back(index);
+    }
+
+    buffer->recalculateBoundingBox();
+}
+
 
 void calculate_meshbuffer_uvs_cylinder(geometry_scene* g_scene, int e_i, int f_i, scene::IMeshBuffer* buffer)
 {
@@ -196,8 +247,8 @@ void calculate_meshbuffer_uvs_sphere(geometry_scene* g_scene, int e_i, int f_i, 
 
     video::S3DVertex2TCoords* vtx;
 
-    core::vector3df vec3 = sfg.vec.crossProduct(sfg.vec1);
-    vec3.normalize();
+    //core::vector3df vec3 = sfg.vec.crossProduct(sfg.vec1);
+    //vec3.normalize();
 
     for (int i = v_start; i < v_end; i++)
     {
