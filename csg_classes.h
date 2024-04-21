@@ -164,7 +164,7 @@ class poly_face
     int texture_index;    //for serialization only
     int lightmap_index = -1;
     int lightmap_res = 128; //deprecated
-    dimension2du lightmap_dim; //not reflected
+    //dimension2du lightmap_dim; //not reflected
 
     int original_face=0;
     int original_brush=0;
@@ -383,7 +383,7 @@ class polyfold
 
     //========================================
     // Trianglize
-    triangle_holder trianglize(int face_i, scene::SMeshBuffer*, LineHolder &graph, LineHolder&);
+    void trianglize(int face_i, triangle_holder&, scene::SMeshBuffer*, LineHolder &graph, LineHolder&);
 
     //========================================
     // Helpful functions for clipping
