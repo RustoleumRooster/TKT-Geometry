@@ -174,7 +174,11 @@ public:
     int selected_brush_vertex_editing;
     void drawGraph(LineHolder& graph);
 
+    triangle_holder* get_triangles_for_face(int f_i);
+
 private:
+    
+    void trianglize_total_geometry();
     void generate_meshes();
     void build_total_geometry();
     void set_originals();
@@ -211,6 +215,8 @@ private:
     bool b_isEditNode = false;
     bool b_dynamic_light = false;
     bool final_mesh_dirty = false;
+
+    std::vector<triangle_holder> total_geometry_triangles;
 
     REFLECT()
 

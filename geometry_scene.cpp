@@ -596,10 +596,36 @@ void geometry_scene::drawGraph(LineHolder& graph)
     graph = intersections_graph;
 }
 
+triangle_holder* geometry_scene::get_triangles_for_face(int f_i)
+{
+    return &total_geometry_triangles[f_i];
+}
+
+void geometry_scene::trianglize_total_geometry()
+{
+    LineHolder nograph;
+    polyfold* pf = get_total_geometry();
+
+    total_geometry_triangles.clear();
+
+    total_geometry_triangles.resize(pf->faces.size());
+
+    for (int i = 0; i < pf->faces.size(); i++)
+    {
+        if (pf->faces[i].loops.size() > 0)
+        {
+            pf->trianglize(i, total_geometry_triangles[i], NULL, nograph, nograph);
+        }
+    }
+}
 
 void geometry_scene::generate_meshes()
 {
+    trianglize_total_geometry();
+
     edit_meshnode_interface.generate_mesh_node(this);
+
+    final_meshnode_interface.refresh_material_groups(this);
     final_meshnode_interface.generate_mesh_node(this);
 }
 
@@ -644,6 +670,7 @@ void geometry_scene::buildSceneGraph(bool finalMesh, bool addObjects, bool addLi
     if (final_mesh_dirty)
     {
         //std::cout << "regenerating final mesh...\n";
+        final_meshnode_interface.refresh_material_groups(this);
         final_meshnode_interface.generate_mesh_node(this);
     }
 

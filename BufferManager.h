@@ -58,9 +58,8 @@ public:
 
     void init(scene::ISceneManager* smgr_,video::IVideoDriver* driver_,MyEventReceiver* receiver,video::E_MATERIAL_TYPE base_material_type_, video::E_MATERIAL_TYPE special_material_type_);
 
-    void refresh_material_groups(geometry_scene* geo_scene);
-    void generate_mesh_node(geometry_scene* geo_scene);
-    virtual MeshBuffer_Chunk get_mesh_buffer_by_face(int f_i)=0;
+    virtual void generate_mesh_node(geometry_scene* geo_scene) = 0;
+    virtual MeshBuffer_Chunk get_mesh_buffer_by_face(int f_i) = 0;
 
     scene::SMesh* getMesh() { return m_mesh; }
 
@@ -99,7 +98,7 @@ protected:
 class MeshNode_Interface_Edit : public MeshNode_Interface
 {
 public:
-
+    void generate_mesh_node(geometry_scene* geo_scene);
     virtual MeshBuffer_Chunk get_mesh_buffer_by_face(int f_i);
     int get_buffer_index_by_face(int i);
 
@@ -115,13 +114,17 @@ class MeshNode_Interface_Final : public MeshNode_Interface
 {
 public:
 
-   virtual  MeshBuffer_Chunk get_mesh_buffer_by_face(int f_i);
-   int get_buffer_index_by_face(int f_i);
+    
+    void generate_mesh_node(geometry_scene* geo_scene);
+
+    virtual  MeshBuffer_Chunk get_mesh_buffer_by_face(int f_i);
+    int get_buffer_index_by_face(int f_i);
   // int get_material_reference_face(int material_group){return mg_to_reference_face[material_group];}
 
 protected:
-
+    void refresh_material_groups(geometry_scene* geo_scene);
     virtual void generate_mesh_buffer(geometry_scene* geo_scene,SMesh*);
+    void copy_lightmap_uvs(geometry_scene* geo_scene);
 
     std::vector<int> face_to_mb_buffer;
     std::vector<int> face_to_mb_begin;

@@ -40,7 +40,7 @@ MeshNode_Interface::~MeshNode_Interface()
         this->m_mesh->drop();
 }
 
-void MeshNode_Interface::refresh_material_groups(geometry_scene* geo_scene)
+void MeshNode_Interface_Final::refresh_material_groups(geometry_scene* geo_scene)
 {
     materials_used.clear();
 
@@ -53,11 +53,6 @@ void MeshNode_Interface::refresh_material_groups(geometry_scene* geo_scene)
 
         pf->faces[f_i].material_group = geo_scene->elements[brush_j].brush.faces[face_j].material_group;
         pf->faces[f_i].texture_name = geo_scene->elements[brush_j].brush.faces[face_j].texture_name;
-
-        if(pf->faces[f_i].loops.size() > 0)
-        {
-            guess_lightmaps_dimension(geo_scene, f_i);
-        }
     }
 
     for (int f_i = 0; f_i < pf->faces.size(); f_i++)
@@ -86,8 +81,8 @@ void MeshNode_Interface::refresh_material_groups(geometry_scene* geo_scene)
         }
     }
 
-    lightmaps_divideMaterialGroups2(geo_scene, materials_used);
-
+    lightmaps_divideMaterialGroups(geo_scene, materials_used);
+    /*
     for (int i = 0; i < materials_used.size(); i++)
     {
         std::cout << i << ": " << materials_used[i].texture->getName().getPath().c_str() << " ";
@@ -98,22 +93,36 @@ void MeshNode_Interface::refresh_material_groups(geometry_scene* geo_scene)
             std::cout <<" "<< materials_used[i].records[j].block.UpperLeftCorner.X << "/" << materials_used[i].records[j].block.LowerRightCorner.X << "\n";
         }
        // std::cout << materials_used[i].lightmap_size << "x" << materials_used[i].lightmap_size << "\n";
-    }
+    }*/
 
 }
 
-void MeshNode_Interface::generate_mesh_node(geometry_scene* geo_scene)
+void MeshNode_Interface_Edit::generate_mesh_node(geometry_scene* geo_scene)
 {
     if(m_mesh)
         m_mesh->drop();
 
     this->m_mesh = new scene::SMesh;
-   
-    refresh_material_groups(geo_scene);
 
     this->generate_mesh_buffer(geo_scene,m_mesh);
 
     this->generate_uvs(geo_scene);
+}
+
+void MeshNode_Interface_Final::generate_mesh_node(geometry_scene* geo_scene)
+{
+    if (m_mesh)
+        m_mesh->drop();
+
+    this->m_mesh = new scene::SMesh;
+
+    refresh_material_groups(geo_scene);
+
+    this->generate_mesh_buffer(geo_scene, m_mesh);
+
+    this->generate_uvs(geo_scene);
+
+    copy_lightmap_uvs(geo_scene);
 }
 
 CMeshSceneNode* MeshNode_Interface::addMeshSceneNode(scene::ISceneManager* smgr0,geometry_scene* geo_scene)
@@ -132,11 +141,6 @@ CMeshSceneNode* MeshNode_Interface::addMeshSceneNode(scene::ISceneManager* smgr0
 void MeshNode_Interface_Edit::generate_mesh_buffer(geometry_scene* geo_scene, SMesh* mesh)
 {
     scene::IMeshBuffer* buffer;
-
-    //EVT_2TCOORDS,  S3DVertex2TCoords
-    //EIT_16BIT = 0,
-    //EIT_32BIT
-    //
 
     int b_count=0;
     int i_count=0;
@@ -157,11 +161,7 @@ void MeshNode_Interface_Edit::generate_mesh_buffer(geometry_scene* geo_scene, SM
 
         this->face_to_mb_buffer.push_back(b_count);
 
-        std::vector<triangle_holder> triangles;
-
-        triangle_holder th = pf->trianglize(f_i,NULL,nograph,nograph);
-
-        triangles.push_back(th);
+        const triangle_holder& th = *geo_scene->get_triangles_for_face(f_i);
 
         buffer = new scene::CMeshBuffer<video::S3DVertex2TCoords>();
 
@@ -169,12 +169,10 @@ void MeshNode_Interface_Edit::generate_mesh_buffer(geometry_scene* geo_scene, SM
         //buffer->Material.setTexture(0,driver->getTexture(pf->faces[f_i].texture_name.c_str()));
         //geo_scene->getMaterialGroupsBase()->apply_material_to_buffer(buffer,pf->faces[f_i].material_group,geo_scene->DynamicLightEnabled());
 
-        make_meshbuffer_from_triangles(triangles,buffer);
+        make_meshbuffer_from_triangles(th,buffer);
         mesh->addMeshBuffer(buffer);
 
         b_count++;
-        //i_count+=buffer->Indices.size();
-        //v_count+=buffer->Vertices.size();
 
         i_count += buffer->getIndexCount();
         v_count += buffer->getVertexCount();
@@ -534,7 +532,7 @@ int MeshNode_Interface_Final::get_buffer_index_by_face(int i)
 class trianglizer_base
 {
 public:
-    polyfold* pf = NULL;
+    geometry_scene* geo_scene = NULL;
     virtual triangle_holder get_triangles(std::vector<int>) {triangle_holder th; return th;}
     virtual triangle_holder get_triangles(int) {triangle_holder th; return th;}
 };
@@ -542,14 +540,14 @@ public:
 class trianglizer_vanilla : public trianglizer_base
 {
 public:
-    void init(polyfold* pf_)
+    void init(geometry_scene* g)
     {
-        pf = pf_;
+        geo_scene = g;
     }
-    virtual triangle_holder get_triangles(int f_i)
+    virtual void get_triangles(int f_i, triangle_holder* th)
     {
         LineHolder nograph;
-        return pf->trianglize(f_i,NULL,nograph,nograph);
+        th = geo_scene->get_triangles_for_face(f_i);
     }
 };
 
@@ -562,9 +560,9 @@ public:
     core::vector3df iY;
     core::vector3df r0;
 
-    void init(polyfold* pf_,surface_group* sfg)
+    void init(geometry_scene* gs,surface_group* sfg)
     {
-        pf = pf_;
+        geo_scene = gs;
 
         v0 = sfg->vec1;
         iY = sfg->vec.crossProduct(sfg->vec1);
@@ -572,22 +570,22 @@ public:
 
         r0 = sfg->point;
     }
-    virtual triangle_holder get_triangles(std::vector<int> surface)
+    virtual void get_triangles(const std::vector<int>& surface, triangle_holder& ret)
     {
         LineHolder nograph;
-        triangle_holder ret;
 
         int c0=0;
         int c1=0;
 
         for(int b_i : surface)
         {
-            triangle_holder th = pf->trianglize(b_i,NULL,nograph,nograph);
+            triangle_holder* th;
+            th = geo_scene->get_triangles_for_face(b_i);
 
             std::vector<int> indexes;
-            for(int i=0;i<th.vertices.size();i++)
+            for(int i=0;i<th->vertices.size();i++)
             {
-                core::vector3df r = th.vertices[i]-r0;
+                core::vector3df r = th->vertices[i]-r0;
 
                 core::vector2df k;
                 k.X = r.dotProduct(v0);
@@ -597,18 +595,18 @@ public:
 
                 if(fabs(theta-360.0)<0.001  ||  fabs(theta) < 0.001)
                 {
-                    ret.vertices.push_back(th.vertices[i]);
+                    ret.vertices.push_back(th->vertices[i]);
                     indexes.push_back(ret.vertices.size()-1);
                     c1++;
                 }
                 else
                 {
-                    indexes.push_back(ret.get_point_or_add( th.vertices[i] ));
+                    indexes.push_back(ret.get_point_or_add( th->vertices[i] ));
                     c0++;
                 }
             }
 
-            for(const triangle &T : th.triangles)
+            for(const triangle &T : th->triangles)
             {
                 triangle new_T;
                 new_T.A = indexes[T.A];
@@ -616,12 +614,12 @@ public:
                 new_T.C = indexes[T.C];
                 ret.triangles.push_back(new_T);
             }
-            ret.f_index.push_back(th.triangles.size());
+            ret.f_index.push_back(th->triangles.size());
         }
 
        // std::cout<<" "<<c0 <<" fungible vertices, "<<c1<<" unique vertices\n";
 
-        return ret;
+       // return ret;
     }
 };
 
@@ -656,7 +654,7 @@ void MeshNode_Interface_Final::generate_mesh_buffer(geometry_scene* geo_scene, S
         int total_indices=0;
 
         std::vector<triangle_holder> triangle_groups;
-        //for(int f_i =0 ;f_i<pf->faces.size(); f_i++)
+
         for(auto rec : materials_used[t_i].records)
         {
             int f_i = rec.face;
@@ -673,13 +671,13 @@ void MeshNode_Interface_Final::generate_mesh_buffer(geometry_scene* geo_scene, S
                     case SURFACE_GROUP_CUSTOM_UVS_BRUSH:
                     case SURFACE_GROUP_CUSTOM_UVS_GEOMETRY:
                         {
-                            triangle_holder th = pf->trianglize(f_i,NULL,nograph,nograph);
-                            triangle_groups.push_back(th);
+                            triangle_holder* th = geo_scene->get_triangles_for_face(f_i);
+                            triangle_groups.push_back(*th);
 
                             this->face_to_mb_buffer[f_i]=t_i;
                             this->face_to_mb_begin[f_i]=total_indices;
-                            this->face_to_mb_end[f_i]=total_indices+th.triangles.size()*3;
-                            total_indices+=th.triangles.size()*3;
+                            this->face_to_mb_end[f_i]=total_indices+th->triangles.size()*3;
+                            total_indices+=th->triangles.size()*3;
 
                             pf->faces[f_i].temp_b=true;
                         } break;
@@ -688,9 +686,9 @@ void MeshNode_Interface_Final::generate_mesh_buffer(geometry_scene* geo_scene, S
                         {
                             std::vector<int> sfg = geo_scene->getSurfaceFromFace(f_i);
 
-                            tri_sphere.init(pf,pf->getFaceSurfaceGroup(f_i));
-                            triangle_holder th = tri_sphere.get_triangles(sfg);
-
+                            tri_sphere.init(geo_scene,pf->getFaceSurfaceGroup(f_i));
+                            triangle_holder th;
+                            tri_sphere.get_triangles(sfg,th);
 
                             for(int i=0;i<sfg.size();i++)
                             {
@@ -710,8 +708,9 @@ void MeshNode_Interface_Final::generate_mesh_buffer(geometry_scene* geo_scene, S
                         {
                             std::vector<int> sfg = geo_scene->getSurfaceFromFace(f_i);
 
-                            tri_sphere.init(pf,pf->getFaceSurfaceGroup(f_i));
-                            triangle_holder th = tri_sphere.get_triangles(sfg);
+                            tri_sphere.init(geo_scene,pf->getFaceSurfaceGroup(f_i));
+                            triangle_holder th;
+                            tri_sphere.get_triangles(sfg, th);
 
                             for(int i=0;i<sfg.size();i++)
                             {
@@ -753,4 +752,28 @@ void MeshNode_Interface_Final::generate_mesh_buffer(geometry_scene* geo_scene, S
     }   //material groups (unique textures used)
     std::cout<<materials_used.size()<<" buffers with "<<tot_v<<" vertices and "<<tot_i<<" indices\n";
     geo_scene->setFinalMeshDirty(false);
+}
+
+void MeshNode_Interface_Final::copy_lightmap_uvs(geometry_scene* geo_scene)
+{
+    polyfold* pf = geo_scene->get_total_geometry();
+
+    for (int f_i = 0; f_i < pf->faces.size(); f_i++)
+    {
+        MeshBuffer_Chunk chunk0 = geo_scene->edit_meshnode_interface.get_mesh_buffer_by_face(f_i);
+        MeshBuffer_Chunk chunk1 = get_mesh_buffer_by_face(f_i);
+
+        int i, j;
+
+        for (i = chunk0.begin_i, j = chunk1.begin_i; i < chunk0.end_i && j < chunk1.end_i; i++, j++)
+        {
+            u16 idx0 = chunk0.buffer->getIndices()[i];
+            u16 idx1 = chunk1.buffer->getIndices()[j];
+
+            video::S3DVertex2TCoords* vtx0 = &((video::S3DVertex2TCoords*)chunk0.buffer->getVertices())[idx0];
+            video::S3DVertex2TCoords* vtx1 = &((video::S3DVertex2TCoords*)chunk1.buffer->getVertices())[idx1];
+
+            vtx1->TCoords2 = vtx0->TCoords2;
+        }
+    }
 }
