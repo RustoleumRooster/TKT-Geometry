@@ -6,6 +6,9 @@
 #include "geometry_scene.h"
 #include "BufferManager.h"
 #include "utils.h"
+#include "uv_mapping.h"
+
+using namespace std;
 
 UV_Editor_Base* UV_Editor_Tool::base = NULL;
 multi_tool_panel* UV_Editor_Tool::panel = NULL;
@@ -158,15 +161,22 @@ void UV_Editor_Base::show()
 
     if (g_scene->getSelectedFaces().size() > 0)
     {
-        int f_no = g_scene->getSelectedFaces()[0];
+       // int f_no = g_scene->getSelectedFaces()[0];
         polyfold* pf = g_scene->get_total_geometry();
 
         core::stringw texname = g_scene->get_original_brush_face(g_scene->getSelectedFaces()[0])->texture_name;
         my_texture = device->getVideoDriver()->getTexture(texname);
 
-        polyfold pf1 = make_face(pf, f_no, my_texture);
+        uv_poly.faces.clear();
+        uv_poly.vertices.clear();
+        uv_poly.edges.clear();
 
-        win->set_poly(pf1);
+        for (int f_i : g_scene->getSelectedFaces())
+        {
+            make_face(pf, f_i, my_texture);
+        }
+
+        win->set_poly(uv_poly);
 
         
 
@@ -274,7 +284,7 @@ void UV_Editor_Base::make_custom_surface_group(polyfold pf)
     }
 }
 
-polyfold  UV_Editor_Base::make_face(polyfold* pf_0, int f_no, video::ITexture* face_texture)
+void UV_Editor_Base::make_face(polyfold* pf_0, int f_no, video::ITexture* face_texture)
 {
     MeshBuffer_Chunk chunk = g_scene->edit_meshnode_interface.get_mesh_buffer_by_face(f_no);
 
@@ -282,7 +292,6 @@ polyfold  UV_Editor_Base::make_face(polyfold* pf_0, int f_no, video::ITexture* f
 
     original_face = pf_0->faces[f_no].original_face;
     original_brush = pf_0->faces[f_no].original_brush;
-
 
     scene::IMeshBuffer* buffer = chunk.buffer;
     if (buffer)
@@ -295,19 +304,17 @@ polyfold  UV_Editor_Base::make_face(polyfold* pf_0, int f_no, video::ITexture* f
 
        // std::cout << buffer->getIndexCount() << " indices\n";
 
-        u32* indices = (u32*)buffer->getIndices();
-        video::S3DVertex* vertices = (video::S3DVertex*)buffer->getVertices();
+        //u32* indices = (u32*)buffer->getIndices();
+       // video::S3DVertex* vertices = (video::S3DVertex2TCoords*)buffer->getVertices();
 
         int c = 0;
-
-        polyfold pf;
 
         use_geometry_brush = false;
 
         for (int i = chunk.begin_i; i < chunk.end_i; i ++)
         {
             u32 v0 = buffer->getIndices()[i];
-            video::S3DVertex* vtx0 = &((video::S3DVertex*)buffer->getVertices())[v0];
+            video::S3DVertex* vtx0 = &((video::S3DVertex2TCoords*)buffer->getVertices())[v0];
 
             if (source_brush->find_point(vtx0->Pos) == -1)
             {
@@ -332,59 +339,59 @@ polyfold  UV_Editor_Base::make_face(polyfold* pf_0, int f_no, video::ITexture* f
             u32 v1 = buffer->getIndices()[i + 1];
             u32 v2 = buffer->getIndices()[i + 2];
 
-            video::S3DVertex* vtx0 = &((video::S3DVertex*)buffer->getVertices())[v0];
-            video::S3DVertex* vtx1 = &((video::S3DVertex*)buffer->getVertices())[v1];
-            video::S3DVertex* vtx2 = &((video::S3DVertex*)buffer->getVertices())[v2];
+            video::S3DVertex2TCoords* vtx0 = &((video::S3DVertex2TCoords*)buffer->getVertices())[v0];
+            video::S3DVertex2TCoords* vtx1 = &((video::S3DVertex2TCoords*)buffer->getVertices())[v1];
+            video::S3DVertex2TCoords* vtx2 = &((video::S3DVertex2TCoords*)buffer->getVertices())[v2];
 
             core::vector3df pos(0, 0, 0);
 
-            pos.Z = -vtx0->TCoords.X * texture_size.Width;
-            pos.X = -vtx0->TCoords.Y * texture_size.Height;
-            int a = pf.get_point_or_add(pos);
+            pos.Z = -vtx0->TCoords2.X;// *texture_size.Width;
+            pos.X = -vtx0->TCoords2.Y;// *texture_size.Height;
+            int a = uv_poly.get_point_or_add(pos);
 
             int a_indx = source_brush->find_point(vtx0->Pos);
             vertex_index[a_indx] = a;
             
 
-            pos.Z = -vtx1->TCoords.X * texture_size.Width;
-            pos.X = -vtx1->TCoords.Y * texture_size.Height;
-            int b = pf.get_point_or_add(pos);
+            pos.Z = -vtx1->TCoords2.X;// *texture_size.Width;
+            pos.X = -vtx1->TCoords2.Y;// *texture_size.Height;
+            int b = uv_poly.get_point_or_add(pos);
 
             int b_indx = source_brush->find_point(vtx1->Pos);
             vertex_index[b_indx] = b;
 
-            pos.Z = -vtx2->TCoords.X * texture_size.Width;
-            pos.X = -vtx2->TCoords.Y * texture_size.Height;
-            int c = pf.get_point_or_add(pos);
+            pos.Z = -vtx2->TCoords2.X;// *texture_size.Width;
+            pos.X = -vtx2->TCoords2.Y;// *texture_size.Height;
+            int c = uv_poly.get_point_or_add(pos);
 
             int c_indx = source_brush->find_point(vtx2->Pos);
             vertex_index[c_indx] = c;
 
-            int e0 = pf.get_edge_or_add(a, b, 0);
-            int e1 = pf.get_edge_or_add(b, c, 0);
-            int e2 = pf.get_edge_or_add(a, c, 0);
+            int e0 = uv_poly.get_edge_or_add(a, b, 0);
+            int e1 = uv_poly.get_edge_or_add(b, c, 0);
+            int e2 = uv_poly.get_edge_or_add(a, c, 0);
         }
 
-        //std::cout << pf.edges.size() << " edges \n";
+        //std::cout << uv_poly.edges.size() << " edges \n";
 
-        for (int i = 0; i < pf.edges.size(); i++)
+        for (int i = 0; i < uv_poly.edges.size(); i++)
         {
-            int v_i0 = pf.edges[i].v0;
-            int v_i1 = pf.edges[i].v1;
+            int v_i0 = uv_poly.edges[i].v0;
+            int v_i1 = uv_poly.edges[i].v1;
 
-            core::vector3df v0 = pf.vertices[v_i0].V;
-            core::vector3df v1 = pf.vertices[v_i1].V;
+            core::vector3df v0 = uv_poly.vertices[v_i0].V;
+            core::vector3df v1 = uv_poly.vertices[v_i1].V;
 
             if (pf_0->find_edge(v0, v1) != -1)
             {
-                pf.edges[i].topo_group = 2;
+                uv_poly.edges[i].topo_group = 2;
             }
         }
 
         c = 0;
-        for (int i = 0; i < pf.edges.size(); i++)
+        for (int i = 0; i < uv_poly.edges.size(); i++)
         {
-            if (pf.edges[i].topo_group == 2)
+            if (uv_poly.edges[i].topo_group == 2)
                 c++;
         }
         //std::cout << c << " outside edges\n";
@@ -396,12 +403,7 @@ polyfold  UV_Editor_Base::make_face(polyfold* pf_0, int f_no, video::ITexture* f
        // std::cout << "\n";
         //for (int i = 0; i < pf.vertices.size(); i++)
         //    std::cout << pf.vertices[i].V.X << "," << pf.vertices[i].V.Z << "\n";
-                
-
-        return pf;
     }
-
-    return polyfold();
 }
 
 

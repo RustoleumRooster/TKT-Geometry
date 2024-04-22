@@ -645,6 +645,7 @@ polyfold make_sphere(int radius, int rad_faces, int zen_faces, bool simplify)
     sg.point = get_center(pf);
     sg.vec = core::vector3df(0,1,0);
     sg.vec1 = core::vector3df(0,0,1);
+    sg.radius = radius;
 
     pf.surface_groups.push_back(sg);
 

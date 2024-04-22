@@ -123,7 +123,7 @@ public:
 
 private:
 
-    polyfold make_face(polyfold* pf, int f_no, video::ITexture* face_texture);
+    void make_face(polyfold* pf, int f_no, video::ITexture* face_texture);
 
     video::ITexture* my_texture = NULL;
     std::vector<int> vertex_index;
@@ -133,6 +133,9 @@ private:
 
     int original_brush = -1;
     int original_face = -1;
+
+    polyfold uv_poly;
+
     //friend class UV_Editor_Tool;
 };
 
