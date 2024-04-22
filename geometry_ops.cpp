@@ -159,10 +159,10 @@ void geometry_scene::build_total_geometry()
     //std::cout << "total geometry created " << this->elements.size() << " elements\n";
 
     this->total_geometry = combo;
-    for (int i = 0; i < total_geometry.faces.size(); i++)
-    {
-        total_geometry.calc_tangent(i);
-    }
+    //for (int i = 0; i < total_geometry.faces.size(); i++)
+    //{
+    //    total_geometry.calc_tangent(i);
+    //}
 
     if (this->base_type == GEO_EMPTY)
         this->total_geometry.topology = TOP_CONVEX;

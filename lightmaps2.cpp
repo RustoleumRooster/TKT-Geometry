@@ -7,150 +7,20 @@
 #include <algorithm>
 #include <math.h>
 #include "BufferManager.h"
+#include "uv_mapping.h"
 
 using namespace irr;
 using namespace core;
-
-class map_cylinder_to_uv
-{
-public:
-
-	vector3df iY,v0,v1,r0;
-	f32 m_height, m_radius;
-
-	f32 height() { return m_height; }
-	f32 width() { return m_radius * 2 * 3.14; }
-
-	void init(const surface_group* sg)
-	{
-		r0 = sg->point;
-		v0 = sg->vec;
-		v1 = sg->vec1;
-		m_height = sg->height;
-		m_radius = sg->radius;
-
-		iY = v0.crossProduct(v1);
-		iY.normalize();
-	}
-
-	vector2df calc(const vector3df& face_normal, const vector3df& pos)
-	{
-		vector2df k;
-		vector3df r = pos - r0;
-
-		k.X = r.dotProduct(v1);
-		k.Y = r.dotProduct(iY);
-
-		f32 theta = k.getAngleTrig();
-
-		if (fabs(theta - 360.0) < 0.001 || fabs(theta) < 0.001)
-		{
-			if (face_normal.dotProduct(iY) * r.dotProduct(face_normal) > 0)
-				theta = 0.0;
-			else
-			{
-				theta = 360.0;
-			}
-		}
-
-		vector3df uv(theta / 90, pos.dotProduct(v0) / 128, 0);
-
-		return vector2df(-uv.X, uv.Y);
-	}
-};
-
-class map_sphere_to_uv
-{
-	surface_group* sfg = NULL;
-
-public:
-	map_sphere_to_uv() {}
-	f32 width() { return 16; }
-	f32 height() { return 16; }
-
-	void init(surface_group* sg)
-	{
-		sfg = sg;
-	}
-
-	vector2df calc(const vector3df& face_normal, const vector3df& pos)
-	{
-		core::vector3df r = pos - sfg->point;
-		r.normalize();
-		core::vector3df rr = sfg->vec.crossProduct(r);
-		rr.normalize();
-
-		f32 alpha = acos(r.dotProduct(sfg->vec));
-		f32 theta = acos(rr.dotProduct(sfg->vec1));
-		/*
-				if(fabs(alpha)<0.001 || fabs(alpha-pi)<0.001)
-					{
-						core::vector3df centerv(0,0,0);
-						for(int j=0;j<t_h.vertices.size();j++)
-						{
-							centerv += t_h.vertices[j];
-						}
-						centerv /= t_h.vertices.size();
-
-						r = centerv-t_h.surface_info.point;
-						r.normalize();
-						rr = t_h.surface_info.vec.crossProduct(r);
-						rr.normalize();
-						theta = acos(rr.dotProduct(t_h.surface_info.vec1));
-					}
-		*/
-		return vector2df(theta * 4.0 / 3.1459, alpha * 4.0 / 3.1459);
-	}
-};
-
-class map_dome_to_uv
-{
-	surface_group* sfg;
-	vector3df vec3;
-
-public:
-
-	f32 width() { return 16; }
-	f32 height() { return 16; }
-
-	void init(surface_group* sg)
-	{
-		sfg = sg;
-		vec3 = sfg->vec.crossProduct(sfg->vec1);
-		vec3.normalize();
-	}
-
-	vector2df calc(const vector3df& face_normal, const vector3df& pos)
-	{
-		core::vector3df r = pos - sfg->point;
-		r.normalize();
-		core::vector3df rr = sfg->vec.crossProduct(r);
-		rr.normalize();
-
-		f32 alpha = acos(r.dotProduct(sfg->vec));
-		f32 theta = rr.dotProduct(sfg->vec1);
-		f32 theta1 = rr.dotProduct(vec3);
-		return vector2df(alpha * theta, alpha * theta1);
-	}
-};
+using namespace std;
 
 f32 reduce_dimension_base2(f32 dim, int n = 1)
 {
 	double log_width = log2(dim);
 	u16 lwi = static_cast<u16>(floor(log_width));
 	lwi -= n;
-	lwi = lwi > n ? lwi : n;
+	lwi = lwi > 3 ? lwi : 3;
 
 	return exp2(lwi);
-}
-
-void guess_lightmaps_dimension(geometry_scene* geo_scene, int f_j)
-{
-	polyfold* pf = geo_scene->get_total_geometry();
-	poly_face* f = &pf->faces[f_j];
-
-	f->lightmap_dim = dimension2du(reduce_dimension_base2(f->bbox2d.getWidth(),2), 
-		reduce_dimension_base2(f->bbox2d.getHeight(),2));
 }
 
 struct texture_block2
@@ -257,102 +127,18 @@ struct texture_block2
 	}
 };
 
-
-template<typename out_Type>
-bool lightmaps_fill2(geometry_scene* geo_scene, std::vector<int>::iterator& faces_it, std::vector<int>::iterator faces_end, out_Type out, const TextureMaterial& copy_from)
-{
-	texture_block2 new_block(128);
-	texture_block2 face_block(128);
-
-	TextureMaterial ret;
-
-	ret.materialGroup = copy_from.materialGroup;
-	ret.texture = copy_from.texture;
-
-	auto ret_blocks_back = std::back_inserter(ret.blocks);
-	auto ret_faces_back = std::back_inserter(ret.faces);
-
-	rect<u16> my_block;
-
-	std::vector<int> face_stack;
-
-	for (; faces_it != faces_end; ++faces_it)
-	{
-		int f_i = *faces_it;
-
-		face_block.dimension = geo_scene->get_total_geometry()->faces[f_i].lightmap_dim;
-
-		if (!new_block.try_add(face_block))
-		{
-			*out = ret;
-			return false;
-		}
-
-		*ret_faces_back = f_i;
-		*ret_blocks_back = face_block.coords;
-
-		++ret_faces_back;
-		++ret_blocks_back;
-
-		ret.lightmap_size = new_block.dimension.Width;
-	}
-
-	*out = ret;
-
-	return true;
-}
-
 struct lm_block
 {
-	int face;
-	int v0_index;
+	std::vector<int> faces;
 	u32 width;
 	u32 height;
-	f32 offset_x;
-	f32 offset_y;
-	f32 uv_width;
-	f32 uv_height;
-	std::vector<lm_block> subblocks;
+	bool bFlipped = false;
 };
-
-struct extent_2D
-{
-	int n = 0;
-	f32 min_x;
-	f32 min_y;
-	f32 max_x;
-	f32 max_y;
-
-	void extend(f32 x, f32 y)
-	{
-		if (n == 0)
-		{
-			min_x = max_x = x;
-			min_y = max_y = y;
-		}
-		else
-		{
-			min_x = fmin(min_x, x);
-			max_x = fmax(max_x, x);
-			min_y = fmin(min_y, y);
-			max_y = fmax(max_y, y);
-		}
-		n++;
-	}
-	void extend(vector2df v)
-	{
-		extend(v.X, v.Y);
-	}
-
-	f32 width() const { return max_x - min_x; }
-	f32 height() const { return max_y - min_y; }
-};
-
 
 template<typename out_Type>
-bool lightmaps_fill3(geometry_scene* geo_scene, std::vector<lm_block>::iterator& blocks_it, std::vector<lm_block>::iterator blocks_end, out_Type out, const TextureMaterial& copy_from)
+bool lightmaps_fill(geometry_scene* geo_scene, std::vector<lm_block>::iterator& blocks_it, std::vector<lm_block>::iterator blocks_end, out_Type out, const TextureMaterial& copy_from)
 {
-	texture_block2 new_block(128);
+	texture_block2 new_block(256);
 	texture_block2 face_block(128);
 
 	TextureMaterial ret;
@@ -364,6 +150,12 @@ bool lightmaps_fill3(geometry_scene* geo_scene, std::vector<lm_block>::iterator&
 
 	rect<u16> my_block;
 
+	matrix4 flip_mat   (0, 1, 0, 0,
+						1, 0, 0, 0,
+						0, 0, 0, 0,
+						0, 0, 0, 0);
+	
+
 	for (; blocks_it != blocks_end; ++blocks_it)
 	{
 		face_block.dimension = dimension2du(blocks_it->width, blocks_it->height);
@@ -373,184 +165,47 @@ bool lightmaps_fill3(geometry_scene* geo_scene, std::vector<lm_block>::iterator&
 			*out = ret;
 			return false;
 		}
+	
+		matrix4 m;
 
-		if (blocks_it->face != -1)
+		if (blocks_it->bFlipped)
 		{
-			TextureMaterial::lightmap_record rec;
+			m.setScale(vector3df(	(f32)(blocks_it->width - 3) / (f32)new_block.dimension.Width, 
+									(f32)(blocks_it->height - 3) / (f32)new_block.dimension.Height, 1.0f));
 
-			rec.face = blocks_it->face;
-			rec.block = face_block.coords;
+			m.setTranslation(vector3df(	(f32)(face_block.coords.UpperLeftCorner.X + 1.5f) / (f32)new_block.dimension.Width, 
+										(f32)(face_block.coords.UpperLeftCorner.Y + 1.5f) / (f32)new_block.dimension.Height, 0));
 
-			rec.block.UpperLeftCorner.X += 1;
-			rec.block.UpperLeftCorner.Y += 1;
-			rec.block.LowerRightCorner.X -= 1;
-			rec.block.LowerRightCorner.Y -= 1;
-
-			rec.face_v0_index = blocks_it->v0_index;
-			*ret_records_back = rec;
-			++ret_records_back;
+			apply_transform_to_uvs(&geo_scene->edit_meshnode_interface, blocks_it->faces, MAP_UVS_LIGHTMAP, flip_mat);
+			apply_transform_to_uvs(&geo_scene->edit_meshnode_interface, blocks_it->faces, MAP_UVS_LIGHTMAP, m);
 		}
 		else
 		{
-			for (int i = 0; i < blocks_it->subblocks.size(); i++)
-			{
-				TextureMaterial::lightmap_record rec;
+			m.setScale(vector3df(	(f32)(blocks_it->width - 3) / (f32)new_block.dimension.Width,
+									(f32)(blocks_it->height - 3) / (f32)new_block.dimension.Height, 1));
 
-				vector2d<u16> UL = face_block.coords.UpperLeftCorner;
-				vector2d<u16> LR = face_block.coords.UpperLeftCorner;
+			m.setTranslation(vector3df(	(f32)(face_block.coords.UpperLeftCorner.X + 1.5f) / (f32)new_block.dimension.Width,
+										(f32)(face_block.coords.UpperLeftCorner.Y + 1.5f) / (f32)new_block.dimension.Height, 0));
 
-				lm_block& b = blocks_it->subblocks[i];
-
-				UL.X += round32(1.0 + ((b.offset_x / blocks_it->uv_width) * f32(blocks_it->width - 2)));
-				UL.Y += round32(1.0 + ((b.offset_y / blocks_it->uv_height) * f32(blocks_it->height - 2)));
-
-				LR.X += round32(1.0 + (((b.offset_x + b.uv_width ) / f32(blocks_it->uv_width))
-						* f32(blocks_it->width - 2)));
-
-				LR.Y += round32(1.0 + (((b.offset_y + b.uv_height) / f32(blocks_it->uv_height))
-						* f32(blocks_it->height - 2)));
-
-				rec.face = b.face;
-				rec.block = rect<u16>(UL, LR);
-				rec.face_v0_index = b.v0_index;
-
-				*ret_records_back = rec;
-				++ret_records_back;
-			}
+			apply_transform_to_uvs(&geo_scene->edit_meshnode_interface, blocks_it->faces, MAP_UVS_LIGHTMAP, m);
 		}
+			
+		for (int f_j : blocks_it->faces)
+		{
+			TextureMaterial::lightmap_record rec;
 
+			rec.face = f_j;
+
+			*ret_records_back = rec;
+			++ret_records_back;
+		}
+		
 		ret.lightmap_size = new_block.dimension.Width;
 	}
 
 	*out = ret;
 
 	return true;
-}
-
-template<typename back_type, typename map_type>
-void initialize_special_block(geometry_scene* geo_scene, int f_i, back_type ret, map_type& mapper)
-{
-	std::vector<int> surface = geo_scene->getSurfaceFromFace(f_i);
-	lm_block b;
-	b.face = -1;
-	polyfold* pf = geo_scene->get_total_geometry();
-
-	surface_group* sfg = pf->getFaceSurfaceGroup(f_i);
-	mapper.init(sfg);
-
-	b.width = reduce_dimension_base2(mapper.width(),2);
-	b.height = reduce_dimension_base2(mapper.height(),2);
-
-	extent_2D ex;
-
-	std::cout << "h=" << b.height << ", w=" << b.width << "\n";
-
-	for (int b_i : surface)
-	{
-		lm_block sb;
-		extent_2D sex;
-
-		if (pf->faces[b_i].temp_b == false)
-		{
-			sb.face = b_i;
-			vector3df points[4];
-
-			pf->faces[b_i].get3DBoundingQuad(points);
-
-			vector2df v[4];
-			for (int i = 0; i < 4; i++)
-			{
-				v[i] = mapper.calc(pf->faces[b_i].m_normal, points[i]);
-				sex.extend(v[i]);
-				ex.extend(v[i]);
-			}
-
-			sb.v0_index = 0;
-
-			int rect_target_corner;
-
-			if (b.width > b.height)
-			{
-				rect_target_corner = 0;
-			}
-			else
-				rect_target_corner = 1;
-
-
-			for (int i = 0; i < 3; i++)
-			{
-				vector2df v0 = mapper.calc(pf->faces[b_i].m_normal, points[rect_target_corner]);
-
-				if (fabs(v0.X - sex.min_x) < 0.00001 && fabs(v0.Y - sex.min_y) < 0.00001)
-					break;
-
-				vector3df new_points[4];
-
-				new_points[0] = points[3];
-				new_points[1] = points[0];
-				new_points[2] = points[1];
-				new_points[3] = points[2];
-
-
-				sb.v0_index +=1;
-				memcpy(points, new_points, sizeof(vector3df) * 4);
-			}
-
-			sb.face = b_i;
-			sb.uv_width = sex.width();
-			sb.uv_height = sex.height();
-
-			sb.offset_x = sex.min_x;
-			sb.offset_y = sex.min_y;
-
-			b.subblocks.push_back(sb);
-
-			pf->faces[b_i].temp_b = true;
-		}
-	}
-
-	if(b.width > b.height)
-	{
-		b.uv_width = ex.width();
-		b.uv_height = ex.height();
-
-		for (lm_block& sb : b.subblocks)
-		{
-			sb.offset_x -= ex.min_x;
-			sb.offset_y -= ex.min_y;
-		}
-	}
-	else
-	{
-		b.uv_width = ex.height();
-		b.uv_height = ex.width();
-
-		for (lm_block& sb : b.subblocks)
-		{
-			f32 t = sb.uv_height;
-			sb.uv_height = sb.uv_width;
-			sb.uv_width = t;
-
-			t = sb.offset_x;
-			sb.offset_x = sb.offset_y;
-			sb.offset_y = t;
-		}
-
-		u32 t = b.width;
-		b.width = b.height;
-		b.height = t;
-
-		for (lm_block& sb : b.subblocks)
-		{
-			sb.offset_x -= ex.min_y;
-			sb.offset_y -= ex.min_x;
-		}
-	}
-
-	std::cout << "width: " << b.uv_width << " height: " << b.uv_height << "\n";
-
-	*ret = b;
-	++ret;
 }
 
 template<typename back_type>
@@ -560,56 +215,98 @@ void initialize_block(geometry_scene* geo_scene, int f_i, back_type ret)
 
 	if (pf->faces[f_i].loops.size() > 0 && pf->faces[f_i].temp_b == false)
 	{
+		lm_block b;
+
+		vector<int> surface;
 		surface_group& sfg = *pf->getFaceSurfaceGroup(f_i);
 
 		switch (sfg.type)
 		{
-		case SURFACE_GROUP_STANDARD:
-		case SURFACE_GROUP_CUSTOM_UVS_BRUSH:
-		case SURFACE_GROUP_CUSTOM_UVS_GEOMETRY:
-		{
-			if (pf->faces[f_i].temp_b == false)
-			{
-				lm_block b;
-
-				b.face = f_i;
-				b.width = pf->faces[f_i].lightmap_dim.Width;
-				b.height = pf->faces[f_i].lightmap_dim.Height;
-				b.v0_index = 1;
-
-				*ret = b;
-				++ret;
-
-				pf->faces[f_i].temp_b = true;
-			}
-		} break;
-		case SURFACE_GROUP_CYLINDER:
-		{
-			
-			map_cylinder_to_uv mapper;
-			initialize_special_block(geo_scene, f_i, ret, mapper);
-
-		} break;
-		case SURFACE_GROUP_DOME:
-		{
-			map_dome_to_uv mapper;
-			initialize_special_block(geo_scene, f_i, ret, mapper);
-
-		} break;
-		case SURFACE_GROUP_SPHERE:
-		{
-			map_sphere_to_uv mapper;
-			initialize_special_block(geo_scene, f_i, ret, mapper);
-
-		} break;
-		default:
-			std::cout << "unknown surface properties\n";
-			break;
+			case SURFACE_GROUP_CYLINDER:
+			case SURFACE_GROUP_DOME:
+			case SURFACE_GROUP_SPHERE:
+				surface = geo_scene->getSurfaceFromFace(f_i);
+				break;
+			default:
+				surface = vector<int>{ f_i };
+				break;
 		}
+
+		for (int f_j : surface)
+		{
+			pf->faces[f_j].temp_b = true;
+		}
+
+		switch (sfg.type)
+		{
+			case SURFACE_GROUP_STANDARD:
+			case SURFACE_GROUP_CUSTOM_UVS_BRUSH:
+			case SURFACE_GROUP_CUSTOM_UVS_GEOMETRY:
+			{
+				map_face_to_uvs mapper;
+
+				pf->calc_tangent(f_i);
+				mapper.init(&geo_scene->get_total_geometry()->faces[f_i], 1);
+
+				map_uvs(geo_scene, &geo_scene->edit_meshnode_interface, vector<int>{ f_i }, mapper, MAP_UVS_LIGHTMAP);
+
+				b.faces = vector<int>{ f_i };
+
+				poly_face* f = &pf->faces[f_i];
+
+				b.width = reduce_dimension_base2(f->bbox2d.getWidth(), 1);
+				b.height = reduce_dimension_base2(f->bbox2d.getHeight(), 1);
+				
+			} break;
+
+			case SURFACE_GROUP_CYLINDER:
+			{
+				map_cylinder_to_uv mapper;
+				mapper.init(&sfg);
+
+				map_uvs(geo_scene, &geo_scene->edit_meshnode_interface, surface, mapper, MAP_UVS_LIGHTMAP);
+
+				b.faces = surface;
+				b.width = reduce_dimension_base2(mapper.uv_width() * sfg.radius * 2 * 3.1459, 1);
+				b.height = reduce_dimension_base2(mapper.uv_height() * sfg.height, 1);
+
+				std::cout << b.width << "x" << b.height << " cylinder\n";
+			} break;
+
+			case SURFACE_GROUP_DOME:
+			case SURFACE_GROUP_SPHERE:
+			{
+				map_sphere_to_uv mapper;
+
+				mapper.init(&sfg);
+
+				map_uvs(geo_scene, &geo_scene->edit_meshnode_interface, surface, mapper, MAP_UVS_LIGHTMAP);
+
+				b.faces = surface;
+				b.width = reduce_dimension_base2(mapper.uv_width() * sfg.radius * 2 * 3.1459, 1);
+				b.height = reduce_dimension_base2(mapper.uv_height() * sfg.radius * 2 * 3.1459, 1);
+
+			} break;
+
+			default:
+			{
+				std::cout << "error, unknown surface type...\n";
+				return;
+			}break;
+		}
+
+		if (b.height > b.width)
+		{
+			swap(b.width, b.height);
+			b.bFlipped = true;
+		}
+
+		*ret = b;
+		++ret;
 	}
 }
 
-void lightmaps_divideMaterialGroups2(geometry_scene* geo_scene, std::vector<TextureMaterial>& material_groups)
+void lightmaps_divideMaterialGroups(geometry_scene* geo_scene, std::vector<TextureMaterial>& material_groups)
 {
 	std::vector<TextureMaterial> ret;
 	auto ret_back = std::back_inserter(ret);
@@ -651,7 +348,7 @@ void lightmaps_divideMaterialGroups2(geometry_scene* geo_scene, std::vector<Text
 		auto blocks_it = mg_blocks.begin();
 		auto blocks_end = mg_blocks.end();
 
-		while (!lightmaps_fill3(geo_scene, blocks_it, blocks_end, ret_back, *in_it))
+		while (!lightmaps_fill(geo_scene, blocks_it, blocks_end, ret_back, *in_it))
 		{
 			++ret_back;
 		}

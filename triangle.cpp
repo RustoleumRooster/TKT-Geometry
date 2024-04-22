@@ -675,7 +675,7 @@ triangle_holder get_triangles_for_loop(polyfold& pf, LineHolder& graph)
     return t_holder;
 }
 
-triangle_holder polyfold::trianglize(int face_i, scene::SMeshBuffer* buffer, LineHolder &graph, LineHolder &graph2)
+void polyfold::trianglize(int face_i, triangle_holder& t_holder, scene::SMeshBuffer* buffer, LineHolder &graph, LineHolder &graph2)
 {
     core::matrix4 R = this->faces[face_i].get2Dmat();
 
@@ -685,7 +685,7 @@ triangle_holder polyfold::trianglize(int face_i, scene::SMeshBuffer* buffer, Lin
     std::vector<triangle> no_triangle;
     std::vector<int> fixed_edges;
 
-    triangle_holder t_holder;
+    //triangle_holder t_holder;
     {
         poly_face f;
         for(int v_i:this->faces[face_i].vertices)
@@ -861,7 +861,7 @@ triangle_holder polyfold::trianglize(int face_i, scene::SMeshBuffer* buffer, Lin
         buffer->recalculateBoundingBox();
    }
 
-    return t_holder;
+   // return t_holder;
 }
 /*
 void process_triangles_sphere(triangle_holder& t_h)

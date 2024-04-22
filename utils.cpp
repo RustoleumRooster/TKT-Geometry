@@ -1296,7 +1296,6 @@ void Open_Geometry_File::LoadProject(geometry_scene* gs, io::path folder)
 
 }
 
-
 //=======================================================
 //  Save Geometry File
 //
@@ -1414,64 +1413,39 @@ bool Save_Geometry_File::export_model(io::path fname)
         }
 
         std::vector<TextureMaterial> materials_used = g_scene->final_meshnode_interface.getMaterialsUsed();
+        
 
         for (int m_i = 0; m_i < materials_used.size(); m_i++)
         {
-            for (int i = 0; i < materials_used[m_i].records.size(); i++)
+            std::cout << "buffer " << m_i << "\n";
+            for (int i = 0; i < model.vertex_buffers[m_i].vertices.size(); i++)
             {
-                int f_i = materials_used[m_i].records[i].face;
+                std::cout << model.vertex_buffers[m_i].vertices[i].tex_coords_1.X << "," <<
+                    model.vertex_buffers[m_i].vertices[i].tex_coords_1.Y << "\n";
+            }
+        }
 
-                MeshBuffer_Chunk chunk = g_scene->final_meshnode_interface.get_mesh_buffer_by_face(f_i);
-                int buffer_no = g_scene->final_meshnode_interface.get_buffer_index_by_face(f_i);
+        model.lightmaps_info.resize(g_scene->final_meshnode_interface.getMaterialsUsed().size());
 
-                core::vector3df verts[4];
+        for (int i = 0; i < materials_used.size(); i++)
+        {
+            int n_lightmaps = materials_used[i].records.size();
 
-                int v0_idx = materials_used[m_i].records[i].face_v0_index;
-                g_scene->get_total_geometry()->faces[f_i].get3DBoundingQuad(verts,v0_idx);
-                
-                core::vector3df u_vec = verts[1] - verts[0];
-                core::vector3df v_vec = verts[3] - verts[0];
+            model.lightmaps_info[i].faces.resize(n_lightmaps);
+            model.lightmaps_info[i].lightmap_block_UL.resize(n_lightmaps);
+            model.lightmaps_info[i].lightmap_block_BR.resize(n_lightmaps);
+            model.lightmaps_info[i].size = materials_used[i].lightmap_size;
 
-                u_vec.normalize();
-                v_vec.normalize();
+            for (int j = 0; j < n_lightmaps; j++)
+            {
+                model.lightmaps_info[i].faces[j] = materials_used[i].records[j].face;
+                model.lightmaps_info[i].lightmap_block_UL[j].X = materials_used[i].records[j].block.UpperLeftCorner.X + 0;
+                model.lightmaps_info[i].lightmap_block_UL[j].Y = materials_used[i].records[j].block.UpperLeftCorner.Y + 0;
+                model.lightmaps_info[i].lightmap_block_BR[j].X = materials_used[i].records[j].block.LowerRightCorner.X - 0;
+                model.lightmaps_info[i].lightmap_block_BR[j].Y = materials_used[i].records[j].block.LowerRightCorner.Y - 0;
 
-                u_vec.X = fabs(u_vec.X) < 0.00001 ? 0 : u_vec.X;
-                u_vec.Y = fabs(u_vec.Y) < 0.00001 ? 0 : u_vec.Y;
-                v_vec.X = fabs(v_vec.X) < 0.00001 ? 0 : v_vec.X;
-                v_vec.Y = fabs(v_vec.Y) < 0.00001 ? 0 : v_vec.Y;
-
-                if (i < materials_used[m_i].records.size())
-                {
-                    core::rect<u16> rect = materials_used[m_i].records[i].block;
-
-                    rect.UpperLeftCorner.X += 0;
-                    rect.UpperLeftCorner.Y += 0;
-                    rect.LowerRightCorner.X -= 0;
-                    rect.LowerRightCorner.Y -= 0;
-
-                    
-                    for (int j = chunk.begin_i; j < chunk.end_i; j++)
-                    {
-                        u16 idx = chunk.buffer->getIndices()[j];
-                        video::S3DVertex2TCoords* vtx = &((video::S3DVertex2TCoords*)chunk.buffer->getVertices())[idx];
-                        core::vector3df V = vtx->Pos;
-
-                        float_t u = core::vector3df(V - verts[0]).dotProduct(u_vec) / core::vector3df(verts[1] - verts[0]).getLength();
-                        float_t v = core::vector3df(V - verts[0]).dotProduct(v_vec) / core::vector3df(verts[3] - verts[0]).getLength();
-
-                        u = fabs(u) < 0.00001 ? 0 : u;
-                        v = fabs(v) < 0.00001 ? 0 : v;
-
-                        core::vector2df tex_coord = core::vector2df(
-                            (rect.UpperLeftCorner.X + u * rect.getWidth()) / materials_used[m_i].lightmap_size,
-                            (rect.UpperLeftCorner.Y + v * rect.getHeight()) / materials_used[m_i].lightmap_size
-                        );
-
-                        model.vertex_buffers[buffer_no].vertices[idx].tex_coords_1 = tex_coord;
-
-                        //std::cout << 128 * tex_coord.X << "/" << 128 * tex_coord.Y << "\n";
-                    }
-                }
+                //std::cout << materials_used[i].records[j].block.UpperLeftCorner.X << "," << materials_used[i].records[j].block.UpperLeftCorner.Y << "    ";
+                //std::cout << materials_used[i].records[j].block.LowerRightCorner.X << "," << materials_used[i].records[j].block.LowerRightCorner.Y << "\n";
             }
         }
 
@@ -1541,6 +1515,7 @@ bool Save_Geometry_File::export_model_2(io::path fname)
                     {
                         model.vertex_buffers[c].vertices[j].pos = mesh_buffer->Vertices[j].Pos;
                         model.vertex_buffers[c].vertices[j].tex_coords_0 = mesh_buffer->Vertices[j].TCoords;
+                        model.vertex_buffers[c].vertices[j].tex_coords_1 = mesh_buffer->Vertices[j].TCoords2;
                     }
 
                     model.vertex_buffers[c].indices.resize(mesh_buffer->getIndexCount());
@@ -1549,61 +1524,33 @@ bool Save_Geometry_File::export_model_2(io::path fname)
                     {
                         model.vertex_buffers[c].indices[j] = mesh_buffer->Indices[j];
                     }
-
-                    model.faces_info[c].normal = g_scene->get_total_geometry()->faces[f_i].m_normal;
-                    model.faces_info[c].tangent = g_scene->get_total_geometry()->faces[f_i].m_tangent;
-
-                    core::vector3df verts[4];
-
-                    int v0_idx = materials_used[m_i].records[i].face_v0_index;
-                    g_scene->get_total_geometry()->faces[f_i].get3DBoundingQuad(verts,v0_idx);
-
-                    model.faces_info[c].bounding_rect.v0 = verts[0];
-                    model.faces_info[c].bounding_rect.v1 = verts[1];
-                    model.faces_info[c].bounding_rect.v2 = verts[2];
-                    model.faces_info[c].bounding_rect.v3 = verts[3];
-
-                    core::vector3df u_vec = verts[1] - verts[0];
-                    core::vector3df v_vec = verts[3] - verts[0];
-
-                    u_vec.normalize();
-                    v_vec.normalize();
-
-                    for (int j = 0; j < mesh_buffer->getVertexCount(); j++)
-                    {
-                        core::vector3df V = mesh_buffer->Vertices[j].Pos;
-
-                        float_t u = core::vector3df(V - verts[0]).dotProduct(u_vec) / core::vector3df(verts[1] - verts[0]).getLength();
-                        float_t v = core::vector3df(V - verts[0]).dotProduct(v_vec) / core::vector3df(verts[3] - verts[0]).getLength();
-
-                        u = fabs(u) < 0.00001 ? 0 : u;
-                        v = fabs(v) < 0.00001 ? 0 : v;
-
-                        model.vertex_buffers[c].vertices[j].tex_coords_1 = core::vector2df(u, v);
-                    }
+                    
                     c++;
                 }
             }
         }
 
-        model.lightmaps_info.resize(g_scene->edit_meshnode_interface.getMaterialsUsed().size());
+        model.lightmaps_info.resize(g_scene->final_meshnode_interface.getMaterialsUsed().size());
 
         for (int i = 0; i < materials_used.size(); i++)
         {
             int n_lightmaps = materials_used[i].records.size();
 
             model.lightmaps_info[i].faces.resize(n_lightmaps);
-            model.lightmaps_info[i].lightmap_block_UL.resize(n_lightmaps);
-            model.lightmaps_info[i].lightmap_block_BR.resize(n_lightmaps);
+           // model.lightmaps_info[i].lightmap_block_UL.resize(n_lightmaps);
+           // model.lightmaps_info[i].lightmap_block_BR.resize(n_lightmaps);
             model.lightmaps_info[i].size = materials_used[i].lightmap_size;
 
             for (int j = 0; j < n_lightmaps; j++)
             {
                 model.lightmaps_info[i].faces[j] = face_number_ref[materials_used[i].records[j].face];
-                model.lightmaps_info[i].lightmap_block_UL[j].X = materials_used[i].records[j].block.UpperLeftCorner.X + 0;
-                model.lightmaps_info[i].lightmap_block_UL[j].Y = materials_used[i].records[j].block.UpperLeftCorner.Y + 0;
-                model.lightmaps_info[i].lightmap_block_BR[j].X = materials_used[i].records[j].block.LowerRightCorner.X - 0;
-                model.lightmaps_info[i].lightmap_block_BR[j].Y = materials_used[i].records[j].block.LowerRightCorner.Y - 0;
+              //  model.lightmaps_info[i].lightmap_block_UL[j].X = materials_used[i].records[j].block.UpperLeftCorner.X + 0;
+             //   model.lightmaps_info[i].lightmap_block_UL[j].Y = materials_used[i].records[j].block.UpperLeftCorner.Y + 0;
+              //  model.lightmaps_info[i].lightmap_block_BR[j].X = materials_used[i].records[j].block.LowerRightCorner.X - 0;
+              //  model.lightmaps_info[i].lightmap_block_BR[j].Y = materials_used[i].records[j].block.LowerRightCorner.Y - 0;
+
+                //std::cout << materials_used[i].records[j].block.UpperLeftCorner.X << "," << materials_used[i].records[j].block.UpperLeftCorner.Y << "    ";
+                //std::cout << materials_used[i].records[j].block.LowerRightCorner.X << "," << materials_used[i].records[j].block.LowerRightCorner.Y << "\n";
             }
         }
 
