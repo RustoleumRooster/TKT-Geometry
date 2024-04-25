@@ -216,6 +216,9 @@ void initialize_block(geometry_scene* geo_scene, int f_i, back_type ret)
 {
 	polyfold* pf = geo_scene->get_total_geometry();
 
+	matrix4 m_translate;
+	matrix4 m_scale;
+
 	if (pf->faces[f_i].loops.size() > 0 && pf->faces[f_i].temp_b == false)
 	{
 		lm_block b;
@@ -272,6 +275,19 @@ void initialize_block(geometry_scene* geo_scene, int f_i, back_type ret)
 				b.faces = surface;
 				b.width = reduce_dimension_base2(mapper.uv_width() * sfg.radius * 2 * 3.1459, 1);
 				b.height = reduce_dimension_base2(mapper.uv_height() * sfg.height, 1);
+				/*
+				std::cout << " width = " << b.width << "\n";
+				std::cout << " height = " << b.height << "\n";
+				std::cout << " trans = " << -mapper.m_min.X << " / " << -mapper.m_min.Y << "\n";
+				std::cout << " uv size = " << mapper.uv_width() << " / " << mapper.uv_height() << "\n";
+				std::cout << " uv off = " << mapper.m_min.X << " / " << mapper.m_min.Y << "\n";
+				std::cout << " scale = " << 1.0f / mapper.uv_width() << " / " << 1.0f / mapper.uv_height() << "\n";
+				*/
+				m_scale.setScale(vector3df(1.0f / mapper.uv_width(), 1.0f / mapper.uv_height(), 1.0f));
+				m_translate.setTranslation(vector3df(-mapper.m_min.X,-mapper.m_min.Y,0.0f));
+
+				apply_transform_to_uvs(&geo_scene->edit_meshnode_interface, surface, MAP_UVS_LIGHTMAP, m_translate);
+				apply_transform_to_uvs(&geo_scene->edit_meshnode_interface, surface, MAP_UVS_LIGHTMAP, m_scale);
 
 			} break;
 
@@ -287,6 +303,15 @@ void initialize_block(geometry_scene* geo_scene, int f_i, back_type ret)
 				b.faces = surface;
 				b.width = reduce_dimension_base2(mapper.uv_width() * sfg.radius * 2 * 3.1459, 1);
 				b.height = reduce_dimension_base2(mapper.uv_height() * sfg.radius * 2 * 3.1459, 1);
+
+				//std::cout << " trans = " << -mapper.m_min.X << " / " << -mapper.m_min.Y << "\n";
+				//std::cout << " scale = " << 1.0f / mapper.uv_width() << " / " << 1.0f / mapper.uv_height() << "\n";
+
+				m_scale.setScale(vector3df(1.0f / mapper.uv_width(), 1.0f / mapper.uv_height(), 1.0f));
+				m_translate.setTranslation(vector3df(-mapper.m_min.X, -mapper.m_min.Y, 0.0f));
+
+				apply_transform_to_uvs(&geo_scene->edit_meshnode_interface, surface, MAP_UVS_LIGHTMAP, m_translate);
+				apply_transform_to_uvs(&geo_scene->edit_meshnode_interface, surface, MAP_UVS_LIGHTMAP, m_scale);
 
 			} break;
 
