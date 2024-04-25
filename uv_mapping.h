@@ -36,12 +36,17 @@ public:
 		v_vec.Y = fabs(v_vec.Y) < 0.0001 ? 0 : v_vec.Y;
 	}
 
-	vector2df calc(const vector3df& face_normal, const vector3df& pos) const
+	void calc(video::S3DVertex2TCoords** V) const
 	{
-		float_t u = vector3df(pos - verts[0]).dotProduct(u_vec) / vector3df(verts[1] - verts[0]).getLength();
-		float_t v = vector3df(pos - verts[0]).dotProduct(v_vec) / vector3df(verts[3] - verts[0]).getLength();
+		V[0]->TCoords2.X = vector3df(V[0]->Pos - verts[0]).dotProduct(u_vec) / vector3df(verts[1] - verts[0]).getLength();
+		V[0]->TCoords2.Y = vector3df(V[0]->Pos - verts[0]).dotProduct(v_vec) / vector3df(verts[3] - verts[0]).getLength();
 
-		return vector2df(u, v);
+		V[1]->TCoords2.X = vector3df(V[1]->Pos - verts[0]).dotProduct(u_vec) / vector3df(verts[1] - verts[0]).getLength();
+		V[1]->TCoords2.Y = vector3df(V[1]->Pos - verts[0]).dotProduct(v_vec) / vector3df(verts[3] - verts[0]).getLength();
+
+		V[2]->TCoords2.X = vector3df(V[2]->Pos - verts[0]).dotProduct(u_vec) / vector3df(verts[1] - verts[0]).getLength();
+		V[2]->TCoords2.Y = vector3df(V[2]->Pos - verts[0]).dotProduct(v_vec) / vector3df(verts[3] - verts[0]).getLength();
+
 	}
 
 };
@@ -76,35 +81,40 @@ public:
 		n = 0;
 	}
 
-	vector2df calc(const vector3df& face_normal, const vector3df& pos)
+	void calc(video::S3DVertex2TCoords** V)
 	{
-		vector2df k;
-		vector3df r = pos - r0;
+		vector3df face_normal = vector3df(V[2]->Pos - V[0]->Pos).crossProduct(vector3df(V[1]->Pos - V[0]->Pos));
 
-		k.X = r.dotProduct(v1);
-		k.Y = r.dotProduct(iY);
-
-		f32 theta = k.getAngleTrig();
-
-		if (fabs(theta - 360.0f) < 0.001f || fabs(theta) < 0.001f)
+		for (int i = 0; i < 3; i++)
 		{
-			if (face_normal.dotProduct(iY) * r.dotProduct(face_normal) > 0)
-				theta = 0.0f;
-			else
+			vector2df k;
+			vector3df r = V[i]->Pos - r0;
+
+			k.X = r.dotProduct(v1);
+			k.Y = r.dotProduct(iY);
+
+			f32 theta = k.getAngleTrig();
+
+			if (fabs(theta - 360.0f) < 0.001f || fabs(theta) < 0.001f)
 			{
-				theta = 360.0f;
+				if (face_normal.dotProduct(iY) * r.dotProduct(face_normal) > 0)
+					theta = 0.0f;
+				else
+				{
+					theta = 360.0f;
+				}
 			}
+
+			//vector3df uv(theta / 90, pos.dotProduct(v0) / 128, 0);
+			vector2df uv(theta / 360.0f, 0.5f + (r.dotProduct(v0) / m_height));
+
+			V[i]->TCoords2 = uv;
+
+			m_min = n > 0 ? vector2df(fmin(m_min.X, uv.X), fmin(m_min.Y, uv.Y)) : uv;
+			m_max = n > 0 ? vector2df(fmax(m_max.X, uv.X), fmax(m_max.Y, uv.Y)) : uv;
+
+			n++;
 		}
-
-		//vector3df uv(theta / 90, pos.dotProduct(v0) / 128, 0);
-		vector2df uv(theta / 360.0f, 0.5f + (r.dotProduct(v0) / m_height));
-
-		m_min = n > 0 ? vector2df(fmin(m_min.X, uv.X), fmin(m_min.Y, uv.Y)) : uv;
-		m_max = n > 0 ? vector2df(fmax(m_max.X, uv.X), fmax(m_max.Y, uv.Y)) : uv;
-
-		n++;
-
-		return uv;
 	}
 };
 
@@ -112,11 +122,12 @@ class map_sphere_to_uv
 {
 	surface_group* sfg = NULL;
 	f32 m_radius;
+	vector3df iY;
 
 public:
 	map_sphere_to_uv() {}
 
-	f32 pi = 3.141592653;
+	f32 pi = 3.141592653f;
 
 	f32 max_width() { return m_radius * 2 * 3.14; }
 	f32 max_height() { return m_radius * 2 * 3.14; }
@@ -131,62 +142,68 @@ public:
 	{
 		sfg = sg;
 		m_radius = sg->radius;
+		iY = sfg->vec.crossProduct(sfg->vec1);
+		iY.normalize();
 	}
 
-	vector2df calc(const vector3df& face_normal, const vector3df& pos)
+	void calc(video::S3DVertex2TCoords** V)
 	{
-		core::vector3df r = pos - sfg->point;
-		r.normalize();
-		core::vector3df rr = sfg->vec.crossProduct(r);
-		rr.normalize();
+		vector3df face_normal = vector3df(V[1]->Pos - V[0]->Pos).crossProduct(vector3df(V[2]->Pos - V[1]->Pos));
 
-		f32 alpha = acos(r.dotProduct(sfg->vec));
-		//f32 az = acos(r.dotProduct(sfg->vec1));
+		int recalc = -1;
 
-		vector3df iY = sfg->vec.crossProduct(sfg->vec1);
-		iY.normalize();
-
-		vector2df k;
-
-		k.X = r.dotProduct(iY);
-		k.Y = r.dotProduct(sfg->vec1);
-
-		f32 az = k.getAngleTrig();
-
-		if (fabs(az - 360.0f) < 0.001f || fabs(az) < 0.001f)
+		for (int i = 0; i < 3; i++)
 		{
-			if (face_normal.dotProduct(sfg->vec1) * r.dotProduct(face_normal) > 0)
-				az = 0.0f;
-			else
+			core::vector3df r = V[i]->Pos - sfg->point;
+			r.normalize();
+			core::vector3df rr = sfg->vec.crossProduct(r);
+			rr.normalize();
+
+			f32 alpha = acos(r.dotProduct(sfg->vec));
+
+			vector2df k;
+
+			k.X = r.dotProduct(sfg->vec1);
+			k.Y = r.dotProduct(iY);
+
+			f32 az = k.getAngleTrig();
+
+			if (fabs(az - 360.0f) < 0.001f || fabs(az) < 0.001f)
 			{
-				az = 360.0f;
-			}
-		}
-		/*
-		if(fabs(alpha)<0.001 || fabs(alpha-pi)<0.001)
-			{
-				core::vector3df centerv(0,0,0);
-				for(int j=0;j<t_h.vertices.size();j++)
+				if (face_normal.dotProduct(iY) * r.dotProduct(face_normal) > 0)
 				{
-					centerv += t_h.vertices[j];
+					//std::cout << "1\n";
+					az = 0.0f;
 				}
-				centerv /= t_h.vertices.size();
+				else
+				{
+					//std::cout << "0\n";
+					az = 360.0f;
+				}
+			}
 
-				r = centerv-t_h.surface_info.point;
-				r.normalize();
-				rr = t_h.surface_info.vec.crossProduct(r);
-				rr.normalize();
-				theta = acos(rr.dotProduct(t_h.surface_info.vec1));
-			}*/
-		
-		vector2df uv = vector2df(az / 360.0f, alpha / 3.1459);
+			if (fabs(fabs(r.dotProduct(sfg->vec)) - 1.0f) < 0.0001f)
+			{
+				recalc = i;
+			}
 
-		m_min = n > 0 ? vector2df(fmin(m_min.X, uv.X), fmin(m_min.Y, uv.Y)) : uv;
-		m_max = n > 0 ? vector2df(fmax(m_max.X, uv.X), fmax(m_max.Y, uv.Y)) : uv;
+			vector2df uv = vector2df(az / 360.0f, alpha / 3.1459f);
 
-		n++;
-		
-		return uv;
+			V[i]->TCoords2 = uv;
+
+			m_min = n > 0 ? vector2df(fmin(m_min.X, uv.X), fmin(m_min.Y, uv.Y)) : uv;
+			m_max = n > 0 ? vector2df(fmax(m_max.X, uv.X), fmax(m_max.Y, uv.Y)) : uv;
+
+			n++;
+		}
+
+		if (recalc != -1)
+		{
+			f32 left = fmin(V[(recalc + 1) % 3]->TCoords2.X, V[(recalc + 2) % 3]->TCoords2.X);
+			f32 right = fmax(V[(recalc + 1) % 3]->TCoords2.X, V[(recalc + 2) % 3]->TCoords2.X);
+
+			V[recalc]->TCoords2.X = left + (right - left) * 0.5f;
+		}
 	}
 };
 
@@ -236,21 +253,33 @@ void map_uvs(geometry_scene* geo_scene, MeshNode_Interface* mesh_node, const std
 {
 	polyfold* pf = geo_scene->get_total_geometry();
 
-	video::S3DVertex2TCoords* vtx;
+	video::S3DVertex2TCoords** vtx = new video::S3DVertex2TCoords*[3];
 
 	for (int b_i : surface)
 	{
 		MeshBuffer_Chunk chunk = mesh_node->get_mesh_buffer_by_face(b_i);
-		std::cout << b_i << ":\n";
+		//std::cout << b_i << ":\n";
 		if (chunk.buffer)
 		{
-			for (int i = chunk.begin_i; i < chunk.end_i; i++)
+			for (int i = chunk.begin_i; i < chunk.end_i; i+=3)
 			{
-				u16 idx = chunk.buffer->getIndices()[i];
-				vtx = &((video::S3DVertex2TCoords*)chunk.buffer->getVertices())[idx];
+				u16 idx0 = chunk.buffer->getIndices()[i];
+				u16 idx1 = chunk.buffer->getIndices()[i+1];
+				u16 idx2 = chunk.buffer->getIndices()[i+2];
 
-				vector2df uv = mapper.calc(pf->faces[b_i].m_normal, vtx->Pos);
+				vtx[0] = &((video::S3DVertex2TCoords*)chunk.buffer->getVertices())[idx0];
+				vtx[1] = &((video::S3DVertex2TCoords*)chunk.buffer->getVertices())[idx1];
+				vtx[2] = &((video::S3DVertex2TCoords*)chunk.buffer->getVertices())[idx2];
 
+				//vector2df uv = mapper.calc(pf->faces[b_i].m_normal, vtx->Pos);
+
+				mapper.calc(vtx);
+
+				//std::cout << " " << vtx[0]->TCoords2.X << "," << vtx[0]->TCoords2.Y << "  ";
+				//std::cout << " " << vtx[1]->TCoords2.X << "," << vtx[1]->TCoords2.Y << "  ";
+				//std::cout << " " << vtx[2]->TCoords2.X << "," << vtx[2]->TCoords2.Y << "\n";
+
+				/*
 				if (uv_type == MAP_UVS_TEXTURE)
 				{
 					vtx->TCoords.set(uv.X, uv.Y);
@@ -259,10 +288,12 @@ void map_uvs(geometry_scene* geo_scene, MeshNode_Interface* mesh_node, const std
 				{
 					vtx->TCoords2.set(uv.X, uv.Y);
 					std::cout << uv.X << "," << uv.Y << "\n";
-				}
+				}*/
 			}
 		}
 	}
+
+	delete[] vtx;
 }
 
 void apply_transform_to_uvs(MeshNode_Interface* mesh_node, const std::vector<int>& surface, int uv_type, matrix4 mat);

@@ -1417,11 +1417,11 @@ bool Save_Geometry_File::export_model(io::path fname)
 
         for (int m_i = 0; m_i < materials_used.size(); m_i++)
         {
-            std::cout << "buffer " << m_i << "\n";
+            //std::cout << "buffer " << m_i << "\n";
             for (int i = 0; i < model.vertex_buffers[m_i].vertices.size(); i++)
             {
-                std::cout << model.vertex_buffers[m_i].vertices[i].tex_coords_1.X << "," <<
-                    model.vertex_buffers[m_i].vertices[i].tex_coords_1.Y << "\n";
+            //    std::cout << model.vertex_buffers[m_i].vertices[i].tex_coords_1.X << "," <<
+            //        model.vertex_buffers[m_i].vertices[i].tex_coords_1.Y << "\n";
             }
         }
 

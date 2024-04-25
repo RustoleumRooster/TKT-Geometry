@@ -165,31 +165,34 @@ bool lightmaps_fill(geometry_scene* geo_scene, std::vector<lm_block>::iterator& 
 			*out = ret;
 			return false;
 		}
-	
+
+		u32 block_height = 256;
+		u32 block_width = 256;
+
 		matrix4 m;
 
+		/*
+		std::cout << " scale = " << (f32)(blocks_it->width - 3) / (f32)block_width << " / " <<
+			(f32)(blocks_it->width - 3) / (f32)block_width << "\n";
+
+		std::cout<<" trans = " << (f32)(face_block.coords.UpperLeftCorner.X + 1.5f) / (f32)block_width << " / " <<
+			(f32)(face_block.coords.UpperLeftCorner.Y + 1.5f) / (f32)block_height << "\n";
+		*/
+
+		m.setScale(vector3df((f32)(blocks_it->width - 3) / (f32)block_width,
+			(f32)(blocks_it->height - 3) / (f32)block_height, 1.0f));
+
+		m.setTranslation(vector3df((f32)(face_block.coords.UpperLeftCorner.X + 1.5f) / (f32)block_width,
+			(f32)(face_block.coords.UpperLeftCorner.Y + 1.5f) / (f32)block_height, 0));
+
+		
 		if (blocks_it->bFlipped)
 		{
-			m.setScale(vector3df(	(f32)(blocks_it->width - 3) / (f32)new_block.dimension.Width, 
-									(f32)(blocks_it->height - 3) / (f32)new_block.dimension.Height, 1.0f));
-
-			m.setTranslation(vector3df(	(f32)(face_block.coords.UpperLeftCorner.X + 1.5f) / (f32)new_block.dimension.Width, 
-										(f32)(face_block.coords.UpperLeftCorner.Y + 1.5f) / (f32)new_block.dimension.Height, 0));
-
 			apply_transform_to_uvs(&geo_scene->edit_meshnode_interface, blocks_it->faces, MAP_UVS_LIGHTMAP, flip_mat);
-			apply_transform_to_uvs(&geo_scene->edit_meshnode_interface, blocks_it->faces, MAP_UVS_LIGHTMAP, m);
 		}
-		else
-		{
-			m.setScale(vector3df(	(f32)(blocks_it->width - 3) / (f32)new_block.dimension.Width,
-									(f32)(blocks_it->height - 3) / (f32)new_block.dimension.Height, 1));
 
-			m.setTranslation(vector3df(	(f32)(face_block.coords.UpperLeftCorner.X + 1.5f) / (f32)new_block.dimension.Width,
-										(f32)(face_block.coords.UpperLeftCorner.Y + 1.5f) / (f32)new_block.dimension.Height, 0));
+		apply_transform_to_uvs(&geo_scene->edit_meshnode_interface, blocks_it->faces, MAP_UVS_LIGHTMAP, m);
 
-			apply_transform_to_uvs(&geo_scene->edit_meshnode_interface, blocks_it->faces, MAP_UVS_LIGHTMAP, m);
-		}
-			
 		for (int f_j : blocks_it->faces)
 		{
 			TextureMaterial::lightmap_record rec;
@@ -270,7 +273,6 @@ void initialize_block(geometry_scene* geo_scene, int f_i, back_type ret)
 				b.width = reduce_dimension_base2(mapper.uv_width() * sfg.radius * 2 * 3.1459, 1);
 				b.height = reduce_dimension_base2(mapper.uv_height() * sfg.height, 1);
 
-				std::cout << b.width << "x" << b.height << " cylinder\n";
 			} break;
 
 			case SURFACE_GROUP_DOME:

@@ -286,7 +286,7 @@ void UV_Editor_Base::make_custom_surface_group(polyfold pf)
 
 void UV_Editor_Base::make_face(polyfold* pf_0, int f_no, video::ITexture* face_texture)
 {
-    MeshBuffer_Chunk chunk = g_scene->edit_meshnode_interface.get_mesh_buffer_by_face(f_no);
+    MeshBuffer_Chunk chunk = g_scene->final_meshnode_interface.get_mesh_buffer_by_face(f_no);
 
     my_face_no = f_no;
 
@@ -330,7 +330,7 @@ void UV_Editor_Base::make_face(polyfold* pf_0, int f_no, video::ITexture* face_t
             n_points = source_brush->vertices.size();
             vertex_index.assign(n_points, -1);
         }
-
+        //std::cout << "chunks:\n";
         for (int i = chunk.begin_i; i < chunk.end_i; i += 3)
         {
             core::dimension2du texture_size = face_texture->getOriginalSize();
@@ -339,29 +339,31 @@ void UV_Editor_Base::make_face(polyfold* pf_0, int f_no, video::ITexture* face_t
             u32 v1 = buffer->getIndices()[i + 1];
             u32 v2 = buffer->getIndices()[i + 2];
 
+           // std::cout << v0 << "," << v1 << "," << v2 << "\n";
+
             video::S3DVertex2TCoords* vtx0 = &((video::S3DVertex2TCoords*)buffer->getVertices())[v0];
             video::S3DVertex2TCoords* vtx1 = &((video::S3DVertex2TCoords*)buffer->getVertices())[v1];
             video::S3DVertex2TCoords* vtx2 = &((video::S3DVertex2TCoords*)buffer->getVertices())[v2];
 
             core::vector3df pos(0, 0, 0);
 
-            pos.Z = -vtx0->TCoords2.X;// *texture_size.Width;
-            pos.X = -vtx0->TCoords2.Y;// *texture_size.Height;
+            pos.Z = -vtx0->TCoords2.X * 512.0f;// *texture_size.Width;
+            pos.X = -vtx0->TCoords2.Y * 512.0f;// *texture_size.Height;
             int a = uv_poly.get_point_or_add(pos);
 
             int a_indx = source_brush->find_point(vtx0->Pos);
             vertex_index[a_indx] = a;
             
 
-            pos.Z = -vtx1->TCoords2.X;// *texture_size.Width;
-            pos.X = -vtx1->TCoords2.Y;// *texture_size.Height;
+            pos.Z = -vtx1->TCoords2.X * 512.0f;// *texture_size.Width;
+            pos.X = -vtx1->TCoords2.Y * 512.0f;// *texture_size.Height;
             int b = uv_poly.get_point_or_add(pos);
 
             int b_indx = source_brush->find_point(vtx1->Pos);
             vertex_index[b_indx] = b;
 
-            pos.Z = -vtx2->TCoords2.X;// *texture_size.Width;
-            pos.X = -vtx2->TCoords2.Y;// *texture_size.Height;
+            pos.Z = -vtx2->TCoords2.X * 512.0f;// *texture_size.Width;
+            pos.X = -vtx2->TCoords2.Y * 512.0f;// *texture_size.Height;
             int c = uv_poly.get_point_or_add(pos);
 
             int c_indx = source_brush->find_point(vtx2->Pos);
@@ -633,6 +635,11 @@ void UV_Editor_Panel::drawGrid(video::IVideoDriver* driver, const video::SMateri
             if(start_y + i * interval >= 0)
                 driver->draw3DLine(core::vector3df(start_y + i * interval, far_value, 0), core::vector3df(start_y + i * interval, far_value, vDownLeft.Z + viewSize.Width), col);
         }
+
+        driver->draw3DLine(core::vector3df(0, 0, 0), core::vector3df(0, 0, -512), col);
+        driver->draw3DLine(core::vector3df(0, 0, 0), core::vector3df(-512, 0, 0), col);
+        driver->draw3DLine(core::vector3df(-512, 0, -512), core::vector3df(0, 0, -512), col);
+        driver->draw3DLine(core::vector3df(-512, 0, -512), core::vector3df(-512, 0, 0), col);
     }
 }
 
