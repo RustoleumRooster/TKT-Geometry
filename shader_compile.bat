@@ -1,0 +1,2 @@
+C:/VulkanSDK/1.3.268.0/Bin/glslc.exe shader_occlusion_v2.comp --target-env=vulkan1.3  --target-spv=spv1.4 -o ./shaders/occlusion_2.spv
+C:/VulkanSDK/1.3.268.0/Bin/glslc.exe shader_lm_edges.comp --target-env=vulkan1.3  --target-spv=spv1.4 -o ./shaders/compute_lm_edges.spv

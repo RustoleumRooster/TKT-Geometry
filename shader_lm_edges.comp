@@ -1,0 +1,109 @@
+#version 450
+#extension GL_KHR_shader_subgroup_basic : enable
+#extension GL_KHR_shader_subgroup_arithmetic : enable
+
+layout (binding = 0) uniform Params 
+{
+	uint lm_width;
+	uint lm_height;
+} params;
+
+layout(binding = 1, rgba8) uniform readonly image2D imageIn;
+layout(binding = 2, rgba8) uniform image2D imageOut;
+
+
+layout (local_size_x = 32, local_size_y = 8, local_size_z = 1) in;
+
+shared uint ix_0;
+shared uint iy_0;
+
+void main()
+{
+	uint ix = gl_LocalInvocationID.x;
+	uint iy = gl_LocalInvocationID.y;
+	uint thread_id = iy * gl_WorkGroupSize.x + ix;
+	uint work_length = 32;
+	uint work_height = 8;
+
+	if(ix==0 && iy==0)
+	{
+		ix_0 = gl_WorkGroupID.x*32;
+		iy_0 = gl_WorkGroupID.y*8;
+	}
+	
+	barrier();
+
+	
+	while(iy_0 < work_height + gl_WorkGroupID.y*8)
+	{
+		while(ix_0 < work_length + gl_WorkGroupID.x*32)
+		{
+
+			//=================================
+			// Create a "border" around the lightmapped portion 
+			//
+
+			if(ix_0+ix < params.lm_width && iy_0+iy < params.lm_height)
+			{
+				float u = ix_0+ix;
+				float v = iy_0+iy;
+
+				float sum = 0.0;
+				float n=0;
+
+				bool edge= false;
+				
+				//if (imageLoad(imageIn,ivec2(u,v)).g == 0.0)
+				if(false)
+				{
+				edge=true;
+					for(int i=-1;i<=1;i++)
+						for(int j=-1;j<=1;j++)
+						{
+							if(i != 0 || j !=0)
+							{
+								if (imageLoad(imageIn,ivec2(u+i,v+j)).g == 1.0)
+								{
+									sum += imageLoad(imageIn,ivec2(u+i,v+j)).r;
+									n+=1.0;
+								}
+							}
+						}
+				}
+				else
+				{
+					sum = imageLoad(imageIn,ivec2(u,v)).b;
+					n=1.0;
+				}
+
+				if(n>0)
+					sum /= n;
+					
+				//if(edge && n > 0)
+				//	imageStore(imageOut,ivec2(u,v),vec4(sum,sum,1,1));
+				//else
+					imageStore(imageOut,ivec2(u,v),vec4(sum,sum,sum,1));
+
+			}//if
+
+			barrier();
+
+			if(ix==0 && iy==0)
+			{
+				ix_0 += gl_WorkGroupSize.x;
+			}
+
+			barrier();
+		}//while
+
+		barrier();
+
+		if(ix==0 && iy==0)
+			{
+				iy_0 += gl_WorkGroupSize.y;
+				ix_0 = gl_WorkGroupID.x*32;
+			}
+
+		barrier();
+	}//while
+}

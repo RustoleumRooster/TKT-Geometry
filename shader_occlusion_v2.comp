@@ -1,0 +1,451 @@
+#version 450
+#extension GL_KHR_shader_subgroup_basic : enable
+#extension GL_KHR_shader_subgroup_arithmetic : enable
+
+layout (binding = 0) uniform raytraceParams 
+{
+	//vec3 pos;
+	//vec3 normal;
+	//vec3 tan;
+	//vec3 bitan;
+	//vec3 v0;
+	//vec3 v1;
+	//vec3 v2;
+	//vec3 v3;
+
+	uint n_rays;
+	uint n_triangles;
+	uint n_vertices;
+
+	uint m_triangles_vertex_offset;
+	uint m_triangles_index_offset;
+	uint m_triangles_n_indices;
+	
+	uint lm_width;
+	uint lm_height;
+	//uvec2 lm_v0;
+	//uvec2 lm_v1;
+} params;
+
+layout(std140, binding = 1) readonly buffer indexUBO
+{
+	uint global_indices[];
+};
+
+layout(std140, binding = 2) readonly buffer vertUBO
+{
+	vec3 global_vertices[];
+};
+
+layout(std140, binding = 3) readonly buffer uvUBO
+{
+	vec3 map_uvs[];
+};
+
+/*
+layout(std140, binding = 4) readonly buffer normUBO
+{
+	vec3 map_normals[];
+};*/
+
+//an output buffer for debugging
+layout(std140, binding = 4) buffer hitResults
+{
+	vec3 hits[];
+};
+
+layout(binding = 5, rgba8) uniform image2D imageOut;
+
+uint[2] tea(uint v[2])
+{
+	uint v0 = v[0];
+	uint v1 = v[1];
+	uint delta = 0x9E3779B9;
+	uint k0 = 0xA341316C;
+	uint k1 = 0xC8013EA4;
+	uint k2 = 0xAD90777D;
+	uint k3 = 0x7E95761E;
+	uint sum = 0;
+
+	for(int i=0;i<6;i++)
+	{
+		sum+=delta;
+		v0+= ((v1<<4) + k0) ^ (v1+sum) ^ ((v1>>5) + k1);
+		v1+= ((v0<<4) + k2) ^ (v0+sum) ^ ((v0>>5) + k3);
+	}
+
+	return uint[2](v0,v1);
+}
+
+float random_to_float01(uint random)
+{
+	uint u = random >> 9 | 0x3F800000;
+	return uintBitsToFloat(u) - 1.0;
+}
+
+shared vec3 triangle_verts[384];
+/*
+bool trace_face_hit(inout vec3 hitvec, in float best_in, vec3 eye, vec3 ray)
+{
+	vec3 edge1, edge2, rayVecXe2, s, sXe1;
+	float det, invDet, u, v, best;
+	best = best_in;
+
+	for(int i=0; i<params.face_n_indices; i+=3)
+		{
+		uint id0 = params.face_index_offset + i;
+		uint id1 = params.face_index_offset + i + 1;
+		uint id2 = params.face_index_offset + i + 2;
+
+		edge1 = triangle_verts[(id1)] - triangle_verts[id0];
+		edge2 = triangle_verts[(id2)] - triangle_verts[id0];
+		rayVecXe2 = cross(ray,edge2);
+		det = dot(edge1,rayVecXe2);
+
+		if(det > -0.00001 && det < 0.00001)
+			continue;
+
+		invDet = 1.0 / det;
+		s = eye - triangle_verts[id0];
+		u = invDet * dot(s,rayVecXe2);
+
+		if( u < 0.0 || u > 1.0) 
+			continue;
+
+		sXe1 = cross(s,edge1);
+		v = invDet * dot(ray,sXe1);
+
+		if(v < 0.0 || u+v > 1.0) 
+			continue;
+
+		float t = invDet * dot(edge2,sXe1);
+
+		if(t > 0.00001 && t < best)
+			{
+				hitvec = eye + ray * t;
+				best = t;
+			}
+		}
+
+		return (best < best_in);
+}
+*/
+uint trace_scene_hit(inout vec3 hitvec, in float best_in, in vec3 eye, in vec3 ray)
+{
+	vec3 edge1, edge2, rayVecXe2, s, sXe1;
+	float det, invDet, u, v, best;
+
+	best = best_in;
+
+	for(int i=0; i<params.n_triangles; i++)
+		{
+
+		edge1 = triangle_verts[(i*3) + 1] - triangle_verts[i*3];
+		edge2 = triangle_verts[(i*3) + 2] - triangle_verts[i*3];
+		rayVecXe2 = cross(ray,edge2);
+		det = dot(edge1,rayVecXe2);
+
+		if(det > -0.00001 && det < 0.00001)
+			continue;
+
+		invDet = 1.0 / det;
+		s = eye - triangle_verts[i*3];
+		u = invDet * dot(s,rayVecXe2);
+
+		if( u < 0.0 || u > 1.0) 
+			continue;
+
+		sXe1 = cross(s,edge1);
+		v = invDet * dot(ray,sXe1);
+
+		if(v < 0.0 || u+v > 1.0) 
+			continue;
+
+		float t = invDet * dot(edge2,sXe1);
+
+		if(t > 0.001 && t < best)
+			{
+				hitvec = eye + ray * t;
+				best=t;
+			}
+		}
+
+		return (best < best_in) ? 1 : 0;
+}
+
+vec3 rand_hemisphere_ray(in vec3 N, in vec3 Tan, in vec3 BiTan, inout uint seed)
+{
+	uint[2] V = tea(uint[2](seed,0));
+
+	float theta = acos( random_to_float01(V[0]) );
+	float omega = (random_to_float01(V[1]) * 3.1415926535 * 2);
+	
+	float x = sin(theta)*cos(omega);
+	float y = sin(theta)*sin(omega);
+	float z = cos(theta);
+
+	vec3 ray = Tan*x + BiTan*y + N*z;
+	ray = normalize(ray);
+
+	seed = V[1];
+
+	return ray;
+}
+
+/*
+vec3 get_vec3_from_uv(in float u, in float v)
+{
+	return params.v0 + (params.v1 - params.v0)*u + (params.v3 - params.v0)*v;
+}*/
+
+layout (local_size_x = 32, local_size_y = 8, local_size_z = 1) in;
+
+
+
+shared float yminf,ymaxf,xminf,xmaxf;
+shared uint ymin,ymax,xmin,xmax;
+
+shared float m0,m1,m2;
+shared bool b0,b1,b2,bNegativeX;
+
+shared uint i_0;
+shared uint v_0,v_1,v_2;
+
+float MajorX(float y)
+{
+	return map_uvs[v_0].x + (m0 * (y - map_uvs[v_0].y));
+}
+
+float MinorX(float y)
+{
+	if(b0 && b1)
+	{
+		if(bNegativeX)
+		{
+			return max(map_uvs[v_0].x + (m1 * (y - map_uvs[v_0].y)),
+					map_uvs[v_2].x + (m2 * (y - map_uvs[v_2].y)));
+		}
+		else
+		{
+			return min(map_uvs[v_0].x + (m1 * (y - map_uvs[v_0].y)),
+					map_uvs[v_2].x + (m2 * (y - map_uvs[v_2].y)));
+		}
+	}
+	else if(b0)
+	{
+		return map_uvs[v_0].x + (m1 * (y - map_uvs[v_0].y));
+	}
+	else if(b1)
+	{
+		return map_uvs[v_2].x + (m2 * (y - map_uvs[v_2].y));
+	}
+	return 0;
+}
+
+uint indexed(uint v_i)
+{
+	return params.m_triangles_vertex_offset + global_indices[v_i];
+}
+
+uint indexed(uint v_i, uint offset)
+{
+	return params.m_triangles_vertex_offset + global_indices[v_i+offset];
+}
+
+void main()
+{
+	uint ix = gl_LocalInvocationID.x;
+	uint iy = gl_LocalInvocationID.y;
+	uint thread_id = iy * gl_WorkGroupSize.x + ix;
+	uint global_thread_id = gl_GlobalInvocationID.x + (gl_GlobalInvocationID.y * gl_NumWorkGroups.x * gl_WorkGroupSize.x);
+
+
+	//=================================
+	// Initial tasks
+	//
+
+	if(thread_id < params.n_triangles * 3)
+	{
+		uint v_index = global_indices[thread_id];
+		triangle_verts[thread_id] = global_vertices[v_index];
+	}
+
+	if(32*8 + thread_id < params.n_triangles * 3)
+	{
+		uint v_index = global_indices[32*8 + thread_id];
+		triangle_verts[32*8 + thread_id] = global_vertices[v_index];
+	}
+
+
+	barrier();
+
+	if(gl_WorkGroupID.x * 3 < params.m_triangles_n_indices && ix == 0 && iy == 0)
+	{
+		uint i_0 = params.m_triangles_index_offset + gl_WorkGroupID.x*3;
+		//i_0 = global_indices[v_i];
+
+		//if(map_uvs[i_0].y < map_uvs[i_0+1].y)
+		if(map_uvs[indexed(i_0)].y < map_uvs[indexed(i_0,1)].y)
+			v_0 = 0;
+		else
+			v_0 = 1;
+
+		//if(map_uvs[i_0+v_0].y < map_uvs[i_0+2].y)
+		if(map_uvs[indexed(i_0,v_0)].y < map_uvs[indexed(i_0,2)].y)
+			v_0 = v_0;
+		else
+			v_0 = 2;
+
+		//if(map_uvs[i_0+((v_0+1)%3)].y > map_uvs[i_0+((v_0+2)%3)].y)
+		if(map_uvs[indexed(i_0,((v_0+1)%3))].y > map_uvs[indexed(i_0,((v_0+2)%3))].y)
+		{
+			v_1 = (v_0+1)%3;
+			v_2 = (v_0+2)%3;
+		}
+		else
+		{
+			v_1 = (v_0+2)%3;
+			v_2 = (v_0+1)%3;
+		}
+
+		//v_0 += i_0;
+		//v_1 += i_0;
+		//v_2 += i_0;
+
+		v_0 = indexed(i_0,v_0);
+		v_1 = indexed(i_0,v_1);
+		v_2 = indexed(i_0,v_2);
+
+		m0 = (map_uvs[v_1].x - map_uvs[v_0].x) / (map_uvs[v_1].y - map_uvs[v_0].y);
+		m1 = (map_uvs[v_2].x - map_uvs[v_0].x) / (map_uvs[v_2].y - map_uvs[v_0].y);
+		m2 = (map_uvs[v_1].x - map_uvs[v_2].x) / (map_uvs[v_1].y - map_uvs[v_2].y);
+
+		b0=false;
+		b1=false;
+
+		if(map_uvs[v_2].y > map_uvs[v_0].y+0.00001)
+			b0 = true;
+
+		if(map_uvs[v_1].y > map_uvs[v_2].y+0.00001)
+			b1 = true;
+
+		bNegativeX = false;
+
+		if(MajorX(map_uvs[v_2].y) > map_uvs[v_2].x)
+			bNegativeX = true;
+	}
+
+	barrier();
+	float ystep = 1.0 / params.lm_height;
+	float xstep = 1.0 / params.lm_width;
+
+	ymin = uint(params.lm_height * map_uvs[v_0].y);
+	ymax = uint(params.lm_height * map_uvs[v_1].y);
+
+	uint i=0;
+
+	/*
+	if(gl_WorkGroupID.x == 0 && ix == 0 && iy == 0)
+	{
+		hits[0].x = map_uvs[v_0].x;
+		hits[0].y = map_uvs[v_0].y;
+		hits[1].x = map_uvs[v_1].x;
+		hits[1].y = map_uvs[v_1].y;
+		hits[2].x = map_uvs[v_2].x;
+		hits[2].y = map_uvs[v_2].y;
+		hits[3].x = params.m_triangles_index_offset + gl_WorkGroupID.x*3;
+		hits[4].x = v_0;
+		hits[4].y = v_1;
+		hits[4].z = v_2;
+	}*/
+
+	uint index = gl_WorkGroupID.x*3;
+
+	//if(ix == 0 && iy == 0 && gl_WorkGroupID.x ==3)
+	if(ix == 0 && iy == 0)
+		{
+		///hits[gl_WorkGroupID.x+0].x = params.m_triangles_index_offset + global_indices[gl_WorkGroupID.x*3];
+		//hits[gl_WorkGroupID.x+0].y = params.m_triangles_index_offset + global_indices[1 + gl_WorkGroupID.x*3];
+		//hits[gl_WorkGroupID.x+0].z = params.m_triangles_index_offset + global_indices[2 + gl_WorkGroupID.x*3];
+		/*
+		hits[gl_WorkGroupID.x*3+0].x = map_uvs[v_0].x * params.lm_width;
+		hits[gl_WorkGroupID.x*3+0].y = map_uvs[v_0].y * params.lm_width;
+		hits[gl_WorkGroupID.x*3+1].x = map_uvs[v_1].x * params.lm_width;
+		hits[gl_WorkGroupID.x*3+1].y = map_uvs[v_1].y * params.lm_width;
+		hits[gl_WorkGroupID.x*3+2].x = map_uvs[v_2].x * params.lm_width;
+		hits[gl_WorkGroupID.x*3+2].y = map_uvs[v_2].y * params.lm_width;*/
+		/*
+		hits[gl_WorkGroupID.x*3+0].x = map_uvs[v_0].x;
+		hits[gl_WorkGroupID.x*3+0].y = map_uvs[v_0].y;
+		hits[gl_WorkGroupID.x*3+1].x = map_uvs[v_1].x;
+		hits[gl_WorkGroupID.x*3+1].y = map_uvs[v_1].y;
+		hits[gl_WorkGroupID.x*3+2].x = map_uvs[v_2].x;
+		hits[gl_WorkGroupID.x*3+2].y = map_uvs[v_2].y;*/
+		}
+
+	barrier();
+
+	//if(gl_WorkGroupID.x  < 3)
+	{
+	
+		for( float y = map_uvs[v_0].y; y<map_uvs[v_1].y + 0.0001; y+=ystep)
+		{
+			if(ix == 0 && iy == 0)
+			{
+			
+			//hits[i].x = uint(params.lm_height *y);
+			//ivec2(y,uint(params.lm_width * MajorX(y))) uint(params.lm_width * MinorX(y)))
+			
+
+			/*
+			if(bNegativeX==false)
+			{
+				hits[i].y= uint(params.lm_width * MajorX(y));
+				hits[i].z= uint(params.lm_width * MinorX(y));
+			}
+			else
+			{
+				hits[i].z= uint(params.lm_width * MajorX(y));
+				hits[i].y= uint(params.lm_width * MinorX(y));
+			}*/
+
+			imageStore(imageOut,ivec2(uint(params.lm_width * MajorX(y)),uint(params.lm_height * y)),vec4(1,1,1,1));
+			imageStore(imageOut,ivec2(uint(params.lm_width * MinorX(y)),uint(params.lm_height * y)),vec4(1,1,1,1));
+
+			if(i==0 || y + ystep > map_uvs[v_1].y)
+			{
+				if(bNegativeX==false)
+					for( float x = uint(params.lm_width * MajorX(y)); x <= uint(params.lm_width * MinorX(y)); x++)
+					{
+						imageStore(imageOut,ivec2(x,uint(params.lm_height * y)),vec4(1,1,1,1));
+					}
+				else
+					for( float x = uint(params.lm_width * MajorX(y)); x >= uint(params.lm_width * MinorX(y)); x--)
+					{
+						imageStore(imageOut,ivec2(x,uint(params.lm_height * y)),vec4(1,1,1,1));
+					}
+			}
+			i++;
+			}
+		}
+
+		/*
+		if(ix == 0 && iy == 0)
+			for(; i < 256; i++)
+			{
+				hits[i].x=0;
+				hits[i].y=0;
+				hits[i].z=0;
+			}*/
+		
+	}
+
+	barrier();
+
+	return;
+
+}
+
+
+
+

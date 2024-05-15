@@ -19,6 +19,7 @@
 #include "uv_tool.h"
 #include "vtoolbar.h"
 #include "ex_gui_elements.h"
+#include "vulkan_app.h"
 
 extern IrrlichtDevice* device;
 using namespace irr;
@@ -509,12 +510,10 @@ bool MyEventReceiver::OnEvent(const SEvent& event)
                         ListReflectedNodes_Tool::show();
                         break;
                     case GUI_ID_BUTTON_LIGHTS:
-                       // Save_Geometry_File::Export("/export");
-                        Save_Geometry_File* save = new Save_Geometry_File(g_scene, false);
-                        save->Export("../projects/export");
-                        //MyEventReceiver* receiver = (MyEventReceiver*)device->getEventReceiver();
-                        //receiver->UnRegisterFromInsideEvent(save);
-                        delete save;
+
+                        VulkanApp vk;
+                        vk.run(&g_scene->final_meshnode_interface);
+
                         break;
                 }
             }
