@@ -567,6 +567,17 @@ struct TypeDescriptor_StdVector : TypeDescriptor {
         }
     }
 
+    virtual void copy(void* obj, const void* obj2)
+    {
+        size_t numItems = getSize(obj2);
+
+        allocate(obj, numItems);
+        for (size_t index = 0; index < numItems; index++)
+        {
+            itemType->copy(getItem_nc(obj,index),getItem(obj2,index));
+        }
+    }
+
     virtual TypeDescriptor* get_flat_copy(void* obj, int indent)
     {
        // for (int i = 0; i < indent; i++)
