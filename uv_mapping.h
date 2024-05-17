@@ -59,8 +59,8 @@ public:
 	vector3df iY, v0, v1, r0;
 	f32 m_height, m_radius;
 
-	f32 max_height() { return m_height; }
-	f32 max_width() { return m_radius * 2 * 3.14; }
+	//f32 height() { return m_height; }
+	//f32 width() { return m_radius * 2 * 3.14; }
 
 	vector2df m_min, m_max;
 	int n = 0;
@@ -253,7 +253,7 @@ void map_uvs(geometry_scene* geo_scene, MeshNode_Interface* mesh_node, const std
 {
 	polyfold* pf = geo_scene->get_total_geometry();
 
-	video::S3DVertex2TCoords** vtx = new video::S3DVertex2TCoords*[3];
+	video::S3DVertex2TCoords* vtx[3];
 
 	for (int b_i : surface)
 	{
@@ -292,8 +292,6 @@ void map_uvs(geometry_scene* geo_scene, MeshNode_Interface* mesh_node, const std
 			}
 		}
 	}
-
-	delete[] vtx;
 }
 
 void apply_transform_to_uvs(MeshNode_Interface* mesh_node, const std::vector<int>& surface, int uv_type, matrix4 mat);
