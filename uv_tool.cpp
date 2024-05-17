@@ -286,7 +286,7 @@ void UV_Editor_Base::make_custom_surface_group(polyfold pf)
 
 void UV_Editor_Base::make_face(polyfold* pf_0, int f_no, video::ITexture* face_texture)
 {
-    MeshBuffer_Chunk chunk = g_scene->final_meshnode_interface.get_mesh_buffer_by_face(f_no);
+    MeshBuffer_Chunk chunk = g_scene->edit_meshnode_interface.get_mesh_buffer_by_face(f_no);
 
     my_face_no = f_no;
 
