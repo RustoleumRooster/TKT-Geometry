@@ -291,13 +291,6 @@ int main()
     uv_editor_base->initialize(L"UV Edtior", GUI_ID_UV_EDITOR_BASE, gui, &scene, tool_panel);
     UV_Editor_Tool::initialize(uv_editor_base, tool_panel);
 
-    GenLightMaps* lightmaps = new GenLightMaps(&scene, smgr, driver, (video::E_MATERIAL_TYPE)projectionMaterialType);
-    lightmaps->setDynamicLightMaterial((video::E_MATERIAL_TYPE)DynamicLight_OneLightSource_MaterialType);
-    lightmaps->setPathTracingMaterial((video::E_MATERIAL_TYPE)PathTracing_MaterialType);
-    LightMaps_Tool::init(lightmaps);
-
-    scene.edit_meshnode_interface.setLightMaps(lightmaps);
-    scene.final_meshnode_interface.setLightMaps(lightmaps);
 
     //multi_tool::initialize(tool_panel);
 
@@ -319,6 +312,9 @@ int main()
     texture_picker_base->addTexture("wall.bmp");
     texture_picker_base->addTexture("water3.jpg");
     }
+
+    Lightmap_Manager* lightmap_manager = new Lightmap_Manager;
+    scene.setLightmapManager(lightmap_manager);
 
     MakeCircleImages(driver);
 

@@ -8,10 +8,13 @@
 #include <math.h>
 #include "BufferManager.h"
 #include "uv_mapping.h"
+#include <sstream>
 
 using namespace irr;
 using namespace core;
 using namespace std;
+
+extern IrrlichtDevice* device;
 
 f32 reduce_dimension_base2(f32 dim, int n = 1)
 {
@@ -382,6 +385,37 @@ void lightmaps_divideMaterialGroups(geometry_scene* geo_scene, std::vector<Textu
 	std::cout << "Created "<<ret.size() << " new material groups\n";
 
 	material_groups = ret;
+}
+
+void Lightmap_Manager::loadLightmapTextures(geometry_scene* geo_scene, const std::vector<TextureMaterial>& material_groups)
+{
+	for (video::ITexture* tex: lightmap_textures)
+	{
+		device->getVideoDriver()->removeTexture(tex);
+	}
+
+	lightmap_textures.clear();
+
+	for (int i = 0; i < material_groups.size(); i++)
+	{
+		std::stringstream ss;
+		ss << "../projects/export/lightmap_" << i << ".bmp";
+		video::ITexture* tex = device->getVideoDriver()->getTexture(ss.str().c_str());
+
+		lightmap_textures.push_back(tex);
+
+		std::cout << ss.str() << ":\n";
+		for (int f_i : material_groups[i].faces)
+		{
+			std::cout << f_i << " \n";
+			MeshBuffer_Chunk chunk;
+			chunk = geo_scene->final_meshnode_interface.get_mesh_buffer_by_face(f_i);
+			chunk.buffer->getMaterial().setTexture(1, tex);
+
+			chunk = geo_scene->edit_meshnode_interface.get_mesh_buffer_by_face(f_i);
+			chunk.buffer->getMaterial().setTexture(1, tex);
+		}
+	}
 }
 
 

@@ -104,6 +104,11 @@ void geometry_scene::showLightMaps()
 
 }
 
+void geometry_scene::setLightmapManager(Lightmap_Manager* lm)
+{
+    lightmap_manager = lm;
+}
+
 void geometry_scene::setTexturePickerBase(TexturePicker_Base* texp)
 {
     texture_picker_base = texp;
@@ -684,9 +689,7 @@ void geometry_scene::buildSceneGraph(bool finalMesh, bool addObjects, bool addLi
         for(int i = 0; i< my_MeshNode->getMesh()->getMeshBufferCount(); i++)
         {
             scene::IMeshBuffer* buffer = my_MeshNode->getMesh()->getMeshBuffer(i);
-            //int f_i = final_meshnode_interface.get_material_reference_face(i); 
-            //int f_i = final_meshnode_interface.getMaterialsUsed()[i].faces[0];
-            int f_i = final_meshnode_interface.getMaterialsUsed()[i].records[0].face;
+            int f_i = final_meshnode_interface.getMaterialsUsed()[i].faces[0];
             material_groups_base->apply_material_to_buffer(buffer,pf->faces[f_i].material_group,addLights);
             
         }

@@ -20,6 +20,7 @@
 #include "vtoolbar.h"
 #include "ex_gui_elements.h"
 #include "vulkan_app.h"
+#include "LightMaps.h"
 
 extern IrrlichtDevice* device;
 using namespace irr;
@@ -513,6 +514,8 @@ bool MyEventReceiver::OnEvent(const SEvent& event)
 
                         VulkanApp vk;
                         vk.run(&g_scene->final_meshnode_interface);
+
+                        g_scene->getLightmapManager()->loadLightmapTextures(g_scene, g_scene->final_meshnode_interface.getMaterialsUsed());
 
                         break;
                 }

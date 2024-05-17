@@ -59,6 +59,7 @@ enum
     SCENE_FINAL_LIGHTING
 };
 
+class Lightmap_Manager;
 class MyEventReceiver;
 class geometry_scene : public irr::IEventReceiver
 {
@@ -145,6 +146,9 @@ public:
    void visualizeMaterialGroups();
    void showLightMaps();
 
+   void setLightmapManager(Lightmap_Manager*);
+   Lightmap_Manager* getLightmapManager() { return lightmap_manager; }
+
    void set_new_geometry_material(int mg) { new_geometry_material_group = mg; }
 
     //===============Mesh Node Interfaces
@@ -199,6 +203,7 @@ private:
     TexturePicker_Base* texture_picker_base=NULL;
     Material_Groups_Base* material_groups_base=NULL;
     ListReflectedNodes_Base* choose_reflected_node_base=NULL;
+    Lightmap_Manager* lightmap_manager = NULL;
 
     scene::CMeshSceneNode* my_MeshNode=NULL;
 
