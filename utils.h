@@ -80,6 +80,9 @@ struct Face_Info_Struct
     reflect::vector3 normal;
     reflect::vector3 tangent;
     Face_Bounding_Rect_Struct bounding_rect;
+
+    //not reflected
+    u16 lightmap_no;
     
     REFLECT()
 };

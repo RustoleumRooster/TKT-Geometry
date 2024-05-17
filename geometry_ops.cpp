@@ -585,7 +585,7 @@ void geometry_scene::intersect_active_brush()
     }
     combine_polyfolds(polies, pf2);
 
-    clip_poly(cube, pf2, GEO_SUBTRACT, base_type, results, nograph);
+    clip_poly_accelerated(cube, pf2, GEO_SUBTRACT, base_type, results, nograph);
 
     if (results.n_intersections == 0)
     {
@@ -627,7 +627,7 @@ void geometry_scene::clip_active_brush()
     }
     combine_polyfolds(polies, pf2);
 
-    clip_poly(cube, pf2, GEO_ADD, base_type, results, nograph);
+    clip_poly_accelerated(cube, pf2, GEO_ADD, base_type, results, nograph);
 
     if (results.n_intersections == 0)
     {

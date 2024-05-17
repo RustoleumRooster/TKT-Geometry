@@ -1429,7 +1429,8 @@ bool Save_Geometry_File::export_model(io::path fname)
 
         for (int i = 0; i < materials_used.size(); i++)
         {
-            int n_lightmaps = materials_used[i].records.size();
+            //int n_lightmaps = materials_used[i].records.size();
+            int n_lightmaps = materials_used[i].faces.size();
 
             model.lightmaps_info[i].faces.resize(n_lightmaps);
             model.lightmaps_info[i].lightmap_block_UL.resize(n_lightmaps);
@@ -1438,11 +1439,12 @@ bool Save_Geometry_File::export_model(io::path fname)
 
             for (int j = 0; j < n_lightmaps; j++)
             {
-                model.lightmaps_info[i].faces[j] = materials_used[i].records[j].face;
-                model.lightmaps_info[i].lightmap_block_UL[j].X = materials_used[i].records[j].block.UpperLeftCorner.X + 0;
-                model.lightmaps_info[i].lightmap_block_UL[j].Y = materials_used[i].records[j].block.UpperLeftCorner.Y + 0;
-                model.lightmaps_info[i].lightmap_block_BR[j].X = materials_used[i].records[j].block.LowerRightCorner.X - 0;
-                model.lightmaps_info[i].lightmap_block_BR[j].Y = materials_used[i].records[j].block.LowerRightCorner.Y - 0;
+                //model.lightmaps_info[i].faces[j] = materials_used[i].records[j].face;
+                model.lightmaps_info[i].faces[j] = materials_used[i].faces[j];
+                //model.lightmaps_info[i].lightmap_block_UL[j].X = materials_used[i].records[j].block.UpperLeftCorner.X + 0;
+                //model.lightmaps_info[i].lightmap_block_UL[j].Y = materials_used[i].records[j].block.UpperLeftCorner.Y + 0;
+                //model.lightmaps_info[i].lightmap_block_BR[j].X = materials_used[i].records[j].block.LowerRightCorner.X - 0;
+                //model.lightmaps_info[i].lightmap_block_BR[j].Y = materials_used[i].records[j].block.LowerRightCorner.Y - 0;
 
                 //std::cout << materials_used[i].records[j].block.UpperLeftCorner.X << "," << materials_used[i].records[j].block.UpperLeftCorner.Y << "    ";
                 //std::cout << materials_used[i].records[j].block.LowerRightCorner.X << "," << materials_used[i].records[j].block.LowerRightCorner.Y << "\n";
@@ -1498,9 +1500,11 @@ bool Save_Geometry_File::export_model_2(io::path fname)
 
         for (int m_i = 0; m_i < materials_used.size(); m_i++)
         {
-            for (int i = 0; i < materials_used[m_i].records.size(); i++)
+            //for (int i = 0; i < materials_used[m_i].records.size(); i++)
+            for (int i = 0; i < materials_used[m_i].faces.size(); i++)
             {
-                int f_i = materials_used[m_i].records[i].face;
+                //int f_i = materials_used[m_i].records[i].face;
+                int f_i = materials_used[m_i].faces[i];
 
                 if (g_scene->get_total_geometry()->faces[f_i].loops.size() > 0)
                 {
@@ -1534,7 +1538,8 @@ bool Save_Geometry_File::export_model_2(io::path fname)
 
         for (int i = 0; i < materials_used.size(); i++)
         {
-            int n_lightmaps = materials_used[i].records.size();
+            //int n_lightmaps = materials_used[i].records.size();
+            int n_lightmaps = materials_used[i].faces.size();
 
             model.lightmaps_info[i].faces.resize(n_lightmaps);
            // model.lightmaps_info[i].lightmap_block_UL.resize(n_lightmaps);
@@ -1543,7 +1548,8 @@ bool Save_Geometry_File::export_model_2(io::path fname)
 
             for (int j = 0; j < n_lightmaps; j++)
             {
-                model.lightmaps_info[i].faces[j] = face_number_ref[materials_used[i].records[j].face];
+                model.lightmaps_info[i].faces[j] = face_number_ref[materials_used[i].faces[j]];
+                //model.lightmaps_info[i].faces[j] = face_number_ref[materials_used[i].records[j].face];
               //  model.lightmaps_info[i].lightmap_block_UL[j].X = materials_used[i].records[j].block.UpperLeftCorner.X + 0;
              //   model.lightmaps_info[i].lightmap_block_UL[j].Y = materials_used[i].records[j].block.UpperLeftCorner.Y + 0;
               //  model.lightmaps_info[i].lightmap_block_BR[j].X = materials_used[i].records[j].block.LowerRightCorner.X - 0;

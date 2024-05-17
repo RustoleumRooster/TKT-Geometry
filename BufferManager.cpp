@@ -655,10 +655,8 @@ void MeshNode_Interface_Final::generate_mesh_buffer(geometry_scene* geo_scene, S
 
         std::vector<triangle_holder> triangle_groups;
 
-        for(auto rec : materials_used[t_i].records)
+        for(int f_i : materials_used[t_i].faces)
         {
-            int f_i = rec.face;
-
             if(pf->faces[f_i].loops.size() > 0 && pf->faces[f_i].temp_b==false)
             {
                 video::ITexture* tex_j = driver->getTexture(pf->faces[f_i].texture_name.c_str());

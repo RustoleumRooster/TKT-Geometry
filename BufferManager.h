@@ -40,10 +40,6 @@ struct TextureMaterial
     int lightmap_size;
 
     std::vector<int> faces;
-    //std::vector<core::rect<u16>> blocks;
-    //std::vector<int> face_v0_index;
-
-    std::vector<lightmap_record> records;
 };
 
 

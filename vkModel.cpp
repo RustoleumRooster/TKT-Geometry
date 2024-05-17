@@ -22,7 +22,7 @@ void writeLightmapsInfo(const vector<TextureMaterial>& materials_used, std::vect
 
     for (int i = 0; i < materials_used.size(); i++)
     {
-        int n_lightmaps = materials_used[i].records.size();
+        int n_lightmaps = materials_used[i].faces.size();
 
         dest[i].faces.resize(n_lightmaps);
         dest[i].size = materials_used[i].lightmap_size;
@@ -47,7 +47,7 @@ void fill_vertex_struct(SMesh* mesh, soa_struct_2<aligned_vec3, aligned_vec3>& d
 
     item1 = [](SMesh* mesh_, u32 i, u32 j) -> aligned_vec3 {
         return aligned_vec3{ vector3df{ ((mesh_buffer_type*)mesh_->getMeshBuffer(i))->Vertices[j].TCoords2.X,
-                                        ((mesh_buffer_type*)mesh_->getMeshBuffer(i))->Vertices[j].TCoords2.Y, 0} };
+                                        (1.0f - ((mesh_buffer_type*)mesh_->getMeshBuffer(i))->Vertices[j].TCoords2.Y), 0} };
         };
 
     dest.fill_data(mesh, n, length, item0, item1);

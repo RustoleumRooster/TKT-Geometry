@@ -146,7 +146,7 @@ bool lightmaps_fill(geometry_scene* geo_scene, std::vector<lm_block>::iterator& 
 	ret.materialGroup = copy_from.materialGroup;
 	ret.texture = copy_from.texture;
 
-	auto ret_records_back = std::back_inserter(ret.records);
+	auto ret_faces_back = std::back_inserter(ret.faces);
 
 	rect<u16> my_block;
 
@@ -195,12 +195,8 @@ bool lightmaps_fill(geometry_scene* geo_scene, std::vector<lm_block>::iterator& 
 
 		for (int f_j : blocks_it->faces)
 		{
-			TextureMaterial::lightmap_record rec;
-
-			rec.face = f_j;
-
-			*ret_records_back = rec;
-			++ret_records_back;
+			*ret_faces_back = f_j;
+			++ret_faces_back;
 		}
 		
 		ret.lightmap_size = new_block.dimension.Width;
