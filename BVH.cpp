@@ -16,14 +16,6 @@ f32 calc_surface_area(f32* aabbMin, f32* aabbMax)
         ((0.5 + aabbMax[2] - aabbMin[2]) * (0.5 + aabbMax[1] - aabbMin[1]) * 0.001);
 }
 
-
-void swap_indices(u16 a, u16 b, std::vector<u16>& data)
-{
-    u16 tmp = data[a];
-    data[a] = data[b];
-    data[b] = tmp;
-}
-
 void BVH_node::addDrawLines(LineHolder& graph) const
 {
     vector3df v0(aabbMin[0], aabbMin[1], aabbMin[2]);

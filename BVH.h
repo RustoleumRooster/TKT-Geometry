@@ -64,7 +64,13 @@ public:
 	void textdump();
 };
 
-void swap_indices(u16 a, u16 b, std::vector<u16>&);
+template<typename T>
+void swap_indices(T a, T b, std::vector<T>& data)
+{
+	T tmp = data[a];
+	data[a] = data[b];
+	data[b] = tmp;
+}
 
 struct BVH_intersection_struct
 {
@@ -310,12 +316,91 @@ struct BVH_node
 	void addDrawLines_Leaves_Recursive(std::vector<BVH_node>& nodes, LineHolder& graph) const;
 };
 
-template<typename T>
-struct BVH_structure
+template<typename T, typename NODE_T, typename INDEX_T>
+struct BVH_structure_base
 {
-	std::vector<BVH_node> nodes;
-	std::vector<u16> indices;
+	std::vector<NODE_T> nodes;
+	std::vector<INDEX_T> indices;
 	int node_count = 0;
+
+
+	virtual void grow_prim(const T* data, u16 i, aabb_struct& aabb) = 0;
+	virtual core::vector3df prim_position(const T* data, u16 i) = 0;
+
+	f32 find_best_split(const f32* aabbMin, const f32* aabbMax, int& axis, f32& split_out, aabb_struct& sub_L, aabb_struct& sub_R, u16 first_prim, u16 n_prims, const T* data);
+
+	template<int cutoff>
+	void recursive_subdivide(u16 n_i, int& N, std::vector<NODE_T>& nodes, const T* data);
+
+	bool subdivide(u16 n_i, int& N, int axis, f32 split, const aabb_struct& sub_L, const aabb_struct& sub_R, std::vector<NODE_T>& nodes, const T* data);
+	virtual void assign_node_id(u16 n_i) = 0;
+
+	template<int cutoff>
+	void construct(const T* data, int n_prims_, bool(*func)(const T*) = NULL)
+	{
+		int n_prims = n_prims_;
+
+		if (n_prims == 0)
+			return;
+
+		node_count = 0;
+
+
+		indices.resize(n_prims);
+
+		for (u16 i = 0; i < n_prims; i++)
+			indices[i] = i;
+
+		/*
+		if (func)
+		{
+			u16 end_of_list = n_prims;
+
+			for (u16 i = 0; i < end_of_list; i++)
+			{
+				if (!func(&data[i]))
+				{
+					swap_indices<INDEX_T>(i, end_of_list - 1, indices);
+					end_of_list -= 1;
+				}
+			}
+
+			n_prims = end_of_list;
+		}*/
+
+		int max_nodes = 2 * n_prims - 1;
+
+		nodes.resize(max_nodes);
+
+		aabb_struct aabb_top;
+
+
+		nodes[0].n_prims = n_prims;
+		nodes[0].first_prim = 0;
+
+		for (int i = 0; i < n_prims; i++)
+		{
+			grow_prim(data, i, aabb_top);
+		}
+
+		nodes[0].aabbMin[0] = aabb_top.aabbMin[0];
+		nodes[0].aabbMin[1] = aabb_top.aabbMin[1];
+		nodes[0].aabbMin[2] = aabb_top.aabbMin[2];
+
+		nodes[0].aabbMax[0] = aabb_top.aabbMax[0];
+		nodes[0].aabbMax[1] = aabb_top.aabbMax[1];
+		nodes[0].aabbMax[2] = aabb_top.aabbMax[2];
+
+		recursive_subdivide<cutoff>(0, node_count, nodes, data);
+
+		node_count += 1;
+	}
+};
+
+template<typename T>
+struct BVH_structure : BVH_structure_base<T, BVH_node, u16>
+{
+	virtual void assign_node_id(u16 n_i) { nodes[n_i].id = n_i; }
 
 	void addDrawLines(LineHolder& graph) const;
 	void addDrawLines(int depth, LineHolder& graph) const
@@ -473,76 +558,8 @@ struct BVH_structure
 	virtual void grow_prim(const T* data, u16 i, aabb_struct& aabb) = 0;
 	virtual core::vector3df prim_position(const T* data, u16 i) = 0;
 
-	f32 find_best_split(const f32* aabbMin, const f32* aabbMax, int& axis, f32& split_out, aabb_struct& sub_L, aabb_struct& sub_R, u16 first_prim, u16 n_prims, const T* data);
-
-	template<int cutoff>
-	void recursive_subdivide(u16 n_i, int& N, std::vector<BVH_node>& nodes, const T* data);
-
-	bool subdivide(u16 n_i, int& N, int axis, f32 split, const aabb_struct& sub_L, const aabb_struct& sub_R, std::vector<BVH_node>& nodes, const T* data);
-
-	template<int cutoff>
-	void construct(const T* data, int n_prims_, bool(*func)(const T*) = NULL)
-	{
-		int n_prims = n_prims_;
-
-		if (n_prims == 0)
-			return;
-
-		node_count = 0;
-
-		
-		indices.resize(n_prims);
-
-		for (u16 i = 0; i < n_prims; i++)
-			indices[i] = i;
-
-		
-		if (func)
-		{
-			u16 end_of_list = n_prims;
-
-			for (u16 i = 0; i < end_of_list; i++)
-			{
-				if (!func(&data[i]))
-				{
-					swap_indices(i, end_of_list - 1, indices);
-					end_of_list -= 1;
-				}
-			}
-
-			n_prims = end_of_list;
-		}
-
-		int max_nodes = 2 * n_prims - 1;
-
-		nodes.resize(max_nodes);
-
-		aabb_struct aabb_top;
-
-
-		nodes[0].n_prims = n_prims;
-		nodes[0].first_prim = 0;
-
-		for (int i = 0; i < n_prims; i++)
-		{
-			grow_prim(data, i, aabb_top);
-		}
-		
-		nodes[0].aabbMin[0] = aabb_top.aabbMin[0];
-		nodes[0].aabbMin[1] = aabb_top.aabbMin[1]; 
-		nodes[0].aabbMin[2] = aabb_top.aabbMin[2];
-
-		nodes[0].aabbMax[0] = aabb_top.aabbMax[0];
-		nodes[0].aabbMax[1] = aabb_top.aabbMax[1];
-		nodes[0].aabbMax[2] = aabb_top.aabbMax[2];
-
-		recursive_subdivide<cutoff>(0, node_count, nodes, data);
-
-		node_count += 1;
-
-		//std::cout << "BVH structure has " << node_count << " nodes\n";
-	}
-
+	
+	/*
 	void rebuild_aabb_recursive(const T* data, u16 N)
 	{
 		nodes[N].aabbMin[0] = nodes[N].aabbMin[1] = nodes[N].aabbMin[2] = 1e30;
@@ -565,8 +582,8 @@ struct BVH_structure
 				nodes[N].set_aabb(aabb);
 			}
 		}
-	}
-
+	}*/
+	/*
 	template<typename T>
 	void grow(T* obj) const
 	{
@@ -577,7 +594,8 @@ struct BVH_structure
 		obj->aabbMax[0] = fmax(obj->aabbMax[0], nodes[0].aabbMax[0]);
 		obj->aabbMax[1] = fmax(obj->aabbMax[1], nodes[0].aabbMax[1]);
 		obj->aabbMax[2] = fmax(obj->aabbMax[2], nodes[0].aabbMax[2]);
-	}/*
+	}*/
+	/*
 	core::vector3df position(const polyfold*) const { 
 		return core::vector3df{ 
 			nodes[0].aabbMin[0] + (nodes[0].aabbMax[0] - nodes[0].aabbMin[0]) * 0.5,
@@ -712,9 +730,9 @@ inline void BVH_node::addDrawLines_Leaves_Recursive(std::vector<BVH_node>& nodes
 	}
 }
 
-template<typename T> 
+template<typename T, typename NODE_T, typename INDEX_T>
 template<int cutoff>
-void BVH_structure<T>::recursive_subdivide(u16 n_i, int& N, std::vector<BVH_node>& nodes, const T* data)
+void BVH_structure_base<T, NODE_T, INDEX_T>::recursive_subdivide(u16 n_i, int& N, std::vector<NODE_T>& nodes, const T* data)
 {
 	if (nodes[n_i].n_prims <= cutoff)
 		return;
@@ -738,8 +756,8 @@ void BVH_structure<T>::recursive_subdivide(u16 n_i, int& N, std::vector<BVH_node
 	}
 }
 
-template<typename T>
-f32 BVH_structure<T>::find_best_split(const f32* aabbMin, const f32* aabbMax, int& axis, f32& split_out, aabb_struct& sub_L, aabb_struct& sub_R, u16 first_prim, u16 n_prims, const T* data)
+template<typename T, typename NODE_T, typename INDEX_T>
+f32 BVH_structure_base<T, NODE_T, INDEX_T>::find_best_split(const f32* aabbMin, const f32* aabbMax, int& axis, f32& split_out, aabb_struct& sub_L, aabb_struct& sub_R, u16 first_prim, u16 n_prims, const T* data)
 {
 	f32 best = 1e30;
 
@@ -888,8 +906,8 @@ f32 BVH_structure<T>::find_best_split(const f32* aabbMin, const f32* aabbMax, in
 	return best;
 }
 
-template<typename T>
-bool BVH_structure<T>::subdivide(u16 n_i, int& N, int axis, f32 split, const aabb_struct& sub_L, const aabb_struct& sub_R, std::vector<BVH_node>& nodes, const T* data)
+template<typename T, typename NODE_T, typename INDEX_T>
+bool BVH_structure_base<T, NODE_T, INDEX_T>::subdivide(u16 n_i, int& N, int axis, f32 split, const aabb_struct& sub_L, const aabb_struct& sub_R, std::vector<NODE_T>& nodes, const T* data)
 {
 	int j = nodes[n_i].n_prims;
 	int count = 0;
@@ -906,7 +924,7 @@ bool BVH_structure<T>::subdivide(u16 n_i, int& N, int axis, f32 split, const aab
 		}
 		else
 		{
-			swap_indices(i, nodes[n_i].first_prim + j - 1, indices);
+			swap_indices<INDEX_T>(i, nodes[n_i].first_prim + j - 1, indices);
 			j -= 1;
 		}
 	}
@@ -927,7 +945,8 @@ bool BVH_structure<T>::subdivide(u16 n_i, int& N, int axis, f32 split, const aab
 	nodes[left_i].aabbMax[0] = sub_L.aabbMax[0];
 	nodes[left_i].aabbMax[1] = sub_L.aabbMax[1];
 	nodes[left_i].aabbMax[2] = sub_L.aabbMax[2];
-	nodes[left_i].id = left_i;
+	assign_node_id(left_i);
+	//nodes[left_i].id = left_i;
 
 	nodes[right_i].first_prim = nodes[n_i].first_prim + count;
 	nodes[right_i].n_prims = nodes[n_i].n_prims - count;
@@ -939,10 +958,13 @@ bool BVH_structure<T>::subdivide(u16 n_i, int& N, int axis, f32 split, const aab
 	nodes[right_i].aabbMax[0] = sub_R.aabbMax[0];
 	nodes[right_i].aabbMax[1] = sub_R.aabbMax[1];
 	nodes[right_i].aabbMax[2] = sub_R.aabbMax[2];
-	nodes[right_i].id = right_i;
+	assign_node_id(right_i);
+	//nodes[right_i].id = right_i;
 
 	return true;
 }
+
+
 
 #endif
 
