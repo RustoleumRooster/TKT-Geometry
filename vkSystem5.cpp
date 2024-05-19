@@ -180,7 +180,7 @@ void System5::createComputePipeline()
 		throw std::runtime_error("failed to create compute pipeline layout!");
 	}
 
-	pipeline = new ComputePipeline(device, "shaders/occlusion_2.spv", pipelineLayout);
+	pipeline = new ComputePipeline(device, "shaders/mesh_triangles.spv", pipelineLayout);
 }
 
 void System5::createLightmapImages()

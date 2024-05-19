@@ -43,10 +43,28 @@ public:
 		delete m_device;
 	}
 
-	void run(MeshNode_Interface_Final* meshnode, LineHolder& graph) {
+	void run5(MeshNode_Interface_Final* meshnode, LineHolder& graph) {
 		initVulkan(meshnode);
 		//mainLoop();
 
+		system5 = new System5(m_device, uniformBuffers);
+		system5->loadModel(meshnode);
+		system5->initialize_step2(m_DescriptorPool);
+		system5->executeComputeShader();
+		vkDeviceWaitIdle(m_device->getDevice());
+
+		//system5->writeDrawLines(graph);
+
+		cleanup();
+	}
+
+	void run6(MeshNode_Interface_Final* meshnode, LineHolder& graph) {
+		initVulkan(meshnode);
+		//mainLoop();
+
+		system6 = new System6(m_device, uniformBuffers);
+		system6->loadModel(meshnode);
+		system6->initialize_step2(m_DescriptorPool);
 		system6->executeComputeShader();
 		vkDeviceWaitIdle(m_device->getDevice());
 
@@ -62,14 +80,7 @@ private:
 		m_Textures = new MyTextures(m_device);
 
 		createUniformBuffers();
-
-		system6 = new System6(m_device, uniformBuffers);
-		system6->loadModel(meshnode);
-
 		createDescriptorPool();
-
-		system6->initialize_step2(m_DescriptorPool);
-
 		createCommandBuffers();
 		//createSyncObjects();
 	}
@@ -99,7 +110,12 @@ private:
 
 		m_DescriptorPool->cleanup();
 		//system2->cleanup();
-		system6->cleanup();
+
+		if(system5)
+			system5->cleanup();
+
+		if(system6)
+			system6->cleanup();
 
 
 		m_device->cleanup();

@@ -516,7 +516,7 @@ bool MyEventReceiver::OnEvent(const SEvent& event)
                         VulkanApp vk;
 
                         g_scene->special_graph.lines.clear();
-                        vk.run(&g_scene->final_meshnode_interface, g_scene->special_graph);
+                        vk.run5(&g_scene->final_meshnode_interface, g_scene->special_graph);
 
                         g_scene->getLightmapManager()->loadLightmapTextures(g_scene, g_scene->final_meshnode_interface.getMaterialsUsed());
 
