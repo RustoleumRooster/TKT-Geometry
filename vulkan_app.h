@@ -28,6 +28,7 @@
 #include "vkTextures.h"
 #include "vkComputePipeline.h"
 #include "vkSystem5.h"
+#include "vkSystem6.h"
 
 class MeshNode_Interface_Final;
 
@@ -42,12 +43,14 @@ public:
 		delete m_device;
 	}
 
-	void run(MeshNode_Interface_Final* meshnode) {
+	void run(MeshNode_Interface_Final* meshnode, LineHolder& graph) {
 		initVulkan(meshnode);
 		//mainLoop();
 
-		system5->executeComputeShader();
+		system6->executeComputeShader();
 		vkDeviceWaitIdle(m_device->getDevice());
+
+		system6->writeDrawLines(graph);
 
 		cleanup();
 	}
@@ -56,28 +59,16 @@ private:
 
 	void initVulkan(MeshNode_Interface_Final* meshnode) {
 		m_device = new MyDevice();
-
-
 		m_Textures = new MyTextures(m_device);
 
 		createUniformBuffers();
 
-		system5 = new System5(m_device, uniformBuffers);
-		system5->loadModel(meshnode);
+		system6 = new System6(m_device, uniformBuffers);
+		system6->loadModel(meshnode);
 
 		createDescriptorPool();
 
-
-		system5->setDescriptorPool(m_DescriptorPool);
-
-		system5->createDescriptorSetLayout();
-		system5->createComputePipeline();
-
-		system5->createVertexBuffer();
-		system5->createIndexBuffer();
-		system5->createRaytraceInfoBuffer();
-		system5->createHitResultsBuffer();
-		system5->createUVBuffer();
+		system6->initialize_step2(m_DescriptorPool);
 
 		createCommandBuffers();
 		//createSyncObjects();
@@ -91,7 +82,6 @@ private:
 	//void createSyncObjects();
 
 	void createCommandBuffers();
-
 
 	void mainLoop() {
 		
@@ -109,7 +99,7 @@ private:
 
 		m_DescriptorPool->cleanup();
 		//system2->cleanup();
-		system5->cleanup();
+		system6->cleanup();
 
 
 		m_device->cleanup();
@@ -126,6 +116,8 @@ private:
 	MyTextures* m_Textures = NULL;
 
 	System5* system5 = NULL;
+
+	System6* system6 = NULL;
 
 	std::vector<VkBuffer> uniformBuffers;
 	std::vector<VkDeviceMemory> uniformBuffersMemory;
