@@ -180,6 +180,8 @@ public:
 
     triangle_holder* get_triangles_for_face(int f_i);
 
+    LineHolder special_graph;
+
 private:
     
     void trianglize_total_geometry();

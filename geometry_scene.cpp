@@ -598,7 +598,13 @@ polyfold geometry_scene::get_intersecting_geometry(polyfold pf)
 
 void geometry_scene::drawGraph(LineHolder& graph)
 {
-    graph = intersections_graph;
+
+    //for (line3df el : intersections_graph.lines)
+    //    graph.lines.push_back(el);
+    graph.lines.clear();
+
+    for (const line3df& el : special_graph.lines)
+        graph.lines.push_back(el);
 }
 
 triangle_holder* geometry_scene::get_triangles_for_face(int f_i)
