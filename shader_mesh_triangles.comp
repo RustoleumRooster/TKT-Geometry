@@ -47,6 +47,10 @@ shared bool b0,b1,bNegativeX;
 shared uint i_0;
 shared uint v_0,v_1,v_2;
 shared vec2 w0,w1,w2;
+//shared vec2 UL,BR;
+shared float y0;
+//shared float g0,g1,g2;
+//shared bool g0_inf,g1_inf,g2_inf;
 
 float floor_y_value(float y)
 {
@@ -154,12 +158,97 @@ void main()
 
 		if(MajorX(w2.y) > w2.x)
 			bNegativeX = true;
+/*
+		if(abs(m0) < 0.0001)
+			g0_inf = true;
+		else
+		{
+			g0_inf = false;
+			g0 = 1.0 / m0;
+		}
+
+		if(abs(m1) < 0.0001)
+			g1_inf = true;
+		else
+		{
+			g1_inf = false;
+			g1 = 1.0 / m1;
+		}
+
+		if(abs(m2) < 0.0001)
+			g2_inf = true;
+		else
+		{
+			g2_inf = false;
+			g2 = 1.0 / m2;
+		}
+		*/
 	}
+
+
+	float ystep = 1.0 / params.lm_height;
+	uint x0,x1;
+	float yy;
+
+	int i;
 
 	barrier();
 
-	float ystep = 1.0 / params.lm_height;
+	if(ix == 0 && iy == 0)
+	{
+		y0 = w0.y;
+	}
 
+	barrier();
+	float d;
+	
+	while(y0 < w1.y + 0.001)
+	{
+		yy = y0 + (ystep * iy);
+
+		if(bNegativeX==false)
+			{
+					x0 = uint(params.lm_width * MajorX(yy));
+					x1 = uint(params.lm_width * MinorX(yy));
+			}
+		else
+			{
+					x0 = uint(params.lm_width * MinorX(yy));
+					x1 = uint(params.lm_width * MajorX(yy));
+			}
+
+		if(y0 + (ystep * iy) < w1.y + 0.001)
+		{
+			i=0;
+			while(x0 + ix + 32*i <= x1)
+			{
+				if(y0 + (ystep * iy) == w0.y || y0 + (ystep * (iy+1)) > w1.y + 0.001 || x0 + ix + 32*i == x0 || x0 + ix + 32*i == x1)
+				{
+					//if(g0_inf == false)
+					//{
+					//	d =c y0.y - y0 + (ystep * iy)
+					//}
+
+					imageStore(imageOut,ivec2(x0 + ix + 32*i, uint(params.lm_height * (y0 + (ystep * iy)))),vec4(1,1,1,1));
+				}
+
+				i++;
+			}
+		}
+		
+		barrier();
+
+		if(ix == 0 && iy == 0)
+		{
+			y0 += (ystep * 8);
+		}
+
+		barrier();
+
+	}
+
+	
+	/*
 	if(ix == 0 && iy == 0)
 	{
 		for( float y = w0.y; y < w1.y + 0.001; y += ystep)
@@ -183,7 +272,7 @@ void main()
 			}
 		}
 	}
-
+	*/
 	barrier();
 
 	return;
