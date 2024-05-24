@@ -79,7 +79,7 @@ std::vector<poly_edge> get_all_connections(polyfold pf, int p_i, int vert)
 
     for(int i=0; i<f.vertices.size(); i++)
     {
-        if (pf.find_edge(0, vert, i) != -1)
+        if (i == vert || pf.find_edge(0, vert, i) != -1)
             continue;
 
         core::vector3df v0      = pf.vertices[v_list[my_v]].V;
