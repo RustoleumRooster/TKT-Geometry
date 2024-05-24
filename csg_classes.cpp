@@ -216,12 +216,7 @@ void polyfold::rotate(core::matrix4 MAT)
         for(int p_i=0;p_i<this->faces[f_i].loops.size();p_i++)
         {
             this->calc_loop_bbox(f_i,p_i);
-
-          //  if(faces[f_i].loops[p_i].topo_group==LOOP_SOLID)
-                set_loop_solid(f_i,p_i);
-          //  else if(faces[f_i].loops[p_i].topo_group==LOOP_HOLLOW)
-         //       set_loop_open(f_i,p_i);
-         //   else std::cout<<f_i<<" "<<p_i<<" undefined "<<faces[f_i].loops[p_i].topo_group<<"\n";
+            set_loop_solid(f_i,p_i);
         }
 }
 
@@ -266,10 +261,8 @@ void polyfold::make_convex()
         {
             //do nothing
         }
-        else
+        else if(topology == TOP_UNDEF)
         {
-            //rarely/never used
-            std::cout<<"... calculating topology\n";
             topology=TOP_CONVEX;
             recalc_faces();
         }
@@ -292,19 +285,15 @@ void polyfold::make_concave()
         {
             //do nothing
         }
-        else
+        else if(topology == TOP_UNDEF)
         {
-            //rarely/never used
-            std::cout<<"... calculating topology\n";
             topology=TOP_CONCAVE;
             recalc_faces();
         }
     }
 
-//rarely/never used
 void polyfold::recalc_faces()
 {
-    std::cout << "recalc faces\n";
     recalc_bbox();
 
     for(int f_i=0;f_i<this->faces.size();f_i++)
@@ -315,11 +304,7 @@ void polyfold::recalc_faces()
         {
             this->calc_loop_bbox(f_i,p_i);
 
-          //  if(faces[f_i].loops[p_i].topo_group==LOOP_SOLID)
-                set_loop_solid(f_i,p_i);
-           // else if(faces[f_i].loops[p_i].topo_group==LOOP_HOLLOW)
-           //     set_loop_open(f_i,p_i);
-          //  else std::cout<<"* warning * loop "<<f_i<<" "<<p_i<<" undefined "<<faces[f_i].loops[p_i].topo_group<<"\n";
+            set_loop_solid(f_i,p_i);
         }
     }
 
@@ -331,8 +316,13 @@ void polyfold::recalc_faces()
     else
     {
         make_convex2(nograph);
-        for(poly_face& f : faces)
-            f.flip_normal();
+        for (int f_i = 0; f_i < faces.size(); f_i++)
+        {
+            faces[f_i].flip_normal();
+
+            for (int p_i = 0; p_i < faces[f_i].loops.size(); p_i++)
+                set_loop_solid(f_i, p_i);
+        }
         topology=TOP_CONCAVE;
     }
 }
@@ -373,10 +363,8 @@ void polyfold::make_convex2(LineHolder& graph)
                 if(f_plane.getIntersectionWithLine(v0,axis,ipoint) && this->is_point_on_face(f_j,ipoint))
                 {
                     verts.get_point_or_add(ipoint);
-                    //graph.points.push_back(ipoint);
                 }
             }
-            //std::cout<<"ipoints: "<<verts.vertices.size()<<"\n";
 
             if(verts.vertices.size()%2==0)
             {
