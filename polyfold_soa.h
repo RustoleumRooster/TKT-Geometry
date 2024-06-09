@@ -38,6 +38,11 @@ struct poly_edge2
 {
     u32 v0;
     u32 v1;
+
+    void operator=(const poly_edge& other) {
+        v0 = other.v0;
+        v1 = other.v1;
+    }
 };
 
 struct soa_index_iterable
@@ -46,7 +51,7 @@ struct soa_index_iterable
     vector<u32> len;
     u32 total_len = 0;
 
-    u32 implied_size() { return total_len; }
+    u32 implied_size() const { return total_len; }
 
     void resize(u32 newsize)
     {
@@ -72,7 +77,7 @@ struct soa_single_index
     soa_index idx0;
     u32 total_len = 0;
 
-    u32 implied_size() { return total_len; }
+    u32 implied_size() const { return total_len; }
 };
 
 struct soa_double_index
@@ -81,7 +86,7 @@ struct soa_double_index
     soa_index idx1;
     u32 total_len = 0;
 
-    u32 implied_size() { return total_len; }
+    u32 implied_size() const { return total_len; }
 };
 
 struct soa_triple_index
@@ -91,7 +96,7 @@ struct soa_triple_index
     soa_index idx2;
     u32 total_len = 0;
 
-    u32 implied_size() { return total_len; }
+    u32 implied_size() const { return total_len; }
 };
 
 template<typename T>
@@ -124,20 +129,30 @@ struct triple_indexed_field
     const T& operator[](u32 i)  const { return data[i]; }
 };
 
+#define FILL_DECLARATIONS() \
+template<typename T, typename Z> \
+    void fill_indexed_field_convert(const polyfold_soa& soa, index_type<T>& field, const vector<polyfold>& pf_vec, size_t vector_offset); \
+  template<typename T> \
+    void fill_non_indexed_field(const polyfold_soa& soa, vector<T>& field, const vector<polyfold>& pf_vec, size_t data_offset); \
+template<typename T> \
+    void fill_indexed_field(const polyfold_soa& soa, index_type<T>& field, const vector<polyfold>& pf_vec, size_t vector_offset); \
 
 class polyfold_soa
 {
-public:
-
-    void fill_main_indexes(const vector<polyfold>& pf_vec);
-    void fill_vertices_and_loops(const vector<polyfold>& pf_vec);
-    void fill_edges(const vector<polyfold>& pf_vec);
+private:
 
     struct pf_struct
     {
         u32 n;
+
         single_indexed_field<poly_vert> vertices;
         single_indexed_field<poly_edge2> edges;
+
+        template<typename T>
+        using index_type = single_indexed_field<T>;
+
+        FILL_DECLARATIONS();
+
     } pf;
 
     struct face_struct
@@ -145,17 +160,50 @@ public:
         soa_index_iterable index;
         vector<vector3df> normal;
         double_indexed_field<u32> edges;
+
+        template<typename T>
+        using index_type = double_indexed_field<T>;
+
+        FILL_DECLARATIONS();
+
     } face;
 
     struct loop_struct
     {
         soa_index_iterable index;
         triple_indexed_field<u32> vertices;
+
+        template<typename T>
+        using index_type = triple_indexed_field<T>;
+
+        FILL_DECLARATIONS();
+
     } loop;
+
+    void fill_main_indexes(const vector<polyfold>& pf_vec);
+
+public:
+
+    void fill(const vector<polyfold>& pf_vec);
 
     inline polyfold_iterator get_pf();
     inline polyfold_iterator_loop_vertices pf_loop_vertices();
     inline polyfold_iterator_face_edges pf_face_edges();
+
+    friend struct loop_iterator_base;
+    friend struct face_iterator_base;
+    friend struct polyfold_iterator_base;
+
+    friend struct loop_iterator;
+    friend struct face_iterator;
+    friend struct polyfold_iterator;
+
+    friend struct loop_iterator_loop_vertices;
+    friend struct face_iterator_loop_vertices;
+    friend struct polyfold_iterator_loop_vertices;
+
+    friend struct face_iterator_face_edges;
+    friend struct polyfold_iterator_face_edges;
 };
 
 struct loop_iterator_base
@@ -365,6 +413,11 @@ struct face_iterator_loop_vertices : face_iterator_base
         : face_iterator_base(src, pf_i), loop_it(src, pf_i), data_index(0)
     {}
 
+    u32 n_loops()
+    {
+        return src.loop.index.len[get_index()];
+    }
+
     index_triple loops()
     {
         return index_triple{ src.loop.index.offset[get_index()], src.loop.index.len[get_index()], get_data_index() };
@@ -442,6 +495,9 @@ struct polyfold_iterator_loop_vertices : polyfold_iterator_base
 
     index_triple faces()
     {
+        face_it.pf_i = get_index();
+        face_it.loop_it.pf_i = get_index();
+        face_it.loop_it.pf_vert_offset = src.pf.vertices.index.idx0.offset[get_index()];
         return index_triple{ src.face.index.offset[get_index()], src.face.index.len[get_index()], get_data_index() };
     }
 
@@ -450,9 +506,6 @@ struct polyfold_iterator_loop_vertices : polyfold_iterator_base
     void operator++()
     {
         i++;
-        face_it.pf_i = get_index();
-        face_it.loop_it.pf_i = get_index();
-        face_it.loop_it.pf_vert_offset = src.pf.vertices.index.idx0.offset[get_index()];
     }
 
     u32 data_index;
