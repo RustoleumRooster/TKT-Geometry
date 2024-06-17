@@ -1,6 +1,9 @@
 #ifndef _TOLERANCES_H_
 #define _TOLERANCES_H_
 
+#include <irrlicht.h>
+using namespace irr;
+
 #define LOOP_BBOX_SMALL_NUMBER 0.01
 #define LEFT_RIGHT_TEST_SMALL_NUMBER 0.005
 #define LEFT_RIGHT_TEST_INCLUDE_NUMBER 0.01
