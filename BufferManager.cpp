@@ -617,7 +617,7 @@ public:
             ret.f_index.push_back(th->triangles.size());
         }
 
-       // std::cout<<" "<<c0 <<" fungible vertices, "<<c1<<" unique vertices\n";
+        std::cout<<" "<<c0 <<" fungible vertices, "<<c1<<" unique vertices\n";
 
        // return ret;
     }
@@ -758,6 +758,9 @@ void MeshNode_Interface_Final::copy_lightmap_uvs(geometry_scene* geo_scene)
 
     for (int f_i = 0; f_i < pf->faces.size(); f_i++)
     {
+        if (pf->faces[f_i].loops.size() == 0)
+            continue;
+
         MeshBuffer_Chunk chunk0 = geo_scene->edit_meshnode_interface.get_mesh_buffer_by_face(f_i);
         MeshBuffer_Chunk chunk1 = get_mesh_buffer_by_face(f_i);
 
