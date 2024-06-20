@@ -12,7 +12,7 @@ using namespace irr;
 using namespace core;
 using namespace gui;
 
-extern TestPanel* ContextMenuOwner;
+extern ViewPanel* ContextMenuOwner;
 
 extern irr::video::ITexture* small_circle_tex_add_selected;
 extern irr::video::ITexture* small_circle_tex_add_not_selected;
@@ -58,25 +58,9 @@ void TestPanel_2D::setImage(video::ITexture* image)
     }
 }
 
-void TestPanel_2D::resize(core::dimension2d<s32> new_location, core::dimension2d<u32> new_size)
+void TestPanel_2D::resize(core::dimension2d<u32> new_size)
 {
-    if(this->Texture)
-    {
-        driver->removeTexture(this->Texture);
-    }
-
-    if(this->Special_Texture)
-    {
-        driver->removeTexture(this->Special_Texture);
-    }
-
-    this->Texture = driver->addRenderTargetTexture(new_size, "rtt" ,irr::video::ECF_A8R8G8B8);
-    this->Special_Texture = driver->addRenderTargetTexture(new_size, "rtt" ,irr::video::ECF_A8R8G8B8);
-
-    viewSize=this->Texture->getOriginalSize()*4;
-
-    this->DesiredRect = core::rect<s32>(new_location,new_size);
-    recalculateAbsolutePosition(false);
+    viewSize = this->Texture->getOriginalSize() * 4;
 
     core::matrix4 M;
     M.buildProjectionMatrixOrthoLH(this->Texture->getOriginalSize().Width * 4, this->Texture->getOriginalSize().Height * 4, 0, 10000);
@@ -137,7 +121,6 @@ void TestPanel_2D::setAxis(int axis)
 
 bool TestPanel_2D::OnEvent(const SEvent& event)
 {
-	if (isEnabled())
 	{
 		switch(event.EventType)
 
@@ -202,8 +185,8 @@ bool TestPanel_2D::OnEvent(const SEvent& event)
                 break;
 		    case EET_MOUSE_INPUT_EVENT:
 
-		        mousex = event.MouseInput.X - AbsoluteClippingRect.UpperLeftCorner.X;
-                mousey = event.MouseInput.Y - AbsoluteClippingRect.UpperLeftCorner.Y;
+                mousex = event.MouseInput.X;
+                mousey = event.MouseInput.Y;
                 bShiftDown = event.MouseInput.Shift;
                 bCtrlDown = event.MouseInput.Control;
 
@@ -211,11 +194,6 @@ bool TestPanel_2D::OnEvent(const SEvent& event)
                 {
                     case EMIE_LMOUSE_LEFT_UP:
                         {
-                            if(!AbsoluteClippingRect.isPointInside( core::position2d<s32>(event.MouseInput.X, event.MouseInput.Y ) ))
-                            {
-                                Environment->removeFocus(this);
-                                return true;
-                            }
                             if(bZoomCamera)
                             {
                                 bZoomCamera=false;
@@ -234,14 +212,6 @@ bool TestPanel_2D::OnEvent(const SEvent& event)
                         return true;
                     case EMIE_LMOUSE_PRESSED_DOWN:
                         {
-                            //std::cout<<"pressed down\n";
-                            //if(Environment->getFocus()!=this)
-                            //    return false;
-                            if(!AbsoluteClippingRect.isPointInside( core::position2d<s32>(event.MouseInput.X, event.MouseInput.Y ) ))
-                            {
-                                Environment->removeFocus(this);
-                                return false;
-                            }
 
                             clickx=mousex;
                             clicky=mousey;
@@ -270,6 +240,7 @@ bool TestPanel_2D::OnEvent(const SEvent& event)
                     case EMIE_RMOUSE_PRESSED_DOWN:
                         {
                             //if (Environment->hasFocus(this))
+                        /*
                             if(!AbsoluteClippingRect.isPointInside( core::position2d<s32>(event.MouseInput.X, event.MouseInput.Y ) ))
                             {
                                 Environment->removeFocus(this);
@@ -281,7 +252,7 @@ bool TestPanel_2D::OnEvent(const SEvent& event)
 
                             if(Environment->getFocus()!=this)
                                 return false;
-
+                                */
                             if(!rMouseDown)
                             {
                                 clickx=mousex;
@@ -339,12 +310,13 @@ bool TestPanel_2D::OnEvent(const SEvent& event)
                                 geo_scene->selectionChanged();
                             }
 
+                            /* TODO
                             if(!AbsoluteClippingRect.isPointInside( core::position2d<s32>(event.MouseInput.X, event.MouseInput.Y ) ))
                             {
                                 bZoomCamera=false;
-                                bDragVertex=false;
+                                bDragVertex=false;  
                                // Environment->removeFocus(this);
-                            }
+                            }*/
 
                             if (bDragBrush)
                             {
@@ -385,8 +357,15 @@ bool TestPanel_2D::OnEvent(const SEvent& event)
 
                                 bRotateBrush=false;
                             }
-                            if(clickx==mousex && clicky==mousey)
-                                right_click(core::vector2di(event.MouseInput.X,event.MouseInput.Y));
+                            if (clickx == mousex && clicky == mousey)
+                            {
+                                if (this->m_viewPanel)
+                                {
+                                    vector2d<s32> clickpos = m_viewPanel->getClickPos();
+                                    right_click(clickpos);
+                                }
+                                
+                            }
 
                             rMouseDown=false;
                         }
@@ -544,7 +523,8 @@ bool TestPanel_2D::OnEvent(const SEvent& event)
 		}
 		
 	}
-    return IGUIElement::OnEvent(event);
+    //return IGUIElement::OnEvent(event);
+    return false;
 }
 
 void TestPanel_2D::left_click(core::vector2di pos)
@@ -611,9 +591,6 @@ void TestPanel_2D::left_click(core::vector2di pos)
 
 void TestPanel_2D::right_click(core::vector2di pos)
 {
-    gui::IGUIElement* root = Environment->getRootGUIElement();
-    gui::IGUIElement* e = root->getElementFromId(GUI_ID_DIALOGUE_ROOT_WINDOW);
-
     if(geo_scene && geo_scene->getBrushSelection().size()>0)
     {
         bool bVertexClick=false;
@@ -636,16 +613,16 @@ void TestPanel_2D::right_click(core::vector2di pos)
         }
         if(!bVertexClick)
         {
-            gui::IGUIContextMenu* menu = Environment->addContextMenu(core::rect<s32>(pos,core::vector2di(256,256)),0,-1);
+            gui::IGUIContextMenu* menu = environment->addContextMenu(core::rect<s32>(pos,core::vector2di(256,256)),0,-1);
             menu->addItem(L"Delete Brushes",GUI_ID_VIEWPORT_2D_RIGHTCLICK_MENU_ITEM_DELETE_BRUSH,true,false,false,false);
             //menu->addItem(L"Make Red Brush",GUI_ID_VIEWPORT_2D_RIGHTCLICK_MENU_ITEM_MAKE_RED_BRUSH,true,false,false,false);
 
-            ContextMenuOwner = this;
+            ContextMenuOwner = this->m_viewPanel;
         }
     }
     else if(geo_scene && geo_scene->getSelectedNodes().size()>0)
     {
-        gui::IGUIContextMenu* menu = Environment->addContextMenu(core::rect<s32>(pos,core::vector2di(256,256)),0,-1);
+        gui::IGUIContextMenu* menu = environment->addContextMenu(core::rect<s32>(pos,core::vector2di(256,256)),0,-1);
 
         std::vector<reflect::TypeDescriptor_Struct*> typeDescriptors = Node_Properties_Base::GetTypeDescriptors(geo_scene);
 
@@ -656,12 +633,12 @@ void TestPanel_2D::right_click(core::vector2di pos)
             txt += std::wstring(L" properties");
 
         menu->addItem(txt.c_str(),GUI_ID_VIEWPORT_2D_RIGHTCLICK_MENU_ITEM_NODE_PROPERTIES,true,false,false,false);
-        ContextMenuOwner = this;
+        ContextMenuOwner = this->m_viewPanel;
         }
     }
     else
     {
-        gui::IGUIContextMenu* menu = Environment->addContextMenu(core::rect<s32>(pos,core::vector2di(256,256)),0,-1);
+        gui::IGUIContextMenu* menu = environment->addContextMenu(core::rect<s32>(pos,core::vector2di(256,256)),0,-1);
         menu->addItem(L"View  ",-1,true,true,false,false);
         menu->addItem(L"Grid  ",GUI_ID_VIEWPORT_2D_RIGHTCLICK_MENU_ITEM_GRID_TOGGLE,true,false,true,true);
         menu->setItemChecked(1,this->bShowGrid);
@@ -673,7 +650,7 @@ void TestPanel_2D::right_click(core::vector2di pos)
 
         submenu->setItemChecked(0,this->bShowBrushes);
         submenu->setItemChecked(1,this->bShowGeometry);
-        ContextMenuOwner = this;
+        ContextMenuOwner = m_viewPanel;
     }
 }
 
@@ -755,8 +732,8 @@ bool TestPanel_2D::GetOrthoScreenCoords(core::vector3df V, core::vector2di &out_
 
 void TestPanel_2D::render()
 {
-    if(isVisible()==false)
-        return;
+    //if(isVisible()==false)
+    //    return;
 
     driver->setRenderTarget(getImage(), true, true, video::SColor(255,16,16,16));
     smgr->setActiveCamera(getCamera());
@@ -863,20 +840,20 @@ void TestPanel_2D::drawGrid(video::IVideoDriver* driver, const video::SMaterial 
         for(int i=-1;i<h_lines+2;i++)
         {
             if(start_x+i*interval==0)
-                col = video::SColor(1,128,128,128);
+                col = video::SColor(255,128,128,128);
             else
-                col = video::SColor(1,32,32,32);
+                col = video::SColor(255,32,32,32);
 
-            driver->draw3DLine(core::vector3df(vDownLeft.X,far_value,start_x+i*interval),core::vector3df(vDownLeft.X+viewSize.Height,far_value,start_x+i*interval),col);
+            driver->draw3DLine(core::vector3df(vDownLeft.X,far_value,start_x+i*interval),core::vector3df(vDownLeft.X+viewSize.Height,far_value,start_x+i*interval), col);
         }
 
         for(int i=-1;i<v_lines+2;i++)
         {
             if(start_y+i*interval==0)
-                col = video::SColor(1,128,128,128);
+                col = video::SColor(255,128,128,128);
             else
-                col = video::SColor(1,32,32,32);
-            driver->draw3DLine(core::vector3df(start_y+i*interval,far_value,vDownLeft.Z),core::vector3df(start_y+i*interval,far_value,vDownLeft.Z+viewSize.Width),col);
+                col = video::SColor(255,32,32,32);
+            driver->draw3DLine(core::vector3df(start_y+i*interval,far_value,vDownLeft.Z),core::vector3df(start_y+i*interval,far_value,vDownLeft.Z+viewSize.Width), col);
         }
     }
     else if(m_axis==CAMERA_X_AXIS)
@@ -898,18 +875,18 @@ void TestPanel_2D::drawGrid(video::IVideoDriver* driver, const video::SMaterial 
         for(int i=-1;i<h_lines+2;i++)
         {
             if(start_x+i*interval==0)
-                col = video::SColor(1,128,128,128);
+                col = video::SColor(255,128,128,128);
             else
-                col = video::SColor(1,32,32,32);
+                col = video::SColor(255,32,32,32);
             driver->draw3DLine(core::vector3df(far_value,vDownLeft.Y,start_x+i*interval),core::vector3df(far_value,vDownLeft.Y+viewSize.Height,start_x+i*interval),col);
         }
 
         for(int i=-1;i<v_lines+2;i++)
         {
             if(start_y+i*interval==0)
-                col = video::SColor(1,128,128,128);
+                col = video::SColor(255,128,128,128);
             else
-                col = video::SColor(1,32,32,32);
+                col = video::SColor(255,32,32,32);
             driver->draw3DLine(core::vector3df(far_value,start_y+i*interval,vDownLeft.Z),core::vector3df(far_value,start_y+i*interval,vDownLeft.Z+viewSize.Width),col);
         }
 
@@ -934,18 +911,18 @@ void TestPanel_2D::drawGrid(video::IVideoDriver* driver, const video::SMaterial 
         for(int i=-1;i<h_lines+2;i++)
         {
             if(start_x+i*interval==0)
-                col = video::SColor(1,128,128,128);
+                col = video::SColor(255,128,128,128);
             else
-                col = video::SColor(1,32,32,32);
+                col = video::SColor(255,32,32,32);
             driver->draw3DLine(core::vector3df(start_x+i*interval,vDownLeft.Y,far_value),core::vector3df(start_x+i*interval,vDownLeft.Y+viewSize.Height,far_value),col);
         }
 
         for(int i=-1;i<v_lines+2;i++)
         {
             if(start_y+i*interval==0)
-                col = video::SColor(1,128,128,128);
+                col = video::SColor(255,128,128,128);
             else
-                col = video::SColor(1,32,32,32);
+                col = video::SColor(255,32,32,32);
             driver->draw3DLine(core::vector3df(vDownLeft.X,start_y+i*interval,far_value),core::vector3df(vDownLeft.X+viewSize.Width,start_y+i*interval,far_value),col);
         }
     }

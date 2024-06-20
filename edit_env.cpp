@@ -27,7 +27,7 @@ using namespace irr;
 using namespace core;
 using namespace gui;
 extern geometry_scene* g_scene;
-extern TestPanel* ContextMenuOwner;
+extern ViewPanel* ContextMenuOwner;
 
 
 struct CubeOptions
@@ -272,51 +272,14 @@ void OnMenuItemSelected(IGUIContextMenu* menu)
     gui::IGUIElement* quad = (CameraQuad*)root->getElementFromId(GUI_ID_CAMERA_QUAD,true);
     switch(id)
     {
+        //2D
     case GUI_ID_VIEWPORT_2D_RIGHTCLICK_MENU_ITEM_GRID_TOGGLE:
     case GUI_ID_VIEWPORT_2D_RIGHTCLICK_MENU_ITEM_VIEW_BRUSHES:
     case GUI_ID_VIEWPORT_2D_RIGHTCLICK_MENU_ITEM_VIEW_GEOMETRY:
     case GUI_ID_VIEWPORT_2D_RIGHTCLICK_MENU_ITEM_DELETE_BRUSH:
     case GUI_ID_VIEWPORT_2D_RIGHTCLICK_MENU_ITEM_MAKE_RED_BRUSH:
     case GUI_ID_VIEWPORT_2D_RIGHTCLICK_MENU_ITEM_NODE_PROPERTIES:
-        {
-            TestPanel_2D* panel2D = (TestPanel_2D*)quad->getElementFromId(GUI_ID_PANEL_2D);
-            if(panel2D && panel2D == ContextMenuOwner)
-            {
-                SEvent event;
-                event.EventType = EET_GUI_EVENT;
-                event.GUIEvent.Caller = menu;
-                event.GUIEvent.Element = 0;
-                event.GUIEvent.EventType = EGET_MENU_ITEM_SELECTED;
-                panel2D->OnEvent(event);
-            }
-            else
-            {
-                panel2D = (TestPanel_2D*)quad->getElementFromId(GUI_ID_PANEL_2D_1);
-                if(panel2D && panel2D == ContextMenuOwner)
-                {
-                SEvent event;
-                event.EventType = EET_GUI_EVENT;
-                event.GUIEvent.Caller = menu;
-                event.GUIEvent.Element = 0;
-                event.GUIEvent.EventType = EGET_MENU_ITEM_SELECTED;
-                panel2D->OnEvent(event);
-                }
-                else
-                {
-                    panel2D = (TestPanel_2D*)quad->getElementFromId(GUI_ID_PANEL_2D_2);
-                    if(panel2D && panel2D == ContextMenuOwner)
-                    {
-                    SEvent event;
-                    event.EventType = EET_GUI_EVENT;
-                    event.GUIEvent.Caller = menu;
-                    event.GUIEvent.Element = 0;
-                    event.GUIEvent.EventType = EGET_MENU_ITEM_SELECTED;
-                    panel2D->OnEvent(event);
-                    }
-                }
-            }
-        }
-        break;
+        //3D
     case GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_GRID_TOGGLE:
     case GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_VIEW_BRUSHES:
     case GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_VIEW_GEOMETRY:
@@ -336,17 +299,17 @@ void OnMenuItemSelected(IGUIContextMenu* menu)
     case GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_MATERIAL_GROUP:
     case GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_FULLSCREEN_TOGGLE:
     case GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_TEST:
+        if (ContextMenuOwner == ((CameraQuad*)quad)->vp_TL ||
+            ContextMenuOwner == ((CameraQuad*)quad)->vp_TR ||
+            ContextMenuOwner == ((CameraQuad*)quad)->vp_BL ||
+            ContextMenuOwner == ((CameraQuad*)quad)->vp_BR)
         {
-            TestPanel_3D* panel3D = (TestPanel_3D*)quad->getElementFromId(GUI_ID_PANEL_3D);
-            if(panel3D && panel3D == ContextMenuOwner)
-            {
-                SEvent event;
-                event.EventType = EET_GUI_EVENT;
-                event.GUIEvent.Caller = menu;
-                event.GUIEvent.Element = 0;
-                event.GUIEvent.EventType = EGET_MENU_ITEM_SELECTED;
-                panel3D->OnEvent(event);
-            }
+            SEvent event;
+            event.EventType = EET_GUI_EVENT;
+            event.GUIEvent.Caller = menu;
+            event.GUIEvent.Element = 0;
+            event.GUIEvent.EventType = EGET_MENU_ITEM_SELECTED;
+            ContextMenuOwner->OnEvent(event);
         }
         break;
     case GUI_ID_MENU_BUILD_PROGRESSIVE_BUILD:

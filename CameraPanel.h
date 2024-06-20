@@ -9,8 +9,69 @@
 
 using namespace irr;
 using namespace gui;
+using namespace std;
 
 class TestPanel;
+class ViewPanel;
+
+class RenderList
+{
+public:
+    RenderList(video::IVideoDriver* driver) : driver(driver)
+    {}
+
+    vector<ViewPanel*> view_panels;
+
+    void add(ViewPanel* vp);
+    void remove(ViewPanel* vp);
+    void renderAll();
+    
+    private:
+        video::IVideoDriver* driver;
+};
+
+class ViewPanel : public gui::IGUIElement
+{
+public:
+
+    ViewPanel(IGUIEnvironment* environment, video::IVideoDriver* driver, IGUIElement* parent, s32 id, core::rect<s32> rectangle);
+    ~ViewPanel();
+
+    void resize(core::dimension2d<s32> new_location, core::dimension2d<u32> new_size);
+    
+    void draw();
+    void hookup(TestPanel* panel);
+    void render(video::IVideoDriver* driver);
+    void disconnect();
+
+    virtual bool OnEvent(const SEvent& event);
+
+    video::ITexture* getTexture()
+    {
+        return Texture;
+    }
+
+    video::ITexture* getSpecialTexture()
+    {
+        return Special_Texture;
+    }
+
+    vector2d<s32> getClickPos() { return vector2d<s32>{clickx, clicky}; }
+
+private:
+    s32 clickx;
+    s32 clicky;
+
+    video::ITexture* Texture;
+    video::ITexture* Special_Texture;
+
+    video::IVideoDriver* driver = NULL;
+    video::SColor Color;
+    TestPanel* m_panel;
+
+    core::dimension2d<u32> panel_size;
+
+};
 
 class CameraQuad : public gui::IGUIElement
 {
@@ -28,6 +89,11 @@ public:
     int getGridSnap();
     f32 getRotateSnap();
 
+    void setRenderList(RenderList* renderList_)
+    {
+        renderList = renderList_;
+    }
+
 private:
 
     bool m_bFullscreen = false;
@@ -37,8 +103,17 @@ private:
     TestPanel* panel_BR = NULL;
     video::IVideoDriver* driver = NULL;
 
+    ViewPanel* vp_TL = NULL;
+    ViewPanel* vp_TR = NULL;
+    ViewPanel* vp_BL = NULL;
+    ViewPanel* vp_BR = NULL;
+
+    RenderList* renderList = NULL;
+
     int grid_snap=4;
     f32 rotate_snap=7.5;
+
+    friend void OnMenuItemSelected(IGUIContextMenu* menu);
 };
 
 
@@ -59,55 +134,33 @@ struct click_node_info
     f32 distance;
 };
 
-class TestPanel : public gui::IGUIElement
+enum {
+    CAMERA_X_AXIS = 0,
+    CAMERA_Y_AXIS ,
+    CAMERA_Z_AXIS
+};
+
+class TestPanel
 {
 public:
-
-    //! constructor
     TestPanel(IGUIEnvironment* environment, video::IVideoDriver* driver,IGUIElement* parent, s32 id, core::rect<s32> rectangle);
-
-    //! destructor
     virtual ~TestPanel();
 
     virtual bool OnEvent(const SEvent& event);
 
-    //! sets an image
     virtual void setImage(video::ITexture* image);
-
-    //! Gets the image texture
     virtual video::ITexture* getImage() const;
 
-    //! sets the color of the image
-    virtual void setColor(video::SColor color);
-
-    //! sets if the image should scale to fit the element
-    virtual void setScaleImage(bool scale);
-
-    //! draws the element and its children
-    virtual void draw();
-
-    //! sets if the image should use its alpha channel to draw itself
-    virtual void setUseAlphaChannel(bool use);
-
-    //! Gets the color of the image
-    virtual video::SColor getColor() const;
-
-    //! Returns true if the image is scaled to fit, false if not
-    virtual bool isImageScaled() const;
-
-    //! Returns true if the image is using the alpha channel, false if not
-    virtual bool isAlphaChannelUsed() const;
+   
 
     virtual scene::ICameraSceneNode* getCamera() {return NULL;}
     virtual void Initialize(scene::ISceneManager* smgr,geometry_scene* geo_scene);
     virtual void Render(video::IVideoDriver* driver) {};
-    virtual void resize(core::dimension2d<s32> new_location, core::dimension2d<u32> new_size) {};
+    virtual void resize(core::dimension2d<u32> new_size) {};
+    virtual void position(const core::recti& rect, f32 x_split, f32 y_split, int quad);
 
-    //! Writes attributes of the element.
-    //virtual void serializeAttributes(io::IAttributes* out, io::SAttributeReadWriteOptions* options) const;
-
-    //! Reads attributes of the element
-    //virtual void deserializeAttributes(io::IAttributes* in, io::SAttributeReadWriteOptions* options);
+    virtual void hookup_panel(ViewPanel* panel);
+    virtual void disconnect_panel();
 
     virtual void render() {};
 
@@ -163,14 +216,16 @@ protected:
     bool bShiftDown=false;
     bool bCtrlDown=false;
 
+    IGUIEnvironment* environment = NULL;
     video::IVideoDriver* driver=NULL;
     scene::ISceneManager* smgr=NULL;
     scene::ICameraSceneNode* camera=NULL;
     geometry_scene* geo_scene=NULL;
+    ViewPanel* m_viewPanel = NULL;
 
     bool bShowGrid=true;
     bool bShowBrushes=true;
-    bool bShowGeometry=true;
+    bool bShowGeometry=false;
     bool bFullscreen=false;
     bool bDynamicLight=false;
 
@@ -220,7 +275,7 @@ public:
         bDynamicLight = b;
     }
 
-    virtual void resize(core::dimension2d<s32> new_location, core::dimension2d<u32> new_size);
+    virtual void resize(core::dimension2d<u32> new_size) ;
 
     virtual void render();
     void AddGraph(LineHolder& graph);
@@ -270,7 +325,7 @@ public:
     virtual void setImage(video::ITexture* image);
     virtual void drawGrid(video::IVideoDriver* driver, const video::SMaterial material);
 
-    virtual void resize(core::dimension2d<s32> new_location, core::dimension2d<u32> new_size);
+    virtual void resize(core::dimension2d<u32> new_size);
     virtual void render();
     virtual void SetMeshNodesVisible();
 

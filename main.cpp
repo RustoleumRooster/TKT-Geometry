@@ -219,6 +219,10 @@ int main()
     CameraQuad* cameraQuad = gui_layout->getCameraQuad();
     multi_tool_panel* tool_panel = gui_layout->getToolPanel();
 
+    RenderList* renderList = new RenderList(driver);
+
+    cameraQuad->setRenderList(renderList);
+
     CMeshSceneNode::initialize_unique_color(driver);
 
     cameraQuad->initialize(smgr, &scene);
@@ -336,7 +340,9 @@ int main()
 
 		driver->beginScene(true, true, video::SColor(255,32,32,32));
 
-		cameraQuad->render();
+        renderList->renderAll();
+
+		//cameraQuad->render();
         gui->drawAll();
 
 		driver->endScene();
