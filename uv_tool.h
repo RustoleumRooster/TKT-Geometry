@@ -10,6 +10,7 @@ class TextureImage
 {
 public:
     TextureImage(video::ITexture*);
+    ~TextureImage();
 
     void render();
     core::dimension2du getDimensions();
@@ -26,24 +27,50 @@ class UV_Editor_Panel : public TestPanel_2D
 {
 public:
     UV_Editor_Panel(IGUIEnvironment* environment, video::IVideoDriver* driver, IGUIElement* parent, UV_Editor_Window* win, s32 id, core::rect<s32> rectangle);
-    
+    ~UV_Editor_Panel();
+
     virtual scene::ICameraSceneNode* getCamera();
     virtual void setAxis(int);
     virtual void render();
-    virtual void resize(core::dimension2d<s32> new_location, core::dimension2d<u32> new_size);
+    virtual bool OnEvent(const SEvent& event);
     virtual void drawGrid(video::IVideoDriver* driver, const video::SMaterial material);
 
     void setGridSpacing(int spacing);
+    virtual void resize(core::dimension2d<u32> new_size);
+
+    void showTriangles(bool);
+    void showLightmap(bool);
 
     video::ITexture* uv_texture = NULL;
+    void showMaterialGroup(int mg);
 
 protected:
+    void make_face(polyfold* pf, int f_no, video::ITexture* face_texture);
+
     virtual void left_click(core::vector2di);
     virtual void right_click(core::vector2di);
     int gridSpace = 128;
 
     virtual void OnMenuItemSelected(IGUIContextMenu* menu);
+
+    int current_mat_group = -1;
+    int my_face_no = -1;
+
+    int original_brush = -1;
+    int original_face = -1;
+    //polyfold uv_poly;
+    std::vector<int> vertex_index;
+
+    //video::ITexture* lm_tex = NULL;
+
+    bool bRenderLightmap = true;
+    
+    TextureImage* my_image = NULL;
+
     UV_Editor_Window* my_window = NULL;
+    //UV_Editor_Base* my_base = NULL;
+    geometry_scene* uv_scene = NULL;
+    //CameraQuad* my_camera_quad = NULL;
 };
 
 
@@ -112,7 +139,6 @@ public:
 
     virtual void initialize(std::wstring name_, int my_id, gui::IGUIEnvironment* env_, geometry_scene* g_scene_, multi_tool_panel* panel_);
 
- 
     void widget_closing(Reflected_Widget_EditArea*);
 
 
@@ -123,8 +149,7 @@ public:
 
 private:
 
-    void make_face(polyfold* pf, int f_no, video::ITexture* face_texture);
-
+    
     video::ITexture* my_texture = NULL;
     std::vector<int> vertex_index;
     bool use_geometry_brush;
@@ -137,6 +162,7 @@ private:
     polyfold uv_poly;
 
     //friend class UV_Editor_Tool;
+    friend class UV_Editor_Panel;
 };
 
 class UV_Editor_Tool

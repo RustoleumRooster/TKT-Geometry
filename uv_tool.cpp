@@ -7,6 +7,7 @@
 #include "BufferManager.h"
 #include "utils.h"
 #include "uv_mapping.h"
+#include "LightMaps.h"
 
 using namespace std;
 
@@ -63,7 +64,7 @@ void UV_Editor_Window::show()
     my_panel = new UV_Editor_Panel(Environment, device->getVideoDriver(), this, this,
         GUI_ID_PANEL_UV, core::rect<s32>(core::position2d<s32>(8, 316), core::dimension2d<u32>(450, 300)));
     //test_panel3->resize(core::position2d<s32>(8,316), core::dimension2d<u32>(450,300));
-    my_panel->resize(core::vector2di(16, 32), core::dimension2d<u32>(512, 384));
+    //my_panel->resize(core::vector2di(16, 32), core::dimension2d<u32>(512, 384));
 
     my_panel->Initialize(device->getSceneManager(), uv_scene);
     
@@ -167,13 +168,11 @@ void UV_Editor_Base::show()
         core::stringw texname = g_scene->get_original_brush_face(g_scene->getSelectedFaces()[0])->texture_name;
         my_texture = device->getVideoDriver()->getTexture(texname);
 
-        uv_poly.faces.clear();
-        uv_poly.vertices.clear();
-        uv_poly.edges.clear();
+       // clear_poly();
 
         for (int f_i : g_scene->getSelectedFaces())
         {
-            make_face(pf, f_i, my_texture);
+          //  make_face(pf, f_i, my_texture);
         }
 
         win->set_poly(uv_poly);
@@ -284,34 +283,211 @@ void UV_Editor_Base::make_custom_surface_group(polyfold pf)
     }
 }
 
-void UV_Editor_Base::make_face(polyfold* pf_0, int f_no, video::ITexture* face_texture)
+
+//======================================================
+// UV Editor Camera Panel
+//
+
+
+UV_Editor_Panel::UV_Editor_Panel(IGUIEnvironment* environment, video::IVideoDriver* driver, IGUIElement* parent, UV_Editor_Window* win, s32 id, core::rect<s32> rectangle)
+    : TestPanel_2D(environment, driver, parent, id, rectangle)
 {
-    MeshBuffer_Chunk chunk = g_scene->edit_meshnode_interface.get_mesh_buffer_by_face(f_no);
+    my_window = win;
+    vHorizontal = core::vector3df(0, 0, 1);
+    vVertical = core::vector3df(1, 0, 0);
+    vAxis = core::vector3df(0, 1, 0);
+
+    uv_scene = new geometry_scene(device->getVideoDriver(), (MyEventReceiver*)device->getEventReceiver());
+}
+
+UV_Editor_Panel::~UV_Editor_Panel()
+{
+    if (uv_scene)
+        delete uv_scene;
+}
+
+void UV_Editor_Panel::resize(core::dimension2d<u32> new_size)
+{
+    
+    f32 ratio = (f32)this->Texture->getOriginalSize().Width / (f32)this->Texture->getOriginalSize().Height;
+    core::matrix4 M;
+
+    if (ratio >= 1.0)
+    {
+        M.buildProjectionMatrixOrthoLH(516 * ratio, 516, 0, 10000);
+
+        viewSize = dimension2du(516 * ratio, 516);
+    }
+    else
+    {
+        M.buildProjectionMatrixOrthoLH(516, 516 / ratio, 0, 10000);
+
+        viewSize = dimension2du(516, 516 / ratio);
+    }
+
+    getCamera()->setProjectionMatrix(M, true);
+}
+
+void UV_Editor_Panel::showTriangles(bool bShowTriangles)
+{
+    bShowBrushes = bShowTriangles;
+}
+
+void UV_Editor_Panel::showLightmap(bool bShowLightmap)
+{
+    bRenderLightmap = bShowLightmap;
+}
+
+scene::ICameraSceneNode* UV_Editor_Panel::getCamera()
+{
+    if (this->camera == NULL)
+    {
+        if (this->smgr)
+        {
+            core::dimension2di texture_size(512, 512);
+            core::matrix4 M;
+
+            M.buildProjectionMatrixOrthoLH(512, 512, 0, 10000);
+            this->camera = smgr->addCameraSceneNode(0, core::vector3df(-texture_size.Width*0.5, 1000, -texture_size.Height * 0.5), core::vector3df(-texture_size.Width * 0.5, 0, -texture_size.Height * 0.5), -1, false);
+            this->camera->setProjectionMatrix(M, true);
+        }
+    }
+    return this->camera;
+}
+
+void UV_Editor_Panel::showMaterialGroup(int mg_n)
+{
+    if (uv_scene)
+    {
+        uv_scene->elements.clear();
+
+        polyfold* pf = geo_scene->get_total_geometry();
+
+        const vector<TextureMaterial>& mat_groups = geo_scene->final_meshnode_interface.getMaterialsUsed();
+        if (mg_n < mat_groups.size())
+        {
+            current_mat_group = mg_n;
+
+            for (int f_i : mat_groups[mg_n].faces)
+            {
+                make_face(pf, f_i, NULL);
+            }
+            
+            if (bRenderLightmap)
+            {
+                
+                if (my_image)
+                    delete my_image;
+                my_image = NULL;
+
+                vector<video::ITexture*>& lm_textures = geo_scene->getLightmapManager()->lightmap_textures;
+
+                if (mg_n < lm_textures.size())
+                {
+                    my_image = new TextureImage(lm_textures[mg_n]);
+                }
+            }
+        }
+
+        
+    }
+}
+
+
+bool UV_Editor_Panel::OnEvent(const SEvent& event)
+{
+    switch (event.EventType)
+    {
+    case EET_USER_EVENT:
+        switch (event.UserEvent.UserData1)
+        {
+            case USER_EVENT_MATERIAL_GROUP_SELECTION_CHANGED:
+            {
+                int mg = geo_scene->get_selected_material_group();
+
+                if (mg >= 0)
+                {
+                    showMaterialGroup(mg);
+                }
+                else
+                {
+                    if (uv_scene)
+                        uv_scene->elements.clear();
+                }
+                
+            }break;
+
+            case USER_EVENT_SELECTION_CHANGED:
+            {
+                if (geo_scene->getSelectedFaces().size() != 0)
+                {
+                    /*
+                    clear_poly();
+
+                    polyfold* pf = geo_scene->get_total_geometry();
+
+                    for (int f_i : geo_scene->getSelectedFaces())
+                    {
+                        make_face(pf, f_i, NULL);
+                    }
+
+                    if (uv_scene)
+                    {
+                        uv_scene->elements.clear();
+                        geo_element em;
+                        em.brush = uv_poly;
+                        uv_scene->elements.push_back(em);
+                    }*/
+
+                }
+                else
+                {
+                    /*
+                    clear_poly();
+                    if (uv_scene)
+                    {
+                        uv_scene->elements.clear();
+                    }*/
+                }
+                return true;
+            }break;
+
+        } break;
+    }
+
+    return TestPanel_2D::OnEvent(event);
+}
+
+void UV_Editor_Panel::make_face(polyfold* pf_0, int f_no, video::ITexture* face_texture2)
+{
+    MeshBuffer_Chunk chunk = geo_scene->edit_meshnode_interface.get_mesh_buffer_by_face(f_no);
 
     my_face_no = f_no;
 
     original_face = pf_0->faces[f_no].original_face;
     original_brush = pf_0->faces[f_no].original_brush;
 
+    polyfold uv_poly;
+
     scene::IMeshBuffer* buffer = chunk.buffer;
     if (buffer)
     {
-        polyfold* source_brush = &g_scene->elements[original_brush].brush;
+        polyfold* source_brush = &geo_scene->elements[original_brush].brush;
         //poly_face* face = &(og_brush->faces[original_face]);
 
         u32 n_points = source_brush->vertices.size();
         vertex_index.assign(n_points, -1);
 
-       // std::cout << buffer->getIndexCount() << " indices\n";
+        // std::cout << buffer->getIndexCount() << " indices\n";
 
-        //u32* indices = (u32*)buffer->getIndices();
-       // video::S3DVertex* vertices = (video::S3DVertex2TCoords*)buffer->getVertices();
+         //u32* indices = (u32*)buffer->getIndices();
+        // video::S3DVertex* vertices = (video::S3DVertex2TCoords*)buffer->getVertices();
 
         int c = 0;
 
-        use_geometry_brush = false;
+        bool use_geometry_brush = false;
 
-        for (int i = chunk.begin_i; i < chunk.end_i; i ++)
+        for (int i = chunk.begin_i; i < chunk.end_i; i++)
         {
             u32 v0 = buffer->getIndices()[i];
             video::S3DVertex* vtx0 = &((video::S3DVertex2TCoords*)buffer->getVertices())[v0];
@@ -325,7 +501,7 @@ void UV_Editor_Base::make_face(polyfold* pf_0, int f_no, video::ITexture* face_t
 
         if (use_geometry_brush)
         {
-            source_brush = &g_scene->elements[original_brush].geometry;
+            source_brush = &geo_scene->elements[original_brush].geometry;
 
             n_points = source_brush->vertices.size();
             vertex_index.assign(n_points, -1);
@@ -333,13 +509,13 @@ void UV_Editor_Base::make_face(polyfold* pf_0, int f_no, video::ITexture* face_t
         //std::cout << "chunks:\n";
         for (int i = chunk.begin_i; i < chunk.end_i; i += 3)
         {
-            core::dimension2du texture_size = face_texture->getOriginalSize();
+            // core::dimension2du texture_size = face_texture->getOriginalSize();
 
             u32 v0 = buffer->getIndices()[i];
             u32 v1 = buffer->getIndices()[i + 1];
             u32 v2 = buffer->getIndices()[i + 2];
 
-           // std::cout << v0 << "," << v1 << "," << v2 << "\n";
+            // std::cout << v0 << "," << v1 << "," << v2 << "\n";
 
             video::S3DVertex2TCoords* vtx0 = &((video::S3DVertex2TCoords*)buffer->getVertices())[v0];
             video::S3DVertex2TCoords* vtx1 = &((video::S3DVertex2TCoords*)buffer->getVertices())[v1];
@@ -353,7 +529,7 @@ void UV_Editor_Base::make_face(polyfold* pf_0, int f_no, video::ITexture* face_t
 
             int a_indx = source_brush->find_point(vtx0->Pos);
             vertex_index[a_indx] = a;
-            
+
 
             pos.Z = -vtx1->TCoords2.X * 512.0f;// *texture_size.Width;
             pos.X = -vtx1->TCoords2.Y * 512.0f;// *texture_size.Height;
@@ -396,57 +572,62 @@ void UV_Editor_Base::make_face(polyfold* pf_0, int f_no, video::ITexture* face_t
             if (uv_poly.edges[i].topo_group == 2)
                 c++;
         }
-        //std::cout << c << " outside edges\n";
 
-        //std::cout << "vertex indexes\n";
-        //for (int i = 0; i < vertex_index.size(); i++)
-        //    if (vertex_index[i] != -1)
-        //        std::cout << i << " " << vertex_index[i] << "\n";
-       // std::cout << "\n";
-        //for (int i = 0; i < pf.vertices.size(); i++)
-        //    std::cout << pf.vertices[i].V.X << "," << pf.vertices[i].V.Z << "\n";
-    }
-}
-
-
-//======================================================
-// UV Editor Camera Panel
-//
-
-
-UV_Editor_Panel::UV_Editor_Panel(IGUIEnvironment* environment, video::IVideoDriver* driver, IGUIElement* parent, UV_Editor_Window* win, s32 id, core::rect<s32> rectangle)
-    : TestPanel_2D(environment, driver, parent, id, rectangle)
-{
-    my_window = win;
-    vHorizontal = core::vector3df(0, 0, 1);
-    vVertical = core::vector3df(1, 0, 0);
-    vAxis = core::vector3df(0, 1, 0);
-}
-
-scene::ICameraSceneNode* UV_Editor_Panel::getCamera()
-{
-    if (this->camera == NULL)
-    {
-        if (this->smgr)
+        if (uv_scene)
         {
-            core::dimension2du texture_size(128, 128);
-            //if(my_window && my_window->getTextureImage())
-             //  texture_size = my_window->getTextureImage()->getDimensions();
-
-            core::matrix4 M;
-            M.buildProjectionMatrixOrthoLH(this->Texture->getOriginalSize().Width * 4, this->Texture->getOriginalSize().Height * 4, 0, 10000);
-            this->camera = smgr->addCameraSceneNode(0, core::vector3df(-texture_size.Width*0.5, 1000, -texture_size.Height * 0.5), core::vector3df(-texture_size.Width * 0.5, 0, -texture_size.Height * 0.5), -1, false);
-
-            this->camera->setProjectionMatrix(M, true);
+            geo_element em;
+            em.brush = std::move(uv_poly);
+            uv_scene->elements.push_back(em);
         }
     }
-    return this->camera;
+}
+
+
+void UV_Editor_Panel::drawGrid(video::IVideoDriver* driver, const video::SMaterial material)
+{
+    //driver->setTransform(video::ETS_WORLD, core::IdentityMatrix);
+    //driver->setMaterial(material);
+
+    int far_value = this->getCamera()->getFarValue();
+    far_value *= -1;
+
+    //if (m_axis == CAMERA_Y_AXIS)
+    {
+        int interval = gridSpace;
+        while (viewSize.Width / interval > 36 || viewSize.Height / interval > 36)
+        {
+            interval = interval << 1;
+        }
+        int h_lines = viewSize.Width / interval;
+        int v_lines = viewSize.Height / interval;
+        core::vector3df vDownLeft = this->getCamera()->getAbsolutePosition();
+        vDownLeft.Z -= viewSize.Width / 2;
+        vDownLeft.X -= viewSize.Height / 2;
+        int start_x = interval * ((int)vDownLeft.Z / interval);
+        int start_y = interval * ((int)vDownLeft.X / interval);
+
+        video::SColor col = video::SColor(255, 128, 128, 128);
+        /*
+        for (int i = -1; i < h_lines + 2; i++)
+        {
+            if (start_x + i * interval >= 0)
+                driver->draw3DLine(core::vector3df(0, far_value, start_x + i * interval), core::vector3df(vDownLeft.X + viewSize.Height, far_value, start_x + i * interval), col);
+        }
+        for (int i = -1; i < v_lines + 2; i++)
+        {
+            if (start_y + i * interval >= 0)
+                driver->draw3DLine(core::vector3df(start_y + i * interval, far_value, 0), core::vector3df(start_y + i * interval, far_value, vDownLeft.Z + viewSize.Width), col);
+        }*/
+        
+        driver->draw3DLine(core::vector3df(0, 0, 0), core::vector3df(0, 0, -512), col);
+        driver->draw3DLine(core::vector3df(0, 0, 0), core::vector3df(-512, 0, 0), col);
+        driver->draw3DLine(core::vector3df(-512, 0, -512), core::vector3df(0, 0, -512), col);
+        driver->draw3DLine(core::vector3df(-512, 0, -512), core::vector3df(-512, 0, 0), col);
+    }
 }
 
 void UV_Editor_Panel::render()
 {
-    if (isVisible() == false)
-        return;
 
     driver->setRenderTarget(getImage(), true, true, video::SColor(255, 4, 4, 4));
     smgr->setActiveCamera(getCamera());
@@ -460,30 +641,35 @@ void UV_Editor_Panel::render()
 
     
 
-    if (my_window && my_window->getTextureImage())
+   // if (my_window && my_window->getTextureImage())
+   // {
+   //     my_window->getTextureImage()->render();
+   //     //driver->draw2DImage(uv_texture, core::vector2di(0, 0), false);
+   // }
+
+    if (bRenderLightmap && my_image)
     {
-        my_window->getTextureImage()->render();
-        //driver->draw2DImage(uv_texture, core::vector2di(0, 0), false);
+        my_image->render();
     }
 
     driver->setTransform(video::ETS_WORLD, core::IdentityMatrix);
     driver->setMaterial(someMaterial);
 
-    if (bShowGrid)
+    //if (bShowGrid)
         this->drawGrid(driver, someMaterial);
 
-    if (this->geo_scene)
+    if (this->uv_scene)
     {
         if (bShowBrushes)
         {
-            for (int e_i = 0; e_i < this->geo_scene->elements.size(); e_i++)
+            for (int e_i = 0; e_i < this->uv_scene->elements.size(); e_i++)
             {
-                this->geo_scene->elements[e_i].draw_brush(driver, someMaterial);
+                this->uv_scene->elements[e_i].draw_brush(driver, someMaterial);
             }
 
-            for (int e_i = 0; e_i < this->geo_scene->elements.size(); e_i++)
+            for (int e_i = 0; e_i < this->uv_scene->elements.size(); e_i++)
             {
-                geo_element* geo = &this->geo_scene->elements[e_i];
+                geo_element* geo = &this->uv_scene->elements[e_i];
 
                 if (geo->bSelected)
                 {
@@ -494,7 +680,7 @@ void UV_Editor_Panel::render()
                         GetScreenCoords(geo->brush.vertices[i].V, coords);
                         coords.X -= 4;
                         coords.Y -= 4;
-                        if (geo_scene->selected_brush_vertex_editing == e_i && geo->selected_vertex == i)
+                        if (uv_scene->selected_brush_vertex_editing == e_i && geo->selected_vertex == i)
                         {
                             if (geo->type == GEO_ADD)
                                 driver->draw2DImage(med_circle_tex_add_selected, coords, core::rect<int>(0, 0, 8, 8), 0, video::SColor(255, 255, 255, 255), true);
@@ -518,7 +704,7 @@ void UV_Editor_Panel::render()
         }
 
         if (bShowGeometry)
-            for (geo_element geo : this->geo_scene->elements)
+            for (geo_element geo : this->uv_scene->elements)
                 geo.draw_geometry(driver, someMaterial);
     }
 
@@ -526,24 +712,12 @@ void UV_Editor_Panel::render()
 }
 
 
-void UV_Editor_Panel::resize(core::dimension2d<s32> new_location, core::dimension2d<u32> new_size)
-{
-    if (this->Texture)
-    {
-        driver->removeTexture(this->Texture);
-    }
-
-    this->Texture = driver->addRenderTargetTexture(new_size, "rtt", irr::video::ECF_A8R8G8B8);
-
-    viewSize = this->Texture->getOriginalSize() * 4;
-
-    this->DesiredRect = core::rect<s32>(new_location, new_size);
-    recalculateAbsolutePosition(false);
-}
 
 void UV_Editor_Panel::OnMenuItemSelected(IGUIContextMenu* menu)
 {
 }
+
+
 
 
 void UV_Editor_Panel::left_click(core::vector2di pos)
@@ -574,9 +748,6 @@ void UV_Editor_Panel::left_click(core::vector2di pos)
 
 void UV_Editor_Panel::right_click(core::vector2di pos)
 {
-    gui::IGUIElement* root = Environment->getRootGUIElement();
-    gui::IGUIElement* e = root->getElementFromId(GUI_ID_DIALOGUE_ROOT_WINDOW);
-
     if (geo_scene && geo_scene->getBrushSelection().size() > 0)
     {
         bool bVertexClick = false;
@@ -601,67 +772,28 @@ void UV_Editor_Panel::right_click(core::vector2di pos)
 }
 
 
-void UV_Editor_Panel::drawGrid(video::IVideoDriver* driver, const video::SMaterial material)
-{
-    //driver->setTransform(video::ETS_WORLD, core::IdentityMatrix);
-    //driver->setMaterial(material);
-
-    int far_value = this->getCamera()->getFarValue();
-    far_value *= -1;
-
-    //if (m_axis == CAMERA_Y_AXIS)
-    {
-        int interval = gridSpace;
-        while (viewSize.Width / interval > 36 || viewSize.Height / interval > 36)
-        {
-            interval = interval << 1;
-        }
-        int h_lines = viewSize.Width / interval;
-        int v_lines = viewSize.Height / interval;
-        core::vector3df vDownLeft = this->getCamera()->getAbsolutePosition();
-        vDownLeft.Z -= viewSize.Width / 2;
-        vDownLeft.X -= viewSize.Height / 2;
-        int start_x = interval * ((int)vDownLeft.Z / interval);
-        int start_y = interval * ((int)vDownLeft.X / interval);
-
-        video::SColor col = video::SColor(1, 128, 128, 128);
-        for (int i = -1; i < h_lines + 2; i++)
-        {
-            if(start_x + i * interval >= 0)
-                driver->draw3DLine(core::vector3df(0, far_value, start_x + i * interval), core::vector3df(vDownLeft.X + viewSize.Height, far_value, start_x + i * interval), col);
-        }
-        for (int i = -1; i < v_lines + 2; i++)
-        {
-            if(start_y + i * interval >= 0)
-                driver->draw3DLine(core::vector3df(start_y + i * interval, far_value, 0), core::vector3df(start_y + i * interval, far_value, vDownLeft.Z + viewSize.Width), col);
-        }
-
-        driver->draw3DLine(core::vector3df(0, 0, 0), core::vector3df(0, 0, -512), col);
-        driver->draw3DLine(core::vector3df(0, 0, 0), core::vector3df(-512, 0, 0), col);
-        driver->draw3DLine(core::vector3df(-512, 0, -512), core::vector3df(0, 0, -512), col);
-        driver->draw3DLine(core::vector3df(-512, 0, -512), core::vector3df(-512, 0, 0), col);
-    }
-}
-
 void UV_Editor_Panel::setGridSpacing(int spacing)
 {
     gridSpace = spacing;
 }
+
+/*
+void UV_Editor_Panel::centerCamera()
+{
+    this->getCamera()->setPosition(core::vector3df((int)texture_size.Width * 0.5, 5000, (int)texture_size.Height * 0.5));
+    this->getCamera()->setTarget(core::vector3df((int)texture_size.Width * 0.5, 0, (int)texture_size.Height * 0.5));
+}
+*/
 
 void UV_Editor_Panel::setAxis(int axis)
 {
     if (axis == CAMERA_Y_AXIS)
     {
         core::dimension2du texture_size(128, 128);
-        if (my_window && my_window->getTextureImage())
-            texture_size = my_window->getTextureImage()->getDimensions();
-        else
-            std::cout << "NO TEXTURE!!!\n";
-        //std::cout <<(int)texture_size.Width * 0.5 << " " << (int)texture_size.Height * 0.5 << "\n";
+
         this->getCamera()->setPosition(core::vector3df((int)texture_size.Width * 0.5, 5000, (int)texture_size.Height * 0.5));
         this->getCamera()->setTarget(core::vector3df((int)texture_size.Width * 0.5, 0, (int)texture_size.Height * 0.5));
-        //this->getCamera()->setPosition(core::vector3df(-500, 5000, -50));
-        //this->getCamera()->setTarget(core::vector3df(-500, 0, -50));
+
         this->getCamera()->updateAbsolutePosition();
         this->vHorizontal = core::vector3df(0, 0, 1);
         this->vVertical = core::vector3df(1, 0, 0);
@@ -686,8 +818,8 @@ TextureImage::TextureImage(video::ITexture* texture)
     Buffer->Material.MaterialType = video::EMT_SOLID;
     //MaterialType = video::EMT_SOLID;
 
-    core::dimension2du size = m_texture->getOriginalSize();
-
+    //core::dimension2du size = m_texture->getOriginalSize();
+    core::dimension2du size = core::dimension2du(512, 512);
 
     Buffer->Vertices.set_used(4);
     Buffer->Indices.set_used(6);
@@ -699,25 +831,33 @@ TextureImage::TextureImage(video::ITexture* texture)
     Buffer->Indices[4] = (u16)3;
     Buffer->Indices[5] = (u16)2;
 
+   
+
     Buffer->Vertices[0].Pos = core::vector3df(0,0,0);
     Buffer->Vertices[0].Color = video::SColor(255, 255, 255, 255);
     Buffer->Vertices[0].Normal = core::vector3df(0,1,0);
-    Buffer->Vertices[0].TCoords = core::vector2df(1, 1);
+    Buffer->Vertices[0].TCoords = core::vector2df(0, 0);
 
-    Buffer->Vertices[1].Pos = core::vector3df(size.Width, 0, 0);
+    Buffer->Vertices[1].Pos = core::vector3df(-(int)size.Width, 0, 0);
     Buffer->Vertices[1].Color = video::SColor(255, 255, 255, 255);
     Buffer->Vertices[1].Normal = core::vector3df(0, 1, 0);
-    Buffer->Vertices[1].TCoords = core::vector2df(1, 0);
+    Buffer->Vertices[1].TCoords = core::vector2df(0, 1);
 
-    Buffer->Vertices[2].Pos = core::vector3df(size.Width, 0, size.Height);
+    Buffer->Vertices[2].Pos = core::vector3df(-(int)size.Width, 0, -(int)size.Height);
     Buffer->Vertices[2].Color = video::SColor(255, 255, 255, 255);
     Buffer->Vertices[2].Normal = core::vector3df(0, 1, 0);
-    Buffer->Vertices[2].TCoords = core::vector2df(0, 0);
+    Buffer->Vertices[2].TCoords = core::vector2df(1, 1);
 
-    Buffer->Vertices[3].Pos = core::vector3df(0, 0, size.Height);
+    Buffer->Vertices[3].Pos = core::vector3df(0, 0, -(int)size.Height);
     Buffer->Vertices[3].Color = video::SColor(255, 255, 255, 255);
     Buffer->Vertices[3].Normal = core::vector3df(0, 1, 0);
-    Buffer->Vertices[3].TCoords = core::vector2df(0, 1);
+    Buffer->Vertices[3].TCoords = core::vector2df(1, 0);
+}
+
+TextureImage::~TextureImage()
+{
+    if (Buffer)
+        delete Buffer;
 }
 
 void TextureImage::render()

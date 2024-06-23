@@ -438,7 +438,7 @@ void geo_element::draw_brush(video::IVideoDriver* driver, const video::SMaterial
     for(int i =0; i<this->brush.edges.size(); i++)
     {
         if(this->brush.edges[i].topo_group != -1)
-            driver->draw3DLine(this->brush.getVertex(i,0).V,this->brush.getVertex(i,1).V,col);
+            driver->draw3DLine(this->brush.getVertex(i,0).V,this->brush.getVertex(i,1).V, col);
         //driver->draw3DLine(this->brush.getVertex(i,0).V,this->brush.getVertex(i,1).V,video::SColor(128,128,128,128));
     }
 }

@@ -26,6 +26,12 @@ f32 reduce_dimension_base2(f32 dim, int n = 1)
 	return exp2(lwi);
 }
 
+u16 get_dimension_base2(f32 dim)
+{
+	double log_width = log2(dim);
+	return static_cast<u16>(floor(log_width));
+}
+
 struct texture_block2
 {
 	dimension2du dimension;
@@ -404,10 +410,10 @@ void Lightmap_Manager::loadLightmapTextures(geometry_scene* geo_scene, const std
 
 		lightmap_textures.push_back(tex);
 
-		std::cout << ss.str() << ":\n";
+		//std::cout << ss.str() << ":\n";
 		for (int f_i : material_groups[i].faces)
 		{
-			std::cout << f_i << " \n";
+			//std::cout << f_i << " \n";
 			MeshBuffer_Chunk chunk;
 			chunk = geo_scene->final_meshnode_interface.get_mesh_buffer_by_face(f_i);
 			chunk.buffer->getMaterial().setTexture(1, tex);

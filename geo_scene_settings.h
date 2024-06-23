@@ -3,7 +3,7 @@
 #include "Reflection.h"
 #include "edit_classes.h"
 #include "reflect_custom_types.h"
-
+#include "uv_tool.h"
 
 class Geo_Settings_Base;
 class geometry_scene;
@@ -63,7 +63,7 @@ struct material_group_struct
     //REFLECTED MEMBERS:
     int id;
     int nFaces;
-    int nVertexes;
+    int nTriangles;
     int material_group;
     video::ITexture* texture;
 
@@ -98,6 +98,7 @@ public:
     int my_ID;
 
     Reflected_Widget_EditArea* my_widget = NULL;
+
     Flat_Button* my_button = NULL;
     
     geometry_scene* g_scene = NULL;
@@ -185,6 +186,8 @@ public:
     int my_ID;
 
     Reflected_Widget_EditArea* my_widget = NULL;
+    Reflected_GUI_Edit_Form* options_form = NULL;
+
     Flat_Button* my_button = NULL;
     gui::IGUIImage* my_image = NULL;
     gui::IGUIStaticText* my_text = NULL;
@@ -195,21 +198,42 @@ public:
     
 };
 
+struct mb_tool_options_struct
+{
+    bool show_uv_view;
+    bool show_triangles;
+    bool show_lightmap;
+
+    REFLECT()
+};
+
 class Material_Buffers_Base : public simple_reflected_tool_base
 {
 public:
+
+    ~Material_Buffers_Base() {
+        if (uv_edit)
+            delete uv_edit;
+    }
 
     virtual void show();
     void select(int sel);
 
     virtual void initialize(std::wstring name_, int my_id, gui::IGUIEnvironment* env_, geometry_scene* g_scene_, multi_tool_panel* panel_)
-    {
-        tool_base::initialize(name_, my_id, env_, g_scene_, panel_);
-        m_typeDescriptor = (reflect::TypeDescriptor_Struct*)reflect::TypeResolver<material_buffers_struct>::get();
-    }
+    {}
+
+    void initialize(std::wstring name_, int my_id, gui::IGUIEnvironment* env_, geometry_scene* g_scene_, multi_tool_panel* panel_, scene::ISceneManager* smgr);
+
+    void setCameraQuad(CameraQuad* cameraQuad_) { cameraQuad = cameraQuad_; }
+    void close_uv_panel();
+    void refresh_panel_view();
 
     virtual void* getObj() {
         return &m_struct;
+    }
+
+    virtual void* getOptions() {
+        return &mb_options;
     }
 
     virtual void init_member(reflect::TypeDescriptor_Struct* flat_typeDescriptor, std::vector<int> tree_pos);
@@ -221,6 +245,11 @@ public:
 private:
 
     int selection = -1;
+
+    UV_Editor_Panel* uv_edit = NULL;
+    CameraQuad* cameraQuad = NULL;
+
+    mb_tool_options_struct mb_options;
 
     material_buffers_struct m_struct;
 };

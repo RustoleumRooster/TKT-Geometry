@@ -9,6 +9,8 @@
 
 using namespace irr;
 
+extern IrrlichtDevice* device;
+
 Geo_Settings_Base* Geo_Settings_Tool::base = NULL;
 multi_tool_panel* Geo_Settings_Tool::panel = NULL;
 
@@ -159,7 +161,7 @@ void Geo_Settings_Widget::click_OK()
 REFLECT_CUSTOM_STRUCT_BEGIN(material_group_struct)
 	REFLECT_STRUCT_MEMBER(id)
 	REFLECT_STRUCT_MEMBER(nFaces)
-	REFLECT_STRUCT_MEMBER(nVertexes)
+	REFLECT_STRUCT_MEMBER(nTriangles)
 	REFLECT_STRUCT_MEMBER(texture)
 	REFLECT_STRUCT_MEMBER(material_group)
 REFLECT_STRUCT_END()
@@ -184,7 +186,7 @@ void material_group_struct::my_typeDesc::addFormWidget(Reflected_GUI_Edit_Form* 
 		win->addEditField(f);
 
 		f = new Text_StaticField();
-		f->initInline("vertexes", tree, offset, 2, bVisible);
+		f->initInline("triangles", tree, offset, 2, bVisible);
 		win->addEditField(f);
 
 		f = new Text_StaticField();
@@ -195,12 +197,12 @@ void material_group_struct::my_typeDesc::addFormWidget(Reflected_GUI_Edit_Form* 
 
 	{
 		Int_StaticField* f = new Int_StaticField();
-		f->initInline("", tree, offset + sizeof(int), 1, bVisible);
+		f->initInline("", tree, offset + 8, 1, bVisible);
 		f->bBorder = true;
 		win->addEditField(f);
 
 		f = new Int_StaticField();
-		f->initInline("", tree, offset + sizeof(int) * 2, 2, bVisible);
+		f->initInline("", tree, offset + 16, 2, bVisible);
 		f->bBorder = true;
 		win->addEditField(f);
 	}
@@ -246,6 +248,8 @@ Material_Buffers_Widget::~Material_Buffers_Widget()
 	//MyEventReceiver* receiver = (MyEventReceiver*)device->getEventReceiver();
 	//receiver->UnRegister(this);
 
+	my_base->close_uv_panel();
+
 }
 
 
@@ -264,6 +268,17 @@ void Material_Buffers_Widget::show()
 	my_widget->show(false, my_base->getObj());
 
 	int ypos = my_widget->getEditAreaHeight() + 8;
+
+	core::rect<s32> pr2(0, ypos, getRelativePosition().getWidth(), ypos+120);
+
+	options_form = new Reflected_GUI_Edit_Form(Environment, edit_panel, g_scene, my_ID + 3, pr2);
+	reflect::TypeDescriptor_Struct* options_td = (reflect::TypeDescriptor_Struct*)reflect::TypeResolver<mb_tool_options_struct>::get();
+	
+	options_td->addFormWidget(options_form, NULL, vector<int>{0}, 0, true, true, 0);
+	options_form->ShowWidgets(my_ID + 4);
+	options_form->read(my_base->getOptions());
+
+	ypos += my_widget->getFormsHeight();
 	core::rect<s32> br = core::rect<s32>(getRelativePosition().getWidth() - 80, ypos, getRelativePosition().getWidth() - 8, ypos + 36);
 
 	my_button = new Flat_Button(Environment, this, OK_BUTTON_ID, br);
@@ -271,11 +286,26 @@ void Material_Buffers_Widget::show()
 
 	edit_panel->drop();
 	my_widget->drop();
+
 }
 
 void Material_Buffers_Widget::onRefresh()
 {
+	//Display options
+	options_form->remove();
+
 	int ypos = my_widget->getEditAreaHeight() + 8;
+
+	core::rect<s32> pr2(0, ypos, getRelativePosition().getWidth(), ypos + 120);
+
+	options_form = new Reflected_GUI_Edit_Form(Environment, edit_panel, g_scene, my_ID + 3, pr2);
+	reflect::TypeDescriptor_Struct* options_td = (reflect::TypeDescriptor_Struct*)reflect::TypeResolver<mb_tool_options_struct>::get();
+
+	options_td->addFormWidget(options_form, NULL, vector<int>{0}, 0, true, true, 0);
+	options_form->ShowWidgets(my_ID + 4);
+	options_form->read(my_base->getOptions());
+
+	ypos += options_form->getTotalHeight() + 8;
 
 	//Button
 	if (my_button)
@@ -359,10 +389,24 @@ bool Material_Buffers_Widget::OnEvent(const SEvent& event)
 						my_widget->refresh();
 						onRefresh();
 
+						g_scene->set_selected_material_group(sel);
+
+						MyEventReceiver* event_receiver = (MyEventReceiver*)device->getEventReceiver();
+						SEvent event;
+						event.EventType = EET_USER_EVENT;
+						event.UserEvent.UserData1 = USER_EVENT_MATERIAL_GROUP_SELECTION_CHANGED;
+						event_receiver->OnEvent(event);
+						
 						return true;
 					}
 				}
 			}
+			return true;
+		}
+		else if (event.GUIEvent.EventType == EGET_CHECKBOX_CHANGED)
+		{
+			options_form->write(my_base->getOptions());
+			my_base->refresh_panel_view();
 		}
 	}
 
@@ -399,27 +443,18 @@ void Geo_Settings_Base::show()
 //
 //
 
+void Material_Buffers_Base::initialize(std::wstring name_, int my_id, gui::IGUIEnvironment* env_, geometry_scene* g_scene_, multi_tool_panel* panel_, scene::ISceneManager* smgr)
+{
+	tool_base::initialize(name_, my_id, env_, g_scene_, panel_);
+	m_typeDescriptor = (reflect::TypeDescriptor_Struct*)reflect::TypeResolver<material_buffers_struct>::get();
+
+	uv_edit = new UV_Editor_Panel(env, device->getVideoDriver(), NULL, NULL, 0, core::recti());
+	uv_edit->Initialize(smgr, g_scene);
+}
 
 void Material_Buffers_Base::show()
 {
-	/*
-	int nBuffers = g_scene->getMeshNode()->getMesh()->getMeshBufferCount();
-	m_struct.nBuffers = nBuffers;
-	std::cout<<"nBuffers = "<<nBuffers<<"\n";
-	
-	m_struct.material_groups.clear();
-	for (int i = 0; i < nBuffers; i++)
-	{
-		material_group_struct mgs;
-		mgs.nVertexes = g_scene->getMeshNode()->getMesh()->getMeshBuffer(i)->getVertexCount();
-		mgs.nFaces = 0;
-		mgs.texture = NULL;
-		std::cout << mgs.nVertexes << "\n";
-		m_struct.material_groups.push_back(mgs);
-	}
-	*/
-
-	//g_scene->final_meshnode_interface.refresh_material_groups(g_scene);
+	refresh_panel_view();
 
 	std::vector<TextureMaterial> materials = g_scene->final_meshnode_interface.getMaterialsUsed();
 	m_struct.nBuffers = materials.size();
@@ -428,14 +463,13 @@ void Material_Buffers_Base::show()
 	for (int i = 0; i < m_struct.nBuffers; i++)
 	{
 		material_group_struct mgs;
-		//if(i< g_scene->getMeshNode()->getMesh()->getMeshBufferCount());
+
 		mgs.id = i;
-		mgs.nVertexes = materials[i].n_vertexes;
+		mgs.nTriangles = materials[i].n_triangles;
 		mgs.nFaces = materials[i].n_faces;
 		mgs.texture = materials[i].texture;
 		mgs.material_group = materials[i].materialGroup;
 		mgs.selected = false;
-		//std::cout << mgs.nVertexes << "\n";
 		m_struct.material_groups.push_back(mgs);
 	}
 
@@ -461,6 +495,40 @@ void Material_Buffers_Base::select(int sel)
 			m_struct.material_groups[i].selected = false;
 	}
 
+}
+
+void Material_Buffers_Base::close_uv_panel()
+{
+	if (uv_edit && uv_edit->getViewPanel())
+		uv_edit->getViewPanel()->disconnect();
+}
+
+void Material_Buffers_Base::refresh_panel_view()
+{
+	if (cameraQuad && uv_edit)
+	{
+		if (mb_options.show_uv_view && uv_edit->hooked_up() == false)
+		{
+			cameraQuad->hookup_aux_panel(uv_edit);
+		}
+		else if (mb_options.show_uv_view == false && uv_edit->hooked_up() == true)
+		{
+			uv_edit->getViewPanel()->disconnect();
+		}
+
+		if (uv_edit->hooked_up() == true)
+		{
+			uv_edit->showTriangles(mb_options.show_triangles);
+			uv_edit->showLightmap(mb_options.show_lightmap);
+
+			MyEventReceiver* event_receiver = (MyEventReceiver*)device->getEventReceiver();
+			SEvent event;
+			event.EventType = EET_USER_EVENT;
+			event.UserEvent.UserData1 = USER_EVENT_MATERIAL_GROUP_SELECTION_CHANGED;
+			event_receiver->OnEvent(event);
+		}
+
+	}
 }
 
 void Material_Buffers_Base::init_member(reflect::TypeDescriptor_Struct* flat_typeDescriptor, std::vector<int> tree_pos)
@@ -508,3 +576,9 @@ video::ITexture* Material_Buffers_Base::GetSelectedTexture()
 
 	return nullptr;
 }
+
+REFLECT_STRUCT_BEGIN(mb_tool_options_struct)
+	REFLECT_STRUCT_MEMBER(show_uv_view)
+	REFLECT_STRUCT_MEMBER(show_triangles)
+	REFLECT_STRUCT_MEMBER(show_lightmap)
+REFLECT_STRUCT_END()

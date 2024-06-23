@@ -140,17 +140,19 @@ public:
     void MaterialGroupToSelectedFaces();
 
 
-   void setMaterialGroupsBase(Material_Groups_Base*);
-   Material_Groups_Base* getMaterialGroupsBase();
-   void setFinalMeshDirty(bool dirty = true) { final_mesh_dirty = dirty; }
-   void visualizeMaterialGroups();
-   void showLightMaps();
+    void setMaterialGroupsBase(Material_Groups_Base*);
+    Material_Groups_Base* getMaterialGroupsBase();
+    void setFinalMeshDirty(bool dirty = true) { final_mesh_dirty = dirty; }
+    void visualizeMaterialGroups();
+    void showLightMaps();
 
-   void setLightmapManager(Lightmap_Manager*);
-   Lightmap_Manager* getLightmapManager() { return lightmap_manager; }
+    void setLightmapManager(Lightmap_Manager*);
+    Lightmap_Manager* getLightmapManager() { return lightmap_manager; }
 
-   void set_new_geometry_material(int mg) { new_geometry_material_group = mg; }
+    void set_new_geometry_material(int mg) { new_geometry_material_group = mg; }
 
+    void set_selected_material_group(int mg) { selected_material_group = mg; }
+    int get_selected_material_group() { return selected_material_group; }
     //===============Mesh Node Interfaces
 
     bool IsEditNode(){return b_isEditNode; }
@@ -224,6 +226,8 @@ private:
     bool final_mesh_dirty = false;
 
     std::vector<triangle_holder> total_geometry_triangles;
+
+    int selected_material_group = 0;
 
     REFLECT()
 
