@@ -34,7 +34,7 @@ struct TextureMaterial
     video::ITexture* texture;
     int materialGroup;
     int n_faces;
-    int n_vertexes;
+    int n_triangles;
 
     bool has_lightmap = true;
     int lightmap_size;

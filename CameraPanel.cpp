@@ -9,6 +9,7 @@
 #include "node_properties.h"
 #include "material_groups.h"
 #include "BVH.h"
+#include "uv_tool.h"
 
 extern IrrlichtDevice* device;
 using namespace irr;
@@ -140,8 +141,15 @@ void CameraQuad::initialize(scene::ISceneManager* smgr,geometry_scene* geo_scene
     vp_BR = new ViewPanel(Environment, driver, this, 0, BR_rect);
     vp_BR->resize(core::vector2di(width / 2 + border * 0.5, height / 2 + border * 0.5), core::dimension2d<u32>(width / 2 - border * 1.5, height / 2 - border * 1.5));
 
+   
+
     vp_TL->hookup(panel_TL);
+
     vp_TR->hookup(panel_TR);
+
+    //uv_edit->setBase(uv_editor_base);
+    //vp_TR->hookup(uv_edit);
+
     vp_BL->hookup(panel_BL);
     vp_BR->hookup(panel_BR);
 
@@ -172,6 +180,11 @@ void CameraQuad::resize(core::rect<s32> rect)
     vp_BR->resize(core::vector2di(width / 2 + border * 0.5, height / 2 + border * 0.5), core::dimension2d<u32>(width / 2 - border * 1.5, height / 2 - border * 1.5));
 
     //SetFullscreen(m_bFullscreen, NULL);
+}
+
+void CameraQuad::hookup_aux_panel(TestPanel* pan)
+{
+    vp_TR->hookup(pan);
 }
 
 void CameraQuad::SetPanel(int i,TestPanel* panel)
@@ -633,6 +646,7 @@ void TestPanel::hookup_panel(ViewPanel* panel)
 void TestPanel::disconnect_panel()
 {
     Texture = NULL;
+    m_viewPanel = NULL;
 }
 
 
@@ -729,7 +743,17 @@ void ViewPanel::disconnect()
     {
         m_panel->disconnect_panel();
     }
-    m_panel = NULL;
+
+    if (panel_stack.size() > 0)
+    {
+        m_panel = panel_stack[panel_stack.size() - 1];
+        panel_stack.pop_back();
+
+        m_panel->hookup_panel(this);
+        m_panel->resize(this->getTexture()->getOriginalSize());
+    }
+    else
+        m_panel = NULL;
 }
 
 void ViewPanel::draw()
@@ -778,6 +802,11 @@ void ViewPanel::draw()
 
 void ViewPanel::hookup(TestPanel* panel)
 {
+    if (m_panel)
+    {
+        panel_stack.push_back(m_panel);
+    }
+
     m_panel = panel;
     m_panel->hookup_panel(this);
     m_panel->resize(this->getTexture()->getOriginalSize());

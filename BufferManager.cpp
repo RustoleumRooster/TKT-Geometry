@@ -82,6 +82,8 @@ void MeshNode_Interface_Final::refresh_material_groups(geometry_scene* geo_scene
     }
 
     lightmaps_divideMaterialGroups(geo_scene, materials_used);
+
+    
     /*
     for (int i = 0; i < materials_used.size(); i++)
     {
@@ -119,6 +121,23 @@ void MeshNode_Interface_Final::generate_mesh_node(geometry_scene* geo_scene)
     refresh_material_groups(geo_scene);
 
     this->generate_mesh_buffer(geo_scene, m_mesh);
+
+    for (TextureMaterial& tm : materials_used)
+    {
+        tm.n_faces = tm.faces.size();
+
+        int n_triangles = 0;
+
+        if(tm.faces.size() > 0)
+        {
+            MeshBuffer_Chunk chunk = get_mesh_buffer_by_face(tm.faces[0]);
+
+            if (chunk.buffer)
+                n_triangles = chunk.buffer->getIndexCount() / 3;
+        }
+
+        tm.n_triangles = n_triangles;
+    }
 
     this->generate_uvs(geo_scene);
 
@@ -744,7 +763,7 @@ void MeshNode_Interface_Final::generate_mesh_buffer(geometry_scene* geo_scene, S
         //std::cout<<"buffer "<<t_i<<" has "<<buffer->getVertexCount()<<" vertices and "<<buffer->getIndexCount()<<" indices\n";
         tot_i+=buffer->getIndexCount();
         tot_v+=buffer->getVertexCount();
-        materials_used[t_i].n_vertexes = buffer->getVertexCount();
+        materials_used[t_i].n_triangles = buffer->getVertexCount() / 3;
 
         mesh->addMeshBuffer(buffer);
     }   //material groups (unique textures used)

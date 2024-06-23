@@ -67,9 +67,11 @@ private:
 
     video::IVideoDriver* driver = NULL;
     video::SColor Color;
-    TestPanel* m_panel;
+    TestPanel* m_panel = NULL;
 
     core::dimension2d<u32> panel_size;
+
+    vector<TestPanel*> panel_stack;
 
 };
 
@@ -93,6 +95,8 @@ public:
     {
         renderList = renderList_;
     }
+
+    void hookup_aux_panel(TestPanel* pan);
 
 private:
 
@@ -159,6 +163,7 @@ public:
     virtual void resize(core::dimension2d<u32> new_size) {};
     virtual void position(const core::recti& rect, f32 x_split, f32 y_split, int quad);
 
+    bool hooked_up() {return m_viewPanel != NULL; }
     virtual void hookup_panel(ViewPanel* panel);
     virtual void disconnect_panel();
 
@@ -181,6 +186,8 @@ public:
     virtual bool GetScreenCoords(core::vector3df V, core::vector2di &out_coords) =0;
 
     virtual void SetMeshNodesVisible() =0;
+
+    ViewPanel* getViewPanel() { return m_viewPanel; }
 
 protected:
 
