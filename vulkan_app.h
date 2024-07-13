@@ -29,6 +29,7 @@
 #include "vkComputePipeline.h"
 #include "vkSystem5.h"
 #include "vkSystem6.h"
+#include "vkCompute_PointLight.h"
 
 class MeshNode_Interface_Final;
 
@@ -57,6 +58,8 @@ public:
 
 		cleanup();
 	}
+
+	void run_point_light(geometry_scene* geo_scene);
 
 	void run6(MeshNode_Interface_Final* meshnode, LineHolder& graph) {
 		initVulkan(meshnode);
@@ -117,6 +120,9 @@ private:
 		if(system6)
 			system6->cleanup();
 
+		if(system_point_light)
+			system_point_light->cleanup();
+
 
 		m_device->cleanup();
 
@@ -134,6 +140,8 @@ private:
 	System5* system5 = NULL;
 
 	System6* system6 = NULL;
+
+	System_Point_Light* system_point_light = NULL;
 
 	std::vector<VkBuffer> uniformBuffers;
 	std::vector<VkDeviceMemory> uniformBuffersMemory;

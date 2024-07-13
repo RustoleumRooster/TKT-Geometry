@@ -9,6 +9,7 @@
 #include "vkModel.h"
 #include "Reflection.h"
 #include "vk_BVH.h"
+#include "csg_classes.h"
 
 class MyDescriptorSetLayout;
 class SwapChain;
@@ -16,15 +17,20 @@ class MyTextures;
 class MyDescriptorPool;
 class ComputePipeline;
 class MyBufferObject;
-
 class MeshNode_Interface_Final;
 
 
 
-class System6 {
+class System_Point_Light {
+
+	struct LightSource {
+		alignas(16) vector3df pos;
+		uint32_t radius;
+	};
 
 	struct RayTraceInfo {
 		alignas(16) vector3df eye_pos;
+		uint32_t lightradius;
 		uint32_t n_rays;
 
 		//scene info
@@ -43,7 +49,7 @@ class System6 {
 	};
 
 public:
-	System6(MyDevice* device,
+	System_Point_Light(MyDevice* device,
 		const std::vector<VkBuffer>& uniformBuffers) :
 
 		device{ device },
@@ -52,6 +58,7 @@ public:
 	uint32_t num_lightmaps_used() { return lightmapImages.size(); }
 	void cleanup();
 
+	void loadLights(geometry_scene* geo_scene);
 	void loadModel(MeshNode_Interface_Final* meshnode);
 
 	void initialize_step2(MyDescriptorPool* descriptorPool)
@@ -66,7 +73,7 @@ public:
 		createUVBuffer();
 		createNodeBuffer();
 	}
-	
+
 	void executeComputeShader();
 	void createLightmapImages();
 	VkImageView getImageView(int n) { return lightmapImageViews[n]; }
@@ -88,7 +95,7 @@ private:
 	void createRaytraceInfoBuffer();
 	void createHitResultsBuffer();
 	void createComputePipeline();
-	
+
 	void createNodeBuffer();
 	void createDescriptorSets(int face_n);
 	void writeRaytraceInfoBuffer(int face_n);
@@ -115,6 +122,9 @@ private:
 
 	VkBuffer nodeBuffer;
 	VkDeviceMemory nodeBufferMemory;
+
+	VkBuffer lightSourceBuffer;
+	VkDeviceMemory lightSourceBufferMemory;
 
 	MyBufferObject* raytraceBufferObject = NULL;
 	MyBufferObject* hitResultsBufferObject = NULL;
@@ -144,10 +154,13 @@ private:
 	std::vector<VkDeviceMemory> lightmapsMemory;
 	std::vector<VkImageView> lightmapImageViews;
 
+	std::vector<LightSource> lightSources;
 	//std::vector<aligned_vec3> master_triangle_vertices;
 	//std::vector<aligned_uint> master_triangle_indices;
 	std::vector<triangle_b> master_triangle_list;
 	BVH_structure_triangles my_bvh;
+
+	LineHolder m_graph;
 
 	uint32_t n_nodes;
 

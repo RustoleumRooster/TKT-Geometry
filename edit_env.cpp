@@ -475,12 +475,8 @@ bool MyEventReceiver::OnEvent(const SEvent& event)
                         break;
                     case GUI_ID_BUTTON_LIGHTS:
 
-                        std::cout << "initializing vulkan...\n";
                         VulkanApp vk;
-
-                        g_scene->special_graph.lines.clear();
-                        vk.run5(&g_scene->final_meshnode_interface, g_scene->special_graph);
-
+                        vk.run_point_light(g_scene);
                         g_scene->getLightmapManager()->loadLightmapTextures(g_scene, g_scene->final_meshnode_interface.getMaterialsUsed());
 
                         break;

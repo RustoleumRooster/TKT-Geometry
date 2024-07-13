@@ -1,0 +1,569 @@
+#version 450
+#extension GL_KHR_shader_subgroup_basic : enable
+#extension GL_KHR_shader_subgroup_arithmetic : enable
+
+struct Node
+{
+	vec4 aabbMin;
+	vec4 aabbMax;
+
+	vec4 padding;
+
+	uint left_node;
+	uint right_node;
+
+	uint first_prim;
+	uint n_prims;
+	
+};
+
+layout (binding = 0) uniform raytraceParams 
+{
+	vec3 eye_pos;
+	uint lightradius;
+	
+	uint n_rays;
+
+	uint n_triangles;
+	uint n_vertices;
+	uint n_nodes;
+
+	uint m_triangles_vertex_offset;
+	uint m_triangles_index_offset;
+	uint m_triangles_n_indices;
+	
+	uint lm_width;
+	uint lm_height;
+} params;
+
+layout(std140, binding = 1) readonly buffer indexUBO
+{
+	uint global_indices[];
+};
+
+layout(std140, binding = 2) readonly buffer vertUBO
+{
+	vec3 global_vertices[];
+};
+
+layout(std140, binding = 3) readonly buffer uvUBO
+{
+	vec3 map_uvs[];
+};
+
+layout(std140, binding = 4) readonly buffer nodeUBO
+{
+	Node global_nodes[];
+};
+
+//an output buffer for debugging
+layout(std140, binding = 5) buffer hitResults
+{
+	vec3 hits[];
+};
+
+layout(binding = 6, rgba8) uniform image2D imageOut;
+
+//==================================================
+// Global functions
+//
+
+float trace_node_triangles_hit(in uint node_i, in vec3 eye, in vec3 ray)
+{
+	vec3 edge1, edge2, rayVecXe2, s, sXe1;
+	float det, invDet, u, v;
+
+	float best = 0xFFFF;
+	for(uint j = 0; j < global_nodes[node_i].n_prims; j++)
+	{
+		uint idx;
+
+		if(j==0)
+			idx = floatBitsToUint(global_nodes[node_i].padding.x);
+		else if(j==1)
+			idx = floatBitsToUint(global_nodes[node_i].padding.y);
+
+		edge1 = global_vertices[global_indices[(idx*3) + 1]] - global_vertices[global_indices[idx*3]];
+		edge2 = global_vertices[global_indices[(idx*3) + 2]] - global_vertices[global_indices[idx*3]];
+		rayVecXe2 = cross(ray,edge2);
+		det = dot(edge1,rayVecXe2);
+
+		if(det > -0.00001 && det < 0.00001)
+			continue;
+
+		invDet = 1.0 / det;
+		s = eye - global_vertices[global_indices[idx*3]];
+		u = invDet * dot(s,rayVecXe2);
+
+		if( u < 0.0 || u > 1.0) 
+			continue;
+
+		sXe1 = cross(s,edge1);
+		v = invDet * dot(ray,sXe1);
+
+		if(v < 0.0 || u+v > 1.0) 
+			continue;
+
+		float t = invDet * dot(edge2,sXe1);
+
+		if(t > 4 && t < best)
+			{
+				best=t;
+			}
+	}
+	return best;
+}
+
+float trace_node_hit(in uint node_i, in vec3 eye, in vec3 ray)
+{
+	Node node = global_nodes[node_i];
+	float dif;
+	float t;
+	float best = 0xFFFF;
+	vec3 hit;
+
+	if(eye.x < node.aabbMax.x + 0.001 && eye.x > node.aabbMin.x - 0.001 &&
+		eye.y < node.aabbMax.y + 0.001 && eye.y > node.aabbMin.y - 0.001 &&
+		eye.z < node.aabbMax.z + 0.001 && eye.z > node.aabbMin.z - 0.001 )
+	{
+		return 0;
+	}
+
+	//X MIN PLANE
+	dif = node.aabbMin.x - eye.x;
+	t = dif / ray.x;
+	hit = eye + ray*t;
+
+	if(t > 0 && hit.y > node.aabbMin.y && hit.y < node.aabbMax.y && hit.z > node.aabbMin.z && hit.z < node.aabbMax.z && t < best)
+		best = t;
+
+	//X MAX PLANE
+	dif = node.aabbMax.x - eye.x;
+	t = dif / ray.x;
+	hit = eye + ray*t;
+
+	if(t > 0 && hit.y > node.aabbMin.y && hit.y < node.aabbMax.y && hit.z > node.aabbMin.z && hit.z < node.aabbMax.z && t < best)
+		best = t;
+
+	//Y MIN PLANE
+	dif = node.aabbMin.y - eye.y;
+	t = dif / ray.y;
+	hit = eye + ray*t;
+
+	if(t > 0 && hit.x > node.aabbMin.x && hit.x < node.aabbMax.x && hit.z > node.aabbMin.z && hit.z < node.aabbMax.z && t < best)
+		best = t;
+
+	//Y MAX PLANE
+	dif = node.aabbMax.y - eye.y;
+	t = dif / ray.y;
+	hit = eye + ray*t;
+
+	if(t > 0 && hit.x > node.aabbMin.x && hit.x < node.aabbMax.x && hit.z > node.aabbMin.z && hit.z < node.aabbMax.z && t < best)
+		best = t;
+
+	//Z MIN PLANE
+	dif = node.aabbMin.z - eye.z;
+	t = dif / ray.z;
+	hit = eye + ray*t;
+
+	if(t > 0 && hit.x > node.aabbMin.x && hit.x < node.aabbMax.x && hit.y > node.aabbMin.y && hit.y < node.aabbMax.y && t < best)
+		best = t;
+
+	//Z MAX PLANE
+	dif = node.aabbMax.z - eye.z;
+	t = dif / ray.z;
+	hit = eye + ray*t;
+
+	if(t > 0 && hit.x > node.aabbMin.x && hit.x < node.aabbMax.x && hit.y > node.aabbMin.y && hit.y < node.aabbMax.y && t < best)
+		best = t;
+
+	return best;
+}
+
+uint indexed(uint v_i)
+{
+	return global_indices[v_i];
+}
+
+uint indexed(uint v_i, uint offset)
+{
+	return global_indices[v_i+offset];
+}
+
+//==================================================
+// Private variables
+//
+
+uint[12] stack;
+float[12] stack_distance;
+uint stack_n;
+
+//==================================================
+// Functions that use private variables
+//
+
+void open_node(uint node_i, vec3 eye, vec3 ray)
+{
+	float left,right;
+
+	left = trace_node_hit(global_nodes[node_i].left_node,eye,ray);
+
+	right = trace_node_hit(global_nodes[node_i].right_node,eye,ray);
+
+	if(left < 0xFFFF && right < 0xFFFF)
+	{
+		if(left < right)
+		{
+			stack[stack_n] = global_nodes[node_i].right_node;
+			stack_distance[stack_n] = right;
+
+			stack[stack_n+1] = global_nodes[node_i].left_node;
+			stack_distance[stack_n+1] = left;
+		}
+		else
+		{
+			stack[stack_n] = global_nodes[node_i].left_node;
+			stack_distance[stack_n] = left;
+
+			stack[stack_n+1] = global_nodes[node_i].right_node;
+			stack_distance[stack_n+1] = right;
+		}
+
+		stack_n += 2;
+	}
+	else if(left < 0xFFFF)
+	{
+		stack[stack_n] = global_nodes[node_i].left_node;
+		stack_distance[stack_n] = left;
+
+		stack_n += 1;
+	}
+	else if(right < 0xFFFF)
+	{
+		stack[stack_n] = global_nodes[node_i].right_node;
+		stack_distance[stack_n] = right;
+
+		stack_n += 1;
+	}
+}
+
+float trace_scene_hit(vec3 eye, vec3 ray)
+{
+	stack_n=0;
+	float best = 0xFFFF;
+
+	if(trace_node_hit(0,eye,ray) < 0xFFFF)
+	{
+		open_node(0,eye,ray);
+
+		while(stack_n > 0)
+		{
+			stack_n -= 1;
+
+			if(global_nodes[stack[stack_n]].n_prims > 0)
+			{
+				float t = trace_node_triangles_hit(stack[stack_n],eye,ray);
+				best = min(t,best);
+
+			}
+			else if(stack_distance[stack_n] < best)
+			{
+				open_node(stack[stack_n],eye,ray);
+			}
+		}
+	}
+
+	return best;
+}
+
+//==================================================
+// Layout
+//
+
+layout (local_size_x = 32, local_size_y = 8, local_size_z = 1) in;
+
+//==================================================
+// Shared variables
+//
+
+shared float m0,m1,m2;
+shared bool b0,b1,bNegativeX;
+shared uint i_0;
+shared uint v_0,v_1,v_2;
+shared vec2 w0,w1,w2;
+shared float y0;
+
+shared vec3 Normal;
+shared mat4 uv2worldMat;
+
+//==================================================
+// Functions that use shared variables
+//
+
+bool is_point_on_triangle(in vec3 pos)
+{
+	vec3 edge1, edge2, rayVecXe2, s, sXe1;
+	float det, invDet, u, v;
+		
+	edge1 = global_vertices[v_1] - global_vertices[v_0];
+	edge2 = global_vertices[v_2] - global_vertices[v_0];
+	rayVecXe2 = cross(-Normal,edge2);
+	det = dot(edge1,rayVecXe2);
+
+	if(det > -0.00001 && det < 0.00001)
+		return false;
+
+	invDet = 1.0 / det;
+	s = pos+Normal - global_vertices[v_0];
+	u = invDet * dot(s,rayVecXe2);
+
+	if( u < 0.0 || u > 1.0) 
+		return false;
+
+	sXe1 = cross(s,edge1);
+	v = invDet * dot(-Normal,sXe1);
+
+	if(v < 0.0 || u+v > 1.0) 
+		return false;
+
+	float t = invDet * dot(edge2,sXe1);
+
+	if(t>0.001)
+		return true;
+
+	return false;
+}
+
+vec3 uv_to_vec3(in vec2 uv)
+{
+	vec4 V0 = vec4(uv,0,1);
+	vec4 ret = uv2worldMat * V0;
+
+	return ret.xyz;
+}
+
+float floor_y_value(float y)
+{
+	return (floor(params.lm_height * y)+0.5) / params.lm_height;
+}
+
+float floor_x_value(float x)
+{
+	return (floor(params.lm_width * x)+0.5) / params.lm_width;
+}
+
+float MajorX(float y)
+{
+	return w0.x + (m0 * (y - w0.y));
+}
+
+float MinorX(float y)
+{
+	if(b0 && b1)
+	{
+		if(bNegativeX)
+		{
+			return max(w0.x + (m1 * (y - w0.y)), w2.x + (m2 * (y - w2.y)));
+		}
+		else
+		{
+			return min(w0.x + (m1 * (y - w0.y)), w2.x + (m2 * (y - w2.y)));
+		}
+	}
+	else if(b0)
+	{
+		return w0.x + (m1 * (y - w0.y));
+	}
+	else if(b1)
+	{
+		return w2.x + (m2 * (y - w2.y));
+	}
+	return 0;
+}
+
+void main()
+{
+	uint ix = gl_LocalInvocationID.x;
+	uint iy = gl_LocalInvocationID.y;
+	uint thread_id = iy * gl_WorkGroupSize.x + ix;
+
+
+	if(gl_WorkGroupID.x * 3 < params.m_triangles_n_indices && ix == 0 && iy == 0)
+	{
+		//========================================================
+		// Assign the vertex in order of increasing y in uv coords 
+		// v0 = least y     v1 = greatest y     v2 = in between
+		//
+		// v0 -> v1 is the major axis
+		// v0 -> v2 and v2 -> v1 are the minor axis
+		//
+		//					* v0
+		//
+		//				* v2
+		//				          * v1
+
+		uint i_0 = params.m_triangles_index_offset + gl_WorkGroupID.x*3;
+
+		if(map_uvs[indexed(i_0)].y < map_uvs[indexed(i_0,1)].y)
+			v_0 = 0;
+		else
+			v_0 = 1;
+
+		if(map_uvs[indexed(i_0,v_0)].y < map_uvs[indexed(i_0,2)].y)
+			v_0 = v_0;
+		else
+			v_0 = 2;
+
+		if(map_uvs[indexed(i_0,((v_0+1)%3))].y > map_uvs[indexed(i_0,((v_0+2)%3))].y)
+		{
+			v_1 = (v_0+1)%3;
+			v_2 = (v_0+2)%3;
+		}
+		else
+		{
+			v_1 = (v_0+2)%3;
+			v_2 = (v_0+1)%3;
+		}
+
+		v_0 = indexed(i_0,v_0);
+		v_1 = indexed(i_0,v_1);
+		v_2 = indexed(i_0,v_2);
+
+		w0 = vec2(floor_x_value(map_uvs[v_0].x),floor_y_value(map_uvs[v_0].y));
+		w1 = vec2(floor_x_value(map_uvs[v_1].x),floor_y_value(map_uvs[v_1].y));
+		w2 = vec2(floor_x_value(map_uvs[v_2].x),floor_y_value(map_uvs[v_2].y));
+
+		m0 = (w1.x - w0.x) / (w1.y - w0.y);
+		m1 = (w2.x - w0.x) / (w2.y - w0.y);
+		m2 = (w1.x - w2.x) / (w1.y - w2.y);
+
+		b0=false;
+		b1=false;
+
+		if(map_uvs[v_2].y > map_uvs[v_0].y+0.0001)
+			b0 = true;
+
+		if(map_uvs[v_1].y > map_uvs[v_2].y+0.0001)
+			b1 = true;
+
+		bNegativeX = false;
+
+		if(MajorX(w2.y) > w2.x)
+			bNegativeX = true;
+		
+
+		//==================================================
+		// Build a matrix to convert from UV to world coords
+		//
+
+		vec3 V4 = vec3(w0,0) + cross( vec3(w1,0) - vec3(w0,0), vec3(w2,0) - vec3(w0,0));
+
+		mat4 T1 = mat4(	vec4(w0,0,1),
+						vec4(w1,0,1),
+						vec4(w2,0,1),
+						vec4(V4,1));
+
+		V4 = global_vertices[v_0] + cross(global_vertices[v_1] - global_vertices[v_0], global_vertices[v_2] - global_vertices[v_0]);
+
+		mat4 T2 = mat4( vec4(global_vertices[v_0],1),
+						vec4(global_vertices[v_1],1),
+						vec4(global_vertices[v_2],1),
+						vec4(V4,1));
+
+		T1 = inverse(T1);
+
+		uv2worldMat = T2 * T1;
+		
+		Normal = cross(global_vertices[indexed(i_0,1)] - global_vertices[indexed(i_0,0)], global_vertices[indexed(i_0,2)] - global_vertices[indexed(i_0,1)]);
+		Normal = normalize(Normal);
+	}
+
+	float ystep = 1.0 / params.lm_height;
+	uint x0,x1;
+	float yy;
+	int i;
+
+	barrier();
+
+	if(ix == 0 && iy == 0)
+	{
+		y0 = w0.y;
+	}
+
+	barrier();
+
+
+	//========================================================
+	// Main loop with a stride of 32
+	//
+
+	while(y0 < w1.y + 0.001)
+	{
+		yy = y0 + (ystep * iy);
+
+		if(bNegativeX==false)
+			{
+					x0 = uint(params.lm_width * MajorX(yy));
+					x1 = uint(params.lm_width * MinorX(yy));
+			}
+		else
+			{
+					x0 = uint(params.lm_width * MinorX(yy));
+					x1 = uint(params.lm_width * MajorX(yy));
+			}
+
+		if(y0 + (ystep * iy) < w1.y + 0.001)
+		{
+			i=0;
+			while(x0 + ix + 32*i <= x1)
+			{
+				float intensity = 0;
+
+				ivec2 ipos = ivec2(x0 + ix + 32*i, uint(params.lm_height * (y0 + (ystep * iy))));
+				vec3 pos = uv_to_vec3( vec2( (float(ipos.x)+0.5) / params.lm_width, (float(ipos.y)+0.5) / params.lm_height) );
+
+				pos += Normal* 0.1;
+				vec3 ray = params.eye_pos - pos;
+				
+				if(dot(ray,Normal) > 0 )
+				{
+					float distance;
+					float hit_t;
+
+
+					distance = length(ray);
+					ray = normalize(ray);
+					hit_t = trace_scene_hit(pos,ray);	
+
+					if(hit_t > distance)
+					{
+						intensity =  1.0 - ( distance / float(params.lightradius) );
+						intensity *= intensity;
+					}	
+				}
+
+				imageStore(imageOut,ivec2(x0 + ix + 32*i, uint(params.lm_height * (y0 + (ystep * iy)))),vec4(intensity,1,intensity,1));
+
+				i++;
+			}
+		}
+		
+		barrier();
+
+		if(ix == 0 && iy == 0)
+		{
+			y0 += (ystep * 8);
+		}
+
+		barrier();
+
+	}
+	
+	barrier();
+
+	return;
+}
+
+
+
+

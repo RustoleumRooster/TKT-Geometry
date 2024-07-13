@@ -410,10 +410,8 @@ void Lightmap_Manager::loadLightmapTextures(geometry_scene* geo_scene, const std
 
 		lightmap_textures.push_back(tex);
 
-		//std::cout << ss.str() << ":\n";
 		for (int f_i : material_groups[i].faces)
 		{
-			//std::cout << f_i << " \n";
 			MeshBuffer_Chunk chunk;
 			chunk = geo_scene->final_meshnode_interface.get_mesh_buffer_by_face(f_i);
 			chunk.buffer->getMaterial().setTexture(1, tex);
@@ -422,6 +420,8 @@ void Lightmap_Manager::loadLightmapTextures(geometry_scene* geo_scene, const std
 			chunk.buffer->getMaterial().setTexture(1, tex);
 		}
 	}
+
+	geo_scene->getMeshNode()->copyMaterials();
 }
 
 

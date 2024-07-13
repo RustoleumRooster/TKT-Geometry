@@ -3,6 +3,23 @@
 #include "vkModel.h"
 #include "vkBufferObject.h"
 #include "vkTextures.h"
+#include "geometry_scene.h"
+
+void  VulkanApp::run_point_light(geometry_scene* geo_scene) {
+	initVulkan(&geo_scene->final_meshnode_interface);
+	//mainLoop();
+
+	system_point_light = new System_Point_Light(m_device, uniformBuffers);
+	system_point_light->loadModel(&geo_scene->final_meshnode_interface);
+	system_point_light->loadLights(geo_scene);
+	system_point_light->initialize_step2(m_DescriptorPool);
+	system_point_light->executeComputeShader();
+	vkDeviceWaitIdle(m_device->getDevice());
+
+	system_point_light->writeDrawLines(geo_scene->special_graph);
+
+	cleanup();
+}
 
  void VulkanApp::createDescriptorPool() {
 
