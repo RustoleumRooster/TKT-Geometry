@@ -417,6 +417,12 @@ bool UV_Editor_Panel::OnEvent(const SEvent& event)
                 
             }break;
 
+            case USER_EVENT_CLEAR_LIGHTMAP_TEXTURES:
+            {
+                my_image = NULL;
+
+            } break;
+
             case USER_EVENT_SELECTION_CHANGED:
             {
                 if (geo_scene->getSelectedFaces().size() != 0)

@@ -393,8 +393,19 @@ void lightmaps_divideMaterialGroups(geometry_scene* geo_scene, std::vector<Textu
 	material_groups = ret;
 }
 
+Lightmap_Manager::Lightmap_Manager()
+{
+	MyEventReceiver* receiver = (MyEventReceiver*)device->getEventReceiver();
+	event_receiver = receiver;
+}
+
 void Lightmap_Manager::loadLightmapTextures(geometry_scene* geo_scene, const std::vector<TextureMaterial>& material_groups)
 {
+	SEvent event;
+	event.EventType = EET_USER_EVENT;
+	event.UserEvent.UserData1 = USER_EVENT_CLEAR_LIGHTMAP_TEXTURES;
+	event_receiver->OnEvent(event);
+
 	for (video::ITexture* tex: lightmap_textures)
 	{
 		device->getVideoDriver()->removeTexture(tex);
@@ -422,6 +433,10 @@ void Lightmap_Manager::loadLightmapTextures(geometry_scene* geo_scene, const std
 	}
 
 	geo_scene->getMeshNode()->copyMaterials();
+
+	event.EventType = EET_USER_EVENT;
+	event.UserEvent.UserData1 = USER_EVENT_MATERIAL_GROUP_SELECTION_CHANGED;
+	event_receiver->OnEvent(event);
 }
 
 
