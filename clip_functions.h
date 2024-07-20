@@ -100,6 +100,8 @@ int classify_loop(polyfold& pf, int f_i, int p_i, polyfold& pf2, int rule, int r
     return TOP_UNDEF;
 }
 
+void sort_loops_depth(polyfold& pf, int f_i);
+
 template<bool bAccelerate>
 void polyfold::finalize_clipped_poly(const polyfold& pf, LineHolder& graph)
 {
@@ -144,14 +146,15 @@ void polyfold::finalize_clipped_poly(const polyfold& pf, LineHolder& graph)
     {
         if (pf.faces[i].temp_b == FACE_GEOMETRY_UNCHANGED)
             continue;
-
+        /*
         for (int p = 0; p < this->faces[i].loops.size(); p++)
         {
             if (this->faces[i].loops[p].vertices.size() > 0)
             {
                     this->set_loop_solid(i, p);
             }
-        }
+        }*/
+        sort_loops_depth(*this, i);
     }
 
     this->recalc_bbox();

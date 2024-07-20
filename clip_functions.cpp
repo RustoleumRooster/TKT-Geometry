@@ -348,6 +348,45 @@ void do_self_topology_loops(polyfold& pf, const polyfold& pf0, LineHolder &graph
     }
 }
 
+void sort_loops_depth(polyfold& pf, int f_i)
+{
+    poly_face* face = &pf.faces[f_i];
+
+    for (int i = 0; i < face->loops.size(); i++)
+    {
+        if (face->loops[i].vertices.size() > 0)
+            pf.set_loop_solid(f_i, i);
+    }
+
+    for (int i = 0; i < face->loops.size(); i++)
+    {
+        face->loops[i].depth = 0;
+    }
+
+    //Check for nested loops
+    for (int i = 0; i < face->loops.size(); i++)
+        for (int j = i + 1; j < face->loops.size(); j++)
+        {
+            if (face->loops[i].vertices.size() == 0 || face->loops[j].vertices.size() == 0)
+                continue;
+
+            bool b1 = true;
+            bool b2 = true;
+
+            for (int v_i : face->loops[i].vertices)
+                if (!pf.is_point_in_loop(f_i, j, pf.vertices[v_i].V))
+                    b1 = false;
+            for (int v_j : face->loops[j].vertices)
+                if (!pf.is_point_in_loop(f_i, i, pf.vertices[v_j].V))
+                    b2 = false;
+
+            if (b1)
+                face->loops[i].depth++;
+            else if (b2)
+                face->loops[j].depth++;
+        }
+}
+
 void do_clear_redundant_inner_loops(polyfold& pf, int f_i)
 {
     pf.sort_loops_inner(f_i);
