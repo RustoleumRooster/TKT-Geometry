@@ -406,12 +406,42 @@ void geometry_scene::rebuild_geometry(bool only_build_new_geometry)
             }
         }
 
-        if (num == 0 || results.n_intersections == 0)
+        if (num == 0)
         {
             if ((this->elements[i].type == GEO_ADD && this->base_type == GEO_EMPTY) ||
                 (this->elements[i].type == GEO_SUBTRACT && this->base_type == GEO_SOLID))
             {
+                if (this->elements[i].type == GEO_ADD)
+                {
+                    this->elements[i].brush.make_convex();
+                }
+                else if (this->elements[i].type == GEO_SUBTRACT)
+                {
+                    this->elements[i].brush.make_concave();
+                }
 
+                this->elements[i].geometry = this->elements[i].brush;
+            }
+            else
+            {
+                this->elements[i].geometry = no_poly;
+            }
+        }
+        else if(results.n_intersections == 0 && combo.faces.size() > 0 && this->elements[i].brush.vertices.size() > 0)
+        {
+            vector3df v0 = this->elements[i].brush.vertices[0].V;
+            int RES = combo.classify_point(v0, nograph);
+
+            if(this->elements[i].type == GEO_ADD && RES == TOP_FRONT)
+            {
+                this->elements[i].brush.make_convex();
+                this->elements[i].geometry = this->elements[i].brush;
+            }
+            else if(this->elements[i].type == GEO_SUBTRACT && RES == TOP_BEHIND)
+            {
+
+                this->elements[i].brush.make_concave();
+                this->elements[i].geometry = this->elements[i].brush;
             }
             else
             {

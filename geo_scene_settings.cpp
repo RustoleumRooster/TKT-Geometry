@@ -236,8 +236,8 @@ void material_group_struct::my_typeDesc::addFormWidget(Reflected_GUI_Edit_Form* 
 Material_Buffers_Widget::Material_Buffers_Widget(gui::IGUIEnvironment* env, gui::IGUIElement* parent, geometry_scene* g_scene_, Material_Buffers_Base* base_, s32 id, core::rect<s32> rect)
 	: gui::IGUIElement(gui::EGUIET_ELEMENT, env, parent, id, rect), my_base(base_), g_scene(g_scene_), my_ID(id)
 {
-	//MyEventReceiver* receiver = (MyEventReceiver*)device->getEventReceiver();
-	//receiver->Register(this);
+	MyEventReceiver* receiver = (MyEventReceiver*)device->getEventReceiver();
+	receiver->Register(this);
 }
 
 
@@ -245,8 +245,8 @@ Material_Buffers_Widget::~Material_Buffers_Widget()
 {
 	//std::cout << "Out of scope (Material Buffers Widget)\n";
 
-	//MyEventReceiver* receiver = (MyEventReceiver*)device->getEventReceiver();
-	//receiver->UnRegister(this);
+	MyEventReceiver* receiver = (MyEventReceiver*)device->getEventReceiver();
+	receiver->UnRegister(this);
 
 	my_base->close_uv_panel();
 
