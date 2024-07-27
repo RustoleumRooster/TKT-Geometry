@@ -23,7 +23,7 @@ class MeshNode_Interface_Final;
 
 class System_Point_Light {
 
-	struct LightSource {
+	struct LightSource_struct {
 		alignas(16) vector3df pos;
 		uint32_t radius;
 	};
@@ -32,6 +32,7 @@ class System_Point_Light {
 		alignas(16) vector3df eye_pos;
 		uint32_t lightradius;
 		uint32_t n_rays;
+		uint32_t n_lights;
 
 		//scene info
 		uint32_t n_triangles;
@@ -42,6 +43,9 @@ class System_Point_Light {
 		uint32_t face_vertex_offset;
 		uint32_t face_index_offset;
 		uint32_t face_n_indices;
+
+		//uint32_t face_light_offset;
+		//uint32_t face_n_lights;
 
 		//lightmap info
 		uint32_t lightmap_width;
@@ -72,6 +76,7 @@ public:
 		createHitResultsBuffer();
 		createUVBuffer();
 		createNodeBuffer();
+		createLightsBuffer();
 	}
 
 	void executeComputeShader();
@@ -92,6 +97,7 @@ private:
 	void createIndexBuffer();
 	void createVertexBuffer();
 	void createUVBuffer();
+	void createLightsBuffer();
 	void createRaytraceInfoBuffer();
 	void createHitResultsBuffer();
 	void createComputePipeline();
@@ -100,6 +106,9 @@ private:
 	void createDescriptorSets(int face_n);
 	void writeRaytraceInfoBuffer(int face_n);
 	void buildLightmap(int face_n);
+	bool triangle_sees_light(uint32_t triangle_i, vector3df pos, uint32_t radius);
+
+	f32 trace_triangle_hit(uint32_t triangle_i, vector3df eye, vector3df ray);
 
 	VkPipelineLayout pipelineLayout;
 	std::vector<VkDescriptorSet> descriptorSets;
@@ -154,14 +163,14 @@ private:
 	std::vector<VkDeviceMemory> lightmapsMemory;
 	std::vector<VkImageView> lightmapImageViews;
 
-	std::vector<LightSource> lightSources;
-	//std::vector<aligned_vec3> master_triangle_vertices;
-	//std::vector<aligned_uint> master_triangle_indices;
+	std::vector<LightSource_struct> lightSources;
+
 	std::vector<triangle_b> master_triangle_list;
 	BVH_structure_triangles my_bvh;
 
 	LineHolder m_graph;
 
-	uint32_t n_nodes;
+	uint32_t n_nodes = 0;
+	uint32_t n_lights = 0;
 
 };

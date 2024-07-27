@@ -25,6 +25,9 @@ void System_Point_Light::cleanup() {
 	vkDestroyBuffer(device->getDevice(), nodeBuffer, nullptr);
 	vkFreeMemory(device->getDevice(), nodeBufferMemory, nullptr);
 
+	vkDestroyBuffer(device->getDevice(), lightSourceBuffer, nullptr);
+	vkFreeMemory(device->getDevice(), lightSourceBufferMemory, nullptr);
+
 	delete raytraceBufferObject;
 	delete hitResultsBufferObject;
 
@@ -58,13 +61,12 @@ void System_Point_Light::loadLights(geometry_scene* geo_scene)
 
 			if (lsnode)
 			{
-				LightSource ls{ lsnode->getPosition(),lsnode->light_radius };
+				LightSource_struct ls{ lsnode->getPosition(),lsnode->light_radius };
 				lightSources.push_back(ls);
 			}
 		}
 	}
-
-	std::cout << "Found " << lightSources.size() << " lights\n";
+	n_lights = lightSources.size();
 }
 
 void System_Point_Light::loadModel(MeshNode_Interface_Final* meshnode)
@@ -148,6 +150,11 @@ void System_Point_Light::createDescriptorSets(int lightmap_n)
 	nodeBufferInfo.offset = 0;
 	nodeBufferInfo.range = sizeof(BVH_node_gpu) * n_nodes;
 
+	VkDescriptorBufferInfo lightBufferInfo{};
+	lightBufferInfo.buffer = lightSourceBuffer;
+	lightBufferInfo.offset = 0;
+	lightBufferInfo.range = sizeof(LightSource_struct) * n_lights;
+
 	VkDescriptorBufferInfo hitResultsInfo{};
 	hitResultsInfo.buffer = hitResultsBufferObject->getBuffer();
 	hitResultsInfo.offset = 0;
@@ -162,8 +169,9 @@ void System_Point_Light::createDescriptorSets(int lightmap_n)
 	writer.writeBuffer(2, vertexBufferInfo);
 	writer.writeBuffer(3, uvBufferInfo);
 	writer.writeBuffer(4, nodeBufferInfo);
-	writer.writeBuffer(5, hitResultsInfo);
-	writer.writeImage(6, imageStorageInfo);
+	writer.writeBuffer(5, lightBufferInfo);
+	writer.writeBuffer(6, hitResultsInfo);
+	writer.writeImage(7, imageStorageInfo);
 	writer.build(descriptorSets[0]);
 }
 
@@ -205,23 +213,30 @@ void System_Point_Light::createDescriptorSetLayout()
 	nodeBufferBinding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
 	nodeBufferBinding.pImmutableSamplers = nullptr; // Optional
 
+	VkDescriptorSetLayoutBinding lightBufferBinding{};
+	lightBufferBinding.binding = 5;
+	lightBufferBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+	lightBufferBinding.descriptorCount = 1;
+	lightBufferBinding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+	lightBufferBinding.pImmutableSamplers = nullptr; // Optional
+
 	VkDescriptorSetLayoutBinding hitResultsBinding{};
-	hitResultsBinding.binding = 5;
+	hitResultsBinding.binding = 6;
 	hitResultsBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 	hitResultsBinding.descriptorCount = 1;
 	hitResultsBinding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
 	hitResultsBinding.pImmutableSamplers = nullptr; // Optional
 
 	VkDescriptorSetLayoutBinding imageStorageBinding{};
-	imageStorageBinding.binding = 6;
+	imageStorageBinding.binding = 7;
 	imageStorageBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
 	imageStorageBinding.descriptorCount = 1;
 	imageStorageBinding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
 	imageStorageBinding.pImmutableSamplers = nullptr; // Optional
 
 	std::vector<VkDescriptorSetLayoutBinding> bindings;
-	bindings.resize(7);
-	bindings = { raytraceBufferBinding, indexBufferBinding, vertexBufferBinding, uvBufferBinding, nodeBufferBinding, hitResultsBinding, imageStorageBinding };
+	bindings.resize(8);
+	bindings = { raytraceBufferBinding, indexBufferBinding, vertexBufferBinding, uvBufferBinding, nodeBufferBinding, lightBufferBinding, hitResultsBinding, imageStorageBinding };
 
 	descriptorSetLayout = new MyDescriptorSetLayout(device, bindings);
 }
@@ -240,7 +255,6 @@ void System_Point_Light::createComputePipeline()
 	}
 
 	pipeline = new ComputePipeline(device, "shaders/pointlight.spv", pipelineLayout);
-	//pipeline = new ComputePipeline(device, "shaders/mesh_triangles.spv", pipelineLayout);
 }
 
 void System_Point_Light::createLightmapImages()
@@ -308,6 +322,24 @@ void System_Point_Light::createIndexBuffer() {
 		indexBufferMemory);
 
 	device->copyBuffer(stagingBuffer.getBuffer(), indexBuffer, bufferSize);
+}
+
+void System_Point_Light::createLightsBuffer() {
+
+	VkDeviceSize bufferSize = sizeof(LightSource_struct) * n_lights;
+
+	MyBufferObject stagingBuffer(device, sizeof(LightSource_struct), n_lights, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+		VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 1);
+
+	stagingBuffer.writeToBuffer((void*)lightSources.data());
+
+	device->createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+		VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, lightSourceBuffer,
+		lightSourceBufferMemory);
+
+	device->copyBuffer(stagingBuffer.getBuffer(), lightSourceBuffer, bufferSize);
 }
 
 
@@ -387,12 +419,13 @@ void System_Point_Light::writeRaytraceInfoBuffer(int lightmap_n)
 		info.eye_pos = center;
 		info.lightradius = 500;
 	}
-	
+
 
 	info.n_vertices = n_vertices;
 	info.n_triangles = n_indices / 3;
 	info.n_rays = N_RAYS;
 	info.n_nodes = n_nodes;
+	info.n_lights = n_lights;
 
 	info.face_index_offset = indices_soa.offset[lightmap_n];
 	info.face_n_indices = indices_soa.len[lightmap_n];
@@ -406,6 +439,91 @@ void System_Point_Light::writeRaytraceInfoBuffer(int lightmap_n)
 	info.lightmap_height = lightmaps_info[lightmap_n].size;
 
 	raytraceBufferObject->writeToBuffer((void*)&info);
+}
+
+bool System_Point_Light::triangle_sees_light(uint32_t triangle_i, vector3df pos, uint32_t radius)
+{
+	vector3df v0, v1, v2;
+
+	v0 = vertices_soa.data0[indices_soa.data[(triangle_i) + 0].x].V;
+	v1 = vertices_soa.data0[indices_soa.data[(triangle_i) + 1].x].V;
+	v2 = vertices_soa.data0[indices_soa.data[(triangle_i) + 2].x].V;
+
+	vector3df N = vector3df(v1 - v0).crossProduct(vector3df(v2 - v1));
+	N.normalize();
+
+	plane3df plane = plane3df(v0, v1, v2);
+	plane.Normal.normalize();
+
+	if (plane.getDistanceTo(pos) > radius)
+		return false;
+
+	if (plane.classifyPointRelation(pos) != ISREL3D_FRONT)
+		return false;
+
+	if (vector3df(pos - v0).getLength() <= radius ||
+		vector3df(pos - v1).getLength() <= radius ||
+		vector3df(pos - v2).getLength() <= radius)
+		return true;
+
+	line3df edge0, edge1, edge2;
+
+	edge0 = line3df(v0, v1);
+	edge1 = line3df(v0, v2);
+	edge2 = line3df(v2, v1);
+
+	f64 dist;
+
+	if (edge0.getIntersectionWithSphere(pos, radius, dist) ||
+		edge1.getIntersectionWithSphere(pos, radius, dist) ||
+		edge2.getIntersectionWithSphere(pos, radius, dist))
+		return true;
+
+	vector3df ray = plane.Normal;
+	ray.normalize();
+	
+	if (trace_triangle_hit(triangle_i, pos, -ray) < radius)
+		return true;
+
+	return false;
+}
+
+float System_Point_Light::trace_triangle_hit(uint32_t triangle_i, vector3df eye, vector3df ray)
+{
+	vector3df edge1, edge2, rayVecXe2, s, sXe1;
+	float det, invDet, u, v;
+
+	u32 idx = triangle_i;
+
+	edge1 = vertices_soa.data0[indices_soa.data[(idx) + 1].x].V - vertices_soa.data0[indices_soa.data[idx].x].V;
+	edge2 = vertices_soa.data0[indices_soa.data[(idx) + 2].x].V - vertices_soa.data0[indices_soa.data[idx].x].V;
+	rayVecXe2 = ray.crossProduct(edge2);
+	det = edge1.dotProduct(rayVecXe2);
+
+	if (det > -0.00001 && det < 0.00001)
+		return 0xFFFF;
+
+	invDet = 1.0 / det;
+	s = eye - vertices_soa.data0[indices_soa.data[idx].x].V;
+	u = invDet * s.dotProduct(rayVecXe2);
+
+	if (u < 0.0 || u > 1.0)
+		return 0xFFFF;
+
+	sXe1 = s.crossProduct(edge1);
+	v = invDet * ray.dotProduct(sXe1);
+
+	if (v < 0.0 || u + v > 1.0)
+		return 0xFFFF;
+
+	float t = invDet * edge2.dotProduct(sXe1);
+
+	if (t > 0)
+	{
+		return t;
+	}
+
+	return 0xFFFF;
 }
 
 void System_Point_Light::buildLightmap(int lightmap_n)
@@ -423,6 +541,7 @@ void System_Point_Light::buildLightmap(int lightmap_n)
 
 	uint32_t n_WorkGroups_x = indices_soa.len[lightmap_n] / 3;
 	std::cout << n_WorkGroups_x << " workgroups\n";
+
 
 	std::cout << "execute...\n";
 	vkCmdDispatch(commandBuffer, n_WorkGroups_x, 1, 1);
@@ -452,19 +571,6 @@ void System_Point_Light::buildLightmap(int lightmap_n)
 
 	}
 
-	/*
-	vector3df V0 = vertices_soa.data0[indices_soa.offset[lightmap_n] + 0].V;
-	vector3df V1 = vertices_soa.data0[indices_soa.offset[lightmap_n] + 1].V;
-	vector3df V2 = vertices_soa.data0[indices_soa.offset[lightmap_n] + 2].V;
-	vector3df N = vector3df(V1 - V0).crossProduct(V2 - V0);
-	N.normalize();
-	N *= 16;*/
-
-	//line3df line0 = line3df(vector3df(hit_results[0].V), vector3df(hit_results[1].V));
-	//m_graph.lines.push_back(line0);
-
-	//int leftnode = my_bvh.nodes[0].left_node;
-	//my_bvh.nodes[0].addDrawLines_Recursive(2, my_bvh.nodes, 0, m_graph);
 
 	for (int i = 0; i < 256; i += 1)
 	{
@@ -475,16 +581,15 @@ void System_Point_Light::buildLightmap(int lightmap_n)
 		//line3df line1 = line3df(vector3df(hit_results[i].V), vector3df(hit_results[i + 2].V));
 		//line3df line2 = line3df(vector3df(hit_results[i + 1].V), vector3df(hit_results[i + 2].V));
 
-		line3df line0 = line3df(vector3df(hit_results[i].V), vector3df(hit_results[256 + i].V));
-		m_graph.lines.push_back(line0);
+		//line3df line0 = line3df(vector3df(hit_results[i].V), vector3df(hit_results[256 + i].V));
+		//m_graph.lines.push_back(line0);
 
 		//m_graph.lines.push_back(line1);
 		//m_graph.lines.push_back(line2);
-
-		//std::cout << hit_results[i].V.X << ", ";
 	}
-	//std::cout << "\n";
 }
+
+
 
 void System_Point_Light::executeComputeShader()
 {
@@ -492,7 +597,6 @@ void System_Point_Light::executeComputeShader()
 
 	for (int i = 0; i < lightmaps_info.size(); i++)
 	{
-		//if(i==0)
 		buildLightmap(i);
 	}
 
@@ -626,40 +730,7 @@ void System_Point_Light::executeComputeShader()
 }
 
 void System_Point_Light::writeDrawLines(LineHolder& graph)
-{/*
-	vector3df center = vector3df(0, 0, 0);
-	for (int i = 0; i < n_vertices; i++)
-	{
-		center += vertices_soa.data0[i].V;
-	}
-	center /= n_vertices;
-
-	for (int i = 0; i < 256; i++)
-		graph.lines.push_back(core::line3df(center, hit_results[i].V));
-
-	//my_bvh.addDrawLines(-1,graph);
-	//my_bvh.nodes[2].addDrawLines(graph);
-	for (int i = 0; i < my_bvh.node_count; i++)
-	{
-		if (my_bvh.nodes[i].isLeafNode())
-		{
-			addDrawLinesPrims(i, graph);
-		}
-	}*/
-	/*
-	for (int i = 0; i < 256; i+=3)
-	{
-		line3df line0 = line3df(vector3df(hit_results[i].V), vector3df(hit_results[i].V + hit_results[i + 1].V));
-		line3df line1 = line3df(vector3df(hit_results[i].V), vector3df(hit_results[i].V + hit_results[i + 2].V));
-		line3df line2 = line3df(vector3df(hit_results[i].V + hit_results[i+1].V), vector3df(hit_results[i].V + hit_results[i + 2].V));
-
-		graph.lines.push_back(line0);
-		graph.lines.push_back(line1);
-		graph.lines.push_back(line2);
-
-		//std::cout << hit_results[i].V.X << ", ";
-	}*/
-
+{
 	graph.lines = m_graph.lines;
 }
 

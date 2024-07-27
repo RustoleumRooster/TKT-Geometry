@@ -17,12 +17,19 @@ struct Node
 	
 };
 
+struct LightSource
+{
+	vec3 pos;
+	uint radius;
+};
+
 layout (binding = 0) uniform raytraceParams 
 {
 	vec3 eye_pos;
 	uint lightradius;
 	
 	uint n_rays;
+	uint n_lights;
 
 	uint n_triangles;
 	uint n_vertices;
@@ -31,7 +38,7 @@ layout (binding = 0) uniform raytraceParams
 	uint m_triangles_vertex_offset;
 	uint m_triangles_index_offset;
 	uint m_triangles_n_indices;
-	
+
 	uint lm_width;
 	uint lm_height;
 } params;
@@ -56,13 +63,18 @@ layout(std140, binding = 4) readonly buffer nodeUBO
 	Node global_nodes[];
 };
 
+layout(std140, binding = 5) readonly buffer lightsUBO
+{
+	LightSource global_lights[];
+};
+
 //an output buffer for debugging
-layout(std140, binding = 5) buffer hitResults
+layout(std140, binding = 6) buffer hitResults
 {
 	vec3 hits[];
 };
 
-layout(binding = 6, rgba8) uniform image2D imageOut;
+layout(binding = 7, rgba8) uniform image2D imageOut;
 
 //==================================================
 // Global functions
@@ -190,6 +202,9 @@ uint indexed(uint v_i, uint offset)
 	return global_indices[v_i+offset];
 }
 
+
+
+
 //==================================================
 // Private variables
 //
@@ -296,9 +311,72 @@ shared float y0;
 shared vec3 Normal;
 shared mat4 uv2worldMat;
 
+shared uint my_lights[8];
+shared uint n_lights;
+
 //==================================================
 // Functions that use shared variables
 //
+
+bool sphere_intersects_triangle(in vec3 P, in float r)
+{
+
+	vec3 A = global_vertices[v_0] - P;
+	vec3 B = global_vertices[v_1] - P;
+	vec3 C = global_vertices[v_2] - P;
+
+	float rr = r*r;
+	vec3 V = cross(B-A, C-A);
+	float d = dot(A,V);
+	float e = dot(V,V);
+
+	if(d*d > rr*e)
+		return false;
+
+	float aa = dot(A,A);
+	float ab = dot(A,B);
+	float ac = dot(A,C);
+	float bb = dot(B,B);
+	float bc = dot(B,C);
+	float cc = dot(C,C);
+
+	if(( aa > rr) && (ab > aa) && (ac > aa))
+		return false;
+
+	if(( bb > rr) && (ab > bb) && (bc > bb))
+		return false;
+
+	if(( cc > rr) && (ac > cc) && (bc > cc))
+		return false;
+
+	vec3 AB = B - A;
+	vec3 BC = C - B;
+	vec3 CA = A - C;
+
+	float d1 = ab - aa;
+	float d2 = bc - bb;
+	float d3 = ac - cc;
+	float e1 = dot(AB,AB);
+	float e2 = dot(BC,BC);
+	float e3 = dot(CA,CA);
+	vec3 Q1 = A * e1 - d1 * AB;
+	vec3 Q2 = B * e2 - d2 * BC;
+	vec3 Q3 = C * e3 - d3 * CA;
+	vec3 QC = C * e1 - Q1;
+	vec3 QA = A * e2 - Q2;
+	vec3 QB = B * e3 - Q3;
+	
+	if((dot(Q1,Q1) > rr * e1 * e1) && dot(Q1,QC) > 0)
+		return false;
+
+	if((dot(Q2,Q2) > rr * e2 * e2) && dot(Q2,QA) > 0)
+		return false;
+
+	if((dot(Q3,Q3) > rr * e3 * e3) && dot(Q3,QB) > 0)
+		return false;
+
+	return true;
+}
 
 bool is_point_on_triangle(in vec3 pos)
 {
@@ -476,6 +554,40 @@ void main()
 		
 		Normal = cross(global_vertices[indexed(i_0,1)] - global_vertices[indexed(i_0,0)], global_vertices[indexed(i_0,2)] - global_vertices[indexed(i_0,1)]);
 		Normal = normalize(Normal);
+
+		n_lights=0;
+
+	}
+	barrier();
+
+	bool visible_light;
+
+	//==================================================
+	// Check which lights are visible to us
+	//
+
+	if(thread_id<params.n_lights)
+	{
+		if(dot(global_lights[thread_id].pos - global_vertices[v_0], Normal) > 0)
+			visible_light = sphere_intersects_triangle(global_lights[thread_id].pos,global_lights[thread_id].radius);
+		else
+			visible_light = false;
+	}
+
+	barrier();
+
+	for(int i=0;i<params.n_lights;i++)
+	{
+		if(thread_id == i && n_lights < 8)
+		{
+			if(visible_light)
+			{
+				my_lights[n_lights] = thread_id;
+				n_lights += 1;
+			}
+		}
+
+		barrier();
 	}
 
 	float ystep = 1.0 / params.lm_height;
@@ -523,23 +635,30 @@ void main()
 				vec3 pos = uv_to_vec3( vec2( (float(ipos.x)+0.5) / params.lm_width, (float(ipos.y)+0.5) / params.lm_height) );
 
 				pos += Normal* 0.1;
-				vec3 ray = params.eye_pos - pos;
-				
-				if(dot(ray,Normal) > 0 )
+				for(int j=0; j<n_lights; j++)
 				{
-					float distance;
-					float hit_t;
-
-
-					distance = length(ray);
-					ray = normalize(ray);
-					hit_t = trace_scene_hit(pos,ray);	
-
-					if(hit_t > distance)
+					vec3 ray = global_lights[my_lights[j]].pos - pos;
+				
 					{
-						intensity =  1.0 - ( distance / float(params.lightradius) );
-						intensity *= intensity;
-					}	
+						float distance;
+						float hit_t;
+
+
+						distance = length(ray);
+
+						if(distance < float(global_lights[my_lights[j]].radius))
+						{
+							ray = normalize(ray);
+							hit_t = trace_scene_hit(pos,ray);	
+
+							if(hit_t > distance)
+							{
+								float contribution =  1.0 - ( distance / float(global_lights[my_lights[j]].radius) );
+								contribution *= contribution;
+								intensity += contribution * dot(ray,Normal);
+							}	
+						}
+					}
 				}
 
 				imageStore(imageOut,ivec2(x0 + ix + 32*i, uint(params.lm_height * (y0 + (ystep * iy)))),vec4(intensity,1,intensity,1));
@@ -559,7 +678,6 @@ void main()
 
 	}
 	
-	barrier();
 
 	return;
 }

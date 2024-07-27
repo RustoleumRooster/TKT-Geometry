@@ -53,8 +53,8 @@ void main()
 
 				bool edge= false;
 				
-				//if (imageLoad(imageIn,ivec2(u,v)).g == 0.0)
-				if(false)
+				if (imageLoad(imageIn,ivec2(u,v)).g == 0.0)
+				//if(false)
 				{
 				edge=true;
 					for(int i=-1;i<=1;i++)
@@ -79,10 +79,7 @@ void main()
 				if(n>0)
 					sum /= n;
 					
-				//if(edge && n > 0)
-				//	imageStore(imageOut,ivec2(u,v),vec4(sum,sum,1,1));
-				//else
-					imageStore(imageOut,ivec2(u,v),vec4(sum,sum,sum,1));
+				imageStore(imageOut,ivec2(u,v),vec4(sum,sum,sum,1));
 
 			}//if
 
