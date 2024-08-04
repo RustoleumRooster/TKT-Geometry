@@ -15,6 +15,7 @@
 #include "material_groups.h"
 #include "Reflection.h"
 #include "GUI_tools.h"
+#include "LightMaps.h"
 
 #include "geo_scene_settings.h"
 #include "NodeClassesTool.h"
@@ -95,71 +96,45 @@ int main()
 	// create materials
 
 	video::IGPUProgrammingServices* gpu = driver->getGPUProgrammingServices();
-	s32 newMaterialType1 = 0;
-	s32 newMaterialType2 = 0;
-	s32 newMaterialType3 = 0;
-    s32 projectionMaterialType = 0;
-    s32 lightmapMaterialType = 0;
-    s32 DynamicLight_OneLightSource_MaterialType = 0;
-    s32 PathTracing_MaterialType = 0;
+	s32 materialType_dynamicLight = 0;
+	s32 materialType_unlit_selected = 0;
+    s32 materialType_lightmap = 0;
+    s32 materialType_lightmap_selected = 0;
 
 	if (gpu)
 	{
-		MyShaderCallBack2* mc = new MyShaderCallBack2();
-		MyShaderCallBack* mc2 = new MyShaderCallBack();
-		MyShaderCallBack* mc3 = new MyShaderCallBack();
-        ProjectionShaderCallback* mc4 = new ProjectionShaderCallback();
-        LightmapShaderCallback* mc5 = new LightmapShaderCallback();
-        DynamicLightOneSourceCallback* mc6 = new DynamicLightOneSourceCallback();
-        MyShaderCallBack_PathTracing* mc7 = new MyShaderCallBack_PathTracing();
+        MyShaderCallBack* mc = new MyShaderCallBack();
+		MyShaderCallBack2* mc2 = new MyShaderCallBack2();
+        LightmapShaderCallback* mc3 = new LightmapShaderCallback();
 
 		if (UseHighLevelShaders)
 		{
-        
-			newMaterialType1 = gpu->addHighLevelShaderMaterialFromFiles(
-				"vert_shader.txt", "vertexMain", video::EVST_VS_1_1,
-				"frag_shader.txt", "pixelMain", video::EPST_PS_1_1,
+            materialType_unlit_selected = gpu->addHighLevelShaderMaterialFromFiles(
+				"vert_shader_unlit_selected.txt", "vertexMain", video::EVST_VS_1_1,
+				"frag_shader_unlit_selected.txt", "pixelMain", video::EPST_PS_1_1,
 				mc, video::EMT_SOLID, 0);
 
-            newMaterialType2 = gpu->addHighLevelShaderMaterialFromFiles(
-				"vert_shader2.txt", "vertexMain", video::EVST_VS_1_1,
-				"frag_shader2.txt", "pixelMain", video::EPST_PS_1_1,
+            materialType_dynamicLight = gpu->addHighLevelShaderMaterialFromFiles(
+                "vert_shader_dynamicLight.txt", "vertexMain", video::EVST_VS_1_1,
+                "frag_shader_dynamicLight.txt", "pixelMain", video::EPST_PS_1_1,
 				mc2, video::EMT_SOLID, 0);
 
-            newMaterialType3 = gpu->addHighLevelShaderMaterialFromFiles(
-				"vert_shader3.txt", "vertexMain", video::EVST_VS_1_1,
-				"frag_shader3.txt", "pixelMain", video::EPST_PS_1_1,
-				mc3, video::EMT_TRANSPARENT_ADD_COLOR, 0);
-
-            projectionMaterialType = gpu->addHighLevelShaderMaterialFromFiles(
-                "vert_shader_pj.txt", "vertexMain", video::EVST_VS_1_1,
-                "frag_shader_pj.txt", "pixelMain", video::EPST_PS_1_1,
-                mc4, video::EMT_SOLID, 0);
-
-            lightmapMaterialType = gpu->addHighLevelShaderMaterialFromFiles(
+            materialType_lightmap = gpu->addHighLevelShaderMaterialFromFiles(
                 "vert_shader_lightmap.txt", "vertexMain", video::EVST_VS_1_1,
                 "frag_shader_lightmap.txt", "pixelMain", video::EPST_PS_1_1,
-                mc5, video::EMT_SOLID, 0);
+                mc3, video::EMT_SOLID, 0);
 
-            DynamicLight_OneLightSource_MaterialType = gpu->addHighLevelShaderMaterialFromFiles(
-                "vert_shader.txt", "vertexMain", video::EVST_VS_1_1,
-                "frag_shader_one_light_source.txt", "pixelMain", video::EPST_PS_1_1,
-                mc6, video::EMT_SOLID, 0);
-
-            PathTracing_MaterialType = gpu->addHighLevelShaderMaterialFromFiles(
-                "vert_shader.txt", "vertexMain", video::EVST_VS_1_1,
-                "frag_shader_path_tracing.txt", "pixelMain", video::EPST_PS_1_1,
-                mc6, video::EMT_SOLID, 0);
+            materialType_lightmap_selected = gpu->addHighLevelShaderMaterialFromFiles(
+                "vert_shader_lightmap.txt", "vertexMain", video::EVST_VS_1_1,
+                "frag_shader_lightmap_selected.txt", "pixelMain", video::EPST_PS_1_1,
+                mc3, video::EMT_SOLID, 0);
 
 		}
 
 		mc->drop();
 		mc2->drop();
 		mc3->drop();
-        mc4->drop();
-        mc5->drop();
-        mc6->drop();
-        mc7->drop();
+
 	}
 
 	bool bMouseDown=false;
@@ -179,9 +154,9 @@ int main()
     polyfold my_poly;
 
     Reflected_SceneNode::SetBaseMaterialType(video::EMT_TRANSPARENT_ADD_COLOR);
-    Reflected_SceneNode::SetSpecialMaterialType((video::E_MATERIAL_TYPE)newMaterialType2);
+    Reflected_SceneNode::SetSpecialMaterialType((video::E_MATERIAL_TYPE)materialType_unlit_selected);
 
-    geometry_scene scene(smgr,driver,&receiver,video::EMT_SOLID,(video::E_MATERIAL_TYPE)newMaterialType2);
+    geometry_scene scene(smgr,driver,&receiver,video::EMT_SOLID,(video::E_MATERIAL_TYPE)materialType_unlit_selected);
 
     g_scene = &scene;
 
@@ -197,16 +172,21 @@ int main()
     Material_Groups_Base* material_groups_base = new Material_Groups_Base;
     material_groups_base->preinitialize(gui,&scene);
 
-    Material_Group m0{"Unlit",false,false,video::EMT_SOLID,video::SColor(255,128,64,64),NULL};
-    Material_Group m1{"Dynamic Light",false,false,newMaterialType1,video::SColor(255,128,128,64),NULL };
-    Material_Group m2{"Transparent",true,true,video::EMT_TRANSPARENT_ADD_COLOR,video::SColor(255,32,64,96),NULL };
+    Material_Group m0{"Unlit",false,false,false,false,video::SColor(255,128,64,64)};
+    Material_Group m1{"Lightmap",false,false,true,false,video::SColor(255,128,128,64)};
+    Material_Group m2{"Transparent",true,true,true,false,video::SColor(255,32,64,96)};
+    Material_Group m3{"Sky",false,false,false,true,video::SColor(255,128,128,64)};
 
     
-    material_groups_base->setLightingMaterial((video::E_MATERIAL_TYPE)lightmapMaterialType);
+    material_groups_base->LightingMaterial_Type = (video::E_MATERIAL_TYPE)materialType_lightmap;
+    material_groups_base->LightingMaterial_Selected_Type = (video::E_MATERIAL_TYPE)materialType_lightmap_selected;
+    material_groups_base->SolidMaterial_Type = video::EMT_SOLID;
+    material_groups_base->SolidMaterial_Selected_Type = (video::E_MATERIAL_TYPE)materialType_unlit_selected;
 
     material_groups_base->material_groups.push_back(m0);
     material_groups_base->material_groups.push_back(m1);
     material_groups_base->material_groups.push_back(m2);
+    material_groups_base->material_groups.push_back(m3);
 
     scene.set_new_geometry_material(1); //Dynamic Light
 

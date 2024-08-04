@@ -1,5 +1,6 @@
 
 
+
 #include <irrlicht.h>
 #include "material_groups.h"
 #include "edit_env.h"
@@ -335,6 +336,7 @@ bool Material_Groups_Widget::OnEvent(const SEvent& event)
 
 void Material_Groups_Base::refreshTextures()
 {
+    /*
     for (Material_Group &mg: material_groups)
     {
         if (mg.texture)
@@ -345,16 +347,17 @@ void Material_Groups_Base::refreshTextures()
         img->drop();
         mg.texture = tex;
     }
-
+    */
 }
 
 Material_Groups_Base::~Material_Groups_Base()
 {
+    /*
     for (Material_Group& mg : material_groups)
     {
         if (mg.texture)
             env->getVideoDriver()->removeTexture(mg.texture);
-    }
+    }*/
 }
 
 void Material_Groups_Base::show()
@@ -371,45 +374,41 @@ void Material_Groups_Base::show()
     widget->drop();
 }
 
-void Material_Groups_Base::apply_material_to_buffer(scene::IMeshBuffer* buffer, int material_no, bool bShaders)
+void Material_Groups_Base::apply_material_to_buffer(scene::IMeshBuffer* buffer, int material_no, int lighting, bool selected)
 {
-    switch(material_no)
+    if (material_no >= material_groups.size())
+        return;
+
+    Material_Group mg = material_groups[material_no];
+
+    if (mg.lightmap && lighting)
     {
-    case 0:
-        {
-            buffer->getMaterial().MaterialType = video::EMT_SOLID;
-
-        } break;
-    case 1:
-        {
-
-        if (bShaders == false)
-        {
-            buffer->getMaterial().MaterialType = video::EMT_SOLID;
-        }
+        if(selected)
+            buffer->getMaterial().MaterialType = LightingMaterial_Selected_Type;
         else
-        {
-            //buffer->getMaterial().MaterialType = (video::E_MATERIAL_TYPE)material_groups[1].material_no;
-
             buffer->getMaterial().MaterialType = LightingMaterial_Type;
-        }
-            //buffer->getMaterial().MaterialType = video::EMT_TRANSPARENT_ADD_COLOR;
-            //buffer->getMaterial().MaterialType = video::EMT
-        } break;
-    case 2:
-        {
-            buffer->getMaterial().MaterialType = video::EMT_TRANSPARENT_ADD_COLOR;
-            //buffer->getMaterial().MaterialType = video::EMT_TRANSPARENT_ALPHA_CHANNEL;
-            buffer->getMaterial().BackfaceCulling = false;
-        } break;
-    case 3:
-        {
-            buffer->getMaterial().MaterialType = (video::E_MATERIAL_TYPE)material_groups[3].material_no;
-        }
-    case 4:
-        {
-            buffer->getMaterial().MaterialType = (video::E_MATERIAL_TYPE)material_groups[4].material_no;
-        }
-    };
+    }
+    else
+    {
+        if (selected)
+            buffer->getMaterial().MaterialType = SolidMaterial_Selected_Type;
+        else
+            buffer->getMaterial().MaterialType = SolidMaterial_Type;
+    }
+
+    if (mg.two_sided)
+    {
+        buffer->getMaterial().BackfaceCulling = false;
+    }
+    else
+    {
+        buffer->getMaterial().BackfaceCulling = true;
+    }
+
+    if (mg.transparent)
+    {
+        buffer->getMaterial().MaterialType = video::EMT_TRANSPARENT_ADD_COLOR;
+    }
+
 }
 

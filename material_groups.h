@@ -15,9 +15,9 @@ struct Material_Group
     std::string name;
     bool two_sided;
     bool transparent;
-    s32 material_no;
+    bool lightmap;
+    bool isSky;
     video::SColor color;
-    video::ITexture* texture;
 };
 
 class geometry_scene;
@@ -80,7 +80,7 @@ public:
         refreshTextures();
     }
 
-    void apply_material_to_buffer(scene::IMeshBuffer*, int material_no, bool bShaders);
+    void apply_material_to_buffer(scene::IMeshBuffer*, int material_no, int lighting, bool selected);
 
     int getSelected() {
         return selected;
@@ -92,13 +92,14 @@ public:
         return material_groups[i];
     }
 
-    void setLightingMaterial(const video::E_MATERIAL_TYPE mtype) {
-        LightingMaterial_Type = mtype;
-    }
-
     std::vector<Material_Group> material_groups;
 
     video::E_MATERIAL_TYPE LightingMaterial_Type = video::EMT_SOLID;
+    video::E_MATERIAL_TYPE LightingMaterial_Selected_Type = video::EMT_SOLID;
+    video::E_MATERIAL_TYPE SolidMaterial_Type = video::EMT_SOLID;
+    video::E_MATERIAL_TYPE SolidMaterial_Selected_Type = video::EMT_SOLID;
+
+    friend int main();
 
     int selected = -1;
 };

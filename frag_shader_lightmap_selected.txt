@@ -13,7 +13,9 @@ void main (void)
 
 	clamp(light,0,1);
 
-    	gl_FragColor = col * light;
-	//gl_FragColor = vec4(1,1,1,1) * light;
-	//gl_FragColor = vec4(1,0,0,0);
+	col = col * light;
+
+	vec4 col2 = vec4(0.0,0.2,1.0,1.0);
+
+    	gl_FragColor = col*0.6 + col2*0.4;
 }

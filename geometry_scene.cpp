@@ -89,10 +89,10 @@ void geometry_scene::visualizeMaterialGroups()
                 buffer->getMaterial().Lighting = false;
             }
 
-            video::ITexture* tex = material_groups_base->material_groups[pf->faces[f_i].material_group].texture;
+            //video::ITexture* tex = material_groups_base->material_groups[pf->faces[f_i].material_group].texture;
 
-            if(tex && buffer_index != -1)     
-                getMeshNode()->SetFaceTexture(buffer_index, tex);
+           // if(tex && buffer_index != -1)     
+           //     getMeshNode()->SetFaceTexture(buffer_index, tex);
         }
     }
 
@@ -198,29 +198,21 @@ void geometry_scene::setSelectedFaces(std::vector<int> selection)
         {
             int buffer_index = edit_meshnode_interface.get_buffer_index_by_face(f_i);
             scene::IMeshBuffer* buffer = this->getMeshNode()->getMesh()->getMeshBuffer(buffer_index);
-            bool b = false;
+            bool bSelected = false;
             for(int f_j : selection)
                 if(f_i == f_j)
-                    b=true;
+                    bSelected=true;
 
-            if(b)
+            buffer->getMaterial().Lighting = false;
+
+
+            material_groups_base->apply_material_to_buffer(buffer, pf->faces[f_i].material_group, DynamicLightEnabled(), bSelected);
+
+            if (b_Visualize)
             {
-                buffer->getMaterial().MaterialType = special_material_type;
-                buffer->getMaterial().Lighting=false;
+                /// TODO
             }
-            else
-            {
-                if (b_Visualize)
-                {
-                    buffer->getMaterial().MaterialType = base_material_type;
-                    buffer->getMaterial().Lighting = false;
-                }
-                else
-                {
-                   material_groups_base->apply_material_to_buffer(buffer, pf->faces[f_i].material_group,DynamicLightEnabled());
-                   buffer->getMaterial().Lighting = false;
-                }
-            }
+            
         }
     }
 
@@ -696,7 +688,7 @@ void geometry_scene::buildSceneGraph(bool finalMesh, bool addObjects, bool addLi
         {
             scene::IMeshBuffer* buffer = my_MeshNode->getMesh()->getMeshBuffer(i);
             int f_i = final_meshnode_interface.getMaterialsUsed()[i].faces[0];
-            material_groups_base->apply_material_to_buffer(buffer,pf->faces[f_i].material_group,addLights);
+            material_groups_base->apply_material_to_buffer(buffer,pf->faces[f_i].material_group,addLights,false);
             
         }
         my_MeshNode->copyMaterials();
@@ -713,7 +705,7 @@ void geometry_scene::buildSceneGraph(bool finalMesh, bool addObjects, bool addLi
                 int buffer_index = edit_meshnode_interface.get_buffer_index_by_face(f_i);
                 scene::IMeshBuffer* buffer = this->getMeshNode()->getMesh()->getMeshBuffer(buffer_index);
 
-                material_groups_base->apply_material_to_buffer(buffer,pf->faces[f_i].material_group,addLights);
+                material_groups_base->apply_material_to_buffer(buffer,pf->faces[f_i].material_group,addLights,false);
 
                 video::ITexture* tex_j = driver->getTexture(pf->faces[f_i].texture_name.c_str());
 
