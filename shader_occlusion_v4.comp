@@ -1,0 +1,886 @@
+#version 450
+#extension GL_KHR_shader_subgroup_basic : enable
+#extension GL_KHR_shader_subgroup_arithmetic : enable
+
+struct Node
+{
+	vec4 aabbMin;
+	vec4 aabbMax;
+
+	vec4 padding;
+
+	uint left_node;
+	uint right_node;
+
+	uint first_prim;
+	uint n_prims;
+	
+};
+
+layout (binding = 0) uniform raytraceParams 
+{
+	uint n_rays;
+	uint n_triangles;
+	uint n_vertices;
+	uint n_nodes;
+
+	uint m_triangles_vertex_offset;
+	uint m_triangles_index_offset;
+	uint m_triangles_n_indices;
+	
+	uint lm_width;
+	uint lm_height;
+} params;
+
+layout(std140, binding = 1) readonly buffer indexUBO
+{
+	uint global_indices[];
+};
+
+layout(std140, binding = 2) readonly buffer vertUBO
+{
+	vec3 global_vertices[];
+};
+
+layout(std140, binding = 3) readonly buffer uvUBO
+{
+	vec3 map_uvs[];
+};
+
+layout(std140, binding = 4) readonly buffer nodeUBO
+{
+	Node global_nodes[];
+};
+
+layout(std140, binding = 5) readonly buffer edgesUBO
+{
+	uint global_edges[];
+};
+
+//an output buffer for debugging
+layout(std140, binding = 6) buffer hitResults
+{
+	vec3 hits[];
+};
+
+layout(binding = 7, rgba8) uniform image2D imageOut;
+
+//==================================================
+// Random numbers (Tiny Encryption Algorithm)
+//
+
+uint[2] tea(uint v[2])
+{
+	uint v0 = v[0];
+	uint v1 = v[1];
+	uint delta = 0x9E3779B9;
+	uint k0 = 0xA341316C;
+	uint k1 = 0xC8013EA4;
+	uint k2 = 0xAD90777D;
+	uint k3 = 0x7E95761E;
+	uint sum = 0;
+
+	for(int i=0;i<6;i++)
+	{
+		sum+=delta;
+		v0+= ((v1<<4) + k0) ^ (v1+sum) ^ ((v1>>5) + k1);
+		v1+= ((v0<<4) + k2) ^ (v0+sum) ^ ((v0>>5) + k3);
+	}
+
+	return uint[2](v0,v1);
+}
+
+float random_to_float01(uint random)
+{
+	uint u = random >> 9 | 0x3F800000;
+	return uintBitsToFloat(u) - 1.0;
+}
+
+//==================================================
+// Global functions
+//
+
+float trace_node_triangles_hit(in uint node_i, in vec3 eye, in vec3 ray)
+{
+	vec3 edge1, edge2, rayVecXe2, s, sXe1;
+	float det, invDet, u, v;
+
+	float best = 0xFFFF;
+	for(uint j = 0; j < global_nodes[node_i].n_prims; j++)
+	{
+		uint idx;
+
+		if(j==0)
+			idx = floatBitsToUint(global_nodes[node_i].padding.x);
+		else if(j==1)
+			idx = floatBitsToUint(global_nodes[node_i].padding.y);
+
+		edge1 = global_vertices[global_indices[(idx*3) + 1]] - global_vertices[global_indices[idx*3]];
+		edge2 = global_vertices[global_indices[(idx*3) + 2]] - global_vertices[global_indices[idx*3]];
+		rayVecXe2 = cross(ray,edge2);
+		det = dot(edge1,rayVecXe2);
+
+		//if(det > -0.00001 && det < 0.00001)
+		if(det < 0.00001)
+			continue;
+
+		invDet = 1.0 / det;
+		s = eye - global_vertices[global_indices[idx*3]];
+		u = invDet * dot(s,rayVecXe2);
+
+		if( u < 0.0 || u > 1.0) 
+			continue;
+
+		sXe1 = cross(s,edge1);
+		v = invDet * dot(ray,sXe1);
+
+		if(v < 0.0 || u+v > 1.0) 
+			continue;
+
+		float t = invDet * dot(edge2,sXe1);
+
+		if(t > 0 && t < best)
+			{
+				best=t;
+			}
+	}
+	return best;
+}
+
+float trace_node_hit(in uint node_i, in vec3 eye, in vec3 ray)
+{
+	Node node = global_nodes[node_i];
+	float dif;
+	float t;
+	float best = 0xFFFF;
+	vec3 hit;
+
+	if(eye.x < node.aabbMax.x + 0.001 && eye.x > node.aabbMin.x - 0.001 &&
+		eye.y < node.aabbMax.y + 0.001 && eye.y > node.aabbMin.y - 0.001 &&
+		eye.z < node.aabbMax.z + 0.001 && eye.z > node.aabbMin.z - 0.001 )
+	{
+		return 0;
+	}
+
+	//X MIN PLANE
+	dif = node.aabbMin.x - eye.x;
+	t = dif / ray.x;
+	hit = eye + ray*t;
+
+	if(t > 0 && hit.y > node.aabbMin.y && hit.y < node.aabbMax.y && hit.z > node.aabbMin.z && hit.z < node.aabbMax.z && t < best)
+		best = t;
+
+	//X MAX PLANE
+	dif = node.aabbMax.x - eye.x;
+	t = dif / ray.x;
+	hit = eye + ray*t;
+
+	if(t > 0 && hit.y > node.aabbMin.y && hit.y < node.aabbMax.y && hit.z > node.aabbMin.z && hit.z < node.aabbMax.z && t < best)
+		best = t;
+
+	//Y MIN PLANE
+	dif = node.aabbMin.y - eye.y;
+	t = dif / ray.y;
+	hit = eye + ray*t;
+
+	if(t > 0 && hit.x > node.aabbMin.x && hit.x < node.aabbMax.x && hit.z > node.aabbMin.z && hit.z < node.aabbMax.z && t < best)
+		best = t;
+
+	//Y MAX PLANE
+	dif = node.aabbMax.y - eye.y;
+	t = dif / ray.y;
+	hit = eye + ray*t;
+
+	if(t > 0 && hit.x > node.aabbMin.x && hit.x < node.aabbMax.x && hit.z > node.aabbMin.z && hit.z < node.aabbMax.z && t < best)
+		best = t;
+
+	//Z MIN PLANE
+	dif = node.aabbMin.z - eye.z;
+	t = dif / ray.z;
+	hit = eye + ray*t;
+
+	if(t > 0 && hit.x > node.aabbMin.x && hit.x < node.aabbMax.x && hit.y > node.aabbMin.y && hit.y < node.aabbMax.y && t < best)
+		best = t;
+
+	//Z MAX PLANE
+	dif = node.aabbMax.z - eye.z;
+	t = dif / ray.z;
+	hit = eye + ray*t;
+
+	if(t > 0 && hit.x > node.aabbMin.x && hit.x < node.aabbMax.x && hit.y > node.aabbMin.y && hit.y < node.aabbMax.y && t < best)
+		best = t;
+
+	return best;
+}
+
+vec3 rand_hemisphere_ray(in vec3 N, in vec3 Tan, in vec3 BiTan, inout uint seed)
+{
+	uint[2] V = tea(uint[2](seed,0));
+
+	float theta = acos( random_to_float01(V[0]) );
+	float omega = (random_to_float01(V[1]) * 3.1415926535 * 2);
+	
+	float x = sin(theta)*cos(omega);
+	float y = sin(theta)*sin(omega);
+	float z = cos(theta);
+
+	vec3 ray = Tan*x + BiTan*y + N*z;
+	ray = normalize(ray);
+
+	seed = V[1];
+
+	return ray;
+}
+
+uint indexed(uint v_i)
+{
+	return global_indices[v_i];
+}
+
+uint indexed(uint v_i, uint offset)
+{
+	return global_indices[v_i+offset];
+}
+
+
+//==================================================
+// Private variables
+//
+
+uint[12] stack;
+float[12] stack_distance;
+uint stack_n;
+
+//==================================================
+// Functions that use private variables
+//
+
+void open_node(uint node_i, vec3 eye, vec3 ray)
+{
+	float left,right;
+
+	left = trace_node_hit(global_nodes[node_i].left_node,eye,ray);
+
+	right = trace_node_hit(global_nodes[node_i].right_node,eye,ray);
+
+	if(left < 0xFFFF && right < 0xFFFF)
+	{
+		if(left < right)
+		{
+			stack[stack_n] = global_nodes[node_i].right_node;
+			stack_distance[stack_n] = right;
+
+			stack[stack_n+1] = global_nodes[node_i].left_node;
+			stack_distance[stack_n+1] = left;
+		}
+		else
+		{
+			stack[stack_n] = global_nodes[node_i].left_node;
+			stack_distance[stack_n] = left;
+
+			stack[stack_n+1] = global_nodes[node_i].right_node;
+			stack_distance[stack_n+1] = right;
+		}
+
+		stack_n += 2;
+	}
+	else if(left < 0xFFFF)
+	{
+		stack[stack_n] = global_nodes[node_i].left_node;
+		stack_distance[stack_n] = left;
+
+		stack_n += 1;
+	}
+	else if(right < 0xFFFF)
+	{
+		stack[stack_n] = global_nodes[node_i].right_node;
+		stack_distance[stack_n] = right;
+
+		stack_n += 1;
+	}
+}
+
+float trace_scene_hit(vec3 eye, vec3 ray)
+{
+	stack_n=0;
+	float best = 0xFFFF;
+
+	if(trace_node_hit(0,eye,ray) < 0xFFFF)
+	{
+		open_node(0,eye,ray);
+
+		while(stack_n > 0)
+		{
+			stack_n -= 1;
+
+			if(global_nodes[stack[stack_n]].n_prims > 0)
+			{
+				float t = trace_node_triangles_hit(stack[stack_n],eye,ray);
+				best = min(t,best);
+
+			}
+			else if(stack_distance[stack_n] < best)
+			{
+				open_node(stack[stack_n],eye,ray);
+			}
+		}
+	}
+
+	return best;
+}
+
+//==================================================
+// Layout
+//
+
+layout (local_size_x = 32, local_size_y = 8, local_size_z = 1) in;
+
+//==================================================
+// Shared variables
+//
+
+shared float m0,m1,m2;
+shared bool b0,b1,bNegativeX;
+shared uint i_0;
+shared uint v_0,v_1,v_2;
+shared vec2 w0,w1,w2;
+shared float y0;
+shared vec3 Normal,Tan,Bitan;
+shared mat4 uv2worldMat;
+shared uint x0,x1;
+shared uint edges[3];
+shared vec3 EdgeNormal0,EdgeNormal1,EdgeNormal2;
+
+
+//==================================================
+// Functions that use shared variables
+//
+	
+/*
+//==============================
+//     Edge and vertex positions
+//			7
+//          2
+//          * v1
+//         / \
+//        /   \
+//    1  /     \  3
+//      /       \
+//     /         \
+//  0 *-----------* v2
+//6     v0   5      4    8
+*/						
+
+uint get_edge_vertex_type(in vec3 P)
+{
+	vec3 v0 = global_vertices[indexed(i_0,0)];
+	vec3 v1 = global_vertices[indexed(i_0,1)];
+	vec3 v2 = global_vertices[indexed(i_0,2)];
+
+	if(length(P - v0) < 0.25)
+	{
+		return 0;
+	}
+
+	if(length(P - v1) < 0.25)
+	{
+		return 2;
+	}
+
+	if(length(P - v2) < 0.25)
+	{
+		return 4;
+	}
+
+	vec3 e0 = v1-v0;
+	vec3 e1 = v2-v1;
+	vec3 e2 = v0-v2;
+
+	if (length(P-v0) + length(P-v1) - length(v1 - v0) < 0.05 )
+	{
+
+		if((length(P-v2) + length(P-v1) ) - length(v2 - v1) < 0.05 )
+		{
+			if(edges[0] == 0xFFFF && edges[1] == 0xFFFF)
+				return 0xFFFF;
+			else if(edges[0] == 0xFFFF)
+				return 3;
+			else if(edges[1] == 0xFFFF)
+				return 1;
+			else
+				return 7;
+		}
+		else if((length(P-v0) + length(P-v2) ) - length(v0 - v2) < 0.05 )
+		{
+			if(edges[0] == 0xFFFF && edges[2] == 0xFFFF)
+				return 0xFFFF;
+			else if(edges[0] == 0xFFFF)
+				return 5;
+			else if(edges[2] == 0xFFFF)
+				return 1;
+			else
+				return 6;
+		}
+		else
+		{
+			if(edges[0] != 0xFFFF)
+				return 1;
+			else return 0xFFFF;
+		}
+	}
+
+	if (length(P-v2) + length(P-v1) - length(v2 - v1) < 0.05 )
+	{
+		if((length(P-v0) + length(P-v2) ) -length(v0 - v2) < 0.05 )
+		{
+			if(edges[1] == 0xFFFF && edges[2] == 0xFFFF)
+				return 0xFFFF;
+			else if(edges[2] == 0xFFFF)
+				return 3;
+			else if(edges[1] == 0xFFFF)
+				return 5;
+			else
+				return 8;
+		}
+		else
+		{
+			if(edges[1] != 0xFFFF)
+				return 3;
+			else
+				return 0xFFFF;
+		}
+	}
+
+	if (length(P-v0) + length(P-v2)  -length(v0 - v2) < 0.05 )
+	{
+		if(edges[2] != 0xFFFF)
+			return 5;
+		else
+			return 0xFFFF;
+	}
+
+	return 0xFFFF;
+}
+
+bool sphere_intersects_triangle(in vec3 P, in float r)
+{
+
+	vec3 A = global_vertices[v_0] - P;
+	vec3 B = global_vertices[v_1] - P;
+	vec3 C = global_vertices[v_2] - P;
+
+	float rr = r*r;
+	vec3 V = cross(B-A, C-A);
+	float d = dot(A,V);
+	float e = dot(V,V);
+
+	if(d*d > rr*e)
+		return false;
+
+	float aa = dot(A,A);
+	float ab = dot(A,B);
+	float ac = dot(A,C);
+	float bb = dot(B,B);
+	float bc = dot(B,C);
+	float cc = dot(C,C);
+
+	if(( aa > rr) && (ab > aa) && (ac > aa))
+		return false;
+
+	if(( bb > rr) && (ab > bb) && (bc > bb))
+		return false;
+
+	if(( cc > rr) && (ac > cc) && (bc > cc))
+		return false;
+
+	vec3 AB = B - A;
+	vec3 BC = C - B;
+	vec3 CA = A - C;
+
+	float d1 = ab - aa;
+	float d2 = bc - bb;
+	float d3 = ac - cc;
+	float e1 = dot(AB,AB);
+	float e2 = dot(BC,BC);
+	float e3 = dot(CA,CA);
+	vec3 Q1 = A * e1 - d1 * AB;
+	vec3 Q2 = B * e2 - d2 * BC;
+	vec3 Q3 = C * e3 - d3 * CA;
+	vec3 QC = C * e1 - Q1;
+	vec3 QA = A * e2 - Q2;
+	vec3 QB = B * e3 - Q3;
+	
+	if((dot(Q1,Q1) > rr * e1 * e1) && dot(Q1,QC) > 0)
+		return false;
+
+	if((dot(Q2,Q2) > rr * e2 * e2) && dot(Q2,QA) > 0)
+		return false;
+
+	if((dot(Q3,Q3) > rr * e3 * e3) && dot(Q3,QB) > 0)
+		return false;
+
+	return true;
+}
+
+vec3 uv_to_vec3(in vec2 uv)
+{
+	vec4 V0 = vec4(uv,0,1);
+	vec4 ret = uv2worldMat * V0;
+
+	return ret.xyz;
+}
+
+float floor_y_value(float y)
+{
+	return (floor(params.lm_height * y)+0.5) / params.lm_height;
+}
+
+float floor_x_value(float x)
+{
+	return (floor(params.lm_width * x)+0.5) / params.lm_width;
+}
+
+float MajorX(float y)
+{
+	return w0.x + (m0 * (y - w0.y));
+}
+
+float MinorX(float y)
+{
+	if(b0 && b1)
+	{
+		if(bNegativeX)
+		{
+			return max(w0.x + (m1 * (y - w0.y)), w2.x + (m2 * (y - w2.y)));
+		}
+		else
+		{
+			return min(w0.x + (m1 * (y - w0.y)), w2.x + (m2 * (y - w2.y)));
+		}
+	}
+	else if(b0)
+	{
+		return w0.x + (m1 * (y - w0.y));
+	}
+	else if(b1)
+	{
+		return w2.x + (m2 * (y - w2.y));
+	}
+	return 0;
+}
+
+void main()
+{
+	uint ix = gl_LocalInvocationID.x;
+	uint iy = gl_LocalInvocationID.y;
+	uint thread_id = iy * gl_WorkGroupSize.x + ix;
+
+
+	if(gl_WorkGroupID.x * 3 < params.m_triangles_n_indices && ix == 0 && iy == 0)
+	{
+		//========================================================
+		// Assign the vertex in order of increasing y in uv coords 
+		// v0 = least y     v1 = greatest y     v2 = in between
+		//
+		// v0 -> v1 is the major axis
+		// v0 -> v2 and v2 -> v1 are the minor axis
+		//
+		//					* v0
+		//
+		//				* v2
+		//				          * v1
+
+		i_0 = params.m_triangles_index_offset + gl_WorkGroupID.x*3;
+
+		if(map_uvs[indexed(i_0)].y < map_uvs[indexed(i_0,1)].y)
+			v_0 = 0;
+		else
+			v_0 = 1;
+
+		if(map_uvs[indexed(i_0,v_0)].y < map_uvs[indexed(i_0,2)].y)
+			v_0 = v_0;
+		else
+			v_0 = 2;
+
+		if(map_uvs[indexed(i_0,((v_0+1)%3))].y > map_uvs[indexed(i_0,((v_0+2)%3))].y)
+		{
+			v_1 = (v_0+1)%3;
+			v_2 = (v_0+2)%3;
+		}
+		else
+		{
+			v_1 = (v_0+2)%3;
+			v_2 = (v_0+1)%3;
+		}
+
+		v_0 = indexed(i_0,v_0);
+		v_1 = indexed(i_0,v_1);
+		v_2 = indexed(i_0,v_2);
+
+		w0 = vec2(floor_x_value(map_uvs[v_0].x),floor_y_value(map_uvs[v_0].y));
+		w1 = vec2(floor_x_value(map_uvs[v_1].x),floor_y_value(map_uvs[v_1].y));
+		w2 = vec2(floor_x_value(map_uvs[v_2].x),floor_y_value(map_uvs[v_2].y));
+
+		m0 = (w1.x - w0.x) / (w1.y - w0.y);
+		m1 = (w2.x - w0.x) / (w2.y - w0.y);
+		m2 = (w1.x - w2.x) / (w1.y - w2.y);
+
+		b0=false;
+		b1=false;
+
+		if(map_uvs[v_2].y > map_uvs[v_0].y+0.0001)
+			b0 = true;
+
+		if(map_uvs[v_1].y > map_uvs[v_2].y+0.0001)
+			b1 = true;
+
+		bNegativeX = false;
+
+		if(MajorX(w2.y) > w2.x)
+			bNegativeX = true;
+		
+
+		//==================================================
+		// Build a matrix to convert from UV to world coords
+		//
+
+		vec3 V4 = vec3(w0,0) + cross( vec3(w1,0) - vec3(w0,0), vec3(w2,0) - vec3(w0,0));
+
+		mat4 T1 = mat4(	vec4(w0,0,1),
+						vec4(w1,0,1),
+						vec4(w2,0,1),
+						vec4(V4,1));
+
+		V4 = global_vertices[v_0] + cross(global_vertices[v_1] - global_vertices[v_0], global_vertices[v_2] - global_vertices[v_0]);
+
+		mat4 T2 = mat4( vec4(global_vertices[v_0],1),
+						vec4(global_vertices[v_1],1),
+						vec4(global_vertices[v_2],1),
+						vec4(V4,1));
+
+		T1 = inverse(T1);
+
+		uv2worldMat = T2 * T1;
+
+		
+		Normal = cross(global_vertices[indexed(i_0,1)] - global_vertices[indexed(i_0,0)], global_vertices[indexed(i_0,2)] - global_vertices[indexed(i_0,1)]);
+		Normal = normalize(Normal);
+
+		vec3 upvec;
+
+		if(dot(Normal,vec3(0,0,1)) > 0.999 || dot(Normal,vec3(0,0,-1)) > 0.999)
+		{
+			upvec = vec3(0.5, 0, 1.0);
+			upvec = normalize(upvec);
+		}
+		else
+			upvec = vec3(0, 0, 1);
+		
+		Tan = cross(Normal,upvec);
+		Bitan = cross(Normal,Tan);
+
+		//=============================
+		edges[0] = global_edges[i_0+0];
+		edges[1] = global_edges[i_0+1];
+		edges[2] = global_edges[i_0+2];
+
+		if(edges[0] != 0xFFFF)
+		{
+			uint t0 = global_edges[i_0+0] * 3;
+			EdgeNormal0 = cross(global_vertices[indexed(t0,1)] - global_vertices[indexed(t0,0)], global_vertices[indexed(t0,2)] - global_vertices[indexed(t0,1)]);
+		}
+
+		if(edges[1] != 0xFFFF)
+		{
+			uint t0 = global_edges[i_0+1] * 3;
+			EdgeNormal1 = cross(global_vertices[indexed(t0,1)] - global_vertices[indexed(t0,0)], global_vertices[indexed(t0,2)] - global_vertices[indexed(t0,1)]);
+		}
+
+		if(edges[2] != 0xFFFF)
+		{
+			uint t0 = global_edges[i_0+2] * 3;
+			EdgeNormal2 = cross(global_vertices[indexed(t0,1)] - global_vertices[indexed(t0,0)], global_vertices[indexed(t0,2)] - global_vertices[indexed(t0,1)]);
+		}
+	}
+
+	barrier();
+
+	uint rand_state = ((iy) * 32 ) + ix;
+	float ystep = 1.0 / params.lm_height;
+
+	int i;
+	
+	barrier();
+
+	if(ix == 0 && iy == 0)
+	{
+		y0 = w0.y;
+	}
+
+	barrier();
+
+	//========================================================
+	// Main loop
+	//
+
+	while(y0 < w1.y + 0.001)
+	{
+
+		barrier();
+
+		if(ix == 0 && iy == 0)
+		{
+			if(bNegativeX==false)
+				{
+						x0 = uint(params.lm_width * MajorX(y0));
+						x1 = uint(params.lm_width * MinorX(y0));
+				}
+			else
+				{
+						x0 = uint(params.lm_width * MinorX(y0));
+						x1 = uint(params.lm_width * MajorX(y0));
+				}
+		}
+
+		barrier();
+
+		i=0;
+
+		for(int i=0; i<32; i++)
+		{
+			if(x0 + gl_SubgroupID + 8*i <= x1)
+			{
+				float subgroup_total=0;
+
+				ivec2 ipos = ivec2(x0 + gl_SubgroupID + 8*i, uint(params.lm_height * y0));
+				vec3 pos = uv_to_vec3( vec2( (float(ipos.x)+0.5) / params.lm_width, (float(ipos.y)+0.5) / params.lm_height) );
+				pos += Normal*0.1;
+
+				uint point_type = get_edge_vertex_type(pos);
+
+				/*
+				//==============================
+				//     Edge and vertex positions
+				//
+				//          2
+				//          * v1
+				//         / \
+				//        /   \
+				//    1  /     \  3
+				//      /       \
+				//     /         \
+				//  0 *-----------* v2
+				//     v0   5      4
+				*/
+				
+				if(point_type == 1)
+				{
+					for(int j=0; j<16; j++)
+					{
+						vec3 ray = rand_hemisphere_ray(Normal,Tan,Bitan,rand_state);
+						float hit_score = 0;
+
+						if(dot(ray,EdgeNormal0) > 0)
+							hit_score = trace_scene_hit(pos,ray);
+						else hit_score = 1;
+
+						subgroupBarrier();
+
+						subgroup_total += subgroupAdd( (hit_score < 64) ? 1 : 0 );
+					}
+				}
+				else if(point_type == 3)
+				{
+					for(int j=0; j<16; j++)
+					{
+						vec3 ray = rand_hemisphere_ray(Normal,Tan,Bitan,rand_state);
+						float hit_score = 0;
+
+						
+
+						if(dot(ray,EdgeNormal1) > 0)
+							hit_score = trace_scene_hit(pos,ray);
+						else hit_score = 1;
+
+						subgroupBarrier();
+
+						subgroup_total += subgroupAdd( (hit_score < 64) ? 1 : 0 );
+					}
+				}
+				else if(point_type == 5)
+				{
+					for(int j=0; j<16; j++)
+					{
+						vec3 ray = rand_hemisphere_ray(Normal,Tan,Bitan,rand_state);
+						float hit_score = 0;
+
+						if(dot(ray,EdgeNormal2) > 0)
+							hit_score = trace_scene_hit(pos,ray);
+						else hit_score = 1;
+
+						subgroupBarrier();
+
+						subgroup_total += subgroupAdd( (hit_score < 64) ? 1 : 0 );
+					}
+
+				}
+				else
+				{
+					for(int j=0; j<16; j++)
+					{
+						vec3 ray = rand_hemisphere_ray(Normal,Tan,Bitan,rand_state);
+
+						
+
+						float hit_score = trace_scene_hit(pos,ray);
+
+						subgroupBarrier();
+
+						subgroup_total += subgroupAdd( (hit_score < 65) ? 1 : 0 );
+					}
+				}
+
+				subgroupBarrier();
+
+				
+				if(subgroupElect())
+				{
+					float intensity = 1.0 - (subgroup_total / (32*16));
+
+					if(  !(point_type == 0 || point_type == 2 ||point_type == 4))
+						imageStore(imageOut,ivec2(x0 + gl_SubgroupID + 8*i, uint(params.lm_height * y0)),vec4(intensity,1,intensity,1));
+				}
+
+				subgroupBarrier();
+			}
+			else
+			{
+				for(int j=0; j<16; j++)
+				{
+
+					subgroupBarrier();
+
+				}
+
+				subgroupBarrier();
+				subgroupBarrier();
+			}
+
+		}
+		
+		barrier();
+
+		if(ix == 0 && iy == 0)
+		{
+			y0 += (ystep);
+		}
+
+		barrier();
+	}
+
+	return;
+}
+
+
+
+

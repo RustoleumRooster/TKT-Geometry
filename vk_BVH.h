@@ -43,6 +43,62 @@ struct BVH_node_gpu
 	bool isLeafNode() const {
 		return (left_node == 0xFFFF && right_node == 0xFFFF);
 	}
+
+	template<typename T>
+	bool overlaps(const T* other, f32 epsilon) const
+	{
+		bool ret = aabbMax[0] + epsilon > other->aabbMin[0] && aabbMin[0] - epsilon < other->aabbMax[0] &&
+			aabbMax[1] + epsilon > other->aabbMin[1] && aabbMin[1] - epsilon < other->aabbMax[1] &&
+			aabbMax[2] + epsilon > other->aabbMin[2] && aabbMin[2] - epsilon < other->aabbMax[2];
+
+		return ret;
+	}
+
+	template<>
+	bool overlaps<core::vector3df>(const core::vector3df* r, f32 epsilon) const
+	{
+		bool ret = aabbMax[0] + epsilon > r->X && aabbMin[0] - epsilon < r->X &&
+			aabbMax[1] + epsilon > r->Y && aabbMin[1] - epsilon < r->Y &&
+			aabbMax[2] + epsilon > r->Z && aabbMin[2] - epsilon < r->Z;
+
+		return ret;
+	}
+
+	/*
+	template<typename T>
+	void find_intersection_with_single_node(const T* other, f32 epsilon, const std::vector<BVH_node>& nodes, std::vector<u16>& results) const
+	{
+		if (overlaps(other, epsilon))
+		{
+			if (isLeafNode()) {
+				for (u16 i = first_prim; i < first_prim + n_prims; i++) {
+					results.push_back(i);
+				}
+			}
+			else {
+				nodes[left_node].find_intersection_with_single_node(other, epsilon, nodes, results);
+				nodes[right_node].find_intersection_with_single_node(other, epsilon, nodes, results);
+			}
+		}
+	}
+	*/
+
+	void find_matching_edge(const triangle_edge* other, f32 epsilon, const std::vector<BVH_node_gpu>& nodes, std::vector<u16>& results) const
+	{
+		if (overlaps(&other->v0, epsilon) && overlaps(&other->v1, epsilon))
+		{
+			if (isLeafNode()) {
+				for (u16 i = first_prim; i < first_prim + n_prims; i++) {
+					results.push_back(i);
+				}
+			}
+			else {
+				nodes[left_node].find_matching_edge(other, epsilon, nodes, results);
+				nodes[right_node].find_matching_edge(other, epsilon, nodes, results);
+			}
+		}
+	}
+
 	inline void addDrawLines(LineHolder& graph) const;
 	inline void addDrawLines_Recursive(int depth, const std::vector<BVH_node_gpu>& nodes, int current_depth, LineHolder& graph) const;
 
@@ -79,6 +135,17 @@ struct BVH_structure_triangles : BVH_structure_base<triangle_b, BVH_node_gpu, u3
 		}
 
 		BVH_structure_base<triangle_b, BVH_node_gpu, u32>::construct<2>(data, n_prims, func);
+	}
+
+	void intersect(const triangle_edge& other, std::vector<u16>& results) const
+	{
+		if (nodes.size() > 0)
+		{
+			nodes[0].find_matching_edge(&other, 0.001, nodes, results);
+		}
+
+		for (u16& hit : results)
+			hit = indices[hit];
 	}
 
 	void addDrawLines(int depth, LineHolder& graph) const

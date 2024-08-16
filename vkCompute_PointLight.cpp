@@ -47,11 +47,43 @@ void System_Point_Light::cleanup() {
 	vkDestroyPipelineLayout(device->getDevice(), pipelineLayout, nullptr);
 }
 
+bool System_Point_Light::verify_inputs(geometry_scene* geo_scene)
+{
+	std::vector<Reflected_SceneNode*> scene_nodes = geo_scene->getSceneNodes();
+
+	int count = 0;
+	for (Reflected_SceneNode* node : scene_nodes)
+	{
+		if (strcmp(node->GetDynamicReflection()->name, "Reflected_LightSceneNode") == 0)
+		{
+			Reflected_LightSceneNode* lsnode = dynamic_cast<Reflected_LightSceneNode*>(node);
+
+			if (lsnode)
+			{
+				count++;
+			}
+		}
+	}
+
+	if (count == 0)
+		return false;
+
+	MeshNode_Interface_Final* meshnode = &geo_scene->final_meshnode_interface;
+
+	if (meshnode->getMesh() == NULL || meshnode->getMesh()->getMeshBufferCount() == 0 ||
+		meshnode->getMesh()->MeshBuffers[0]->getIndexCount() == 0)
+		return false;
+
+	return true;
+}
+
 typedef CMeshBuffer<video::S3DVertex2TCoords> mesh_buffer_type;
 
 void System_Point_Light::loadLights(geometry_scene* geo_scene)
 {
 	std::vector<Reflected_SceneNode*> scene_nodes = geo_scene->getSceneNodes();
+
+	lightSources.clear();
 
 	for (Reflected_SceneNode* node : scene_nodes)
 	{
@@ -96,7 +128,6 @@ void System_Point_Light::loadModel(MeshNode_Interface_Final* meshnode)
 		master_triangle_list[i].set((u16)(indices_soa.data[i * 3].x), (u16)(indices_soa.data[(i * 3) + 1].x), (u16)(indices_soa.data[(i * 3) + 2].x));
 	}
 
-	std::cout << "building BVH...\n";
 	my_bvh.build(vertices_soa.data0.data(), master_triangle_list.data(), master_triangle_list.size(), NULL);
 
 	n_nodes = my_bvh.node_count;

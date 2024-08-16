@@ -23,6 +23,24 @@ struct aligned_vec3 {
 	alignas(16) vector3df V;
 };
 
+struct triangle_edge
+{
+    vector3df v0;
+    vector3df v1;
+    /*
+    template<typename T>
+    void grow(T* obj) const
+    {
+        obj->aabbMin[0] = fmin(obj->aabbMin[0], v0.X);
+        obj->aabbMin[1] = fmin(obj->aabbMin[1], v0.Y);
+        obj->aabbMin[2] = fmin(obj->aabbMin[2], v0.Z);
+
+        obj->aabbMax[0] = fmax(obj->aabbMax[0], v0.X);
+        obj->aabbMax[1] = fmax(obj->aabbMax[1], v0.Y);
+        obj->aabbMax[2] = fmax(obj->aabbMax[2], v0.Z);
+    }*/
+};
+
 struct triangle_b {
 
     triangle_b() {};
@@ -49,6 +67,13 @@ struct triangle_b {
         return center;
     }
 
+    vector3df normal(const vector<aligned_vec3>& vertices)
+    {
+        vector3df N = vector3df(vertices[v_i[1]].V - vertices[v_i[0]].V).crossProduct(vector3df(vertices[v_i[2]].V - vertices[v_i[1]].V));
+        N.normalize();
+        return N;
+    }
+
     template<typename T>
     void grow(T* obj, const aligned_vec3* vertices) const
     {
@@ -63,6 +88,30 @@ struct triangle_b {
             obj->aabbMax[2] = fmax(obj->aabbMax[2], vertices[v_i[i]].V.Z);
         }
     }
+
+    bool find_edge(u16 v0, u16 v1, const vector<aligned_vec3>& vertices)
+    {
+        if (vertices[v_i[0]].V == vertices[v0].V && vertices[v_i[1]].V == vertices[v1].V)
+            return true;
+
+        if (vertices[v_i[0]].V == vertices[v1].V && vertices[v_i[1]].V == vertices[v0].V)
+            return true;
+
+        if (vertices[v_i[1]].V == vertices[v0].V && vertices[v_i[2]].V == vertices[v1].V)
+            return true;
+
+        if (vertices[v_i[1]].V == vertices[v1].V && vertices[v_i[2]].V == vertices[v0].V)
+            return true;
+
+        if (vertices[v_i[2]].V == vertices[v0].V && vertices[v_i[0]].V == vertices[v1].V)
+            return true;
+
+        if (vertices[v_i[2]].V == vertices[v1].V && vertices[v_i[0]].V == vertices[v0].V)
+            return true;
+
+        return false;
+    }
+
 };
 
 class TextureMaterial;

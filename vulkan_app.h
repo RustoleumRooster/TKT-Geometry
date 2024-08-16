@@ -59,22 +59,9 @@ public:
 		cleanup();
 	}
 
-	void run_point_light(geometry_scene* geo_scene);
+	bool run_point_light(geometry_scene* geo_scene);
+	bool run_amb_occlusion(geometry_scene* geo_scene);
 
-	void run6(MeshNode_Interface_Final* meshnode, LineHolder& graph) {
-		initVulkan(meshnode);
-		//mainLoop();
-
-		system6 = new System6(m_device, uniformBuffers);
-		system6->loadModel(meshnode);
-		system6->initialize_step2(m_DescriptorPool);
-		system6->executeComputeShader();
-		vkDeviceWaitIdle(m_device->getDevice());
-
-		system6->writeDrawLines(graph);
-
-		cleanup();
-	}
 
 private:
 
@@ -114,14 +101,25 @@ private:
 		m_DescriptorPool->cleanup();
 		//system2->cleanup();
 
-		if(system5)
+		if (system5)
 			system5->cleanup();
 
-		if(system6)
-			system6->cleanup();
+		//if(system6)
+		//	system6->cleanup();
 
-		if(system_point_light)
+		if (system_point_light)
+		{
 			system_point_light->cleanup();
+			delete system_point_light;
+			system_point_light = NULL;
+		}
+
+		if (system_amb_occlusion)
+		{
+			system_amb_occlusion->cleanup();
+			delete system_amb_occlusion;
+			system_amb_occlusion = NULL;
+		}
 
 
 		m_device->cleanup();
@@ -139,9 +137,9 @@ private:
 
 	System5* system5 = NULL;
 
-	System6* system6 = NULL;
 
 	System_Point_Light* system_point_light = NULL;
+	System_Amb_Occlusion* system_amb_occlusion = NULL;
 
 	std::vector<VkBuffer> uniformBuffers;
 	std::vector<VkDeviceMemory> uniformBuffersMemory;

@@ -9,7 +9,7 @@
 #include "utils.h"
 #include "BufferManager.h"
 
-void System6::cleanup() {
+void System_Amb_Occlusion::cleanup() {
 	descriptorSetLayout->cleanup();
 
 	vkDestroyBuffer(device->getDevice(), indexBuffer, nullptr);
@@ -23,6 +23,9 @@ void System6::cleanup() {
 
 	vkDestroyBuffer(device->getDevice(), nodeBuffer, nullptr);
 	vkFreeMemory(device->getDevice(), nodeBufferMemory, nullptr);
+
+	vkDestroyBuffer(device->getDevice(), edgeBuffer, nullptr);
+	vkFreeMemory(device->getDevice(), edgeBufferMemory, nullptr);
 
 	delete raytraceBufferObject;
 	delete hitResultsBufferObject;
@@ -45,7 +48,7 @@ void System6::cleanup() {
 
 typedef CMeshBuffer<video::S3DVertex2TCoords> mesh_buffer_type;
 
-void System6::loadModel(MeshNode_Interface_Final* meshnode)
+void System_Amb_Occlusion::loadModel(MeshNode_Interface_Final* meshnode)
 {
 
 	writeLightmapsInfo(meshnode->getMaterialsUsed(), lightmaps_info);
@@ -72,6 +75,10 @@ void System6::loadModel(MeshNode_Interface_Final* meshnode)
 		master_triangle_list[i].set((u16)(indices_soa.data[i * 3].x),(u16)(indices_soa.data[(i * 3) + 1].x),(u16)(indices_soa.data[(i * 3) + 2].x) );
 	}
 
+	//==========================================================
+	// Create a BVH and store it for raytracing calculations in the shader
+	//
+
 	std::cout << "building BVH...\n";
 	my_bvh.build(vertices_soa.data0.data(), master_triangle_list.data(), master_triangle_list.size(), NULL);
 
@@ -92,9 +99,65 @@ void System6::loadModel(MeshNode_Interface_Final* meshnode)
 		else
 			my_bvh.nodes[i].n_prims = 0;
 	}
+
+	//==========================================================
+	// Store references to the adjacent triangles for each edge, in order to properly calculate the lighting at the edges
+	//
+
+	triangle_edges.resize(master_triangle_list.size() * 3);
+	
+	for (int i = 0; i < master_triangle_list.size(); i++)
+	{
+		for (int j = 0; j < 3; j++)
+		{
+			vector<u16> hits;
+
+			triangle_edge edge;
+			u16 v_0 = master_triangle_list[i].v_i[j];
+			edge.v0 = vertices_soa.data0.operator[](v_0).V;
+
+			u16 v_1 = master_triangle_list[i].v_i[(j+1)%3];
+			edge.v1 = vertices_soa.data0.operator[](v_1).V;
+
+			vector3df N = master_triangle_list[i].normal(vertices_soa.data0);
+
+			vector3df edgeTan = vector3df(edge.v1 - edge.v0).crossProduct(N);
+
+			my_bvh.intersect(edge, hits);
+			bool ok = false;
+
+			for (u16 k : hits)
+			{
+				if (k != i && master_triangle_list[k].find_edge(v_1,v_0, vertices_soa.data0))
+				{
+					//Only consider the adjacent triangles which create a concave angle
+					if (master_triangle_list[k].normal(vertices_soa.data0).crossProduct(N).dotProduct(edgeTan.crossProduct(N)) < -0.001)
+					{
+						triangle_edges[i * 3 + j].x = k;
+					}
+					else
+					{
+						triangle_edges[i * 3 + j].x = 0xFFFF;
+					}
+					ok = true;
+					break;
+				}
+				else if (k != i)
+				{
+					//std::cout << " ???";
+				}
+			}
+
+			if (!ok)
+			{
+				triangle_edges[i].x = 0xFFFF;
+				std::cout << "warning: triangle missing adjacent \n";
+			}
+		}
+	}
 }
 
-void System6::createDescriptorSets(int lightmap_n) 
+void System_Amb_Occlusion::createDescriptorSets(int lightmap_n) 
 {
 	MyDescriptorWriter writer(*descriptorSetLayout, *descriptorPool);
 
@@ -124,6 +187,11 @@ void System6::createDescriptorSets(int lightmap_n)
 	nodeBufferInfo.buffer = nodeBuffer;
 	nodeBufferInfo.offset = 0;
 	nodeBufferInfo.range = sizeof(BVH_node_gpu) * n_nodes;
+
+	VkDescriptorBufferInfo edgeBufferInfo{};
+	edgeBufferInfo.buffer = edgeBuffer;
+	edgeBufferInfo.offset = 0;
+	edgeBufferInfo.range = sizeof(aligned_uint) * n_indices;
 	
 	VkDescriptorBufferInfo hitResultsInfo{};
 	hitResultsInfo.buffer = hitResultsBufferObject->getBuffer();
@@ -139,13 +207,14 @@ void System6::createDescriptorSets(int lightmap_n)
 	writer.writeBuffer(2, vertexBufferInfo); 
 	writer.writeBuffer(3, uvBufferInfo);
 	writer.writeBuffer(4, nodeBufferInfo);
-	writer.writeBuffer(5, hitResultsInfo);
-	writer.writeImage(6, imageStorageInfo);
+	writer.writeBuffer(5, edgeBufferInfo);
+	writer.writeBuffer(6, hitResultsInfo);
+	writer.writeImage(7, imageStorageInfo);
 	writer.build(descriptorSets[0]);
 }
 
 
-void System6::createDescriptorSetLayout()
+void System_Amb_Occlusion::createDescriptorSetLayout()
 {
 	VkDescriptorSetLayoutBinding raytraceBufferBinding{};
 	raytraceBufferBinding.binding = 0;
@@ -182,28 +251,35 @@ void System6::createDescriptorSetLayout()
 	nodeBufferBinding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
 	nodeBufferBinding.pImmutableSamplers = nullptr; // Optional
 
+	VkDescriptorSetLayoutBinding edgeBufferBinding{};
+	edgeBufferBinding.binding = 5;
+	edgeBufferBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+	edgeBufferBinding.descriptorCount = 1;
+	edgeBufferBinding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+	edgeBufferBinding.pImmutableSamplers = nullptr; // Optional
+
 	VkDescriptorSetLayoutBinding hitResultsBinding{};
-	hitResultsBinding.binding = 5;
+	hitResultsBinding.binding = 6;
 	hitResultsBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 	hitResultsBinding.descriptorCount = 1;
 	hitResultsBinding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
 	hitResultsBinding.pImmutableSamplers = nullptr; // Optional
 
 	VkDescriptorSetLayoutBinding imageStorageBinding{};
-	imageStorageBinding.binding = 6;
+	imageStorageBinding.binding = 7;
 	imageStorageBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
 	imageStorageBinding.descriptorCount = 1;
 	imageStorageBinding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
 	imageStorageBinding.pImmutableSamplers = nullptr; // Optional
 
 	std::vector<VkDescriptorSetLayoutBinding> bindings;
-	bindings.resize(7);
-	bindings = { raytraceBufferBinding, indexBufferBinding, vertexBufferBinding, uvBufferBinding, nodeBufferBinding, hitResultsBinding, imageStorageBinding};
+	bindings.resize(8);
+	bindings = { raytraceBufferBinding, indexBufferBinding, vertexBufferBinding, uvBufferBinding, nodeBufferBinding, edgeBufferBinding, hitResultsBinding, imageStorageBinding};
 
 	descriptorSetLayout = new MyDescriptorSetLayout(device, bindings);
 }
 
-void System6::createComputePipeline()
+void System_Amb_Occlusion::createComputePipeline()
 {
 	VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
 	pipelineLayoutInfo.sType =
@@ -216,10 +292,10 @@ void System6::createComputePipeline()
 		throw std::runtime_error("failed to create compute pipeline layout!");
 	}
 
-	pipeline = new ComputePipeline(device, "shaders/raytrace.spv", pipelineLayout);
+	pipeline = new ComputePipeline(device, "shaders/occlusion.spv", pipelineLayout);
 }
 
-void System6::createLightmapImages()
+void System_Amb_Occlusion::createLightmapImages()
 {
 	for (int i = 0; i < lightmaps_info.size(); i++)
 	{
@@ -246,14 +322,14 @@ void System6::createLightmapImages()
 	}
 }
 
-void System6::createRaytraceInfoBuffer()
+void System_Amb_Occlusion::createRaytraceInfoBuffer()
 {
 	raytraceBufferObject = new MyBufferObject(device, sizeof(RayTraceInfo), 1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
 		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
 		VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 16);
 }
 
-void System6::createHitResultsBuffer() {
+void System_Amb_Occlusion::createHitResultsBuffer() {
 
 	uint16_t bSize = 256 * 2;
 	VkDeviceSize bufferSize = sizeof(aligned_vec3) * bSize;
@@ -268,7 +344,7 @@ void System6::createHitResultsBuffer() {
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 16);
 }
 
-void System6::createIndexBuffer() {
+void System_Amb_Occlusion::createIndexBuffer() {
 
 	VkDeviceSize bufferSize = sizeof(aligned_uint) * n_indices;
 
@@ -287,7 +363,7 @@ void System6::createIndexBuffer() {
 }
 
 
-void System6::createVertexBuffer() {
+void System_Amb_Occlusion::createVertexBuffer() {
 
 	VkDeviceSize bufferSize = sizeof(aligned_vec3) * n_vertices;
 
@@ -305,7 +381,7 @@ void System6::createVertexBuffer() {
 	device->copyBuffer(stagingBuffer.getBuffer(), vertexBuffer, bufferSize);
 }
 
-void System6::createUVBuffer()
+void System_Amb_Occlusion::createUVBuffer()
 {
 	VkDeviceSize bufferSize = sizeof(aligned_vec3) * n_vertices;
 
@@ -323,7 +399,25 @@ void System6::createUVBuffer()
 	device->copyBuffer(stagingBuffer.getBuffer(), uvBuffer, bufferSize);
 }
 
-void System6::createNodeBuffer()
+void System_Amb_Occlusion::createEdgeBuffer()
+{
+	VkDeviceSize bufferSize = sizeof(aligned_uint) * n_indices;
+
+	MyBufferObject stagingBuffer(device, sizeof(aligned_uint), n_indices, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+		VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 1);
+
+	stagingBuffer.writeToBuffer((void*)triangle_edges.data());
+
+	device->createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+		VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, edgeBuffer,
+		edgeBufferMemory);
+
+	device->copyBuffer(stagingBuffer.getBuffer(), edgeBuffer, bufferSize);
+}
+
+void System_Amb_Occlusion::createNodeBuffer()
 {
 	VkDeviceSize bufferSize = sizeof(BVH_node_gpu) * n_nodes;
 
@@ -341,18 +435,9 @@ void System6::createNodeBuffer()
 	device->copyBuffer(stagingBuffer.getBuffer(), nodeBuffer, bufferSize);
 }
 
-void System6::writeRaytraceInfoBuffer(int lightmap_n)
+void System_Amb_Occlusion::writeRaytraceInfoBuffer(int lightmap_n)
 {
 	RayTraceInfo info{};
-
-	vector3df center = vector3df(0,0,0);
-	for (int i = 0; i < n_vertices; i++)
-	{
-		center += vertices_soa.data0[i].V;
-	}
-	center /= n_vertices;
-
-	info.eye_pos = center;
 
 	info.n_vertices = n_vertices;
 	info.n_triangles = n_indices / 3;
@@ -373,7 +458,7 @@ void System6::writeRaytraceInfoBuffer(int lightmap_n)
 	raytraceBufferObject->writeToBuffer((void*)&info);
 }
 
-void System6::buildLightmap(int lightmap_n)
+void System_Amb_Occlusion::buildLightmap(int lightmap_n)
 {
 	writeRaytraceInfoBuffer(lightmap_n);
 	createDescriptorSets(lightmap_n);
@@ -387,12 +472,11 @@ void System6::buildLightmap(int lightmap_n)
 		&descriptorSets[0], 0, 0);
 
 	uint32_t n_WorkGroups_x = indices_soa.len[lightmap_n] / 3;
+	//uint32_t n_WorkGroups_x = 1;
 	std::cout << n_WorkGroups_x << " workgroups\n";
 
 	std::cout << "execute...\n";
-	//vkCmdDispatch(commandBuffer, n_WorkGroups_x, 1, 1);
-	vkCmdDispatch(commandBuffer, 1, 1, 1);
-
+	vkCmdDispatch(commandBuffer, n_WorkGroups_x, 1, 1);
 
 	device->endSingleTimeCommands(commandBuffer);
 
@@ -415,13 +499,35 @@ void System6::buildLightmap(int lightmap_n)
 		//std::cout << hit_results[i].V.X << "," << hit_results[i].V.Y << "," << hit_results[i].V.Z << ",  ";
 		//std::cout << hit_results[256+i].V.X << "," << hit_results[256+i].V.Y << "," << hit_results[256+ i].V.Z << "\n";
 	}
+
+	for (int i = 0; i < 256; i += 1)
+	{
+		//line3df line0 = line3df(vector3df(hit_results[i].V), vector3df(hit_results[i].V + hit_results[i + 1].V));
+		//line3df line1 = line3df(vector3df(hit_results[i].V), vector3df(hit_results[i].V + hit_results[i + 2].V));
+		//line3df line2 = line3df(vector3df(hit_results[i].V + hit_results[i + 1].V), vector3df(hit_results[i].V + hit_results[i + 2].V));
+		//line3df line0 = line3df(vector3df(hit_results[i].V), vector3df(hit_results[i].V + N));
+		//line3df line1 = line3df(vector3df(hit_results[i].V), vector3df(hit_results[i + 2].V));
+		//line3df line2 = line3df(vector3df(hit_results[i + 1].V), vector3df(hit_results[i + 2].V));
+
+		//line3df line0 = line3df(vector3df(hit_results[i].V), vector3df(hit_results[256 + i].V));
+		//m_graph.lines.push_back(line0);
+
+		//m_graph.lines.push_back(line1);
+		//m_graph.lines.push_back(line2);
+	}
 	//std::cout << "\n";
 }
 
-void System6::executeComputeShader() 
+void System_Amb_Occlusion::writeDrawLines(LineHolder& graph)
+{
+	graph.lines = m_graph.lines;
+}
+
+void System_Amb_Occlusion::executeComputeShader() 
 {
 	for (int i = 0; i < lightmaps_info.size(); i++)
 	{
+		//if(i==1)
 		buildLightmap(i);
 	}
 
@@ -554,30 +660,7 @@ void System6::executeComputeShader()
 	delete edges_compute_shader;
 }
 
-void System6::writeDrawLines(LineHolder& graph)
-{
-	vector3df center = vector3df(0, 0, 0);
-	for (int i = 0; i < n_vertices; i++)
-	{
-		center += vertices_soa.data0[i].V;
-	}
-	center /= n_vertices;
-
-	for (int i = 0; i < 256; i++)
-		graph.lines.push_back(core::line3df(center, hit_results[i].V));
-
-	//my_bvh.addDrawLines(-1,graph);
-	//my_bvh.nodes[2].addDrawLines(graph);
-	for (int i = 0; i < my_bvh.node_count; i++)
-	{
-		if (my_bvh.nodes[i].isLeafNode())
-		{
-			addDrawLinesPrims(i, graph);
-		}
-	}
-}
-
-void System6::addDrawLinesPrims(int node_i, LineHolder& graph) const
+void System_Amb_Occlusion::addDrawLinesPrims(int node_i, LineHolder& graph) const
 {
 	my_bvh.addDrawLinesPrims(vertices_soa.data0.data(), indices_soa.data.data(), node_i, graph);
 }

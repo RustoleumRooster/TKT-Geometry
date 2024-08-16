@@ -5,9 +5,9 @@
 #include "vkTextures.h"
 #include "geometry_scene.h"
 
-void  VulkanApp::run_point_light(geometry_scene* geo_scene) {
+bool  VulkanApp::run_point_light(geometry_scene* geo_scene) {
+
 	initVulkan(&geo_scene->final_meshnode_interface);
-	//mainLoop();
 
 	system_point_light = new System_Point_Light(m_device, uniformBuffers);
 	system_point_light->loadModel(&geo_scene->final_meshnode_interface);
@@ -19,6 +19,25 @@ void  VulkanApp::run_point_light(geometry_scene* geo_scene) {
 	system_point_light->writeDrawLines(geo_scene->special_graph);
 
 	cleanup();
+
+	return true;
+}
+
+bool VulkanApp::run_amb_occlusion(geometry_scene* geo_scene)
+{
+	initVulkan(&geo_scene->final_meshnode_interface);
+
+	system_amb_occlusion = new System_Amb_Occlusion(m_device, uniformBuffers);
+	system_amb_occlusion->loadModel(&geo_scene->final_meshnode_interface);
+	system_amb_occlusion->initialize_step2(m_DescriptorPool);
+	system_amb_occlusion->executeComputeShader();
+	vkDeviceWaitIdle(m_device->getDevice());
+
+	system_amb_occlusion->writeDrawLines(geo_scene->special_graph);
+
+	cleanup();
+
+	return true;
 }
 
  void VulkanApp::createDescriptorPool() {
@@ -31,7 +50,7 @@ void  VulkanApp::run_point_light(geometry_scene* geo_scene) {
 
 
 	 poolSizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-	 poolSizes[1].descriptorCount = 4;
+	 poolSizes[1].descriptorCount = 5;
 
 	 poolSizes[2].type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
 	 poolSizes[2].descriptorCount = 1;

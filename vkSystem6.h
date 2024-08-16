@@ -21,10 +21,10 @@ class MeshNode_Interface_Final;
 
 
 
-class System6 {
+
+class System_Amb_Occlusion {
 
 	struct RayTraceInfo {
-		alignas(16) vector3df eye_pos;
 		uint32_t n_rays;
 
 		//scene info
@@ -43,7 +43,7 @@ class System6 {
 	};
 
 public:
-	System6(MyDevice* device,
+	System_Amb_Occlusion(MyDevice* device,
 		const std::vector<VkBuffer>& uniformBuffers) :
 
 		device{ device },
@@ -65,6 +65,7 @@ public:
 		createHitResultsBuffer();
 		createUVBuffer();
 		createNodeBuffer();
+		createEdgeBuffer();
 	}
 	
 	void executeComputeShader();
@@ -85,6 +86,7 @@ private:
 	void createIndexBuffer();
 	void createVertexBuffer();
 	void createUVBuffer();
+	void createEdgeBuffer();
 	void createRaytraceInfoBuffer();
 	void createHitResultsBuffer();
 	void createComputePipeline();
@@ -116,6 +118,9 @@ private:
 	VkBuffer nodeBuffer;
 	VkDeviceMemory nodeBufferMemory;
 
+	VkBuffer edgeBuffer;
+	VkDeviceMemory edgeBufferMemory;
+
 	MyBufferObject* raytraceBufferObject = NULL;
 	MyBufferObject* hitResultsBufferObject = NULL;
 
@@ -132,6 +137,8 @@ private:
 	soa_struct_2<aligned_vec3, aligned_vec3> vertices_soa;
 	soa_struct<aligned_uint> indices_soa;
 
+	std::vector<aligned_uint> triangle_edges;
+
 	uint16_t n_indices = 0;
 	uint16_t n_vertices = 0;
 
@@ -144,11 +151,12 @@ private:
 	std::vector<VkDeviceMemory> lightmapsMemory;
 	std::vector<VkImageView> lightmapImageViews;
 
-	//std::vector<aligned_vec3> master_triangle_vertices;
-	//std::vector<aligned_uint> master_triangle_indices;
 	std::vector<triangle_b> master_triangle_list;
 	BVH_structure_triangles my_bvh;
 
 	uint32_t n_nodes;
+
+	LineHolder m_graph;
+
 
 };

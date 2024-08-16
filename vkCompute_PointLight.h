@@ -62,6 +62,8 @@ public:
 	uint32_t num_lightmaps_used() { return lightmapImages.size(); }
 	void cleanup();
 
+	static bool verify_inputs(geometry_scene* geo_scene);
+
 	void loadLights(geometry_scene* geo_scene);
 	void loadModel(MeshNode_Interface_Final* meshnode);
 
