@@ -1,0 +1,621 @@
+#version 450
+#extension GL_KHR_shader_subgroup_basic : enable
+#extension GL_KHR_shader_subgroup_arithmetic : enable
+
+struct Node
+{
+	vec4 aabbMin;
+	vec4 aabbMax;
+
+	vec4 padding;
+
+	uint left_node;
+	uint right_node;
+
+	uint first_prim;
+	uint n_prims;
+	
+};
+
+struct LightSource
+{
+	vec3 pos;
+	uint radius;
+};
+
+layout (binding = 0) uniform raytraceParams 
+{
+	vec3 eye_pos;
+	vec3 light_pos;
+	uint lightradius;
+	
+	uint n_rays;
+	uint n_lights;
+
+	uint n_triangles;
+	uint n_vertices;
+	uint n_nodes;
+
+	uint m_triangles_vertex_offset;
+	uint m_triangles_index_offset;
+	uint m_triangles_n_indices;
+
+	uint lm_width;
+	uint lm_height;
+} params;
+
+layout(std140, binding = 1) readonly buffer indexUBO
+{
+	uint global_indices[];
+};
+
+layout(std140, binding = 2) readonly buffer vertUBO
+{
+	vec3 global_vertices[];
+};
+
+layout(std140, binding = 3) readonly buffer uvUBO
+{
+	vec3 map_uvs[];
+};
+
+layout(std140, binding = 4) readonly buffer nodeUBO
+{
+	Node global_nodes[];
+};
+
+layout(std140, binding = 5) readonly buffer lightsUBO
+{
+	LightSource global_lights[];
+};
+
+//an output buffer for debugging
+layout(std140, binding = 6) buffer hitResults
+{
+	vec3 hits[];
+};
+
+layout(binding = 7, rgba8) uniform image2D imageOut;
+
+//==================================================
+// Random numbers (Tiny Encryption Algorithm)
+//
+
+uint[2] tea(uint v[2])
+{
+	uint v0 = v[0];
+	uint v1 = v[1];
+	uint delta = 0x9E3779B9;
+	uint k0 = 0xA341316C;
+	uint k1 = 0xC8013EA4;
+	uint k2 = 0xAD90777D;
+	uint k3 = 0x7E95761E;
+	uint sum = 0;
+
+	for(int i=0;i<6;i++)
+	{
+		sum+=delta;
+		v0+= ((v1<<4) + k0) ^ (v1+sum) ^ ((v1>>5) + k1);
+		v1+= ((v0<<4) + k2) ^ (v0+sum) ^ ((v0>>5) + k3);
+	}
+
+	return uint[2](v0,v1);
+}
+
+float random_to_float01(uint random)
+{
+	uint u = random >> 9 | 0x3F800000;
+	return uintBitsToFloat(u) - 1.0;
+}
+
+//==================================================
+// Global functions
+//
+
+float trace_node_triangles_hit(in uint node_i, in vec3 eye, in vec3 ray)
+{
+	vec3 edge1, edge2, rayVecXe2, s, sXe1;
+	float det, invDet, u, v;
+
+	float best = 0xFFFF;
+	for(uint j = 0; j < global_nodes[node_i].n_prims; j++)
+	{
+		uint idx;
+
+		if(j==0)
+			idx = floatBitsToUint(global_nodes[node_i].padding.x);
+		else if(j==1)
+			idx = floatBitsToUint(global_nodes[node_i].padding.y);
+
+		edge1 = global_vertices[global_indices[(idx*3) + 1]] - global_vertices[global_indices[idx*3]];
+		edge2 = global_vertices[global_indices[(idx*3) + 2]] - global_vertices[global_indices[idx*3]];
+		rayVecXe2 = cross(ray,edge2);
+		det = dot(edge1,rayVecXe2);
+
+		if(det > -0.00001 && det < 0.00001)
+			continue;
+
+		invDet = 1.0 / det;
+		s = eye - global_vertices[global_indices[idx*3]];
+		u = invDet * dot(s,rayVecXe2);
+
+		if( u < 0.0 || u > 1.0) 
+			continue;
+
+		sXe1 = cross(s,edge1);
+		v = invDet * dot(ray,sXe1);
+
+		if(v < 0.0 || u+v > 1.0) 
+			continue;
+
+		float t = invDet * dot(edge2,sXe1);
+
+		if(t > 4 && t < best)
+			{
+				best=t;
+			}
+	}
+	return best;
+}
+
+float trace_node_hit(in uint node_i, in vec3 eye, in vec3 ray)
+{
+	Node node = global_nodes[node_i];
+	float dif;
+	float t;
+	float best = 0xFFFF;
+	vec3 hit;
+
+	if(eye.x < node.aabbMax.x + 0.001 && eye.x > node.aabbMin.x - 0.001 &&
+		eye.y < node.aabbMax.y + 0.001 && eye.y > node.aabbMin.y - 0.001 &&
+		eye.z < node.aabbMax.z + 0.001 && eye.z > node.aabbMin.z - 0.001 )
+	{
+		return 0;
+	}
+
+	//X MIN PLANE
+	dif = node.aabbMin.x - eye.x;
+	t = dif / ray.x;
+	hit = eye + ray*t;
+
+	if(t > 0 && hit.y > node.aabbMin.y && hit.y < node.aabbMax.y && hit.z > node.aabbMin.z && hit.z < node.aabbMax.z && t < best)
+		best = t;
+
+	//X MAX PLANE
+	dif = node.aabbMax.x - eye.x;
+	t = dif / ray.x;
+	hit = eye + ray*t;
+
+	if(t > 0 && hit.y > node.aabbMin.y && hit.y < node.aabbMax.y && hit.z > node.aabbMin.z && hit.z < node.aabbMax.z && t < best)
+		best = t;
+
+	//Y MIN PLANE
+	dif = node.aabbMin.y - eye.y;
+	t = dif / ray.y;
+	hit = eye + ray*t;
+
+	if(t > 0 && hit.x > node.aabbMin.x && hit.x < node.aabbMax.x && hit.z > node.aabbMin.z && hit.z < node.aabbMax.z && t < best)
+		best = t;
+
+	//Y MAX PLANE
+	dif = node.aabbMax.y - eye.y;
+	t = dif / ray.y;
+	hit = eye + ray*t;
+
+	if(t > 0 && hit.x > node.aabbMin.x && hit.x < node.aabbMax.x && hit.z > node.aabbMin.z && hit.z < node.aabbMax.z && t < best)
+		best = t;
+
+	//Z MIN PLANE
+	dif = node.aabbMin.z - eye.z;
+	t = dif / ray.z;
+	hit = eye + ray*t;
+
+	if(t > 0 && hit.x > node.aabbMin.x && hit.x < node.aabbMax.x && hit.y > node.aabbMin.y && hit.y < node.aabbMax.y && t < best)
+		best = t;
+
+	//Z MAX PLANE
+	dif = node.aabbMax.z - eye.z;
+	t = dif / ray.z;
+	hit = eye + ray*t;
+
+	if(t > 0 && hit.x > node.aabbMin.x && hit.x < node.aabbMax.x && hit.y > node.aabbMin.y && hit.y < node.aabbMax.y && t < best)
+		best = t;
+
+	return best;
+}
+
+uint indexed(uint v_i)
+{
+	return global_indices[v_i];
+}
+
+uint indexed(uint v_i, uint offset)
+{
+	return global_indices[v_i+offset];
+}
+
+
+
+
+//==================================================
+// Private variables
+//
+
+uint[12] stack;
+float[12] stack_distance;
+uint stack_n;
+uint rand_state;
+
+//==================================================
+// Functions that use private variables
+//
+
+void open_node(uint node_i, vec3 eye, vec3 ray)
+{
+	float left,right;
+
+	left = trace_node_hit(global_nodes[node_i].left_node,eye,ray);
+
+	right = trace_node_hit(global_nodes[node_i].right_node,eye,ray);
+
+	if(left < 0xFFFF && right < 0xFFFF)
+	{
+		if(left < right)
+		{
+			stack[stack_n] = global_nodes[node_i].right_node;
+			stack_distance[stack_n] = right;
+
+			stack[stack_n+1] = global_nodes[node_i].left_node;
+			stack_distance[stack_n+1] = left;
+		}
+		else
+		{
+			stack[stack_n] = global_nodes[node_i].left_node;
+			stack_distance[stack_n] = left;
+
+			stack[stack_n+1] = global_nodes[node_i].right_node;
+			stack_distance[stack_n+1] = right;
+		}
+
+		stack_n += 2;
+	}
+	else if(left < 0xFFFF)
+	{
+		stack[stack_n] = global_nodes[node_i].left_node;
+		stack_distance[stack_n] = left;
+
+		stack_n += 1;
+	}
+	else if(right < 0xFFFF)
+	{
+		stack[stack_n] = global_nodes[node_i].right_node;
+		stack_distance[stack_n] = right;
+
+		stack_n += 1;
+	}
+}
+
+float trace_scene_hit(vec3 eye, vec3 ray)
+{
+	stack_n=0;
+	float best = 0xFFFF;
+
+	if(trace_node_hit(0,eye,ray) < 0xFFFF)
+	{
+		open_node(0,eye,ray);
+
+		while(stack_n > 0)
+		{
+			stack_n -= 1;
+
+			if(global_nodes[stack[stack_n]].n_prims > 0)
+			{
+				float t = trace_node_triangles_hit(stack[stack_n],eye,ray);
+				best = min(t,best);
+
+			}
+			else if(stack_distance[stack_n] < best)
+			{
+				open_node(stack[stack_n],eye,ray);
+			}
+		}
+	}
+
+	return best;
+}
+
+//==================================================
+// Layout
+//
+
+layout (local_size_x = 32, local_size_y = 8, local_size_z = 1) in;
+
+//==================================================
+// Shared variables
+//
+
+shared float m0,m1,m2;
+shared bool b0,b1,bNegativeX;
+shared uint i_0;
+shared uint v_0,v_1,v_2;
+shared vec2 w0,w1,w2;
+shared float y0;
+
+shared vec3 Normal;
+shared mat4 uv2worldMat;
+
+shared uint my_lights[8];
+shared uint n_lights;
+
+shared vec3 Tan,Bitan;
+
+
+//==================================================
+// Functions that use shared variables
+//
+
+bool sphere_intersects_triangle(in vec3 P, in float r)
+{
+
+	vec3 A = global_vertices[v_0] - P;
+	vec3 B = global_vertices[v_1] - P;
+	vec3 C = global_vertices[v_2] - P;
+
+	float rr = r*r;
+	vec3 V = cross(B-A, C-A);
+	float d = dot(A,V);
+	float e = dot(V,V);
+
+	if(d*d > rr*e)
+		return false;
+
+	float aa = dot(A,A);
+	float ab = dot(A,B);
+	float ac = dot(A,C);
+	float bb = dot(B,B);
+	float bc = dot(B,C);
+	float cc = dot(C,C);
+
+	if(( aa > rr) && (ab > aa) && (ac > aa))
+		return false;
+
+	if(( bb > rr) && (ab > bb) && (bc > bb))
+		return false;
+
+	if(( cc > rr) && (ac > cc) && (bc > cc))
+		return false;
+
+	vec3 AB = B - A;
+	vec3 BC = C - B;
+	vec3 CA = A - C;
+
+	float d1 = ab - aa;
+	float d2 = bc - bb;
+	float d3 = ac - cc;
+	float e1 = dot(AB,AB);
+	float e2 = dot(BC,BC);
+	float e3 = dot(CA,CA);
+	vec3 Q1 = A * e1 - d1 * AB;
+	vec3 Q2 = B * e2 - d2 * BC;
+	vec3 Q3 = C * e3 - d3 * CA;
+	vec3 QC = C * e1 - Q1;
+	vec3 QA = A * e2 - Q2;
+	vec3 QB = B * e3 - Q3;
+	
+	if((dot(Q1,Q1) > rr * e1 * e1) && dot(Q1,QC) > 0)
+		return false;
+
+	if((dot(Q2,Q2) > rr * e2 * e2) && dot(Q2,QA) > 0)
+		return false;
+
+	if((dot(Q3,Q3) > rr * e3 * e3) && dot(Q3,QB) > 0)
+		return false;
+
+	return true;
+}
+
+bool is_point_on_triangle(in vec3 pos)
+{
+	vec3 edge1, edge2, rayVecXe2, s, sXe1;
+	float det, invDet, u, v;
+		
+	edge1 = global_vertices[v_1] - global_vertices[v_0];
+	edge2 = global_vertices[v_2] - global_vertices[v_0];
+	rayVecXe2 = cross(-Normal,edge2);
+	det = dot(edge1,rayVecXe2);
+
+	if(det > -0.00001 && det < 0.00001)
+		return false;
+
+	invDet = 1.0 / det;
+	s = pos+Normal - global_vertices[v_0];
+	u = invDet * dot(s,rayVecXe2);
+
+	if( u < 0.0 || u > 1.0) 
+		return false;
+
+	sXe1 = cross(s,edge1);
+	v = invDet * dot(-Normal,sXe1);
+
+	if(v < 0.0 || u+v > 1.0) 
+		return false;
+
+	float t = invDet * dot(edge2,sXe1);
+
+	if(t>0.001)
+		return true;
+
+	return false;
+}
+
+vec3 uv_to_vec3(in vec2 uv)
+{
+	vec4 V0 = vec4(uv,0,1);
+	vec4 ret = uv2worldMat * V0;
+
+	return ret.xyz;
+}
+
+float floor_y_value(float y)
+{
+	return (floor(params.lm_height * y)+0.5) / params.lm_height;
+}
+
+float floor_x_value(float x)
+{
+	return (floor(params.lm_width * x)+0.5) / params.lm_width;
+}
+
+float MajorX(float y)
+{
+	return w0.x + (m0 * (y - w0.y));
+}
+
+float MinorX(float y)
+{
+	if(b0 && b1)
+	{
+		if(bNegativeX)
+		{
+			return max(w0.x + (m1 * (y - w0.y)), w2.x + (m2 * (y - w2.y)));
+		}
+		else
+		{
+			return min(w0.x + (m1 * (y - w0.y)), w2.x + (m2 * (y - w2.y)));
+		}
+	}
+	else if(b0)
+	{
+		return w0.x + (m1 * (y - w0.y));
+	}
+	else if(b1)
+	{
+		return w2.x + (m2 * (y - w2.y));
+	}
+	return 0;
+}
+
+float pdf_cosine_falloff(float theta)
+{
+	return (1.0 + 99) * pow( cos(theta), 99) * sin(theta) / (2 * 3.1415926535);
+}
+
+float sample_theta(float u)
+{
+	return acos( pow(u,1.0 / 100.0) );
+}
+
+float sample_omega(float u)
+{
+	return u * 3.1415926535 * 2;
+}
+
+float sample_exp_falloff(float u)
+{
+	return - (1.0 / 4.0) * log(1 - u );
+}
+
+float pdf_exp_falloff(float x)
+{
+	return 3.0 * pow(2.71828183, -3.0 * x);
+}
+
+vec3 gen_ray(in vec3 N, in vec3 Tan, in vec3 BiTan, in float theta, in float omega)
+{
+	float x = sin(theta)*cos(omega);
+	float y = sin(theta)*sin(omega);
+	float z = cos(theta);
+
+	vec3 ray = Tan*x + BiTan*y + N*z;
+	ray = normalize(ray);
+
+	return ray;
+}
+
+void main()
+{
+	uint ix = gl_LocalInvocationID.x;
+	uint iy = gl_LocalInvocationID.y;
+	uint thread_id = iy * gl_WorkGroupSize.x + ix;
+
+	if(thread_id == 0)
+	{
+		Normal = params.light_pos - params.eye_pos;
+		Normal = normalize(Normal);
+
+		vec3 upvec;
+
+		if(dot(Normal,vec3(0,0,1)) > 0.999 || dot(Normal,vec3(0,0,-1)) > 0.999)
+		{
+			upvec = vec3(0.5, 0, 1.0);
+			upvec = normalize(upvec);
+		}
+		else
+			upvec = vec3(0, 0, 1);
+		
+		Tan = cross(Normal,upvec);
+		Bitan = cross(Normal,Tan);
+
+		//Normal = vec3(0,1,0);
+		//Tan = vec3(1,0,0);
+		//Bitan = vec3(0,0,1);
+
+		hits[0] = params.eye_pos;
+		hits[256] = params.light_pos;
+		//hits[1] = params.eye_pos;
+		//hits[1+256] = params.eye_pos + Tan*64;
+		//hits[2] = params.eye_pos;
+		//hits[2+256] = params.eye_pos + Bitan*64;
+	}
+
+	barrier();
+	//return;
+
+
+	if(thread_id < 128)
+	{
+		uint status = thread_id*10 + 999; 
+
+		uint[2] V = tea(uint[2](status,0));
+
+		float rand_var0 = random_to_float01(V[0]);
+		float rand_var1 = random_to_float01(V[1]);
+
+		V = tea(uint[2](status,0));
+
+		float rand_var2 = random_to_float01(V[0]);
+
+		float len = length(vec3(params.eye_pos - params.light_pos));
+
+
+		float theta = sample_theta(rand_var0);
+		float omega = sample_omega(rand_var1);
+
+		vec3 ray = gen_ray(Normal,Tan,Bitan,theta,omega);
+
+		float p = pdf_cosine_falloff(theta);
+
+		float f = sample_exp_falloff(rand_var2);
+		
+		float t = min(f, 0.95) *min(len,trace_scene_hit(params.eye_pos,ray));
+		vec3 mid_v = params.eye_pos + ray * t;
+
+		vec3 ray1 = params.light_pos - mid_v;
+		ray1 = normalize(ray1);
+
+		float t1 = trace_scene_hit(mid_v,ray1);
+
+		len =length(vec3(mid_v - params.light_pos));
+		//p=1.0;
+		hits[thread_id] = params.eye_pos;
+		hits[thread_id + 128] = mid_v;
+
+		hits[thread_id + 256] = mid_v + ray1 * min(len,t1);
+
+	}
+
+	return;
+}
+
+
+

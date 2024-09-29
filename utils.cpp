@@ -116,7 +116,7 @@ void addDrawLines(polyfold& pf, LineHolder& graph,LineHolder& graph2,LineHolder&
     //if(false)
     for(int f_i=0; f_i < pf.faces.size(); f_i++)
         {
-           // if(f_i==0 )//|| f_i==2)
+           // if(f_i==2 )//|| f_i==2)
            //if(f_i==29)
             //if (f_i == 25 || f_i == 26)
             {
@@ -131,6 +131,8 @@ void addDrawLines(polyfold& pf, LineHolder& graph,LineHolder& graph2,LineHolder&
                     //if(p_i==1)
                     if (pf.faces[f_i].loops[p_i].vertices.size() > 0)//&& pf.faces[f_i].loops[p_i].type == LOOP_INNER)
                     {
+                       // if (pf.faces[f_i].loops[p_i].type != LOOP_INNER)
+                       //     continue;
 
                         std::vector<int> tempv = pf.faces[f_i].loops[p_i].vertices;
                         tempv.push_back(tempv[0]);
@@ -145,22 +147,22 @@ void addDrawLines(polyfold& pf, LineHolder& graph,LineHolder& graph2,LineHolder&
                             core::vector3df v0 = pf.vertices[tempv[i]].V;
                             core::vector3df v1 = pf.vertices[tempv[i + 1]].V;
 
-                            if(pf.is_closed_loop(f_i,p_i))
+                            //if(pf.is_closed_loop(f_i,p_i))
                                // if (pf.faces[f_i].bFlippedNormal)
 
                             //if (pf.faces[f_i].loops[p_i].depth % 2 == 0)
-                                //if(pf.faces[f_i].loops[p_i].topo_group==LOOP_UNDEF)
+                                if(pf.faces[f_i].loops[p_i].topo_group==LOOP_SOLID)
                                 // if(pf.faces[f_i].loops[p_i].topo_group==LOOP_GHOST_SOLID)
                                 //if(pf.faces[f_i].loops[p_i].type==LOOP_INNER)
                             {
-                                graph.lines.push_back(core::line3df(v0, v1));
+                                graph2.lines.push_back(core::line3df(v0, v1));
                             }
                             //else if(pf.faces[f_i],pf.faces[f_i].loops[p_i].topo_group==LOOP_UNDEF)
                             //else if(pf.faces[f_i].loops[p_i].topo_group==LOOP_HOLLOW)
                             else //if(pf.faces[f_i].loops[p_i].topo_group==LOOP_GHOST_SOLID)
                             {
                                 //graph.points.push_back(v0);
-                                graph2.lines.push_back(core::line3df(v0, v1));
+                                graph.lines.push_back(core::line3df(v0, v1));
                             }
                             //else
                             {
@@ -1046,6 +1048,7 @@ REFLECT_STRUCT_BEGIN(Face_Bounding_Rect_Struct)
     REFLECT_STRUCT_MEMBER(v3)
 REFLECT_STRUCT_END()
 
+
 REFLECT_STRUCT_BEGIN(Face_Info_Struct)
     REFLECT_STRUCT_MEMBER(normal)
     REFLECT_STRUCT_MEMBER(tangent)
@@ -1059,11 +1062,13 @@ REFLECT_STRUCT_BEGIN(LightMaps_Info_Struct)
     REFLECT_STRUCT_MEMBER(lightmap_block_BR)
 REFLECT_STRUCT_END()
 
+
 REFLECT_STRUCT_BEGIN(Model_Struct)
     REFLECT_STRUCT_MEMBER(vertex_buffers)
     REFLECT_STRUCT_MEMBER(faces_info)
     REFLECT_STRUCT_MEMBER(lightmaps_info)
 REFLECT_STRUCT_END()
+
 
 bool ReadGUIStateFromFile(io::path fname)
 {
@@ -1429,7 +1434,6 @@ bool Save_Geometry_File::export_model(io::path fname)
 
         for (int i = 0; i < materials_used.size(); i++)
         {
-            //int n_lightmaps = materials_used[i].records.size();
             int n_lightmaps = materials_used[i].faces.size();
 
             model.lightmaps_info[i].faces.resize(n_lightmaps);
@@ -1439,15 +1443,7 @@ bool Save_Geometry_File::export_model(io::path fname)
 
             for (int j = 0; j < n_lightmaps; j++)
             {
-                //model.lightmaps_info[i].faces[j] = materials_used[i].records[j].face;
                 model.lightmaps_info[i].faces[j] = materials_used[i].faces[j];
-                //model.lightmaps_info[i].lightmap_block_UL[j].X = materials_used[i].records[j].block.UpperLeftCorner.X + 0;
-                //model.lightmaps_info[i].lightmap_block_UL[j].Y = materials_used[i].records[j].block.UpperLeftCorner.Y + 0;
-                //model.lightmaps_info[i].lightmap_block_BR[j].X = materials_used[i].records[j].block.LowerRightCorner.X - 0;
-                //model.lightmaps_info[i].lightmap_block_BR[j].Y = materials_used[i].records[j].block.LowerRightCorner.Y - 0;
-
-                //std::cout << materials_used[i].records[j].block.UpperLeftCorner.X << "," << materials_used[i].records[j].block.UpperLeftCorner.Y << "    ";
-                //std::cout << materials_used[i].records[j].block.LowerRightCorner.X << "," << materials_used[i].records[j].block.LowerRightCorner.Y << "\n";
             }
         }
 
@@ -1538,25 +1534,14 @@ bool Save_Geometry_File::export_model_2(io::path fname)
 
         for (int i = 0; i < materials_used.size(); i++)
         {
-            //int n_lightmaps = materials_used[i].records.size();
             int n_lightmaps = materials_used[i].faces.size();
 
             model.lightmaps_info[i].faces.resize(n_lightmaps);
-           // model.lightmaps_info[i].lightmap_block_UL.resize(n_lightmaps);
-           // model.lightmaps_info[i].lightmap_block_BR.resize(n_lightmaps);
             model.lightmaps_info[i].size = materials_used[i].lightmap_size;
 
             for (int j = 0; j < n_lightmaps; j++)
             {
                 model.lightmaps_info[i].faces[j] = face_number_ref[materials_used[i].faces[j]];
-                //model.lightmaps_info[i].faces[j] = face_number_ref[materials_used[i].records[j].face];
-              //  model.lightmaps_info[i].lightmap_block_UL[j].X = materials_used[i].records[j].block.UpperLeftCorner.X + 0;
-             //   model.lightmaps_info[i].lightmap_block_UL[j].Y = materials_used[i].records[j].block.UpperLeftCorner.Y + 0;
-              //  model.lightmaps_info[i].lightmap_block_BR[j].X = materials_used[i].records[j].block.LowerRightCorner.X - 0;
-              //  model.lightmaps_info[i].lightmap_block_BR[j].Y = materials_used[i].records[j].block.LowerRightCorner.Y - 0;
-
-                //std::cout << materials_used[i].records[j].block.UpperLeftCorner.X << "," << materials_used[i].records[j].block.UpperLeftCorner.Y << "    ";
-                //std::cout << materials_used[i].records[j].block.LowerRightCorner.X << "," << materials_used[i].records[j].block.LowerRightCorner.Y << "\n";
             }
         }
 

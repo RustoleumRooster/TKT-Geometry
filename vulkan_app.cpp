@@ -7,7 +7,7 @@
 
 bool  VulkanApp::run_point_light(geometry_scene* geo_scene) {
 
-	initVulkan(&geo_scene->final_meshnode_interface);
+	initVulkan();
 
 	system_point_light = new System_Point_Light(m_device, uniformBuffers);
 	system_point_light->loadModel(&geo_scene->final_meshnode_interface);
@@ -23,9 +23,46 @@ bool  VulkanApp::run_point_light(geometry_scene* geo_scene) {
 	return true;
 }
 
+
+bool VulkanApp::run_test_mc(geometry_scene* geo_scene) {
+
+	initVulkan();
+
+	system_test_mc = new System_Test_MC(m_device, uniformBuffers);
+	system_test_mc->loadModel(&geo_scene->final_meshnode_interface);
+	system_test_mc->loadLights(geo_scene);
+	system_test_mc->initialize_step2(m_DescriptorPool);
+	system_test_mc->executeComputeShader();
+	vkDeviceWaitIdle(m_device->getDevice());
+
+	system_test_mc->writeDrawLines(geo_scene->special_graph);
+
+	cleanup();
+
+	return true;
+}
+
+bool VulkanApp::run_soft_light(geometry_scene* geo_scene) {
+
+	initVulkan();
+
+	system_soft_light = new System_Soft_Light(m_device, uniformBuffers);
+	system_soft_light->loadModel(&geo_scene->final_meshnode_interface);
+	system_soft_light->loadLights(geo_scene);
+	system_soft_light->initialize_step2(m_DescriptorPool);
+	system_soft_light->executeComputeShader();
+	vkDeviceWaitIdle(m_device->getDevice());
+
+	system_soft_light->writeDrawLines(geo_scene->special_graph);
+
+	cleanup();
+
+	return true;
+}
+
 bool VulkanApp::run_amb_occlusion(geometry_scene* geo_scene)
 {
-	initVulkan(&geo_scene->final_meshnode_interface);
+	initVulkan();
 
 	system_amb_occlusion = new System_Amb_Occlusion(m_device, uniformBuffers);
 	system_amb_occlusion->loadModel(&geo_scene->final_meshnode_interface);

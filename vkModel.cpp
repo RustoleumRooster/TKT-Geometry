@@ -16,17 +16,35 @@ using namespace std;
 
 typedef CMeshBuffer<video::S3DVertex2TCoords> mesh_buffer_type;
 
-void writeLightmapsInfo(const vector<TextureMaterial>& materials_used, std::vector<LightMaps_Info_Struct>& dest)
+void writeLightmapsInfo(const vector<TextureMaterial>& materials_used, std::vector<LightMaps_Info_Struct>& dest, MeshNode_Interface_Final* meshnode)
 {
     dest.resize(materials_used.size());
 
     for (int i = 0; i < materials_used.size(); i++)
     {
-        int n_lightmaps = materials_used[i].faces.size();
+        int n_faces = materials_used[i].faces.size();
 
-        dest[i].faces.resize(n_lightmaps);
+        dest[i].faces.resize(n_faces);
+        dest[i].first_triangle.resize(n_faces);
+        dest[i].n_triangles.resize(n_faces);
+
         dest[i].size = materials_used[i].lightmap_size;
+
+        for (int j = 0; j < n_faces; j++)
+        {
+            int f_i = materials_used[i].faces[j];
+            dest[i].faces[j] = f_i;
+
+            MeshBuffer_Chunk chunk = meshnode->get_mesh_buffer_by_face(f_i);
+
+            dest[i].first_triangle[j] = chunk.begin_i / 3;
+            dest[i].n_triangles[j] = (chunk.end_i - chunk.begin_i) / 3;
+            
+            cout << " " << j << ", zero = " << dest[i].first_triangle[j] << ", len is " << dest[i].n_triangles[j] << "\n";
+
+        }
     }
+    
 }
 
 void fill_vertex_struct(SMesh* mesh, soa_struct_2<aligned_vec3, aligned_vec3>& dest)

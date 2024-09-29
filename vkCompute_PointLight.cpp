@@ -104,7 +104,7 @@ void System_Point_Light::loadLights(geometry_scene* geo_scene)
 void System_Point_Light::loadModel(MeshNode_Interface_Final* meshnode)
 {
 
-	writeLightmapsInfo(meshnode->getMaterialsUsed(), lightmaps_info);
+	writeLightmapsInfo(meshnode->getMaterialsUsed(), lightmaps_info, meshnode);
 
 	createLightmapImages();
 

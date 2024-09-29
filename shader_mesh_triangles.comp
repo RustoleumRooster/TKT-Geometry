@@ -2,11 +2,32 @@
 #extension GL_KHR_shader_subgroup_basic : enable
 #extension GL_KHR_shader_subgroup_arithmetic : enable
 
+/*
+struct Node
+{
+	vec4 aabbMin;
+	vec4 aabbMax;
+
+	vec4 padding;
+
+	uint left_node;
+	uint right_node;
+
+	uint first_prim;
+	uint n_prims;
+	
+};*/
+
 layout (binding = 0) uniform raytraceParams 
 {
+	//vec3 eye_pos;/////
+	//uint lightradius;/////
+
 	uint n_rays;
 	uint n_triangles;
 	uint n_vertices;
+
+	//uint n_nodes;//////
 
 	uint m_triangles_vertex_offset;
 	uint m_triangles_index_offset;
@@ -31,6 +52,22 @@ layout(std140, binding = 3) readonly buffer uvUBO
 {
 	vec3 map_uvs[];
 };
+/////////
+
+/*
+layout(std140, binding = 4) readonly buffer nodeUBO
+{
+	Node global_nodes[];
+};
+
+layout(std140, binding = 5) buffer hitResults
+{
+	vec3 hits[];
+};
+layout(binding = 6, rgba8) uniform image2D imageOut;
+*/
+
+////////////
 
 layout(std140, binding = 4) buffer hitResults
 {
@@ -39,6 +76,7 @@ layout(std140, binding = 4) buffer hitResults
 
 layout(binding = 5, rgba8) uniform image2D imageOut;
 
+/////////////
 layout (local_size_x = 32, local_size_y = 8, local_size_z = 1) in;
 
 shared float m0,m1,m2;
@@ -105,7 +143,7 @@ void main()
 {
 	uint ix = gl_LocalInvocationID.x;
 	uint iy = gl_LocalInvocationID.y;
-	//uint thread_id = iy * gl_WorkGroupSize.x + ix;
+	uint thread_id = iy * gl_WorkGroupSize.x + ix;
 	//uint global_thread_id = gl_GlobalInvocationID.x + (gl_GlobalInvocationID.y * gl_NumWorkGroups.x * gl_WorkGroupSize.x);
 
 	if(gl_WorkGroupID.x * 3 < params.m_triangles_n_indices && ix == 0 && iy == 0)

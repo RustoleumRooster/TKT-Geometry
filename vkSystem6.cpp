@@ -51,7 +51,7 @@ typedef CMeshBuffer<video::S3DVertex2TCoords> mesh_buffer_type;
 void System_Amb_Occlusion::loadModel(MeshNode_Interface_Final* meshnode)
 {
 
-	writeLightmapsInfo(meshnode->getMaterialsUsed(), lightmaps_info);
+	writeLightmapsInfo(meshnode->getMaterialsUsed(), lightmaps_info, meshnode);
 
 	createLightmapImages();
 	

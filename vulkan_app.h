@@ -30,6 +30,9 @@
 #include "vkSystem5.h"
 #include "vkSystem6.h"
 #include "vkCompute_PointLight.h"
+#include "vkCompute_TestMC.h"
+#include "vkCompute_SoftLight.h"
+
 
 class MeshNode_Interface_Final;
 
@@ -45,7 +48,7 @@ public:
 	}
 
 	void run5(MeshNode_Interface_Final* meshnode, LineHolder& graph) {
-		initVulkan(meshnode);
+		initVulkan();
 		//mainLoop();
 
 		system5 = new System5(m_device, uniformBuffers);
@@ -60,12 +63,14 @@ public:
 	}
 
 	bool run_point_light(geometry_scene* geo_scene);
+	bool run_soft_light(geometry_scene* geo_scene);
+	bool run_test_mc(geometry_scene* geo_scene);
 	bool run_amb_occlusion(geometry_scene* geo_scene);
 
 
 private:
 
-	void initVulkan(MeshNode_Interface_Final* meshnode) {
+	void initVulkan() {
 		m_device = new MyDevice();
 		m_Textures = new MyTextures(m_device);
 
@@ -114,6 +119,20 @@ private:
 			system_point_light = NULL;
 		}
 
+		if (system_soft_light)
+		{
+			system_soft_light->cleanup();
+			delete system_soft_light;
+			system_soft_light = NULL;
+		}
+
+		if (system_test_mc)
+		{
+			system_test_mc->cleanup();
+			delete system_test_mc;
+			system_test_mc = NULL;
+		}
+
 		if (system_amb_occlusion)
 		{
 			system_amb_occlusion->cleanup();
@@ -139,7 +158,9 @@ private:
 
 
 	System_Point_Light* system_point_light = NULL;
+	System_Test_MC* system_test_mc = NULL;
 	System_Amb_Occlusion* system_amb_occlusion = NULL;
+	System_Soft_Light* system_soft_light = NULL;
 
 	std::vector<VkBuffer> uniformBuffers;
 	std::vector<VkDeviceMemory> uniformBuffersMemory;

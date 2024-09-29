@@ -81,9 +81,7 @@ struct Face_Info_Struct
     reflect::vector3 tangent;
     Face_Bounding_Rect_Struct bounding_rect;
 
-    //not reflected
     u16 lightmap_no;
-    
     REFLECT()
 };
 
@@ -93,6 +91,10 @@ struct LightMaps_Info_Struct
     std::vector<int> faces;
     std::vector<reflect::vector2u> lightmap_block_UL;
     std::vector<reflect::vector2u> lightmap_block_BR;
+
+    //not reflected
+    std::vector<u16> first_triangle;
+    std::vector<u16> n_triangles;
 
     REFLECT()
 };
@@ -105,6 +107,7 @@ struct Model_Struct
 
     REFLECT()
 };
+
 
 bool WriteGUIStateToFile(io::path fname);
 bool ReadGUIStateFromFile(io::path fname);

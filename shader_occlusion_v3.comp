@@ -468,7 +468,7 @@ void main()
 
 	barrier();
 
-	//if(gl_WorkGroupID.x  < 3)
+	if(gl_WorkGroupID.x  ==1)
 	{
 	
 		for( float y = map_uvs[v_0].y; y<map_uvs[v_1].y + 0.0001; y+=ystep)
