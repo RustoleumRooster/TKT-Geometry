@@ -1,5 +1,6 @@
 #include <iostream>
 #include "csg_classes.h"
+#include <algorithm>
 
 using namespace irr;
 
@@ -10,6 +11,28 @@ core::vector3df get_center(polyfold pf)
         ret+=pf.vertices[i].V;
     ret/=pf.vertices.size();
     return ret;
+}
+
+f32 get_angle_phi_for_face(vector3df point, vector3df vec1, vector3df iY, polyfold* pf, poly_face* f)
+{
+    vector3df center = vector3df(0, 0, 0);
+
+    for (int v_i : f->vertices)
+    {
+        center += pf->vertices[v_i].V;
+    }
+    center /= f->vertices.size();
+
+    core::vector3df r = center - point;
+    r.normalize();
+
+    vector2df k;
+
+    k.X = r.dotProduct(vec1);
+    k.Y = -r.dotProduct(iY);
+
+    f32 az = k.getAngleTrig();
+    return az;
 }
 
 void do_primitive_calculations(polyfold& pf)
@@ -247,6 +270,7 @@ polyfold make_cylinder(int height, int radius, int faces)
         f.addEdge(b);
         f.addEdge(c);
         f.addEdge(d);
+        f.column = i;
         pf.faces.push_back(f);
     }
 
@@ -261,6 +285,7 @@ polyfold make_cylinder(int height, int radius, int faces)
     f.addEdge(a);
     f.addEdge(d);
     f.addEdge(b);
+    f.column = faces - 1;
     pf.faces.push_back(f);
 
     do_primitive_calculations(pf);
@@ -280,6 +305,7 @@ polyfold make_cylinder(int height, int radius, int faces)
     sg.vec1 = core::vector3df(0,0,1);
     sg.height = height;
     sg.radius = radius;
+    sg.n_columns = faces;
 
     pf.surface_groups.push_back(sg);
 
@@ -288,6 +314,34 @@ polyfold make_cylinder(int height, int radius, int faces)
 
     pf.faces[0].surface_group=0;
     pf.faces[1].surface_group=0;
+
+    vector3df iY = sg.vec.crossProduct(sg.vec1);
+    iY.normalize();
+
+    {
+        std::vector<poly_face*> face_ptrs;
+
+        for (poly_face& f : pf.faces)
+        {
+            if (f.surface_group == 1 && f.vertices.size() > 0)
+            {
+                face_ptrs.push_back(&f);
+            }
+        }
+
+        std::sort(face_ptrs.begin(), face_ptrs.end(),
+            [&](poly_face* f_a, poly_face* f_b)
+            {
+                float phi_a = get_angle_phi_for_face(sg.point, sg.vec1, iY, &pf, f_a);
+                float phi_b = get_angle_phi_for_face(sg.point, sg.vec1, iY, &pf, f_b);
+                return phi_a < phi_b;
+            });
+
+        for (int j = 0; j < face_ptrs.size(); j++)
+        {
+            face_ptrs[j]->column = j;
+        }
+    }
 
     return pf;
 }
@@ -389,12 +443,16 @@ core::vector3df get_sphere_point(int radius, int faces, int zen_faces, int zen_j
     f32 zen_angle = -pi*0.5+(pi/n_zen_points)*zen_j;
     f32 az_angle = (pi*2/n_rad_points)*az_i;
 
+    //std::cout <<zen_j <<"/"<<az_i<<"  "<< zen_angle << ", " << az_angle << "\n";
+
     f32 X = cos(az_angle)*cos(zen_angle)*radius;
     f32 Z = sin(az_angle)*cos(zen_angle)*radius;
     f32 Y = sin(zen_angle)*radius;
 
     return core::vector3df(X,Y,Z);
 }
+
+
 
 polyfold make_sphere(int radius, int rad_faces, int zen_faces, bool simplify)
 {
@@ -409,13 +467,42 @@ polyfold make_sphere(int radius, int rad_faces, int zen_faces, bool simplify)
     {
         int n_rad_points = num_rad_points(radius,rad_faces,zen_faces,j,simplify);
         int n_rad_points1 = num_rad_points(radius,rad_faces,zen_faces,j+1,simplify);
-
+        int column_no = 0;
 
         for(int i=0;i<n_rad_points;i++)
         {
+            if (j == 1)
+            {
+                int ii = (i + 1) % n_rad_points;
+                int v0 = pf.get_point_or_add(get_sphere_point(radius, rad_faces, zen_faces, j, i, simplify));
+                int v1 = pf.get_point_or_add(get_sphere_point(radius, rad_faces, zen_faces, j, ii, simplify));
+                int z0 = pf.get_point_or_add(get_sphere_point(radius, rad_faces, zen_faces, 0, 0, simplify));
+
+                int e0 = pf.get_edge_or_add(v0, z0, 0);
+                int e1 = pf.get_edge_or_add(v1, z0, 0);
+                int e2 = pf.get_edge_or_add(v0, v1, 0);
+
+                poly_face f;
+
+                f.addVertex(v0);
+                f.addVertex(v1);
+                f.addVertex(z0);
+
+                f.addEdge(e0);
+                f.addEdge(e1);
+                f.addEdge(e2);
+
+                f.row = j;
+                f.column = column_no++;
+
+                pf.faces.push_back(f);
+                n_f += 1;
+                n_t += 1;
+            }
             if ( (j>=1 && j< n_zen_points-1) &&
                 num_rad_points(radius,rad_faces,zen_faces,j,simplify) == num_rad_points(radius,rad_faces,zen_faces,j+1,simplify))
             {
+                //std::cout << j << "<--****\n";
                 int ii = (i+1)%n_rad_points;
 
                 int v0 = pf.get_point_or_add(get_sphere_point(radius,rad_faces,zen_faces,j,i,simplify));
@@ -442,6 +529,9 @@ polyfold make_sphere(int radius, int rad_faces, int zen_faces, bool simplify)
                 f.addEdge(z0);
                 f.addEdge(z2);
 
+                f.row = j;
+                f.column = column_no++;
+
                 pf.faces.push_back(f);
                 n_f+=2;
                 n_t+=2;
@@ -460,7 +550,7 @@ polyfold make_sphere(int radius, int rad_faces, int zen_faces, bool simplify)
                 int v2 = pf.get_point_or_add(get_sphere_point(radius,rad_faces,zen_faces,j,ii,simplify));
                 int v3 = pf.get_point_or_add(get_sphere_point(radius,rad_faces,zen_faces,j+1,kk,simplify));
                 int v4 = pf.get_point_or_add(get_sphere_point(radius,rad_faces,zen_faces,j,iii,simplify));
-
+                //std::cout << j << "<----\n";
                 poly_face f;
                 if(i%2==0)
                 {
@@ -475,6 +565,9 @@ polyfold make_sphere(int radius, int rad_faces, int zen_faces, bool simplify)
                     f.addEdge(e0);
                     f.addEdge(e1);
                     f.addEdge(e2);
+
+                    f.row = j;
+                    f.column = column_no++;
 
                     pf.faces.push_back(f);
                     n_f+=1;
@@ -495,6 +588,9 @@ polyfold make_sphere(int radius, int rad_faces, int zen_faces, bool simplify)
                     f.addEdge(e1);
                     f.addEdge(e2);
 
+                    f.row = j;
+                    f.column = column_no++;
+
                     pf.faces.push_back(f);
                     f.clear();
 
@@ -509,6 +605,9 @@ polyfold make_sphere(int radius, int rad_faces, int zen_faces, bool simplify)
                     f.addEdge(e3);
                     f.addEdge(e4);
                     f.addEdge(e5);
+
+                    f.row = j;
+                    f.column = column_no++;
 
                     pf.faces.push_back(f);
                     n_f+=2;
@@ -529,7 +628,7 @@ polyfold make_sphere(int radius, int rad_faces, int zen_faces, bool simplify)
                 int v2 = pf.get_point_or_add(get_sphere_point(radius,rad_faces,zen_faces,j,ii,simplify));
                 int v3 = pf.get_point_or_add(get_sphere_point(radius,rad_faces,zen_faces,j-1,kk,simplify));
                 int v4 = pf.get_point_or_add(get_sphere_point(radius,rad_faces,zen_faces,j,iii,simplify));
-
+               // std::cout << j << "<----\n";
                 poly_face f;
                 if(i%2==0)
                 {
@@ -544,6 +643,9 @@ polyfold make_sphere(int radius, int rad_faces, int zen_faces, bool simplify)
                     f.addEdge(e0);
                     f.addEdge(e1);
                     f.addEdge(e2);
+
+                    f.row = j;
+                    f.column = column_no++;
 
                     pf.faces.push_back(f);
                     n_f+=1;
@@ -563,6 +665,9 @@ polyfold make_sphere(int radius, int rad_faces, int zen_faces, bool simplify)
                     f.addEdge(e1);
                     f.addEdge(e2);
 
+                    f.row = j;
+                    f.column = column_no++;
+
                     pf.faces.push_back(f);
                     f.clear();
 
@@ -577,6 +682,9 @@ polyfold make_sphere(int radius, int rad_faces, int zen_faces, bool simplify)
                     f.addEdge(e3);
                     f.addEdge(e4);
                     f.addEdge(e5);
+
+                    f.row = j;
+                    f.column = column_no++;
 
                     pf.faces.push_back(f);
                     n_f+=2;
@@ -604,36 +712,16 @@ polyfold make_sphere(int radius, int rad_faces, int zen_faces, bool simplify)
                 f.addEdge(e1);
                 f.addEdge(e2);
 
-                pf.faces.push_back(f);
-                n_f+=1;
-                n_t+=1;
-            }
-            if (j==1)
-            {
-                int ii = (i+1)%n_rad_points;
-                int v0 = pf.get_point_or_add(get_sphere_point(radius,rad_faces,zen_faces,j,i,simplify));
-                int v1 = pf.get_point_or_add(get_sphere_point(radius,rad_faces,zen_faces,j,ii,simplify));
-                int z0 = pf.get_point_or_add(get_sphere_point(radius,rad_faces,zen_faces,0,0,simplify));
-
-                int e0 = pf.get_edge_or_add(v0,z0,0);
-                int e1 = pf.get_edge_or_add(v1,z0,0);
-                int e2 = pf.get_edge_or_add(v0,v1,0);
-
-                poly_face f;
-
-                f.addVertex(v0);
-                f.addVertex(v1);
-                f.addVertex(z0);
-
-                f.addEdge(e0);
-                f.addEdge(e1);
-                f.addEdge(e2);
+                f.row = j;
+                f.column = column_no++;
 
                 pf.faces.push_back(f);
                 n_f+=1;
                 n_t+=1;
             }
         }
+
+       // std::cout << "row " << j << " has " << column_no << " columns\n";
     }
 
     LineHolder nograph;
@@ -642,7 +730,7 @@ polyfold make_sphere(int radius, int rad_faces, int zen_faces, bool simplify)
 
     surface_group sg;
     sg.type = SURFACE_GROUP_SPHERE;
-    sg.point = get_center(pf);
+    sg.point = vector3df(0, 0, 0);// get_center(pf);
     sg.vec = core::vector3df(0,1,0);
     sg.vec1 = core::vector3df(1,0,0);
     sg.radius = radius;
@@ -656,6 +744,54 @@ polyfold make_sphere(int radius, int rad_faces, int zen_faces, bool simplify)
 
     int n_v = pf.vertices.size();
     int n_e = pf.edges.size();
+
+    f32 bands = PI / n_zen_points;
+    //std::cout << pf.faces.size() << " / " << n_zen_points << "\n";
+    for (poly_face& f : pf.faces)
+    {
+        f32 theta = atan( f.m_center.Y / sqrt(f.m_center.X * f.m_center.X + f.m_center.Z * f.m_center.Z));
+        
+        int row_no = floor(theta / bands) + n_zen_points / 2;
+        //std::cout << floor(theta / bands) << " ---> " <<row_no << "\n";
+        if (row_no >= n_zen_points) std::cout << "ERROR in SPHERE CREATION\n";
+        f.row = row_no;
+    }
+
+    //v0 = sg->vec;
+    //v1 = sg->vec1;
+
+   // sfg = sg;
+    //m_height = sg->height;
+    //m_radius = sg->radius;
+
+    vector3df iY = sg.vec.crossProduct(sg.vec1);
+    iY.normalize();
+
+    for (int i = 0; i < n_zen_points; i++)
+    {
+        std::vector<poly_face*> face_ptrs;
+
+        for (poly_face& f : pf.faces)
+        {
+            if (f.row == i && f.vertices.size() > 0)
+            {
+                face_ptrs.push_back(&f);
+            }
+        }
+
+        std::sort(face_ptrs.begin(), face_ptrs.end(),
+            [&](poly_face* f_a, poly_face* f_b)
+            {
+                float phi_a = get_angle_phi_for_face(sg.point, sg.vec1, iY, &pf, f_a);
+                float phi_b = get_angle_phi_for_face(sg.point, sg.vec1, iY, &pf, f_b);
+                return phi_a < phi_b;
+            });
+
+        for (int j = 0; j < face_ptrs.size(); j++)
+        {
+            face_ptrs[j]->column = j;
+        }
+    }
 
     return pf;
 

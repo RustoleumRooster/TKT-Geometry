@@ -43,6 +43,7 @@ public:
     void hookup(TestPanel* panel);
     void render(video::IVideoDriver* driver);
     void disconnect();
+    void position(const core::recti& myrect, f32 x_split, f32 y_split, int quad);
 
     virtual bool OnEvent(const SEvent& event);
 
@@ -57,6 +58,7 @@ public:
     }
 
     vector2d<s32> getClickPos() { return vector2d<s32>{clickx, clicky}; }
+    void set_fullscreen(bool bFullscreen);
 
 private:
     s32 clickx;
@@ -84,7 +86,7 @@ public:
     void SetPanel(int,TestPanel*);
     void initialize(scene::ISceneManager* smgr,geometry_scene* geo_scene);
     virtual void render();
-    void SetFullscreen(bool,TestPanel* = NULL);
+    void SetFullscreen(bool,ViewPanel* = NULL);
     void setGridSnap(int);
     void setRotateSnap(f32);
     void resize(core::rect<s32> rect);
@@ -111,6 +113,7 @@ private:
     ViewPanel* vp_TR = NULL;
     ViewPanel* vp_BL = NULL;
     ViewPanel* vp_BR = NULL;
+    ViewPanel* vp_FS = NULL;
 
     RenderList* renderList = NULL;
 
@@ -161,7 +164,7 @@ public:
     virtual void Initialize(scene::ISceneManager* smgr,geometry_scene* geo_scene);
     virtual void Render(video::IVideoDriver* driver) {};
     virtual void resize(core::dimension2d<u32> new_size) {};
-    virtual void position(const core::recti& rect, f32 x_split, f32 y_split, int quad);
+    //virtual void position(const core::recti& rect, f32 x_split, f32 y_split, int quad);
 
     bool hooked_up() {return m_viewPanel != NULL; }
     virtual void hookup_panel(ViewPanel* panel);
@@ -234,7 +237,8 @@ protected:
     bool bShowBrushes=true;
     bool bShowGeometry=false;
     bool bFullscreen=false;
-    bool bDynamicLight=false;
+    //bool bDynamicLight=false;
+    int lighting_type;
 
     core::vector3df vDragCameraInitialPosition;
     core::vector3df vDragCameraInitialTarget;
@@ -279,7 +283,10 @@ public:
     }
 
     void SetDynamicLight(bool b) {
-        bDynamicLight = b;
+        if (b)
+            lighting_type = LIGHTING_LIGHTMAP;
+        else
+            lighting_type = LIGHTING_UNLIT;
     }
 
     virtual void resize(core::dimension2d<u32> new_size) ;

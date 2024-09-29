@@ -116,13 +116,11 @@ void polyfold::calc_tangent(int f_i)
     f32 best_area;
     rectf best_box;
 
-    for (int i = 0; i < faces[f_i].edges.size(); i++)
+    const surface_group& sfg = surface_groups[faces[f_i].surface_group];
+
+    if (sfg.type == SURFACE_GROUP_CYLINDER)
     {
-        int e_i = faces[f_i].edges[i];
-
-        core::vector3df tan = getVertex(e_i, 1).V - getVertex(e_i, 0).V;
-        tan.normalize();
-
+        core::vector3df tan = sfg.vec;
         core::vector3df bitan = faces[f_i].m_normal.crossProduct(tan);
 
         f32 umin = 0.0;
@@ -155,26 +153,116 @@ void polyfold::calc_tangent(int f_i)
             }
         }
 
-        f32 area = (umax - umin) * (vmax - vmin);
+        best_tan = tan;
+        best_bitan = bitan;
+        best_box.UpperLeftCorner = vector2df(umin, vmin);
+        best_box.LowerRightCorner = vector2df(umax, vmax);
+    }
+    else if (sfg.type == SURFACE_GROUP_SPHERE)
+    {
+        vector3df bitan = faces[f_i].m_normal.crossProduct(sfg.vec);
+        bitan.normalize();
+        vector3df tan = faces[f_i].m_normal.crossProduct(bitan);
+   
+       // vector3df bitan = faces[f_i].m_normal.crossProduct(tan);
 
-        if (i == 0 || area < best_area)
+        f32 umin = 0.0;
+        f32 umax = 0.0;
+        f32 vmin = 0.0;
+        f32 vmax = 0.0;
+
+        for (int j = 0; j < faces[f_i].vertices.size(); j++)
         {
-            best_area = area;
+            int v_i = faces[f_i].vertices[j];
 
-            if ((umax - umin) < (vmax - vmin))
-            //    if(false)
+            vector3df r = vertices[v_i].V - faces[f_i].m_center;
+
+            f32 u = r.dotProduct(tan);
+            f32 v = r.dotProduct(bitan);
+
+            if (j == 0)
             {
-                best_tan = faces[f_i].m_normal.crossProduct(tan);
-                best_bitan = tan;
-                best_box.UpperLeftCorner = vector2df(vmin, umin);
-                best_box.LowerRightCorner = vector2df(vmax, umax);
+                umin = u;
+                umax = u;
+                vmin = v;
+                vmax = v;
             }
             else
             {
-                best_tan = tan;
-                best_bitan = bitan;
-                best_box.UpperLeftCorner = vector2df(umin, vmin);
-                best_box.LowerRightCorner = vector2df(umax, vmax);
+                umin = fmin(umin, u);
+                umax = fmax(umax, u);
+                vmin = fmin(vmin, v);
+                vmax = fmax(vmax, v);
+            }
+        }
+
+        best_tan = tan;
+        best_bitan = bitan;
+        best_box.UpperLeftCorner = vector2df(umin, vmin);
+        best_box.LowerRightCorner = vector2df(umax, vmax);
+    }
+    else
+    {
+
+        for (int i = 0; i < faces[f_i].edges.size(); i++)
+        {
+            int e_i = faces[f_i].edges[i];
+
+            core::vector3df tan = getVertex(e_i, 1).V - getVertex(e_i, 0).V;
+            tan.normalize();
+
+            core::vector3df bitan = faces[f_i].m_normal.crossProduct(tan);
+
+            f32 umin = 0.0;
+            f32 umax = 0.0;
+            f32 vmin = 0.0;
+            f32 vmax = 0.0;
+
+            for (int j = 0; j < faces[f_i].vertices.size(); j++)
+            {
+                int v_i = faces[f_i].vertices[j];
+
+                core::vector3df r = vertices[v_i].V - faces[f_i].m_center;
+
+                f32 u = r.dotProduct(tan);
+                f32 v = r.dotProduct(bitan);
+
+                if (j == 0)
+                {
+                    umin = u;
+                    umax = u;
+                    vmin = v;
+                    vmax = v;
+                }
+                else
+                {
+                    umin = fmin(umin, u);
+                    umax = fmax(umax, u);
+                    vmin = fmin(vmin, v);
+                    vmax = fmax(vmax, v);
+                }
+            }
+
+            f32 area = (umax - umin) * (vmax - vmin);
+
+            if (i == 0 || area < best_area)
+            {
+                best_area = area;
+
+                if ((umax - umin) < (vmax - vmin))
+                {
+                    best_tan = faces[f_i].m_normal.crossProduct(tan);
+                    best_bitan = tan;
+                    best_box.UpperLeftCorner = vector2df(vmin, umin);
+                    best_box.LowerRightCorner = vector2df(vmax, umax);
+                }
+                else
+                {
+                    best_tan = tan;
+                    best_bitan = bitan;
+                    best_box.UpperLeftCorner = vector2df(umin, vmin);
+                    best_box.LowerRightCorner = vector2df(umax, vmax);
+                }
             }
         }
     }
@@ -1218,6 +1306,11 @@ surface_group* polyfold::getFaceSurfaceGroup(int f_i)
     return &this->surface_groups[sfg];
 }
 
+int polyfold::getFaceSurfaceGroupNo(int f_i)
+{
+    return this->faces[f_i].surface_group;
+}
+
 bool polyfold::getSurfaceVectors(int f_i,core::vector3df &a, core::vector3df &b)
 {
     surface_group sfg=surface_groups[faces[f_i].surface_group];
@@ -1275,6 +1368,8 @@ REFLECT_STRUCT_BEGIN(surface_group)
     REFLECT_STRUCT_MEMBER(vec)
     REFLECT_STRUCT_MEMBER(vec1)
     REFLECT_STRUCT_MEMBER(texcoords)
+    REFLECT_STRUCT_MEMBER(height)
+    REFLECT_STRUCT_MEMBER(radius)
 REFLECT_STRUCT_END()
 
 REFLECT_STRUCT_BEGIN(poly_face)

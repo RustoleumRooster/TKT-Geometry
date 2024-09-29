@@ -145,6 +145,8 @@ public:
     std::vector<point_texcoord> texcoords;
     int height;
     int radius;
+    int n_columns;
+    int n_rows;
     REFLECT()
 };
 
@@ -173,6 +175,10 @@ class poly_face
     core::vector3df uv_origin = core::vector3df(0,0,0);
     bool bFlippedNormal=false; //To be removed. Only retained for compatability
     int topo_group = 0;
+
+    int row = 0;    //for cylinders and spheres
+    int column = 0; 
+
     //**any new variables may need to be manually copied in make_result and add_pfold**
 
     core::matrix4 uv_mat;
@@ -199,6 +205,8 @@ class poly_face
         material_group = other.material_group;
         uv_origin = other.uv_origin;
         uv_mat = other.uv_mat;
+        column = other.column;
+        row = other.row;
     }
 
     core::matrix4 get2Dmat() const;
@@ -473,6 +481,7 @@ class polyfold
 
     bool getSurfaceVectors(int f_i,core::vector3df &a, core::vector3df &b);
     surface_group* getFaceSurfaceGroup(int f_i);
+    int getFaceSurfaceGroupNo(int f_i);
 
     //========================================
     //Topology functions
