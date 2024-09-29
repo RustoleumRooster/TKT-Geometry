@@ -381,12 +381,22 @@ void Material_Groups_Base::apply_material_to_buffer(scene::IMeshBuffer* buffer, 
 
     Material_Group mg = material_groups[material_no];
 
-    if (mg.lightmap && lighting)
+    if (lighting != -1)
+        lighting_mode = lighting;
+
+    if (mg.lightmap && lighting_mode == LIGHTING_LIGHTMAP)
     {
         if(selected)
             buffer->getMaterial().MaterialType = LightingMaterial_Selected_Type;
         else
             buffer->getMaterial().MaterialType = LightingMaterial_Type;
+    }
+    else if (mg.lightmap && lighting_mode == LIGHTING_LIGHT_ONLY)
+    {
+        if (selected)
+            buffer->getMaterial().MaterialType = LightingOnlyMaterial_Selected_Type;
+        else
+            buffer->getMaterial().MaterialType = LightingOnlyMaterial_Type;
     }
     else
     {

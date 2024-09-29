@@ -61,6 +61,12 @@ public:
     static nSelected_struct sel_struct;
 };
 
+enum {
+    LIGHTING_UNLIT = 0,
+    LIGHTING_LIGHTMAP,
+    LIGHTING_LIGHT_ONLY
+};
+
 class Material_Groups_Base : public tool_base
 {
 public:
@@ -96,11 +102,14 @@ public:
 
     video::E_MATERIAL_TYPE LightingMaterial_Type = video::EMT_SOLID;
     video::E_MATERIAL_TYPE LightingMaterial_Selected_Type = video::EMT_SOLID;
+    video::E_MATERIAL_TYPE LightingOnlyMaterial_Type = video::EMT_SOLID;
+    video::E_MATERIAL_TYPE LightingOnlyMaterial_Selected_Type = video::EMT_SOLID;
     video::E_MATERIAL_TYPE SolidMaterial_Type = video::EMT_SOLID;
     video::E_MATERIAL_TYPE SolidMaterial_Selected_Type = video::EMT_SOLID;
 
     friend int main();
 
+    int lighting_mode = LIGHTING_UNLIT;
     int selected = -1;
 };
 

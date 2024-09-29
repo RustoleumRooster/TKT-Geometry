@@ -206,7 +206,7 @@ void geometry_scene::setSelectedFaces(std::vector<int> selection)
             buffer->getMaterial().Lighting = false;
 
 
-            material_groups_base->apply_material_to_buffer(buffer, pf->faces[f_i].material_group, DynamicLightEnabled(), bSelected);
+            material_groups_base->apply_material_to_buffer(buffer, pf->faces[f_i].material_group, -1, bSelected);
 
             if (b_Visualize)
             {
@@ -597,6 +597,9 @@ void geometry_scene::drawGraph(LineHolder& graph)
 
     for (const line3df& el : special_graph.lines)
         graph.lines.push_back(el);
+
+    for (const vector3df& p : special_graph.points)
+        graph.points.push_back(p);
 }
 
 triangle_holder* geometry_scene::get_triangles_for_face(int f_i)
@@ -637,7 +640,7 @@ void geometry_scene::rebuildSceneGraph()
 
 }
 
-void geometry_scene::buildSceneGraph(bool finalMesh, bool addObjects, bool addLights, bool finalscene)
+void geometry_scene::buildSceneGraph(bool finalMesh, bool addObjects, int light_mode, bool finalscene)
 {
    // std::cout << "rebuilding scene...";
     //std::cout << "edit objects "<< addObjects<< ", final " << finalMesh << ", add lights " << addLights << "\n";
@@ -662,11 +665,12 @@ void geometry_scene::buildSceneGraph(bool finalMesh, bool addObjects, bool addLi
         if(addObjects)
         {
             node->setParent(smgr->getRootSceneNode());
-            node->setUnlit(!addLights);
+           // node->setUnlit(!addLights);
+            node->setUnlit(true);
         }
 
         if (finalscene ||
-           (addLights && node->getType() == ESNT_LIGHT))
+           (light_mode != LIGHTING_UNLIT && node->getType() == ESNT_LIGHT))
             node->addSelfToScene(smgr);
     }
 
@@ -688,7 +692,7 @@ void geometry_scene::buildSceneGraph(bool finalMesh, bool addObjects, bool addLi
         {
             scene::IMeshBuffer* buffer = my_MeshNode->getMesh()->getMeshBuffer(i);
             int f_i = final_meshnode_interface.getMaterialsUsed()[i].faces[0];
-            material_groups_base->apply_material_to_buffer(buffer,pf->faces[f_i].material_group,addLights,false);
+            material_groups_base->apply_material_to_buffer(buffer,pf->faces[f_i].material_group,light_mode,false);
             
         }
         my_MeshNode->copyMaterials();
@@ -705,7 +709,7 @@ void geometry_scene::buildSceneGraph(bool finalMesh, bool addObjects, bool addLi
                 int buffer_index = edit_meshnode_interface.get_buffer_index_by_face(f_i);
                 scene::IMeshBuffer* buffer = this->getMeshNode()->getMesh()->getMeshBuffer(buffer_index);
 
-                material_groups_base->apply_material_to_buffer(buffer,pf->faces[f_i].material_group,addLights,false);
+                material_groups_base->apply_material_to_buffer(buffer,pf->faces[f_i].material_group,light_mode,false);
 
                 video::ITexture* tex_j = driver->getTexture(pf->faces[f_i].texture_name.c_str());
 
@@ -717,7 +721,7 @@ void geometry_scene::buildSceneGraph(bool finalMesh, bool addObjects, bool addLi
 
     this->my_MeshNode->setMaterialFlag(video::EMF_LIGHTING, false);
 
-    if(addLights)
+    if(light_mode != LIGHTING_UNLIT)
     {
         b_dynamic_light = true;
     }
@@ -796,9 +800,9 @@ void geometry_scene::delete_selected_brushes()
     }
 }
 
-reflect::TypeDescriptor_Struct* geometry_scene::getChooseNodeType()
+reflect::TypeDescriptor_Struct* geometry_scene::getSelectedNodeClass()
 {
-    return this->choose_reflected_node_base->getSelectedTypeDescriptor();
+    return this->node_classes_base->getSelectedTypeDescriptor();
 }
 
 void geometry_scene::addSceneLight(core::vector3df pos)
@@ -812,7 +816,7 @@ void geometry_scene::addSceneLight(core::vector3df pos)
 
 void geometry_scene::addSceneSelectedSceneNodeType(core::vector3df pos)
 {
-    reflect::TypeDescriptor_Struct* typeDescriptor = choose_reflected_node_base->getSelectedTypeDescriptor();
+    reflect::TypeDescriptor_Struct* typeDescriptor = this->node_classes_base->getSelectedTypeDescriptor();
     if(typeDescriptor)
     {
         //Reflected_SceneNode* a_thing = CreateNodeByTypeName(typeDescriptor->name, smgr);

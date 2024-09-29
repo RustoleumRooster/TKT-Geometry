@@ -831,7 +831,7 @@ void TestPanel_3D::right_click(core::vector2di pos)
         menu->addSeparator();
         menu->addItem(L"Add Light", GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_ADD_LIGHT, true, false, false, false);
 
-        reflect::TypeDescriptor_Struct* node_type = geo_scene->getChooseNodeType();
+        reflect::TypeDescriptor_Struct* node_type = geo_scene->getSelectedNodeClass();
 
         if (node_type)
         {
@@ -910,7 +910,8 @@ void TestPanel_3D::right_click(core::vector2di pos)
         submenu->addItem(L"Final Mesh", GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_VIEW_RENDER_FINAL, true, false, true, true);
         submenu->addSeparator();
         submenu->addItem(L"Unlit", GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_VIEW_UNLIT, true, false, true, true);
-        submenu->addItem(L"Dyanmic Light", GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_VIEW_DYNAMIC_LIGHT, true, false, true, true);
+        submenu->addItem(L"Lighting", GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_VIEW_LIGHTMAP, true, false, true, true);
+        submenu->addItem(L"Light Only", GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_VIEW_LIGHT_ONLY, true, false, true, true);
 
         submenu->setItemChecked(0, this->bShowBrushes);
         submenu->setItemChecked(1, this->bShowGeometry);
@@ -923,13 +924,17 @@ void TestPanel_3D::right_click(core::vector2di pos)
         {
             submenu->setItemEnabled(8, true);
             submenu->setItemEnabled(9, true);
-            submenu->setItemChecked(8, !this->bDynamicLight);
-            submenu->setItemChecked(9, this->bDynamicLight);
+            submenu->setItemEnabled(10, true);
+
+            submenu->setItemChecked(8, this->lighting_type == LIGHTING_UNLIT);
+            submenu->setItemChecked(9, this->lighting_type == LIGHTING_LIGHTMAP);
+            submenu->setItemChecked(10, this->lighting_type == LIGHTING_LIGHT_ONLY);
         }
         else
         {
             submenu->setItemEnabled(8, false);
             submenu->setItemEnabled(9, false);
+            submenu->setItemEnabled(10, false);
         }
 
         ContextMenuOwner = this->m_viewPanel;
@@ -972,16 +977,23 @@ void TestPanel_3D::OnMenuItemSelected(IGUIContextMenu* menu)
         this->SetViewStyle(PANEL3D_VIEW_RENDER_FINAL);
         break;
     case GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_VIEW_UNLIT:
-        if (this->bDynamicLight == true)
+        if (this->lighting_type != LIGHTING_UNLIT)
         {
-            this->bDynamicLight = false;
+            this->lighting_type = LIGHTING_UNLIT;
             this->SetViewStyle(this->view_style);
         }
         break;
-    case GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_VIEW_DYNAMIC_LIGHT:
-        if (this->bDynamicLight == false)
+    case GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_VIEW_LIGHTMAP:
+        if (this->lighting_type != LIGHTING_LIGHTMAP)
         {
-            this->bDynamicLight = true;
+            this->lighting_type = LIGHTING_LIGHTMAP;
+            this->SetViewStyle(this->view_style);
+        }
+        break;
+    case GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_VIEW_LIGHT_ONLY:
+        if (this->lighting_type != LIGHTING_LIGHT_ONLY)
+        {
+            this->lighting_type = LIGHTING_LIGHT_ONLY;
             this->SetViewStyle(this->view_style);
         }
         break;
@@ -1031,8 +1043,9 @@ void TestPanel_3D::OnMenuItemSelected(IGUIContextMenu* menu)
          //    RenderHitTexture();
         break;
     case GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_FULLSCREEN_TOGGLE:
-        //this->bFullscreen = !this->bFullscreen;
+        this->bFullscreen = !this->bFullscreen;
        // ((CameraQuad*)this->getParent())->SetFullscreen(this->bFullscreen, this);
+        m_viewPanel->set_fullscreen(bFullscreen);
         break;
     default:
         break;
@@ -1090,6 +1103,9 @@ void TestPanel_3D::SetViewStyle(s32 vtype)
         graph.lines.clear();
         graph2.lines.clear();
         graph3.lines.clear();
+        graph.points.clear();
+        graph2.points.clear();
+        graph3.points.clear();
 
         for (geo_element el : geo_scene->elements)
         {
@@ -1111,6 +1127,9 @@ void TestPanel_3D::SetViewStyle(s32 vtype)
         {
             geo_scene->setSelectedFaces(std::vector<int>{});
         }
+
+       // geo_scene->drawGraph(graph);
+
         if (this->geo_scene->get_total_geometry())
         {/*
         graph.lines.clear();
@@ -1141,6 +1160,9 @@ void TestPanel_3D::SetViewStyle(s32 vtype)
         geo_scene->buildSceneGraph(false, false, false);
         mesh_node = geo_scene->getMeshNode();
 
+        graph.lines.clear();
+        geo_scene->drawGraph(graph);
+
         if (geo_scene->getSelectedFaces().size() > 0)
         {
             geo_scene->setSelectedFaces(std::vector<int>{});
@@ -1155,7 +1177,7 @@ void TestPanel_3D::SetViewStyle(s32 vtype)
         //std::cout << "edit\n";
         bShowGeometry = true;
 
-        geo_scene->buildSceneGraph(false, true, this->bDynamicLight, false);
+        geo_scene->buildSceneGraph(false, true, this->lighting_type, false);
 
         mesh_node = geo_scene->getMeshNode();
 
@@ -1199,7 +1221,7 @@ void TestPanel_3D::SetViewStyle(s32 vtype)
         }
         //
 
-        geo_scene->buildSceneGraph(true, false, this->bDynamicLight, false);
+        geo_scene->buildSceneGraph(true, false, this->lighting_type, false);
         mesh_node = geo_scene->getMeshNode();
 
         bShowGeometry = true;
@@ -1352,6 +1374,13 @@ void TestPanel_3D::render()
             driver->draw3DLine(v + core::vector3df(len, 0, 0), v - core::vector3df(len, 0, 0), video::SColor(255, 96, 128, 96));
             driver->draw3DLine(v + core::vector3df(0, len, 0), v - core::vector3df(0, len, 0), video::SColor(255, 96, 128, 96));
             driver->draw3DLine(v + core::vector3df(0, 0, len), v - core::vector3df(0, 0, len), video::SColor(255, 96, 128, 96));
+        }
+    }
+    else if (view_style == PANEL3D_VIEW_TRIANGLES)
+    {
+        for (core::line3df aline : graph.lines)
+        {
+            driver->draw3DLine(aline.start, aline.end, video::SColor(255, 255, 0, 255));
         }
     }
 

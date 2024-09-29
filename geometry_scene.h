@@ -9,6 +9,7 @@
 #include "BufferManager.h"
 #include "reflected_nodes.h"
 #include "material_groups.h"
+#include "NodeClassesTool.h"
 
 void print_geometry_ops_timers();
 void reset_geometry_ops_timers();
@@ -162,7 +163,7 @@ public:
     bool DynamicLightEnabled() { return b_dynamic_light; }
 
     //===============Reflected Scene Node Stuff
-    void buildSceneGraph(bool finalMesh, bool addObjects, bool addLights, bool finalscene = false);
+    void buildSceneGraph(bool finalMesh, bool addObjects, int light_mode, bool finalscene = false);
     void rebuildSceneGraph();
 
     void addSceneLight(core::vector3df pos);
@@ -173,8 +174,8 @@ public:
     Reflected_SceneNode* getSelectedSceneNode(int i) {return getSceneNodes()[getSelectedNodes()[i]];}
     void deleteSelectedNodes();
 
-    reflect::TypeDescriptor_Struct* getChooseNodeType();
-    void set_choose_reflected_node_base(ListReflectedNodes_Base* base) {choose_reflected_node_base=base;}
+    reflect::TypeDescriptor_Struct* getSelectedNodeClass();
+    void set_node_classes_base(Node_Classes_Base* base) {node_classes_base=base;}
     void addSceneSelectedSceneNodeType(core::vector3df pos);
 
     int selected_brush_vertex_editing;
@@ -206,7 +207,7 @@ private:
 
     TexturePicker_Base* texture_picker_base=NULL;
     Material_Groups_Base* material_groups_base=NULL;
-    ListReflectedNodes_Base* choose_reflected_node_base=NULL;
+    Node_Classes_Base* node_classes_base=NULL;
     Lightmap_Manager* lightmap_manager = NULL;
 
     scene::CMeshSceneNode* my_MeshNode=NULL;

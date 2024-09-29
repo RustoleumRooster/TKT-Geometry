@@ -341,6 +341,16 @@ public:
     REFLECT2()
 };
 
+class Reflected_PointNode : public Reflected_Sprite_SceneNode
+{
+public:
+    Reflected_PointNode(ISceneManager* smgr, int id, const core::vector3df& pos);
+
+    virtual void addSelfToScene(ISceneManager* smgr) {}
+
+    REFLECT2()
+};
+
 
 class Reflected_TestNode : public Reflected_Sprite_SceneNode
 {

@@ -799,6 +799,14 @@ int Reflected_SceneNode_Factory::getTypeNum(reflect::TypeDescriptor_Struct* td)
     return 0;
 }
 
+Reflected_PointNode::Reflected_PointNode(ISceneManager* smgr, int id, const core::vector3df& pos) :
+    Reflected_Sprite_SceneNode(smgr, id, pos)
+{
+    m_texture = device->getVideoDriver()->getTexture("triangle_symbol.png");
+    Buffer->Material.setTexture(0, m_texture);
+
+}
+
 REFLECT_STRUCT_BEGIN(reflect::vector2)
     REFLECT_STRUCT_MEMBER(X)
     REFLECT_STRUCT_MEMBER(Y)
@@ -838,5 +846,10 @@ REFLECT_STRUCT2_BEGIN(Reflected_TestNode)
     REFLECT_STRUCT2_MEMBER(my_vec)
     REFLECT_STRUCT2_MEMBER(vec2)
     REFLECT_STRUCT2_MEMBER(color)
+REFLECT_STRUCT2_END()
+
+REFLECT_STRUCT2_BEGIN(Reflected_PointNode)
+    ALIAS("Point Node")
+    INHERIT_FROM(Reflected_Sprite_SceneNode)
 REFLECT_STRUCT2_END()
 

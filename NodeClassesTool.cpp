@@ -9,6 +9,7 @@
 #include "edit_env.h"
 #include "edit_classes.h"
 #include <sstream>
+#include "geometry_scene.h"
 
 using namespace irr;
 
@@ -24,7 +25,6 @@ REFLECT_CUSTOM_STRUCT_BEGIN(node_class_item)
 REFLECT_STRUCT_END()
 
 DEFINE_TREE_FUNCTIONS(node_class_item)
-
 
 void node_class_item::write_attributes(reflect::Member* m_struct)
 {
@@ -266,6 +266,8 @@ void Node_Classes_Base::initialize(std::wstring name_, int my_id, gui::IGUIEnvir
 {
 	tool_base::initialize(name_, my_id, env_, g_scene_, panel_);
 	m_typeDescriptor = (reflect::TypeDescriptor_Struct*)reflect::TypeResolver<node_class_item>::get();
+
+	g_scene->set_node_classes_base(this);
 
 	build_struct();
 }

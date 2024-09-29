@@ -97,6 +97,8 @@ public:
 
     std::string getStaticString();
 
+    reflect::TypeDescriptor_Struct* getSelectedTypeDescriptor() { return selected_type; }
+
     void select(int sel);
 
     virtual void* getObj() {

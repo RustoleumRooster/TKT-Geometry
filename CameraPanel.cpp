@@ -62,38 +62,37 @@ void CameraQuad::render()
     }
 }
 
-void CameraQuad::SetFullscreen(bool bFullscreen,TestPanel* panel)
+void CameraQuad::SetFullscreen(bool bFullscreen, ViewPanel* panel)
 {
-    int border = 4;
-    int width = AbsoluteRect.getWidth();
-    int height = AbsoluteRect.getHeight();
 
     if(bFullscreen)
     {
-        core::rect<s32> full_rect(core::vector2di(border,border),core::vector2di(width-border,height-border));
+        //vp_FS->hookup(panel);
+        //renderList->add(vp_FS);
+        //renderList->remove(vp_TL);
+        vp_TL->position(AbsoluteRect, 1.0, 1.0, 0);
+        renderList->remove(vp_TR);
+        
+        renderList->remove(vp_BL);
+        renderList->remove(vp_BR);
 
-        //panel_TL->resize(core::position2d<s32>(8,8),core::dimension2d<u32>(900,600));
-
-       // panel_TL->resize(core::vector2di(border,border),core::dimension2du(width-border*2,height-border*2));
-        /*
-        if(panel_BL)
-            panel_BL->setVisible(false);
-        if(panel_TR)
-            panel_TR->setVisible(false);
-        if(panel_BR)
-            panel_BR->setVisible(false);*/
+        vp_TR->position(AbsoluteRect, 0, 0, 0);
+        vp_BL->position(AbsoluteRect, 0, 0, 0);
+        vp_BR->position(AbsoluteRect, 0, 0, 0);
     }
     else
     {
-       // panel_TL->resize(core::vector2di(border,border),core::dimension2d<u32>(width/2-border*1.5,height/2-border*1.5));
+        //vp_FS->disconnect();
+        //renderList->remove(vp_FS);
+        //renderList->add(vp_TL);
+        vp_TL->position(AbsoluteRect, 0.5, 0.5, 0);
+        renderList->add(vp_TR);
+        renderList->add(vp_BL);
+        renderList->add(vp_BR);
 
-        /*
-        if(panel_BL)
-            panel_BL->setVisible(true);
-        if(panel_TR)
-            panel_TR->setVisible(true);https://www.bing.com/maps/traffic?setlang=en-us&FORM=Trafi2&cvid=4e01dde221f5441e98e97c952889ade7&ocid=winp2fp&cp=21.491122%7E-158.028551&lvl=16&incidentid=6569121600010000&incidenttype=2&incidentloc=21.491122%7E-158.028551&detectedloc=21.485883712768555%7E-158.01458740234375&detectedlocacc=323.02288818359375
-        if(panel_BR)
-            panel_BR->setVisible(true);*/
+        vp_TR->position(AbsoluteRect, 0.5, 0.5, 1);
+        vp_BL->position(AbsoluteRect, 0.5, 0.5, 2);
+        vp_BR->position(AbsoluteRect, 0.5, 0.5, 3);
     }
 
     m_bFullscreen = bFullscreen;
@@ -128,6 +127,7 @@ void CameraQuad::initialize(scene::ISceneManager* smgr,geometry_scene* geo_scene
     core::rect<s32> TR_rect = core::rect<s32>(core::position2d<s32>(466, 8), core::dimension2d<u32>(450, 300));
     core::rect<s32> BL_rect = core::rect<s32>(core::position2d<s32>(8, 316), core::dimension2d<u32>(450, 300));
     core::rect<s32> BR_rect = core::rect<s32>(core::position2d<s32>(466, 316), core::dimension2d<u32>(450, 300));
+    core::rect<s32> FS_rect = core::rect<s32>(core::position2d<s32>(0, 0), core::dimension2d<u32>(0, 0));
 
     vp_TL = new ViewPanel(Environment, driver, this, GUI_ID_PANEL_3D, TL_rect);
     vp_TL->resize(core::vector2di(border, border), core::dimension2d<u32>(width / 2 - border * 1.5, height / 2 - border * 1.5));
@@ -141,6 +141,8 @@ void CameraQuad::initialize(scene::ISceneManager* smgr,geometry_scene* geo_scene
     vp_BR = new ViewPanel(Environment, driver, this, 0, BR_rect);
     vp_BR->resize(core::vector2di(width / 2 + border * 0.5, height / 2 + border * 0.5), core::dimension2d<u32>(width / 2 - border * 1.5, height / 2 - border * 1.5));
 
+    //vp_FS = new ViewPanel(Environment, driver, this, 0, FS_rect);
+    //vp_FS->resize(core::vector2di(0, 0), core::dimension2d<u32>(0, 0));
    
 
     vp_TL->hookup(panel_TL);
@@ -157,6 +159,7 @@ void CameraQuad::initialize(scene::ISceneManager* smgr,geometry_scene* geo_scene
     renderList->add(vp_TR);
     renderList->add(vp_BL);
     renderList->add(vp_BR);
+    //renderList->add(vp_FS);
 
     
     test_panel->setAxis(CAMERA_X_AXIS);
@@ -174,12 +177,12 @@ void CameraQuad::resize(core::rect<s32> rect)
     int width = AbsoluteRect.getWidth();
     int height = AbsoluteRect.getHeight();
 
-    vp_TL->resize(core::vector2di(border, border), core::dimension2d<u32>(width / 2 - border * 1.5, height / 2 - border * 1.5));
-    vp_TR->resize(core::vector2di(width / 2 + border * 0.5, border), core::dimension2d<u32>(width / 2 - border * 1.5, height / 2 - border * 1.5));
-    vp_BL->resize(core::vector2di(border, height / 2 + border * 0.5), core::dimension2d<u32>(width / 2 - border * 1.5, height / 2 - border * 1.5));
-    vp_BR->resize(core::vector2di(width / 2 + border * 0.5, height / 2 + border * 0.5), core::dimension2d<u32>(width / 2 - border * 1.5, height / 2 - border * 1.5));
-
-    //SetFullscreen(m_bFullscreen, NULL);
+    //vp_TL->resize(core::vector2di(border, border), core::dimension2d<u32>(width / 2 - border * 1.5, height / 2 - border * 1.5));
+    //vp_TR->resize(core::vector2di(width / 2 + border * 0.5, border), core::dimension2d<u32>(width / 2 - border * 1.5, height / 2 - border * 1.5));
+    //vp_BL->resize(core::vector2di(border, height / 2 + border * 0.5), core::dimension2d<u32>(width / 2 - border * 1.5, height / 2 - border * 1.5));
+    //vp_BR->resize(core::vector2di(width / 2 + border * 0.5, height / 2 + border * 0.5), core::dimension2d<u32>(width / 2 - border * 1.5, height / 2 - border * 1.5));
+    //vp_FS->resize(core::vector2di(border, border), core::dimension2d<u32>(width  - border * 2, height  - border * 2));
+    SetFullscreen(m_bFullscreen, NULL);
 }
 
 void CameraQuad::hookup_aux_panel(TestPanel* pan)
@@ -407,7 +410,7 @@ void TestPanel::Initialize(scene::ISceneManager* smgr_ , geometry_scene* geo_sce
     this->geo_scene=geo_scene_;
 }
 
-void TestPanel::position(const core::recti& myrect, f32 x_split, f32 y_split, int quad)
+void ViewPanel::position(const core::recti& myrect, f32 x_split, f32 y_split, int quad)
 {
 
     //  0   1
@@ -439,11 +442,11 @@ void TestPanel::position(const core::recti& myrect, f32 x_split, f32 y_split, in
     }
     else
     {
-        ypos = width * x_split + (border * 0.5);
+        xpos = width * x_split + (border * 0.5);
         xlen = width * (1.0f - x_split) - (border * 1.5);
     }
 
-   // resize(core::vector2di(xpos, ypos), core::dimension2d<u32>(xlen, ylen)); 
+    resize(core::vector2di(xpos, ypos), core::dimension2d<u32>(xlen, ylen)); 
 }
 
 
@@ -468,10 +471,12 @@ bool TestPanel::IsShowBrushes()
 {
     return bShowBrushes;
 }
+
 bool TestPanel::IsDynamicLight()
 {
-    return bDynamicLight;
+    return lighting_type != LIGHTING_UNLIT;
 }
+
 bool TestPanel::IsShowGeometry()
 {
     return bShowGeometry;
@@ -891,6 +896,11 @@ bool ViewPanel::OnEvent(const SEvent& event)
                 return true;
         }
     }
+    return false;
+   // return IGUIElement::OnEvent(event);
+}
 
-    return IGUIElement::OnEvent(event);
+void ViewPanel::set_fullscreen(bool bFullscreen)
+{
+    ((CameraQuad*)this->getParent())->SetFullscreen(bFullscreen, this);
 }
