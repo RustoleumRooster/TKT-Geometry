@@ -604,25 +604,30 @@ public:
             std::vector<int> indexes;
             for(int i=0;i<th->vertices.size();i++)
             {
-                core::vector3df r = th->vertices[i]-r0;
+                //===============================================
+                //Commented out section creates fungible vertices
+                // 
+                //
+                
+                //core::vector3df r = th->vertices[i]-r0;
 
-                core::vector2df k;
-                k.X = r.dotProduct(v0);
-                k.Y = r.dotProduct(iY);
+                //core::vector2df k;
+                //k.X = r.dotProduct(v0);
+                //k.Y = r.dotProduct(iY);
 
-                f32 theta = k.getAngleTrig();
+                //f32 theta = k.getAngleTrig();
 
-                if(fabs(theta-360.0)<0.001  ||  fabs(theta) < 0.001)
+                //if(fabs(theta-360.0)<0.001  ||  fabs(theta) < 0.001)
                 {
                     ret.vertices.push_back(th->vertices[i]);
                     indexes.push_back(ret.vertices.size()-1);
                     c1++;
                 }
-                else
-                {
-                    indexes.push_back(ret.get_point_or_add( th->vertices[i] ));
-                    c0++;
-                }
+                //else
+                //{
+                //    indexes.push_back(ret.get_point_or_add( th->vertices[i] ));
+                //    c0++;
+                //}
             }
 
             for(const triangle &T : th->triangles)

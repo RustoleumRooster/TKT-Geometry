@@ -71,7 +71,7 @@ public:
     std::vector<TextureMaterial> getMaterialsUsed(){return materials_used;}
 
 protected:
-
+    
     virtual void generate_mesh_buffer(geometry_scene* geo_scene,SMesh*)=0;
     void generate_uvs(geometry_scene* geo_scene);
 
