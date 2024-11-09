@@ -26,9 +26,8 @@ struct TextureMaterial
 {
     struct lightmap_record
     {
-        int face;
-        int face_v0_index;
         rect<u16> block;
+        vector3df bounding_verts[4];
     };
 
     video::ITexture* texture;
@@ -40,6 +39,7 @@ struct TextureMaterial
     int lightmap_size;
 
     std::vector<int> faces;
+    std::vector<lightmap_record> records;
 };
 
 

@@ -60,6 +60,25 @@ bool VulkanApp::run_soft_light(geometry_scene* geo_scene) {
 	return true;
 }
 
+
+bool VulkanApp::run_multipass_light(geometry_scene* geo_scene) {
+
+	initVulkan();
+
+	system_multipass_light = new System_Light_Multipass(m_device, uniformBuffers);
+	system_multipass_light->loadModel(&geo_scene->final_meshnode_interface);
+	system_multipass_light->loadLights(geo_scene);
+	system_multipass_light->initialize_step2(m_DescriptorPool);
+	system_multipass_light->executeComputeShader();
+	vkDeviceWaitIdle(m_device->getDevice());
+
+	system_multipass_light->writeDrawLines(geo_scene->special_graph);
+
+	cleanup();
+
+	return true;
+}
+
 bool VulkanApp::run_amb_occlusion(geometry_scene* geo_scene)
 {
 	initVulkan();
@@ -90,7 +109,7 @@ bool VulkanApp::run_amb_occlusion(geometry_scene* geo_scene)
 	 poolSizes[1].descriptorCount = 5;
 
 	 poolSizes[2].type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-	 poolSizes[2].descriptorCount = 1;
+	 poolSizes[2].descriptorCount = 2;
 
 	 m_DescriptorPool = new MyDescriptorPool(m_device, 6, VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT, poolSizes);
  }

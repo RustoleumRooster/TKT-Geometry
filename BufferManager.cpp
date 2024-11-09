@@ -83,6 +83,18 @@ void MeshNode_Interface_Final::refresh_material_groups(geometry_scene* geo_scene
 
     lightmaps_divideMaterialGroups(geo_scene, materials_used);
 
+    for (int i = 0; i < materials_used.size(); i++)
+    {
+        materials_used[i].records.resize(materials_used[i].faces.size());
+
+        for (int j = 0; j < materials_used[i].records.size(); j++)
+        {
+            int f_i = materials_used[i].faces[j];
+
+            geo_scene->get_total_geometry()->faces[f_i].get3DBoundingQuad(&materials_used[i].records[j].bounding_verts[0]);
+            
+        }
+    }
     
     /*
     for (int i = 0; i < materials_used.size(); i++)

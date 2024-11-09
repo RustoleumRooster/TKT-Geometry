@@ -384,7 +384,8 @@ void initialize_block(geometry_scene* geo_scene, int f_i, back_type ret, int red
 				b.width = reduce_dimension_base2(f->bbox2d.getWidth(), reduce);
 				b.height = reduce_dimension_base2(f->bbox2d.getHeight(), reduce);
 
-				mapper.init(&geo_scene->get_total_geometry()->faces[f_i], 1,b.width,b.height);
+				//mapper.init(&geo_scene->get_total_geometry()->faces[f_i], 1,b.width,b.height);
+				mapper.init(&geo_scene->get_total_geometry()->faces[f_i], 0,b.width,b.height);
 
 				map_uvs(geo_scene, &geo_scene->edit_meshnode_interface, vector<int>{ f_i }, mapper, MAP_UVS_LIGHTMAP);
 

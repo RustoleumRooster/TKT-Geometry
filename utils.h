@@ -85,6 +85,11 @@ struct Face_Info_Struct
     REFLECT()
 };
 
+struct bounding_quad
+{
+    core::vector3df verts[4];
+};
+
 struct LightMaps_Info_Struct
 {
     u16 size;
@@ -95,6 +100,7 @@ struct LightMaps_Info_Struct
     //not reflected
     std::vector<u16> first_triangle;
     std::vector<u16> n_triangles;
+    std::vector<bounding_quad> quads;
 
     REFLECT()
 };

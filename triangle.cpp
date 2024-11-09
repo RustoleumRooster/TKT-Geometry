@@ -164,9 +164,10 @@ std::vector<poly_edge> get_all_connections2(const polyfold& pf, int vert)
 
     std::vector<int> loop_nos = pf.get_vert_loop_no(0,vert);
 
-    if(loop_nos.size() == 1)
-        return get_all_connections(pf,loop_nos[0],vert);
-
+    if (loop_nos.size() == 1)
+    {
+        return get_all_connections(pf, loop_nos[0], vert);
+    }
     else if(loop_nos.size() >1)
     {
         std::vector<poly_edge>* links = new std::vector<poly_edge>[loop_nos.size()];

@@ -5,6 +5,7 @@ C:/VulkanSDK/1.3.268.0/Bin/glslc.exe shader_lm_edges.comp --target-env=vulkan1.3
 C:/VulkanSDK/1.3.268.0/Bin/glslc.exe shader_point_light.comp --target-env=vulkan1.3  --target-spv=spv1.4 -o ./shaders/pointlight.spv
 C:/VulkanSDK/1.3.268.0/Bin/glslc.exe shader_test_mc.comp --target-env=vulkan1.3  --target-spv=spv1.4 -o ./shaders/testmc.spv
 C:/VulkanSDK/1.3.268.0/Bin/glslc.exe shader_soft_light.comp --target-env=vulkan1.3  --target-spv=spv1.4 -o ./shaders/softlight.spv
+C:/VulkanSDK/1.3.268.0/Bin/glslc.exe shader_multipass_light.comp --target-env=vulkan1.3  --target-spv=spv1.4 -o ./shaders/multipasslight.spv
 
 
 

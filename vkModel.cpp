@@ -27,6 +27,7 @@ void writeLightmapsInfo(const vector<TextureMaterial>& materials_used, std::vect
         dest[i].faces.resize(n_faces);
         dest[i].first_triangle.resize(n_faces);
         dest[i].n_triangles.resize(n_faces);
+        dest[i].quads.resize(n_faces);
 
         dest[i].size = materials_used[i].lightmap_size;
 
@@ -40,8 +41,12 @@ void writeLightmapsInfo(const vector<TextureMaterial>& materials_used, std::vect
             dest[i].first_triangle[j] = chunk.begin_i / 3;
             dest[i].n_triangles[j] = (chunk.end_i - chunk.begin_i) / 3;
             
-            cout << " " << j << ", zero = " << dest[i].first_triangle[j] << ", len is " << dest[i].n_triangles[j] << "\n";
+            //cout << " " << j << ", zero = " << dest[i].first_triangle[j] << ", len is " << dest[i].n_triangles[j] << "\n";
 
+            dest[i].quads[j].verts[0] = materials_used[i].records[j].bounding_verts[0];
+            dest[i].quads[j].verts[1] = materials_used[i].records[j].bounding_verts[1];
+            dest[i].quads[j].verts[2] = materials_used[i].records[j].bounding_verts[2];
+            dest[i].quads[j].verts[3] = materials_used[i].records[j].bounding_verts[3];
         }
     }
     

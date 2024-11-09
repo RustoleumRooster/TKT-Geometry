@@ -32,6 +32,7 @@
 #include "vkCompute_PointLight.h"
 #include "vkCompute_TestMC.h"
 #include "vkCompute_SoftLight.h"
+#include "vkCompute_Light_Multipass.h"
 
 
 class MeshNode_Interface_Final;
@@ -64,6 +65,7 @@ public:
 
 	bool run_point_light(geometry_scene* geo_scene);
 	bool run_soft_light(geometry_scene* geo_scene);
+	bool run_multipass_light(geometry_scene* geo_scene);
 	bool run_test_mc(geometry_scene* geo_scene);
 	bool run_amb_occlusion(geometry_scene* geo_scene);
 
@@ -126,6 +128,13 @@ private:
 			system_soft_light = NULL;
 		}
 
+		if (system_multipass_light)
+		{
+			system_multipass_light->cleanup();
+			delete system_multipass_light;
+			system_multipass_light = NULL;
+		}
+
 		if (system_test_mc)
 		{
 			system_test_mc->cleanup();
@@ -161,6 +170,7 @@ private:
 	System_Test_MC* system_test_mc = NULL;
 	System_Amb_Occlusion* system_amb_occlusion = NULL;
 	System_Soft_Light* system_soft_light = NULL;
+	System_Light_Multipass* system_multipass_light = NULL;
 
 	std::vector<VkBuffer> uniformBuffers;
 	std::vector<VkDeviceMemory> uniformBuffersMemory;
