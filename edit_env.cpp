@@ -288,7 +288,8 @@ void OnMenuItemSelected(IGUIContextMenu* menu)
     case GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_VIEW_RENDER:
     case GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_VIEW_RENDER_FINAL:
     case GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_VIEW_UNLIT:
-	case GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_VIEW_DYNAMIC_LIGHT:
+	case GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_VIEW_LIGHTMAP:
+	case GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_VIEW_LIGHT_ONLY:
     case GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_SET_TEXTURE:
     case GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_ADJUST_TEXTURE:
     case GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_CHOOSE_TEXTURE:
@@ -455,7 +456,16 @@ bool MyEventReceiver::OnEvent(const SEvent& event)
                         //std::cout<<"Clip Active Brush\n";
                         break;
                     case GUI_ID_BUTTON_REBUILD:
+                    {
                         do_rebuild();
+                        
+                        VulkanApp vk;
+                        if (System_Point_Light::verify_inputs(g_scene))
+                        {
+                            //vk.run_point_light(g_scene);
+                            g_scene->getLightmapManager()->loadLightmapTextures(g_scene, g_scene->final_meshnode_interface.getMaterialsUsed());
+                        }
+                    }
                         //std::cout<<"Rebuild\n";
                         break;
                     case GUI_ID_BUTTON_SAVE:
@@ -474,11 +484,17 @@ bool MyEventReceiver::OnEvent(const SEvent& event)
                         ListReflectedNodes_Tool::show();
                         break;
                     case GUI_ID_BUTTON_LIGHTS:
-
+                    {
                         VulkanApp vk;
-                        vk.run_point_light(g_scene);
-                        g_scene->getLightmapManager()->loadLightmapTextures(g_scene, g_scene->final_meshnode_interface.getMaterialsUsed());
-
+                        if (System_Soft_Light::verify_inputs(g_scene))
+                        {
+                            //vk.run_point_light(g_scene);
+                            //vk.run_soft_light(g_scene);
+                            vk.run_multipass_light(g_scene);
+                            //vk.run_amb_occlusion(g_scene);
+                            g_scene->getLightmapManager()->loadLightmapTextures(g_scene, g_scene->final_meshnode_interface.getMaterialsUsed());
+                        }
+                    }
                         break;
                 }
             }
