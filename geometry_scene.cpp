@@ -410,10 +410,15 @@ core::vector3df geometry_scene::getSelectedVertex()
 
     for(int p_i :this->selected_brushes)
     {
-        if(this->selected_brush_vertex_editing==p_i && this->elements[p_i].selected_vertex< this->elements[p_i].brush.vertices.size())
+        if(this->selected_brush_vertex_editing == p_i && this->elements[p_i].control_vertex_selected == false && this->elements[p_i].selected_vertex < this->elements[p_i].brush.vertices.size())
         {
             bSelectedVertex=true;
             ret=this->elements[p_i].brush.vertices[ this->elements[p_i].selected_vertex].V;
+        }
+        else if(this->selected_brush_vertex_editing == p_i && this->elements[p_i].control_vertex_selected == true && this->elements[p_i].selected_vertex < this->elements[p_i].brush.control_vertices.size())
+        {
+            bSelectedVertex = true;
+            ret = this->elements[p_i].brush.control_vertices[this->elements[p_i].selected_vertex].V;
         }
     }
     if(!bSelectedVertex && this->elements.size()>0)

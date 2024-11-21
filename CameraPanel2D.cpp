@@ -606,8 +606,21 @@ void TestPanel_2D::right_click(core::vector2di pos)
                     {
                         geo_scene->selected_brush_vertex_editing =p_i;
                         geo_scene->elements[p_i].selected_vertex=v_i;
+                        geo_scene->elements[p_i].control_vertex_selected = false;
                         bVertexClick=true;
                     }
+                }
+            }
+            for (int v_i = 0; v_i < geo_scene->elements[p_i].brush.control_vertices.size(); v_i++)
+            {
+                core::vector2di coords;
+                GetScreenCoords(geo_scene->elements[p_i].brush.control_vertices[v_i].V, coords);
+                if (core::vector2di(clickx, clicky).getDistanceFrom(coords) < 4)
+                {
+                    geo_scene->selected_brush_vertex_editing = p_i;
+                    geo_scene->elements[p_i].selected_vertex = v_i;
+                    geo_scene->elements[p_i].control_vertex_selected = true;
+                    bVertexClick = true;
                 }
             }
         }
@@ -775,7 +788,7 @@ void TestPanel_2D::render()
                     GetScreenCoords(geo->brush.vertices[i].V,coords);
                     coords.X-=4;
                     coords.Y-=4;
-                    if(geo_scene->selected_brush_vertex_editing == e_i && geo->selected_vertex == i)
+                    if(geo_scene->selected_brush_vertex_editing == e_i && geo->control_vertex_selected == false && geo->selected_vertex == i)
                         {
                         if(geo->type==GEO_ADD)
                             driver->draw2DImage(med_circle_tex_add_selected,coords,core::rect<int>(0,0,8,8),0,video::SColor(255,255,255,255),true);
@@ -792,6 +805,30 @@ void TestPanel_2D::render()
                             driver->draw2DImage(small_circle_tex_sub_selected,coords,core::rect<int>(0,0,8,8),0,video::SColor(255,255,255,255),true);
                          else if(geo->type==GEO_RED)
                             driver->draw2DImage(small_circle_tex_red_selected,coords,core::rect<int>(0,0,8,8),0,video::SColor(255,255,255,255),true);
+                        }
+                    }
+                    for (int i = 0; i < geo->brush.control_vertices.size(); i++)
+                    {
+                        GetScreenCoords(geo->brush.control_vertices[i].V, coords);
+                        coords.X -= 4;
+                        coords.Y -= 4;
+                        if (geo_scene->selected_brush_vertex_editing == e_i && geo->control_vertex_selected == true && geo->selected_vertex == i)
+                        {
+                            if (geo->type == GEO_ADD)
+                                driver->draw2DImage(med_circle_tex_add_selected, coords, core::rect<int>(0, 0, 8, 8), 0, video::SColor(255, 255, 255, 255), true);
+                            else if (geo->type == GEO_SUBTRACT)
+                                driver->draw2DImage(med_circle_tex_sub_selected, coords, core::rect<int>(0, 0, 8, 8), 0, video::SColor(255, 255, 255, 255), true);
+                            else if (geo->type == GEO_RED)
+                                driver->draw2DImage(med_circle_tex_red_selected, coords, core::rect<int>(0, 0, 8, 8), 0, video::SColor(255, 255, 255, 255), true);
+                        }
+                        else
+                        {
+                            if (geo->type == GEO_ADD)
+                                driver->draw2DImage(small_circle_tex_add_selected, coords, core::rect<int>(0, 0, 8, 8), 0, video::SColor(255, 255, 255, 255), true);
+                            else if (geo->type == GEO_SUBTRACT)
+                                driver->draw2DImage(small_circle_tex_sub_selected, coords, core::rect<int>(0, 0, 8, 8), 0, video::SColor(255, 255, 255, 255), true);
+                            else if (geo->type == GEO_RED)
+                                driver->draw2DImage(small_circle_tex_red_selected, coords, core::rect<int>(0, 0, 8, 8), 0, video::SColor(255, 255, 255, 255), true);
                         }
                     }
                 }

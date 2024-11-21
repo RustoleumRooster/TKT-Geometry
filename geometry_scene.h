@@ -19,6 +19,7 @@ class geo_element
 public:
     int type=0;
     int selected_vertex=0;
+    bool control_vertex_selected = false;
     bool bSelected=false;
 
     polyfold brush;
@@ -247,7 +248,7 @@ void clip_poly7(polyfold& pf, polyfold& pf2, int rule, int base_type, clip_resul
 
 polyfold make_poly_cube(int,int,int);
 polyfold make_poly_plane(int,int);
-polyfold make_cylinder(int height, int radius, int faces);
+polyfold make_cylinder(int height, int radius, int faces, int radius_type);
 polyfold make_sphere(int radius, int faces, int zen_faces, bool simplify);
 polyfold make_cone(int height, int radius, int faces);
 

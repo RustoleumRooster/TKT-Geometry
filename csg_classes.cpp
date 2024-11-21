@@ -69,11 +69,12 @@ void poly_face::get3DBoundingQuad(vector3df* points, int v0_idx) const
 
     v[3] = m_center + m_tangent * bbox2d.LowerRightCorner.X +
         bitan * bbox2d.UpperLeftCorner.Y;
-    
-    points[0] = v[(4 - v0_idx) % 4];
-    points[1] = v[(5 - v0_idx) % 4];
-    points[2] = v[(6 - v0_idx) % 4];
-    points[3] = v[(7 - v0_idx) % 4];
+
+                                    //0 //1 //2 //3 v0_idx
+    points[0] = v[(4 - v0_idx) % 4];//0   3   2   1
+    points[1] = v[(5 - v0_idx) % 4];//1   0   3   2
+    points[2] = v[(6 - v0_idx) % 4];//2   1   0   3
+    points[3] = v[(7 - v0_idx) % 4];//3   2   1   0
 
     /*if (vector3df(v1 - v0).getLength() > vector3df(v3 - v0).getLength())
     {
@@ -162,7 +163,9 @@ void polyfold::calc_tangent(int f_i)
     {
         vector3df bitan = faces[f_i].m_normal.crossProduct(sfg.vec);
         bitan.normalize();
-        vector3df tan = faces[f_i].m_normal.crossProduct(bitan);
+       // vector3df tan = faces[f_i].m_normal.crossProduct(bitan);
+        vector3df tan = bitan.crossProduct(faces[f_i].m_normal);
+
    
        // vector3df bitan = faces[f_i].m_normal.crossProduct(tan);
 
@@ -282,6 +285,10 @@ void polyfold::rotate(core::matrix4 MAT)
     {
         MAT.rotateVect(vert.V);
     }
+    for (poly_vert& vert : control_vertices)
+    {
+        MAT.rotateVect(vert.V);
+    }
     for(poly_face & face: faces)
     {
         MAT.rotateVect(face.m_normal);
@@ -311,6 +318,10 @@ void polyfold::rotate(core::matrix4 MAT)
 void polyfold::translate(core::matrix4 MAT)
 {
     for(poly_vert & vert: vertices)
+    {
+        MAT.translateVect(vert.V);
+    }
+    for (poly_vert& vert : control_vertices)
     {
         MAT.translateVect(vert.V);
     }
@@ -1384,10 +1395,13 @@ REFLECT_STRUCT_BEGIN(poly_face)
     REFLECT_STRUCT_MEMBER(uv_origin)
     REFLECT_STRUCT_MEMBER(bFlippedNormal)
     REFLECT_STRUCT_MEMBER(uv_mat)
+    REFLECT_STRUCT_MEMBER(row)
+    REFLECT_STRUCT_MEMBER(column)
 REFLECT_STRUCT_END()
 
 REFLECT_STRUCT_BEGIN(polyfold)
     REFLECT_STRUCT_MEMBER(vertices)
+    REFLECT_STRUCT_MEMBER(control_vertices)
     REFLECT_STRUCT_MEMBER(faces)
     REFLECT_STRUCT_MEMBER(surface_groups)
     REFLECT_STRUCT_MEMBER(topology)

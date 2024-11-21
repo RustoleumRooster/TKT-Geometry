@@ -3,7 +3,7 @@
 #include "Reflection.h"
 #include "edit_classes.h"
 #include "reflect_custom_types.h"
-#include "uv_tool.h"
+#include "lightmaps_tool.h"
 
 class Geo_Settings_Base;
 class geometry_scene;
@@ -246,7 +246,7 @@ private:
 
     int selection = -1;
 
-    UV_Editor_Panel* uv_edit = NULL;
+    LM_Viewer_Panel* uv_edit = NULL;
     CameraQuad* cameraQuad = NULL;
 
     mb_tool_options_struct mb_options;

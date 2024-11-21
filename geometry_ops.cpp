@@ -527,7 +527,7 @@ void geometry_scene::rebuild_geometry(bool only_build_new_geometry)
                     this->elements[i].brush.make_convex();
                     this->elements[i].geometry = this->elements[i].brush;
 
-                    clip_poly_single(this->elements[i].geometry, combo, GEO_ADD, this->base_type, results, nograph);
+                    clip_poly_accelerated_single(this->elements[i].geometry, combo, GEO_ADD, this->base_type, results, nograph);
                 }
                 else //Neither Convex or Concave, ie plane geometry
                 {
@@ -633,6 +633,13 @@ void geometry_scene::intersect_active_brush()
 
 void geometry_scene::clip_active_brush()
 {
+    if (this->elements[0].brush.topology != TOP_CONVEX &&
+        this->elements[0].brush.topology != TOP_CONCAVE)
+    {
+        clip_active_brush_plane_geometry();
+        return;
+    }
+
     polyfold cube = this->elements[0].brush;
     cube.make_concave();
 
@@ -674,7 +681,7 @@ void geometry_scene::clip_active_brush()
 }
 
 void geometry_scene::clip_active_brush_plane_geometry()
-{/*
+{
     polyfold cube = this->elements[0].brush;
 
     clip_results results;
@@ -684,6 +691,7 @@ void geometry_scene::clip_active_brush_plane_geometry()
     polyfold pf2;
     LineHolder nograph;
 
+    std::vector<polyfold*> polies;
     int num = 0;
     for (int j = 1; j < this->elements.size(); j++)
     {
@@ -691,12 +699,13 @@ void geometry_scene::clip_active_brush_plane_geometry()
             (this->elements[j].type == GEO_SUBTRACT || this->elements[j].type == GEO_ADD) &&
             BoxIntersectsWithBox(cube.bbox, this->elements[j].brush.bbox))
         {
-            add_pfold(this->elements[j].geometry, pf2);
+            polies.push_back(&elements[j].geometry);
             num++;
         }
     }
+    combine_polyfolds(polies, pf2);
 
-    clip_poly_single(cube, pf2, GEO_ADD, base_type, results, nograph);
+    clip_poly_accelerated_single(cube, pf2, GEO_ADD, base_type, results, nograph);
 
-    this->elements[0].brush = cube;*/
+    this->elements[0].brush = cube;
 }

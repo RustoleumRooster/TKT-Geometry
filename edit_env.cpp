@@ -16,7 +16,7 @@
 #include "NodeInstancesTool.h"
 #include "node_properties.h"
 #include "file_open.h"
-#include "uv_tool.h"
+#include "lightmaps_tool.h"
 #include "vtoolbar.h"
 #include "ex_gui_elements.h"
 #include "vulkan_app.h"
@@ -478,7 +478,7 @@ bool MyEventReceiver::OnEvent(const SEvent& event)
                         //Material_Buffers_Tool::show();
                         //Node_Instances_Tool::show();
                         //g_scene->clip_active_brush_plane_geometry();
-                        UV_Editor_Tool::show();
+                        LM_Viewer_Tool::show();
                         break;
                     case GUI_ID_BUTTON_NODES:
                         ListReflectedNodes_Tool::show();
@@ -490,8 +490,8 @@ bool MyEventReceiver::OnEvent(const SEvent& event)
                         {
                             //vk.run_point_light(g_scene);
                             //vk.run_soft_light(g_scene);
-                            vk.run_multipass_light(g_scene);
-                            //vk.run_amb_occlusion(g_scene);
+                            //vk.run_multipass_light(g_scene);
+                            vk.run_amb_occlusion(g_scene);
                             g_scene->getLightmapManager()->loadLightmapTextures(g_scene, g_scene->final_meshnode_interface.getMaterialsUsed());
                         }
                     }

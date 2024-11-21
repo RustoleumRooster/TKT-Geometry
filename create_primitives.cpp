@@ -15,35 +15,30 @@ GeometryFactory::Cone GeometryFactory::cone{256,128,8};
 
 void EditCubeWindow::click_OK()
 {
-   // form->write();
     GeometryFactory::CreateCube(this);
     this->remove();
 }
 
 void EditCylinderWindow::click_OK()
 {
-   // form->write();
     GeometryFactory::CreateCylinder(this);
     this->remove();
 }
 
 void EditSphereWindow::click_OK()
 {
-  //  form->write();
     GeometryFactory::CreateSphere(this);
     this->remove();
 }
 
 void EditPlaneWindow::click_OK()
 {
-  //  form->write();
     GeometryFactory::CreatePlane(this);
     this->remove();
 }
 
 void EditConeWindow::click_OK()
 {
-  //  form->write();
     GeometryFactory::CreateCone(this);
     this->remove();
 }
@@ -74,8 +69,14 @@ void GeometryFactory::CreateCylinder(EditCylinderWindow* win)
     win->write(&cylinder);
 
     core::matrix4 M;
+    
+    g_scene->elements[0].brush = make_cylinder(cylinder.height,cylinder.radius,cylinder.nSides,cylinder.radius_type.value);
+    if (cylinder.align_to_side)
+    {
+        M.setRotationRadians(vector3df(0,PI / cylinder.nSides,0));
+        g_scene->elements[0].brush.rotate(M);
+    }
     M.setTranslation(g_scene->elements[0].brush.vertices[0].V);
-    g_scene->elements[0].brush = make_cylinder(cylinder.height,cylinder.radius,cylinder.nSides);
     g_scene->elements[0].brush.translate(M);
 }
 
@@ -156,6 +157,11 @@ REFLECT_MULTI_STRUCT_BEGIN(GeometryFactory::SphereOptions)
     REFLECT_MULTI_STRUCT_LABEL("dome")
 REFLECT_MULTI_STRUCT_END()
 
+REFLECT_MULTI_STRUCT_BEGIN(GeometryFactory::RadiusOptions)
+    REFLECT_MULTI_STRUCT_LABEL("to edge")
+    REFLECT_MULTI_STRUCT_LABEL("to corner")
+REFLECT_MULTI_STRUCT_END()
+
 REFLECT_STRUCT_BEGIN(GeometryFactory::Cube)
     REFLECT_STRUCT_MEMBER(height)
     REFLECT_STRUCT_MEMBER(width)
@@ -166,6 +172,8 @@ REFLECT_STRUCT_BEGIN(GeometryFactory::Cylinder)
     REFLECT_STRUCT_MEMBER(height)
     REFLECT_STRUCT_MEMBER(radius)
     REFLECT_STRUCT_MEMBER(nSides)
+    REFLECT_STRUCT_MEMBER(radius_type)
+    REFLECT_STRUCT_MEMBER(align_to_side)
 REFLECT_STRUCT_END()
 
 REFLECT_STRUCT_BEGIN(GeometryFactory::Sphere)

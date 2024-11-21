@@ -9,7 +9,7 @@
 #include "node_properties.h"
 #include "material_groups.h"
 #include "BVH.h"
-#include "uv_tool.h"
+#include "lightmaps_tool.h"
 
 extern IrrlichtDevice* device;
 using namespace irr;
@@ -149,7 +149,7 @@ void CameraQuad::initialize(scene::ISceneManager* smgr,geometry_scene* geo_scene
 
     vp_TR->hookup(panel_TR);
 
-    //uv_edit->setBase(uv_editor_base);
+    //uv_edit->setBase(LM_Viewer_base);
     //vp_TR->hookup(uv_edit);
 
     vp_BL->hookup(panel_BL);

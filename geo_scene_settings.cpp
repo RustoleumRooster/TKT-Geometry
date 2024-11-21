@@ -448,7 +448,7 @@ void Material_Buffers_Base::initialize(std::wstring name_, int my_id, gui::IGUIE
 	tool_base::initialize(name_, my_id, env_, g_scene_, panel_);
 	m_typeDescriptor = (reflect::TypeDescriptor_Struct*)reflect::TypeResolver<material_buffers_struct>::get();
 
-	uv_edit = new UV_Editor_Panel(env, device->getVideoDriver(), NULL, NULL, 0, core::recti());
+	uv_edit = new LM_Viewer_Panel(env, device->getVideoDriver(), NULL, NULL, 0, core::recti());
 	uv_edit->Initialize(smgr, g_scene);
 }
 

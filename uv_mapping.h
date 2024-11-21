@@ -5,6 +5,7 @@
 #include "csg_classes.h"
 #include "BufferManager.h"
 #include "geometry_scene.h"
+#include <algorithm>
 
 using namespace irr;
 using namespace core;
@@ -359,7 +360,6 @@ public:
 	const surface_group* sfg = NULL;
 
 	vector3df iY, v0, v1, r0;
-	//f32 m_height, m_radius;
 
 	u16 m_uv_width = 0;
 	u16 m_uv_height = 0;
@@ -380,27 +380,42 @@ public:
 
 	polyfold* m_pf;
 
+	bool I_AM_A_COLUMN = false;
+
 	int findRowPos(u16 row_no)
 	{
-		/*for (int i = 0; i < rows.size(); i++)
+		for (int i = 0; i < rows.size(); i++)
 		{
 			if (rows[i] == row_no)
 				return i;
 		}
-		return -1;*/
+		return -1;
 		return row_no;
 	};
 
+	f32 calc_ypos_sphere(vector3df r)
+	{
+		vector3df rr = r - sfg->point;
+		rr.normalize();
+		return acos(rr.dotProduct(sfg->vec));
+	}
 
-	void init(const surface_group* sg, polyfold* pf, const vector<int> surface, int sfg_i, u16 pixel_width, u16 pixel_height)
+	f32 calc_ypos_column(vector3df r)
+	{
+		vector3df rr = r - sfg->point;
+		return rr.dotProduct(sfg->vec);
+	}
+
+
+	void init(const surface_group* sg, polyfold* pf, const vector<int> surface, int sfg_i, u16 pixel_width, u16 pixel_height, bool is_column)
 	{
 		r0 = sg->point;
 		v0 = sg->vec;
 		v1 = sg->vec1;
 
+		I_AM_A_COLUMN = is_column;
+
 		sfg = sg;
-		//m_height = sg->height;
-		//m_radius = sg->radius;
 
 		iY = v0.crossProduct(v1);
 		iY.normalize();
@@ -424,17 +439,18 @@ public:
 				//n_rows++;
 			}
 		}
-		//n_rows = rows.size();
-		std::cout << " ROWS are " << first_row << " to " << last_row << "\n";
+		//std::cout << " ROWS are " << first_row << " to " << last_row << "\n";
 		rows.resize(1 + last_row - first_row);
 		n_rows = rows.size();
-		for (int i=0; i < rows.size(); i++)
+		for (int i=0; i < n_rows; i++)
 		{
 			rows[i] = first_row + i;
-			std::cout << "ROW = " << rows[i] << "\n";
+			//std::cout << "ROW " << i <<" = " << rows[i] << "\n";
 		}
+		vector<vector<u16>> row_columns;
 
-		n_columns.resize(n_rows);
+		row_columns.resize(n_rows);
+		n_columns.assign(n_rows,0);
 		column_width.resize(n_rows);
 		row_theta_upper.assign(n_rows, PI);
 		row_theta_lower.assign(n_rows, 0);
@@ -442,36 +458,62 @@ public:
 		for (int b_i : surface)
 		{
 			int row_pos = findRowPos(pf->faces[b_i].row);
+			row_columns[row_pos].push_back(b_i);
+
 			n_columns[row_pos] += 1;
-			
+
 			for (int v_i : pf->faces[b_i].vertices)
 			{
-				vector3df r = pf->vertices[v_i].V - sfg->point;
-				r.normalize();
+				//vector3df r = pf->vertices[v_i].V - sfg->point;
+				//r.normalize();
+				//f32 theta = acos(r.dotProduct(sfg->vec));
 
-				f32 theta = acos(r.dotProduct(sfg->vec));
+				//f32 theta = r.dotProduct(sfg->vec);
+				f32 theta;
+				if (I_AM_A_COLUMN)
+					theta = calc_ypos_column(pf->vertices[v_i].V);
+				else
+					theta = calc_ypos_sphere(pf->vertices[v_i].V);
+
 				row_theta_upper[row_pos] = fmin(theta, row_theta_upper[row_pos]);
 				row_theta_lower[row_pos] = fmax(theta, row_theta_lower[row_pos]);
-				//std::cout << row_pos << ": " << row_theta_upper[row_pos] << " to " << row_theta_lower[row_pos] << "\n";
+				//std::cout << row_pos << theta << "\n"; // ": " << row_theta_upper[row_pos] << " to " << row_theta_lower[row_pos] << "\n";
 			}
-
-			
 		}
 
+		for (int i = 0; i < row_columns.size(); i++)
+		{
+			for (int j = 0; j < row_columns[i].size(); j++)
+			{
+				u16 f = row_columns[i][j];
+			}
+
+			std::sort(row_columns[i].begin(), row_columns[i].end(),
+				[&](u16& a, u16& b)
+				{
+					return (pf->faces[a].column < pf->faces[b].column);
+				});
+
+			for (int j = 0; j < row_columns[i].size(); j++)
+			{
+				u16 f = row_columns[i][j];
+				pf->faces[f].column = j;
+			}
+		}
+		
 		for (int i = 0; i < n_rows; i++)
 		{
-			column_width[i] = (pixel_width - 2 - (n_columns[i] - 1));
+			column_width[i] = (pixel_width - 3 - (n_columns[i] - 1));
 			std::cout << row_theta_upper[i] << " - " << row_theta_lower[i] << "\n";
 		}
 
-		//column_width = ((pixel_height - 3) / n_columns) - 1;
 		column_height = ((pixel_height - 3) / n_rows) - 1;
 
 		m_uv_width = pixel_width;
 		m_uv_height = pixel_height;
 
-		//column_width = ((pixel_width - 3) / n_columns) - 1;
-		//column_height = pixel_height - 3;
+		//cout << "pixel_width: "<< pixel_width << "\n";
+		//cout << "pixel_height: " << pixel_height << "\n";
 
 		m_pf = pf;
 	}
@@ -483,14 +525,10 @@ public:
 
 		int row_pos = findRowPos(f.row);
 
-		//std::cout << f.row<<" / "<<f.column << "\n";
-		//int col_width = column_width[row_pos];
-
 		u16 x_offset = 1 + f.column;
-		//u16 x0 = 1 + (f.column * (col_width + 1));
 		u16 y0 = 1 + (row_pos * (column_height + 1));
 
-		std::cout << f.row<< " " <<f.column << ":  " << "\n";
+		//std::cout << f.row<< " " <<f.column << ":  " << "\n";
 
 		int recalc = -1;
 
@@ -501,7 +539,14 @@ public:
 			core::vector3df rr = sfg->vec.crossProduct(r);
 			rr.normalize();
 
-			f32 alpha = acos(r.dotProduct(sfg->vec));
+			//f32 alpha = acos(r.dotProduct(sfg->vec));
+			//f32 alpha = vector3df(V[i]->Pos - sfg->point).dotProduct(sfg->vec);
+			f32 alpha;
+
+			if (I_AM_A_COLUMN)
+				alpha = calc_ypos_column(V[i]->Pos);
+			else
+				alpha = calc_ypos_sphere(V[i]->Pos);
 
 			vector2df k;
 
@@ -526,17 +571,13 @@ public:
 			{
 				recalc = i;
 			}
-			//x_offset = 0;
 			f32 xpos = x_offset + (az / 360.0f) * column_width[row_pos];
-			std::cout << " " << x_offset + (az / 360.0f) * column_width[row_pos] << "\n";
+			//f32 ypos = y0 + column_height - (alpha - row_theta_lower[row_pos]) / (row_theta_upper[row_pos] - row_theta_lower[row_pos]) * column_height;
 			f32 ypos = y0 + (alpha - row_theta_lower[row_pos]) / (row_theta_upper[row_pos] - row_theta_lower[row_pos]) * column_height;
+			//cout << " " << xpos << "," << ypos << "\n";
 
-			//vector2df uv = vector2df(az / 360.0f, alpha / 3.1459f);
-
-			V[i]->TCoords2 = vector2df(xpos,ypos);
-
-			//m_min = n > 0 ? vector2df(fmin(m_min.X, uv.X), fmin(m_min.Y, uv.Y)) : uv;
-			//m_max = n > 0 ? vector2df(fmax(m_max.X, uv.X), fmax(m_max.Y, uv.Y)) : uv;
+			V[i]->TCoords2 = vector2df(xpos, ypos);
+			//V[i]->TCoords2 = vector2df(xpos,ypos);
 
 			n++;
 		}

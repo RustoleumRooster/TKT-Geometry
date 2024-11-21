@@ -148,9 +148,10 @@ struct texture_block2
 struct lm_block
 {
 	std::vector<int> faces;
-	u32 width;
-	u32 height;
+	u32 width = 128;
+	u32 height = 128;
 	bool bFlipped = false;
+	int bounding_verts_index0 = 0;
 };
 
 template<typename out_Type>
@@ -227,6 +228,7 @@ bool lightmaps_fill(MeshNode_Interface* mesh_node, std::vector<lm_block>::iterat
 		}
 		
 		ret.lightmap_size = new_block.dimension.Width;
+		//ret.
 	}
 
 	*out = ret;
@@ -345,11 +347,13 @@ void initialize_block(geometry_scene* geo_scene, int f_i, back_type ret, int red
 	matrix4 m_translate;
 	matrix4 m_scale;
 
+	vector<int> surface;
+
 	if (pf->faces[f_i].loops.size() > 0 && pf->faces[f_i].temp_b == false)
 	{
 		lm_block b;
 
-		vector<int> surface;
+		
 		surface_group& sfg = *pf->getFaceSurfaceGroup(f_i);
 		int sfg_i = pf->getFaceSurfaceGroupNo(f_i);
 
@@ -370,6 +374,40 @@ void initialize_block(geometry_scene* geo_scene, int f_i, back_type ret, int red
 			pf->faces[f_j].temp_b = true;
 		}
 
+		/*
+		surface = vector<int>{ f_i };
+		for (int f_j : surface)
+		{
+			pf->faces[f_j].temp_b = true;
+		}
+
+		{
+			map_face_to_uvs2 mapper;
+
+			pf->calc_tangent(f_i);
+
+			poly_face* f = &pf->faces[f_i];
+			b.width = reduce_dimension_base2(f->bbox2d.getWidth(), reduce);
+			b.height = reduce_dimension_base2(f->bbox2d.getHeight(), reduce);
+			b.bounding_verts_index0 = 1;
+
+			rectf new_box;
+			new_box.UpperLeftCorner.X = f->bbox2d.LowerRightCorner.Y;
+			new_box.UpperLeftCorner.Y = f->bbox2d.UpperLeftCorner.X;
+			new_box.LowerRightCorner.X = f->bbox2d.UpperLeftCorner.Y;
+			new_box.LowerRightCorner.Y = f->bbox2d.LowerRightCorner.X;
+
+			f->bbox2d = new_box;
+			f->m_tangent = f->m_normal.crossProduct(f->m_tangent);
+
+			//mapper.init(&geo_scene->get_total_geometry()->faces[f_i], 1,b.width,b.height);
+			mapper.init(&geo_scene->get_total_geometry()->faces[f_i], 0, b.width, b.height);
+
+			map_uvs(geo_scene, &geo_scene->edit_meshnode_interface, vector<int>{ f_i }, mapper, MAP_UVS_LIGHTMAP);
+
+			b.faces = vector<int>{ f_i };
+		}*/
+
 		switch (sfg.type)
 		{
 			case SURFACE_GROUP_STANDARD:
@@ -383,7 +421,17 @@ void initialize_block(geometry_scene* geo_scene, int f_i, back_type ret, int red
 				poly_face* f = &pf->faces[f_i];
 				b.width = reduce_dimension_base2(f->bbox2d.getWidth(), reduce);
 				b.height = reduce_dimension_base2(f->bbox2d.getHeight(), reduce);
+				b.bounding_verts_index0 = 1;
+				
+				rectf new_box;
+				new_box.UpperLeftCorner.X = f->bbox2d.LowerRightCorner.Y;
+				new_box.UpperLeftCorner.Y = f->bbox2d.UpperLeftCorner.X;
+				new_box.LowerRightCorner.X = f->bbox2d.UpperLeftCorner.Y;
+				new_box.LowerRightCorner.Y = f->bbox2d.LowerRightCorner.X;
 
+				f->bbox2d = new_box;
+				f->m_tangent = f->m_normal.crossProduct(f->m_tangent);
+				
 				//mapper.init(&geo_scene->get_total_geometry()->faces[f_i], 1,b.width,b.height);
 				mapper.init(&geo_scene->get_total_geometry()->faces[f_i], 0,b.width,b.height);
 
@@ -401,24 +449,38 @@ void initialize_block(geometry_scene* geo_scene, int f_i, back_type ret, int red
 				b.height = reduce_dimension_base2(sfg.height, reduce);
 				b.faces = surface;
 
+
 				//mapper.init(&sfg, pf, sfg_i,b.width,b.height);
-				mapper.init(&sfg, pf, surface, sfg_i, b.width, b.height);
+				mapper.init(&sfg, pf, surface, sfg_i, b.width, b.height, true);
 
 				for (int b_i : surface)
 				{
 					pf->calc_tangent(b_i);
 					//cout << pf->faces[b_i].m_tangent.X << "," << pf->faces[b_i].m_tangent.Y << "," << pf->faces[b_i].m_tangent.Z << "\n";
+					if (b.height > b.width)
+					{
+						poly_face* f = &pf->faces[b_i];
+						rectf new_box;
+						new_box.UpperLeftCorner.X = f->bbox2d.LowerRightCorner.Y;
+						new_box.UpperLeftCorner.Y = f->bbox2d.UpperLeftCorner.X;
+						new_box.LowerRightCorner.X = f->bbox2d.UpperLeftCorner.Y;
+						new_box.LowerRightCorner.Y = f->bbox2d.LowerRightCorner.X;
+
+						f->bbox2d = new_box;
+						f->m_tangent = f->m_normal.crossProduct(f->m_tangent);
+						f->m_tangent *= -1;
+					}
 				}
 
 				map_uvs(geo_scene, &geo_scene->edit_meshnode_interface, surface, mapper, MAP_UVS_LIGHTMAP);
 
 				
-				std::cout << " width = " << b.width << "\n";
-				std::cout << " height = " << b.height << "\n";
-				std::cout << " trans = " << -mapper.m_min.X << " / " << -mapper.m_min.Y << "\n";
-				std::cout << " uv size = " << mapper.uv_width() << " / " << mapper.uv_height() << "\n";
-				std::cout << " uv off = " << mapper.m_min.X << " / " << mapper.m_min.Y << "\n";
-				std::cout << " scale = " << 1.0f / mapper.uv_width() << " / " << 1.0f / mapper.uv_height() << "\n";
+				//std::cout << " width = " << b.width << "\n";
+				//std::cout << " height = " << b.height << "\n";
+				//std::cout << " trans = " << -mapper.m_min.X << " / " << -mapper.m_min.Y << "\n";
+				//std::cout << " uv size = " << mapper.uv_width() << " / " << mapper.uv_height() << "\n";
+				//std::cout << " uv off = " << mapper.m_min.X << " / " << mapper.m_min.Y << "\n";
+				//std::cout << " scale = " << 1.0f / mapper.uv_width() << " / " << 1.0f / mapper.uv_height() << "\n";
 				
 				//m_scale.setScale(vector3df(1.0f / mapper.uv_width(), 1.0f / mapper.uv_height(), 1.0f));
 				//m_translate.setTranslation(vector3df(-mapper.m_min.X,-mapper.m_min.Y,0.0f));
@@ -437,12 +499,26 @@ void initialize_block(geometry_scene* geo_scene, int f_i, back_type ret, int red
 				b.height = b.width;
 				b.faces = surface;
 
-				mapper.init(&sfg, pf, surface, sfg_i, b.width, b.height);
+				mapper.init(&sfg, pf, surface, sfg_i, b.width, b.height, false);
 
 				for (int b_i : surface)
 				{
 					pf->calc_tangent(b_i);
 					//cout << pf->faces[b_i].m_tangent.X << "," << pf->faces[b_i].m_tangent.Y << "," << pf->faces[b_i].m_tangent.Z << "\n";
+				
+					if (b.height > b.width)
+					{
+						poly_face* f = &pf->faces[b_i];
+						rectf new_box;
+						new_box.UpperLeftCorner.X = f->bbox2d.LowerRightCorner.Y;
+						new_box.UpperLeftCorner.Y = f->bbox2d.UpperLeftCorner.X;
+						new_box.LowerRightCorner.X = f->bbox2d.UpperLeftCorner.Y;
+						new_box.LowerRightCorner.Y = f->bbox2d.LowerRightCorner.X;
+
+						f->bbox2d = new_box;
+						f->m_tangent = f->m_normal.crossProduct(f->m_tangent);
+						f->m_tangent *= -1;
+					}
 				}
 
 				map_uvs(geo_scene, &geo_scene->edit_meshnode_interface, surface, mapper, MAP_UVS_LIGHTMAP);
@@ -494,6 +570,12 @@ void initialize_block(geometry_scene* geo_scene, int f_i, back_type ret, int red
 		{
 			swap(b.width, b.height);
 			b.bFlipped = true;
+
+			for (int b_i : surface)
+			{
+				//pf->faces[b_i].m_tangent = pf->faces[b_i].m_tangent.crossProduct(pf->faces[b_i].m_normal);
+				//pf->faces[b_i].m_tangent *= -1;
+			}
 		}
 
 		*ret = b;

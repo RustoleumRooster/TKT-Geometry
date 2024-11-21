@@ -145,8 +145,8 @@ public:
     std::vector<point_texcoord> texcoords;
     int height;
     int radius;
-    int n_columns;
-    int n_rows;
+    //int n_columns;
+    //int n_rows;
     REFLECT()
 };
 
@@ -332,6 +332,7 @@ class polyfold
     std::vector<poly_edge> edges;
     std::vector<poly_face> faces;
     std::vector<poly_vert> vertices;
+    std::vector<poly_vert> control_vertices;
     std::vector<surface_group> surface_groups;
     core::aabbox3df bbox;
 
@@ -493,12 +494,13 @@ class polyfold
     void rotate(core::matrix4 MAT);
     void translate(core::matrix4 MAT);
 
-    void operator=(polyfold other)
+    void operator=(const polyfold& other)
     {
         edges = other.edges;
         faces = other.faces;
         surface_groups = other.surface_groups;
         vertices = other.vertices;
+        control_vertices = other.control_vertices;
         topology = other.topology;
         bbox = other.bbox;
         faces_BVH = other.faces_BVH;

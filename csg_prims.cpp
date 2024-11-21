@@ -226,10 +226,16 @@ polyfold make_poly_plane(int length, int width)
     return pf;
 }
 
-polyfold make_cylinder(int height, int radius, int faces)
+polyfold make_cylinder(int height, int length, int faces, int radius_type)
 {
     f32 pi = 3.141592653;
     polyfold pf;
+
+    f32 radius;
+
+    if (radius_type == 1)
+        radius = length;
+    else radius = length / cos(pi / faces);
 
     for(int i=0;i<faces;i++)
     {
@@ -305,7 +311,7 @@ polyfold make_cylinder(int height, int radius, int faces)
     sg.vec1 = core::vector3df(0,0,1);
     sg.height = height;
     sg.radius = radius;
-    sg.n_columns = faces;
+    //sg.n_columns = faces;
 
     pf.surface_groups.push_back(sg);
 
@@ -342,6 +348,8 @@ polyfold make_cylinder(int height, int radius, int faces)
             face_ptrs[j]->column = j;
         }
     }
+
+    pf.control_vertices.push_back(poly_vert(0, 0, 0));
 
     return pf;
 }

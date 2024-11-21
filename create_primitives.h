@@ -70,6 +70,11 @@ class GeometryFactory
         REFLECT_MULTI_CHOICE()
         };
 
+    struct RadiusOptions {
+        int value;
+        REFLECT_MULTI_CHOICE()
+    };
+
     struct Cube{
         int height;
         int width;
@@ -81,6 +86,8 @@ class GeometryFactory
         int height;
         int radius;
         int nSides;
+        RadiusOptions radius_type;
+        bool align_to_side;
         REFLECT()
         };
 
