@@ -45,7 +45,7 @@ void Texture_Adjust_Window::refresh()
     bool editable = this->sel_struct.nSelected > 0;
 
     reflect::TypeDescriptor_Struct* typeDesc = (reflect::TypeDescriptor_Struct*)reflect::TypeResolver<TextureAlignment>::get();
-    //typeDesc->addFormWidgets("", form,editable);
+
     typeDesc->addFormWidget(form,NULL,std::vector<int>{},0,true,editable,-1);
 
     int next_ID = form->ShowWidgets(GUI_ID_REFLECTED_BASE+2);
@@ -199,7 +199,6 @@ void  Texture_Adjust_Window::click_OK()
         trans.rotateXYBy(tex_struct.rotation);
         f->uv_mat.setTranslation(trans);
 
-        //form->getFieldFromId(STYLE_ID)->setActive(false);
         gui::IGUIComboBox* box = (gui::IGUIComboBox*)form->getFieldFromId(STYLE_ID)->getEditElement(0);
         if(box->isEnabled())
         {
@@ -211,33 +210,6 @@ void  Texture_Adjust_Window::click_OK()
 
         g_scene->edit_meshnode_interface.recalc_uvs_for_face(g_scene, brush_j, face_j, b_i);
         g_scene->final_meshnode_interface.recalc_uvs_for_face(g_scene, brush_j, face_j, b_i);
-        /*
-        switch(g_scene->elements[brush_j].brush.surface_groups[ f->surface_group ].type)
-        {
-        case SURFACE_GROUP_CYLINDER:
-            g_scene->edit_meshnode_interface.recalc_uvs_for_face_cylinder(g_scene, brush_j, face_j, b_i);
-            g_scene->final_meshnode_interface.recalc_uvs_for_face_cylinder(g_scene, brush_j, face_j, b_i);
-            break;
-        case SURFACE_GROUP_SPHERE:
-            g_scene->edit_meshnode_interface.recalc_uvs_for_face_sphere(g_scene, brush_j, face_j, b_i);
-            g_scene->final_meshnode_interface.recalc_uvs_for_face_sphere(g_scene, brush_j, face_j, b_i);
-            break;
-        case SURFACE_GROUP_DOME:
-            g_scene->edit_meshnode_interface.recalc_uvs_for_face_dome(g_scene, brush_j, face_j, b_i);
-            g_scene->final_meshnode_interface.recalc_uvs_for_face_dome(g_scene, brush_j, face_j, b_i);
-            break;
-        case SURFACE_GROUP_CUSTOM_UVS_BRUSH:
-        case SURFACE_GROUP_CUSTOM_UVS_GEOMETRY:
-            g_scene->edit_meshnode_interface.recalc_uvs_for_face_custom(g_scene, brush_j, face_j, b_i);
-            g_scene->final_meshnode_interface.recalc_uvs_for_face_custom(g_scene, brush_j, face_j, b_i);
-            break;
-        case SURFACE_GROUP_STANDARD:
-        default:
-            g_scene->edit_meshnode_interface.recalc_uvs_for_face_cube(g_scene, brush_j, face_j, b_i);
-            g_scene->final_meshnode_interface.recalc_uvs_for_face_cube(g_scene, brush_j, face_j, b_i);
-            break;
-        }*/
-
     }
     refresh();
 }
@@ -292,11 +264,6 @@ void Texture_Adjust_Window::click_Align()
                 g_scene->elements[brush_i].brush.surface_groups[sg_i].vec = v0;
                 g_scene->elements[brush_i].brush.surface_groups[sg_i].vec1 = v1;
 
-                //std::cout << "brush " << brush_i << " " <<
-                //    g_scene->elements[brush_i].brush.surface_groups[sg_i].point.X << "," <<
-                //    g_scene->elements[brush_i].brush.surface_groups[sg_i].point.Y << "," <<
-                //    g_scene->elements[brush_i].brush.surface_groups[sg_i].point.Z << "\n";
-
                 g_scene->edit_meshnode_interface.recalc_uvs_for_face(g_scene, brush_i, face_i, f_i);
                 g_scene->final_meshnode_interface.recalc_uvs_for_face(g_scene, brush_i, face_i, f_i);
             }
@@ -306,6 +273,7 @@ void Texture_Adjust_Window::click_Align()
 
 bool Texture_Adjust_Window::OnEvent(const SEvent& event)
 {
+    MyEventReceiver* receiver = (MyEventReceiver*)device->getEventReceiver();
 
     if(event.EventType == irr::EET_USER_EVENT)
     {
@@ -317,8 +285,6 @@ bool Texture_Adjust_Window::OnEvent(const SEvent& event)
 
                 if(g_scene->getSelectedFaces().size() > 0)
                 {
-                    MyEventReceiver* receiver = (MyEventReceiver*)device->getEventReceiver();
-
                     SEvent event;
                     event.EventType = EET_USER_EVENT;
                     event.UserEvent.UserData1=USER_EVENT_TEXTURE_EDIT_MODE_BEGIN;
@@ -504,6 +470,11 @@ bool Texture_Adjust_Window::OnEvent(const SEvent& event)
                         {
                             form->read(&tex_struct);
                         }
+
+                        SEvent event;
+                        event.EventType = EET_USER_EVENT;
+                        event.UserEvent.UserData1 = USER_EVENT_TEXTURE_UVS_MODIFIED;
+                        receiver->OnEvent(event);
                     }
                 }
 
@@ -532,11 +503,23 @@ bool Texture_Adjust_Window::OnEvent(const SEvent& event)
                 if(id==OK_BUTTON_ID)
                 {
                     click_OK();
+
+                    SEvent event;
+                    event.EventType = EET_USER_EVENT;
+                    event.UserEvent.UserData1 = USER_EVENT_TEXTURE_UVS_MODIFIED;
+                    receiver->OnEvent(event);
+
                     return true;
                 }
                 else if (id == ALIGN_BUTTON_ID)
                 {
                     click_Align();
+
+                    SEvent event;
+                    event.EventType = EET_USER_EVENT;
+                    event.UserEvent.UserData1 = USER_EVENT_TEXTURE_UVS_MODIFIED;
+                    receiver->OnEvent(event);
+
                     return true;
                 }
                 break;

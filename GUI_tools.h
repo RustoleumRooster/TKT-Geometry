@@ -208,4 +208,19 @@ struct folder_tree_item
 
 };
 
+class TextureImage
+{
+public:
+    TextureImage(video::ITexture*, bool repeat = false);
+    ~TextureImage();
+
+    void render();
+    core::dimension2du getDimensions();
+
+private:
+    video::ITexture* m_texture = NULL;
+    scene::SMeshBuffer* Buffer = NULL;
+
+};
+
 #endif

@@ -333,6 +333,7 @@ class TestPanel_2D : public TestPanel
 public:
 
     TestPanel_2D(IGUIEnvironment* environment, video::IVideoDriver* driver, IGUIElement* parent,  s32 id, core::rect<s32> rectangle);
+    virtual void Initialize(scene::ISceneManager* smgr, geometry_scene* geo_scene); 
     virtual bool OnEvent(const SEvent& event);
     virtual scene::ICameraSceneNode* getCamera();
     virtual void setAxis(int);

@@ -1,27 +1,41 @@
-#ifndef _UV_TOOL_H_
-#define _UV_TOOL_H_
+#ifndef _LIGHTMAP_VIEWER_TOOL_H
+#define _LIGHTMAP_VIEWER_TOOL_H
 
 #include <string>
 #include "GUI_tools.h"
 #include "CGUIWindow.h"
 #include "CameraPanel.h"
-
-class TextureImage
-{
-public:
-    TextureImage(video::ITexture*);
-    ~TextureImage();
-
-    void render();
-    core::dimension2du getDimensions();
-
-private:
-    video::ITexture* m_texture = NULL;
-    scene::SMeshBuffer* Buffer = NULL;
-
-};
+#include "edit_classes.h"
 
 class LM_Viewer_Window;
+
+struct material_group_struct
+{
+    //ATTRIBUTES:
+    struct attributes
+    {
+        bool selected;
+    };
+
+    //REFLECTED MEMBERS:
+    int id;
+    int nFaces;
+    int nTriangles;
+    int material_group;
+    video::ITexture* texture;
+
+    //NON REFLECTED MEMBERS:
+    bool selected;
+
+    REFLECT_CUSTOM_STRUCT()
+};
+
+struct material_buffers_struct
+{
+    int nBuffers;
+    std::vector<material_group_struct> material_groups;
+    REFLECT()
+};
 
 class LM_Viewer_Panel : public TestPanel_2D
 {
@@ -76,118 +90,116 @@ protected:
     //CameraQuad* my_camera_quad = NULL;
 };
 
-
-class LM_Viewer_Base;
 class polyfold;
 
-class LM_Viewer_Window : public gui::CGUIWindow
+//============================================================
+//
+//
+
+class Material_Buffers_Base;
+
+class Material_Buffers_Widget : public gui::IGUIElement
 {
+
 public:
-    LM_Viewer_Window(gui::IGUIEnvironment* env, gui::IGUIElement* parent, LM_Viewer_Base* my_base, geometry_scene* g_scene_, s32 id, core::rect<s32> rect);
-    ~LM_Viewer_Window();
+    Material_Buffers_Widget(gui::IGUIEnvironment* env, gui::IGUIElement* parent, geometry_scene*, Material_Buffers_Base*, s32 id, core::rect<s32> rect);
+    ~Material_Buffers_Widget();
 
     void show();
-    //void refresh();
+    void onRefresh();
 
+    void click_OK();
     virtual bool OnEvent(const SEvent& event);
 
-    virtual void draw();
-    void set_poly(polyfold pf);
-    void set_texture(video::ITexture* tex);
-    void click_OK();
-    TextureImage* getTextureImage();
+    int OK_BUTTON_ID = 0;
+    int my_ID;
 
-private:
+    Reflected_Widget_EditArea* my_widget = NULL;
+    Reflected_GUI_Edit_Form* options_form = NULL;
 
-    LM_Viewer_Base* my_base = NULL;
-    LM_Viewer_Panel* my_panel = NULL;
-    geometry_scene* uv_scene = NULL;
-    video::ITexture* my_texture = NULL;
-    TextureImage* my_image = NULL;
+    Flat_Button* my_button = NULL;
+    gui::IGUIImage* my_image = NULL;
+    gui::IGUIStaticText* my_text = NULL;
 
-    gui::IGUIButton* OK_Button = NULL;
+    geometry_scene* g_scene = NULL;
+    Material_Buffers_Base* my_base = NULL;
+    gui::IGUIElement* edit_panel = NULL;
+
 };
 
-
-struct uv_vertex
+struct mb_tool_options_struct
 {
-    f32 X;
-    f32 Y;
+    bool show_uv_view;
+    bool show_triangles;
+    bool show_lightmap;
+
+    REFLECT()
 };
 
-struct uv_triangle
-{
-    //edges
-    int A;
-    int B;
-    int C;
-
-    //points
-    int X;
-    int Y;
-    int Z;
-};
-
-struct uv_face
-{
-    std::vector<uv_vertex> vertexes;
-    std::vector<uv_triangle> triangles;
-};
-
-class LM_Viewer_Base : public tool_base
+class Material_Buffers_Base : public simple_reflected_tool_base
 {
 public:
 
+    ~Material_Buffers_Base() {
+        if (uv_edit)
+            delete uv_edit;
+    }
+
     virtual void show();
+    void select(int sel);
 
-    virtual void initialize(std::wstring name_, int my_id, gui::IGUIEnvironment* env_, geometry_scene* g_scene_, multi_tool_panel* panel_);
+    virtual void initialize(std::wstring name_, int my_id, gui::IGUIEnvironment* env_, geometry_scene* g_scene_, multi_tool_panel* panel_)
+    {}
 
-    void widget_closing(Reflected_Widget_EditArea*);
+    void initialize(std::wstring name_, int my_id, gui::IGUIEnvironment* env_, geometry_scene* g_scene_, multi_tool_panel* panel_, scene::ISceneManager* smgr);
 
+    void setCameraQuad(CameraQuad* cameraQuad_) { cameraQuad = cameraQuad_; }
+    void close_uv_panel();
+    void refresh_panel_view();
 
-    void click_OK();
-    void window_closed();
+    virtual void* getObj() {
+        return &m_struct;
+    }
 
-    void make_custom_surface_group(polyfold pf);
+    virtual void* getOptions() {
+        return &mb_options;
+    }
+
+    virtual void init_member(reflect::TypeDescriptor_Struct* flat_typeDescriptor, std::vector<int> tree_pos);
+    virtual void write_attributes(reflect::TypeDescriptor_Struct* flat_typeDescriptor);
+
+    std::string GetSelectedString();
+    video::ITexture* GetSelectedTexture();
 
 private:
 
-    
-    video::ITexture* my_texture = NULL;
-    std::vector<int> vertex_index;
-    bool use_geometry_brush;
+    int selection = -1;
 
-    int my_face_no = -1;
+    LM_Viewer_Panel* uv_edit = NULL;
+    CameraQuad* cameraQuad = NULL;
 
-    int original_brush = -1;
-    int original_face = -1;
+    mb_tool_options_struct mb_options;
 
-    polyfold uv_poly;
-
-    //friend class LM_Viewer_Tool;
-    friend class LM_Viewer_Panel;
+    material_buffers_struct m_struct;
 };
 
-class LM_Viewer_Tool
+class Material_Buffers_Tool
 {
-    static LM_Viewer_Base* base;
+    static Material_Buffers_Base* base;
     static multi_tool_panel* panel;
 
 public:
 
     static void show()
     {
-        base->show();
-        //panel->add_tool(base);
+        panel->add_tool(base);
     }
 
-    static void initialize(LM_Viewer_Base* base_, multi_tool_panel* panel_)
+    static void initialize(Material_Buffers_Base* base_, multi_tool_panel* panel_)
     {
         base = base_;
         panel = panel_;
     }
-
-
 };
 
 #endif

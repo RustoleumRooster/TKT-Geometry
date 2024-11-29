@@ -17,6 +17,7 @@
 #include "node_properties.h"
 #include "file_open.h"
 #include "lightmaps_tool.h"
+#include "uv_tool.h"
 #include "vtoolbar.h"
 #include "ex_gui_elements.h"
 #include "vulkan_app.h"
@@ -364,6 +365,11 @@ void OnMenuItemSelected(IGUIContextMenu* menu)
         Material_Buffers_Tool::show();
         break;
     }
+    case GUI_ID_MENU_VIEW_UV_EDITOR:
+    {
+        UV_Editor_Tool::show();
+        break;
+    }
     case GUI_ID_MENU_VIEW_GEOSETTINGS:
     {
         Geo_Settings_Tool::show();
@@ -478,7 +484,7 @@ bool MyEventReceiver::OnEvent(const SEvent& event)
                         //Material_Buffers_Tool::show();
                         //Node_Instances_Tool::show();
                         //g_scene->clip_active_brush_plane_geometry();
-                        LM_Viewer_Tool::show();
+                        //LM_Viewer_Tool::show();
                         break;
                     case GUI_ID_BUTTON_NODES:
                         ListReflectedNodes_Tool::show();
@@ -811,6 +817,7 @@ void GUI_layout::menu_layout()
     submenu->addItem(L"Node Classes", GUI_ID_MENU_VIEW_CLASSES, true, false, false, false);
     submenu->addItem(L"Material Groups", GUI_ID_MENU_VIEW_MATGROUPS, true, false, false, false);
     submenu->addItem(L"Editor Settings", GUI_ID_MENU_VIEW_GEOSETTINGS, true, false, false, false);
+    submenu->addItem(L"UV Editor", GUI_ID_MENU_VIEW_UV_EDITOR, true, false, false, false);
 
     //gui::IGUIToolBar* bar = gui->addToolBar(main_panel,-1);
     VToolBar* bar = new VToolBar(env, main_panel, -1, core::rect<s32>(0, 0, 10, 10));

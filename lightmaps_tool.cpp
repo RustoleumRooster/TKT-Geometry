@@ -8,11 +8,17 @@
 #include "utils.h"
 #include "uv_mapping.h"
 #include "LightMaps.h"
+#include "ex_gui_elements.h"
+#include <sstream>
+//#include "edit_env.h"
 
 using namespace std;
 
-LM_Viewer_Base* LM_Viewer_Tool::base = NULL;
-multi_tool_panel* LM_Viewer_Tool::panel = NULL;
+//LM_Viewer_Base* LM_Viewer_Tool::base = NULL;
+//multi_tool_panel* LM_Viewer_Tool::panel = NULL;
+
+Material_Buffers_Base* Material_Buffers_Tool::base = NULL;
+multi_tool_panel* Material_Buffers_Tool::panel = NULL;
 
 extern IrrlichtDevice* device;
 
@@ -32,262 +38,8 @@ extern irr::video::ITexture* med_circle_tex_red_not_selected;
 
 
 //======================================================
-// UV Editor Window
-//
-
-
-LM_Viewer_Window::LM_Viewer_Window(gui::IGUIEnvironment* env, gui::IGUIElement* parent, LM_Viewer_Base* base, geometry_scene* g_scene_, s32 id, core::rect<s32> rect)
-    : gui::CGUIWindow(env, parent, id, rect), my_base(base)
-{
-    //MyEventReceiver* receiver = (MyEventReceiver*)device->getEventReceiver();
-    //receiver->Register(this);
-    uv_scene = new geometry_scene(device->getVideoDriver(), (MyEventReceiver*)device->getEventReceiver());
-}
-
-LM_Viewer_Window::~LM_Viewer_Window()
-{
-    //MyEventReceiver* receiver = (MyEventReceiver*)device->getEventReceiver();
-    //receiver->UnRegister(this);
-
-    if(uv_scene)
-        delete uv_scene;
-
-    if (my_image)
-        delete my_image;
-
-    my_base->window_closed();
-}
-
-void LM_Viewer_Window::show()
-{
-    
-    my_panel = new LM_Viewer_Panel(Environment, device->getVideoDriver(), this, this,
-        GUI_ID_PANEL_UV, core::rect<s32>(core::position2d<s32>(8, 316), core::dimension2d<u32>(450, 300)));
-    //test_panel3->resize(core::position2d<s32>(8,316), core::dimension2d<u32>(450,300));
-    //my_panel->resize(core::vector2di(16, 32), core::dimension2d<u32>(512, 384));
-
-    my_panel->Initialize(device->getSceneManager(), uv_scene);
-    
-    my_panel->setGridSnap(32);
-
-    OK_Button = Environment->addButton(core::rect<s32>(core::position2d<s32>(580, 360), core::dimension2d<u32>(64, 32)), this, -1, L"OK");
-
-    if(my_texture)
-        my_image = new TextureImage(my_texture);
-
-    my_panel->setAxis(CAMERA_Y_AXIS);
-
-}
-
-bool LM_Viewer_Window::OnEvent(const SEvent& event)
-{
-    if (event.EventType == EET_GUI_EVENT)
-    {
-        if (event.GUIEvent.EventType == gui::EGET_BUTTON_CLICKED)
-        {
-
-            if (event.GUIEvent.Caller == OK_Button)
-            {
-                
-                click_OK();
-                remove();
-                return true;
-            }
-        }
-    }
-    return gui::CGUIWindow::OnEvent(event);
-}
-
-void LM_Viewer_Window::draw()
-{
-    if (my_panel)
-        my_panel->render();
-
-    gui::CGUIWindow::draw();
-}
-
-void LM_Viewer_Window::set_poly(polyfold pf)
-{
-    if (uv_scene)
-    {
-        geo_element em;
-        em.brush = pf;
-        uv_scene->elements.push_back(em);
-    }
-
-}
-
-void LM_Viewer_Window::set_texture(video::ITexture* tex)
-{
-    my_texture = tex;
-
-    if (my_texture && !my_image)
-    {
-        my_image = new TextureImage(my_texture);
-
-        core::dimension2du texture_size = my_texture->getOriginalSize();
-
-        my_panel->setGridSpacing(std::min(texture_size.Height, texture_size.Width));
-        my_panel->setAxis(CAMERA_Y_AXIS);
-    }
-}
-
-void LM_Viewer_Window::click_OK()
-{
-    if(uv_scene->elements.size() > 0)
-        my_base->make_custom_surface_group(uv_scene->elements[0].brush);
-}
-
-TextureImage* LM_Viewer_Window::getTextureImage()
-{
-    return my_image;
-}
-
-
-//======================================================
-// UV Editor Base
-//
-
-
-void LM_Viewer_Base::show()
-{
-    LM_Viewer_Window* win = new LM_Viewer_Window(env, env->getRootGUIElement(), this, g_scene, -1, core::rect<s32>(150, 64, 150 + 680, 64 + 436));
-
-    win->setText(L"UV Editor");
-
-    
-
-    win->show();
-    win->drop();
-
-    if (g_scene->getSelectedFaces().size() > 0)
-    {
-       // int f_no = g_scene->getSelectedFaces()[0];
-        polyfold* pf = g_scene->get_total_geometry();
-
-        core::stringw texname = g_scene->get_original_brush_face(g_scene->getSelectedFaces()[0])->texture_name;
-        my_texture = device->getVideoDriver()->getTexture(texname);
-
-       // clear_poly();
-
-        for (int f_i : g_scene->getSelectedFaces())
-        {
-          //  make_face(pf, f_i, my_texture);
-        }
-
-        win->set_poly(uv_poly);
-
-        
-
-        win->set_texture(device->getVideoDriver()->getTexture(texname));
-        
-        
-    }
-    else
-        std::cout << "no face selected\n";
-
-
-
-    //core::rect<s32> client_rect(core::vector2di(0, 0),
-    //    core::dimension2du(this->panel->getClientRect()->getAbsolutePosition().getWidth(),
-    //        win->getClientRect()->getAbsolutePosition().getHeight()));
-
-    //core::rect<s32> client_rect = win->getClientRect();
-    //client_rect.UpperLeftCorner.Y += 24;
-
-   // File_Open_Widget* widget = new File_Open_Widget(env, win, g_scene, this, my_ID, win->getClientRect());
-
-   // widget->show();
-   // widget->drop();
-}
-
-void LM_Viewer_Base::initialize(std::wstring name_, int my_id, gui::IGUIEnvironment* env_, geometry_scene* g_scene_, multi_tool_panel* panel_)
-{
-    tool_base::initialize(name_, my_id, env_, g_scene_, panel_);
-}
-
-void LM_Viewer_Base::widget_closing(Reflected_Widget_EditArea*)
-{
-}
-
-void LM_Viewer_Base::click_OK()
-{
-}
-
-void LM_Viewer_Base::window_closed()
-{
-}
-
-void LM_Viewer_Base::make_custom_surface_group(polyfold pf)
-{
-    if (original_brush != -1 && original_face != -1)
-    {
-        polyfold* og_brush = &g_scene->elements[original_brush].brush;
-        poly_face* face = &(og_brush->faces[original_face]);
-
-        surface_group* sfg = &(og_brush->surface_groups[face->surface_group]);
-
-        int new_type;
-
-        core::dimension2du texture_size = my_texture->getOriginalSize();
-
-        if (use_geometry_brush)
-        {
-            new_type = SURFACE_GROUP_CUSTOM_UVS_GEOMETRY;
-           // std::cout << "using geometry vertexes\n";
-        }
-        else
-        {
-            new_type = SURFACE_GROUP_CUSTOM_UVS_BRUSH;
-          //  std::cout << "using brush vertexes\n";
-        }
-
-        if (sfg->type != SURFACE_GROUP_CUSTOM_UVS_GEOMETRY && 
-            sfg->type != SURFACE_GROUP_CUSTOM_UVS_BRUSH)
-        {
-            surface_group new_g;
-            new_g.type = new_type;
-            og_brush->surface_groups.push_back(new_g);
-            int sfg_i = og_brush->surface_groups.size() - 1;
-            sfg = &og_brush->surface_groups[sfg_i];
-            face->surface_group = sfg_i;
-        }
-
-        sfg->texcoords.clear();
-        sfg->type = new_type;
-
-        //for (int i = 0; i < pf.vertices.size(); i++)
-        for(int i=0; i<vertex_index.size(); i++)
-        {
-            if (vertex_index[i] != -1)
-            {
-                core::vector2df pos;
-                pos.Y = -pf.vertices[vertex_index[i]].V.X / texture_size.Width;
-                pos.X = -pf.vertices[vertex_index[i]].V.Z / texture_size.Height;
-                point_texcoord tc;
-                tc.vertex = i;
-                tc.texcoord = pos;
-                sfg->texcoords.push_back(tc);
-
-               // std::cout << "  " << pos.X << "," << pos.Y << "\n";
-            }
-
-            //sfg->texcoords.push_back(pos);
-            //std::cout << "  " << pos.X << "," << pos.Y << "\n";
-        }
-
-        //std::cout << sfg->texcoords.size() << " texture coords\n";
-
-        g_scene->edit_meshnode_interface.recalc_uvs_for_face_custom(g_scene,original_brush, original_face, my_face_no);
-        g_scene->final_meshnode_interface.recalc_uvs_for_face_custom(g_scene,original_brush, original_face, my_face_no);
-    }
-}
-
-
-//======================================================
 // UV Editor Camera Panel
 //
-
 
 LM_Viewer_Panel::LM_Viewer_Panel(IGUIEnvironment* environment, video::IVideoDriver* driver, IGUIElement* parent, LM_Viewer_Window* win, s32 id, core::rect<s32> rectangle)
     : TestPanel_2D(environment, driver, parent, id, rectangle)
@@ -846,85 +598,413 @@ void LM_Viewer_Panel::setAxis(int axis)
     }
 }
 
-//======================================================
-// Texture Image for UV Editor
+//============================================================
+//
 //
 
+REFLECT_CUSTOM_STRUCT_BEGIN(material_group_struct)
+REFLECT_STRUCT_MEMBER(id)
+REFLECT_STRUCT_MEMBER(nFaces)
+REFLECT_STRUCT_MEMBER(nTriangles)
+REFLECT_STRUCT_MEMBER(texture)
+REFLECT_STRUCT_MEMBER(material_group)
+REFLECT_STRUCT_END()
 
-TextureImage::TextureImage(video::ITexture* texture)
+REFLECT_STRUCT_BEGIN(material_buffers_struct)
+REFLECT_STRUCT_MEMBER(nBuffers)
+REFLECT_STRUCT_MEMBER(material_groups)
+REFLECT_STRUCT_END()
+
+
+void material_group_struct::my_typeDesc::addFormWidget(Reflected_GUI_Edit_Form* win, TypeDescriptor_Struct* type_struct, std::vector<int> tree, size_t offset_base, bool bVisible, bool bEditable, int tab)
 {
-    m_texture = texture;
 
-    Buffer = new scene::SMeshBuffer();
+    int m_i = tree[tree.size() - 1];
+    std::string name = type_struct->members[m_i].name;
+    size_t offset = type_struct->members[m_i].offset + offset_base;
 
-    Buffer->Material.Lighting = false;
-    Buffer->Material.setTexture(0, m_texture);
-    //Buffer->Material.MaterialType = video::EMT_TRANSPARENT_ADD_COLOR;
-    Buffer->Material.MaterialType = video::EMT_SOLID;
-    //MaterialType = video::EMT_SOLID;
+    if (m_i == 0)
+    {
+        Text_StaticField* f = new Text_StaticField();
+        f->initInline("faces", tree, offset, 1, bVisible);
+        win->addEditField(f);
 
-    //core::dimension2du size = m_texture->getOriginalSize();
-    core::dimension2du size = core::dimension2du(512, 512);
+        f = new Text_StaticField();
+        f->initInline("triangles", tree, offset, 2, bVisible);
+        win->addEditField(f);
 
-    Buffer->Vertices.set_used(4);
-    Buffer->Indices.set_used(6);
+        f = new Text_StaticField();
+        f->init(" ", tree, offset, tab, bVisible);
+        win->addEditField(f);
+    }
 
-    Buffer->Indices[0] = (u16)0;
-    Buffer->Indices[1] = (u16)2;
-    Buffer->Indices[2] = (u16)1;
-    Buffer->Indices[3] = (u16)0;
-    Buffer->Indices[4] = (u16)3;
-    Buffer->Indices[5] = (u16)2;
 
-   
+    {
+        Int_StaticField* f = new Int_StaticField();
+        f->initInline("", tree, offset + 8, 1, bVisible);
+        f->bBorder = true;
+        win->addEditField(f);
 
-    Buffer->Vertices[0].Pos = core::vector3df(0,0,0);
-    Buffer->Vertices[0].Color = video::SColor(255, 255, 255, 255);
-    Buffer->Vertices[0].Normal = core::vector3df(0,1,0);
-    Buffer->Vertices[0].TCoords = core::vector2df(0, 0);
+        f = new Int_StaticField();
+        f->initInline("", tree, offset + 16, 2, bVisible);
+        f->bBorder = true;
+        win->addEditField(f);
+    }
 
-    Buffer->Vertices[1].Pos = core::vector3df(-(int)size.Width, 0, 0);
-    Buffer->Vertices[1].Color = video::SColor(255, 255, 255, 255);
-    Buffer->Vertices[1].Normal = core::vector3df(0, 1, 0);
-    Buffer->Vertices[1].TCoords = core::vector2df(0, 1);
+    Text_StaticField* f = new Text_StaticLabel();
 
-    Buffer->Vertices[2].Pos = core::vector3df(-(int)size.Width, 0, -(int)size.Height);
-    Buffer->Vertices[2].Color = video::SColor(255, 255, 255, 255);
-    Buffer->Vertices[2].Normal = core::vector3df(0, 1, 0);
-    Buffer->Vertices[2].TCoords = core::vector2df(1, 1);
+    //String_StaticField* f = new String_StaticField();
+    f->bCanSelect = true;
 
-    Buffer->Vertices[3].Pos = core::vector3df(0, 0, -(int)size.Height);
-    Buffer->Vertices[3].Color = video::SColor(255, 255, 255, 255);
-    Buffer->Vertices[3].Normal = core::vector3df(0, 1, 0);
-    Buffer->Vertices[3].TCoords = core::vector2df(1, 0);
+    std::stringstream ss;
+    ss << "buffer " << m_i;
+    f->setText(ss.str().c_str());
+
+    f->tab = (tab == -1 ? 0 : tab);
+    f->setVisible(bVisible);
+    f->tree_pos = tree;
+
+    if (my_attributes.selected)
+    {
+        f->bHighlight = true;
+    }
+
+    win->addEditField(f);
+
+    //TypeDescriptor_Struct::addFormWidget(win, type_struct, obj, tree, offset_base, bVisible, bEditable, tab);
+
 }
 
-TextureImage::~TextureImage()
+
+
+Material_Buffers_Widget::Material_Buffers_Widget(gui::IGUIEnvironment* env, gui::IGUIElement* parent, geometry_scene* g_scene_, Material_Buffers_Base* base_, s32 id, core::rect<s32> rect)
+    : gui::IGUIElement(gui::EGUIET_ELEMENT, env, parent, id, rect), my_base(base_), g_scene(g_scene_), my_ID(id)
 {
-    if (Buffer)
-        delete Buffer;
+    MyEventReceiver* receiver = (MyEventReceiver*)device->getEventReceiver();
+    receiver->Register(this);
 }
 
-void TextureImage::render()
+
+Material_Buffers_Widget::~Material_Buffers_Widget()
 {
-    video::IVideoDriver* driver = device->getVideoDriver();
+    //std::cout << "Out of scope (Material Buffers Widget)\n";
 
-    if (!driver)
-        return;
+    MyEventReceiver* receiver = (MyEventReceiver*)device->getEventReceiver();
+    receiver->UnRegister(this);
 
-    core::matrix4 mat;
+    my_base->close_uv_panel();
 
-    driver->setTransform(video::ETS_WORLD, mat);
-    driver->setMaterial(Buffer->Material);
-
-    driver->drawVertexPrimitiveList(Buffer->getVertices(), 4,
-        Buffer->getIndices(), 2, video::EVT_STANDARD, EPT_TRIANGLES, Buffer->getIndexType());
 }
 
-core::dimension2du TextureImage::getDimensions()
-{
-    if (m_texture)
-        return m_texture->getOriginalSize();
 
-    return core::dimension2du();
+void Material_Buffers_Widget::show()
+{
+    core::rect<s32> pr(0, 0, getRelativePosition().getWidth(), getRelativePosition().getHeight());
+    edit_panel = new gui::IGUIElement(gui::EGUIET_ELEMENT, Environment, this, -1, pr);
+
+    OK_BUTTON_ID = my_ID + 1;
+
+    my_widget = new Reflected_Widget_EditArea(Environment, edit_panel, g_scene, my_base, my_ID + 2, pr);
+    //my_widget->setName("material groups widget");
+
+    //reflect::TypeDescriptor_Struct* typeDescriptor = (reflect::TypeDescriptor_Struct*)reflect::TypeResolver<material_buffers_struct>::get();
+
+    my_widget->show(false, my_base->getObj());
+
+    int ypos = my_widget->getEditAreaHeight() + 8;
+
+    core::rect<s32> pr2(0, ypos, getRelativePosition().getWidth(), ypos + 120);
+
+    options_form = new Reflected_GUI_Edit_Form(Environment, edit_panel, g_scene, my_ID + 3, pr2);
+    reflect::TypeDescriptor_Struct* options_td = (reflect::TypeDescriptor_Struct*)reflect::TypeResolver<mb_tool_options_struct>::get();
+
+    options_td->addFormWidget(options_form, NULL, vector<int>{0}, 0, true, true, 0);
+    options_form->ShowWidgets(my_ID + 4);
+    options_form->read(my_base->getOptions());
+
+    ypos += my_widget->getFormsHeight();
+    core::rect<s32> br = core::rect<s32>(getRelativePosition().getWidth() - 80, ypos, getRelativePosition().getWidth() - 8, ypos + 36);
+
+    my_button = new Flat_Button(Environment, this, OK_BUTTON_ID, br);
+    my_button->setText(L"Ok");
+
+    edit_panel->drop();
+    my_widget->drop();
+
 }
+
+void Material_Buffers_Widget::onRefresh()
+{
+    //Display options
+    options_form->remove();
+
+    int ypos = my_widget->getEditAreaHeight() + 8;
+
+    core::rect<s32> pr2(0, ypos, getRelativePosition().getWidth(), ypos + 120);
+
+    options_form = new Reflected_GUI_Edit_Form(Environment, edit_panel, g_scene, my_ID + 3, pr2);
+    reflect::TypeDescriptor_Struct* options_td = (reflect::TypeDescriptor_Struct*)reflect::TypeResolver<mb_tool_options_struct>::get();
+
+    options_td->addFormWidget(options_form, NULL, vector<int>{0}, 0, true, true, 0);
+    options_form->ShowWidgets(my_ID + 4);
+    options_form->read(my_base->getOptions());
+
+    ypos += options_form->getTotalHeight() + 8;
+
+    //Button
+    if (my_button)
+        my_button->remove();
+
+    core::rect<s32> br = core::rect<s32>(getRelativePosition().getWidth() - 80, ypos, getRelativePosition().getWidth() - 8, ypos + 36);
+
+    my_button = new Flat_Button(Environment, this, OK_BUTTON_ID, br);
+    my_button->setText(L"Ok");
+
+    //Text
+    if (my_text)
+        my_text->remove();
+
+    core::rect<s32> tr = core::rect<s32>(32, ypos, getRelativePosition().getWidth() - 80, ypos + 24);
+
+    std::wstringstream ss;
+    ss << my_base->GetSelectedString().c_str();
+    my_text = Environment->addStaticText(ss.str().c_str(), tr, false, false, this);
+
+    ypos += 32;
+
+    //Image
+    if (my_image)
+        my_image->remove();
+
+    core::rect<s32> ir = core::rect<s32>(32, ypos, 32 + 128, ypos + 128);
+
+    video::ITexture* texture = my_base->GetSelectedTexture();
+
+    if (texture)
+    {
+        my_image = Environment->addImage(ir, this, -1);
+        my_image->setScaleImage(true);
+        my_image->setImage(texture);
+    }
+}
+
+bool Material_Buffers_Widget::OnEvent(const SEvent& event)
+{
+    if (event.EventType == EET_USER_EVENT)
+    {
+        if (event.UserEvent.UserData1 == USER_EVENT_REFLECTED_FORM_REFRESHED)
+        {
+            onRefresh();
+            return true;
+        }
+    }
+    else if (event.EventType == EET_GUI_EVENT)
+    {
+        s32 id = event.GUIEvent.Caller->getID();
+
+        if (event.GUIEvent.EventType == EGET_BUTTON_CLICKED)
+        {
+            if (event.GUIEvent.Caller == my_button)
+            {
+                click_OK();
+                return true;
+            }
+            else
+            {
+                FormField* field = my_widget->form->getFieldFromId(id);
+
+                if (field)
+                {
+                    if (field->getButtonType() == FORM_FIELD_LABEL)
+                    {
+
+                        std::vector<int> leaf = field->tree_pos;
+                        leaf.push_back(0); //node_class_item.id
+
+                        reflect::Member* m = my_widget->m_typeDesc->getTreeNode(leaf);
+                        size_t offset = my_widget->m_typeDesc->getTreeNodeOffset(leaf);
+
+                        int sel;
+
+                        m->type->copy(&sel, (char*)((char*)my_widget->temp_object) + offset);
+
+                        my_base->select(sel);
+
+                        my_widget->refresh();
+                        onRefresh();
+
+                        g_scene->set_selected_material_group(sel);
+
+                        MyEventReceiver* event_receiver = (MyEventReceiver*)device->getEventReceiver();
+                        SEvent event;
+                        event.EventType = EET_USER_EVENT;
+                        event.UserEvent.UserData1 = USER_EVENT_MATERIAL_GROUP_SELECTION_CHANGED;
+                        event_receiver->OnEvent(event);
+
+                        return true;
+                    }
+                }
+            }
+            return true;
+        }
+        else if (event.GUIEvent.EventType == EGET_CHECKBOX_CHANGED)
+        {
+            options_form->write(my_base->getOptions());
+            my_base->refresh_panel_view();
+        }
+    }
+
+    return IGUIElement::OnEvent(event);
+}
+
+void Material_Buffers_Widget::click_OK()
+{
+    //reflect::TypeDescriptor_Struct* td = (reflect::TypeDescriptor_Struct*)reflect::TypeResolver<geo_settings_struct>::get();
+
+    //my_widget->write(td, my_base->getObj());
+}
+
+//============================================================
+//
+//
+
+void Material_Buffers_Base::initialize(std::wstring name_, int my_id, gui::IGUIEnvironment* env_, geometry_scene* g_scene_, multi_tool_panel* panel_, scene::ISceneManager* smgr)
+{
+    tool_base::initialize(name_, my_id, env_, g_scene_, panel_);
+    m_typeDescriptor = (reflect::TypeDescriptor_Struct*)reflect::TypeResolver<material_buffers_struct>::get();
+
+    uv_edit = new LM_Viewer_Panel(env, device->getVideoDriver(), NULL, NULL, 0, core::recti());
+    uv_edit->Initialize(smgr, g_scene);
+}
+
+void Material_Buffers_Base::show()
+{
+    refresh_panel_view();
+
+    std::vector<TextureMaterial> materials = g_scene->final_meshnode_interface.getMaterialsUsed();
+    m_struct.nBuffers = materials.size();
+
+    m_struct.material_groups.clear();
+    for (int i = 0; i < m_struct.nBuffers; i++)
+    {
+        material_group_struct mgs;
+
+        mgs.id = i;
+        mgs.nTriangles = materials[i].n_triangles;
+        mgs.nFaces = materials[i].n_faces;
+        mgs.texture = materials[i].texture;
+        mgs.material_group = materials[i].materialGroup;
+        mgs.selected = false;
+        m_struct.material_groups.push_back(mgs);
+    }
+
+    core::rect<s32> client_rect(core::vector2di(0, 0),
+        core::dimension2du(this->panel->getClientRect()->getAbsolutePosition().getWidth(),
+            this->panel->getClientRect()->getAbsolutePosition().getHeight()));
+
+    Material_Buffers_Widget* widget = new Material_Buffers_Widget(env, this->panel->getClientRect(), g_scene, this, GUI_ID_MAT_BUFFERS_BASE, client_rect);
+
+    widget->show();
+    widget->drop();
+}
+
+void Material_Buffers_Base::select(int sel)
+{
+    selection = sel;
+
+    for (int i = 0; i < m_struct.material_groups.size(); i++)
+    {
+        if (i == sel)
+            m_struct.material_groups[i].selected = true;
+        else
+            m_struct.material_groups[i].selected = false;
+    }
+
+}
+
+void Material_Buffers_Base::close_uv_panel()
+{
+    if (uv_edit && uv_edit->getViewPanel())
+        uv_edit->getViewPanel()->disconnect();
+}
+
+void Material_Buffers_Base::refresh_panel_view()
+{
+    if (cameraQuad && uv_edit)
+    {
+        if (mb_options.show_uv_view && uv_edit->hooked_up() == false)
+        {
+            cameraQuad->hookup_aux_panel(uv_edit);
+        }
+        else if (mb_options.show_uv_view == false && uv_edit->hooked_up() == true)
+        {
+            uv_edit->getViewPanel()->disconnect();
+        }
+
+        if (uv_edit->hooked_up() == true)
+        {
+            uv_edit->showTriangles(mb_options.show_triangles);
+            uv_edit->showLightmap(mb_options.show_lightmap);
+
+            MyEventReceiver* event_receiver = (MyEventReceiver*)device->getEventReceiver();
+            SEvent event;
+            event.EventType = EET_USER_EVENT;
+            event.UserEvent.UserData1 = USER_EVENT_MATERIAL_GROUP_SELECTION_CHANGED;
+            event_receiver->OnEvent(event);
+        }
+
+    }
+}
+
+void Material_Buffers_Base::init_member(reflect::TypeDescriptor_Struct* flat_typeDescriptor, std::vector<int> tree_pos)
+{
+    reflect::Member* m = flat_typeDescriptor->getTreeNode(tree_pos);
+    //material_group_struct::my_typeDesc* m_type = (material_group_struct::my_typeDesc*)(m->type);
+    m->readwrite = true;
+
+    if (tree_pos.size() > 1)
+    {
+        //m_type->my_attributes.selected = m_struct.material_groups[tree_pos[1]].selected;
+    }
+}
+
+void Material_Buffers_Base::write_attributes(reflect::TypeDescriptor_Struct* flat_typeDescriptor)
+{
+    for (int i = 0; i < m_struct.material_groups.size(); i++)
+    {
+        std::vector<int> tree_pos{ 1, i };
+
+        reflect::Member* m = flat_typeDescriptor->getTreeNode(tree_pos);
+
+        material_group_struct::my_typeDesc* m_type = (material_group_struct::my_typeDesc*)(m->type);
+        m_type->my_attributes.selected = m_struct.material_groups[i].selected;
+    }
+}
+
+std::string Material_Buffers_Base::GetSelectedString()
+{
+    if (selection != -1)
+    {
+        int mg = m_struct.material_groups[selection].material_group;
+        return Material_Groups_Tool::get_base()->getMaterialGroup(mg).name;
+    }
+    return std::string();
+}
+
+video::ITexture* Material_Buffers_Base::GetSelectedTexture()
+{
+    if (selection != -1)
+    {
+        return m_struct.material_groups[selection].texture;
+
+    }
+
+    return nullptr;
+}
+
+REFLECT_STRUCT_BEGIN(mb_tool_options_struct)
+REFLECT_STRUCT_MEMBER(show_uv_view)
+REFLECT_STRUCT_MEMBER(show_triangles)
+REFLECT_STRUCT_MEMBER(show_lightmap)
+REFLECT_STRUCT_END()
+
