@@ -4,6 +4,7 @@
 #include "csg_classes.h"
 #include "tolerances.h"
 #include "BVH.h"
+#include "utils.h"
 
 using namespace irr;
 
@@ -341,6 +342,13 @@ void polyfold::translate(core::matrix4 MAT)
         {
             this->calc_loop_bbox(f_i,p_i);
         }
+}
+
+void polyfold::generate_uids()
+{
+    this->uid = random_number();
+    for (poly_face& f : faces)
+        f.uid = random_number();
 }
 
 void polyfold::make_convex()
@@ -1389,6 +1397,7 @@ REFLECT_STRUCT_BEGIN(poly_face)
     REFLECT_STRUCT_MEMBER(loops)
     REFLECT_STRUCT_MEMBER(m_normal)
     //REFLECT_STRUCT_MEMBER(m_center)
+    REFLECT_STRUCT_MEMBER(uid)
     REFLECT_STRUCT_MEMBER(texture_index)
     REFLECT_STRUCT_MEMBER(surface_group)
     REFLECT_STRUCT_MEMBER(material_group)
@@ -1404,5 +1413,6 @@ REFLECT_STRUCT_BEGIN(polyfold)
     REFLECT_STRUCT_MEMBER(control_vertices)
     REFLECT_STRUCT_MEMBER(faces)
     REFLECT_STRUCT_MEMBER(surface_groups)
+    REFLECT_STRUCT_MEMBER(uid)
     REFLECT_STRUCT_MEMBER(topology)
 REFLECT_STRUCT_END()

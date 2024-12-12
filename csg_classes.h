@@ -157,9 +157,10 @@ class poly_face
     std::vector<int> vertices;
     std::vector<poly_loop> loops;
     core::vector3df m_normal = core::vector3df(0,0,0);
-    core::vector3df m_center = core::vector3df(0,0,0);
+    core::vector3df m_center = core::vector3df(0,0,0); // not reflected
     core::vector3df m_tangent = core::vector3df(0, 0, 0); //not reflected
     core::rectf bbox2d; //not reflected
+    u64 uid;
 
     //std::string texture_name;
     core::stringw texture_name;
@@ -179,7 +180,7 @@ class poly_face
     int row = 0;    //for cylinders and spheres
     int column = 0; 
 
-    //**any new variables may need to be manually copied in make_result and add_pfold**
+    //**any new variables may need to be manually added to copy_properties below**
 
     core::matrix4 uv_mat;
     core::matrix4 uv_mat0;  //a temp variable
@@ -335,6 +336,7 @@ class polyfold
     std::vector<poly_vert> control_vertices;
     std::vector<surface_group> surface_groups;
     core::aabbox3df bbox;
+    u64 uid;
 
     BVH_structure_pf<poly_face> faces_BVH;
     BVH_structure_pf<poly_edge> edges_BVH;
@@ -351,6 +353,8 @@ class polyfold
     void calc_center(poly_face& face);
     void calc_normal(int f_i);
     void calc_tangent(int f_i);
+
+    void generate_uids();
 
     void recalc_bbox();
     void recalc_bbox_and_loops();

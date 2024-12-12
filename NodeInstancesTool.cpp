@@ -22,6 +22,7 @@ multi_tool_panel* Node_Instances_Tool::panel = NULL;
 REFLECT_CUSTOM_STRUCT_BEGIN(node_instance)
 	REFLECT_STRUCT_MEMBER(id)
 	REFLECT_STRUCT_MEMBER(name)
+	REFLECT_STRUCT_MEMBER(node_ptr)
 REFLECT_STRUCT_END()
 
 REFLECT_CUSTOM_STRUCT_BEGIN(node_tree_item)
@@ -272,18 +273,22 @@ bool Node_Instances_Widget::OnEvent(const SEvent& event)
 					if (field->getButtonType() == FORM_FIELD_LABEL)
 					{
 						std::vector<int> leaf = field->tree_pos;
-						leaf.push_back(0);
+						leaf.push_back(2);	//grab the struct member in the 3rd position
 
 						reflect::Member* m = my_widget->m_typeDesc->getTreeNode(leaf);
 						size_t offset = my_widget->m_typeDesc->getTreeNodeOffset(leaf);
 
-						int sel;
+						char* sel;
 						m->type->copy(&sel, (char*)((char*)my_widget->temp_object) + offset);
 
-						if(event.GUIEvent.EventType == (gui::EGUI_EVENT_TYPE)GUI_BUTTON_SHIFT_CLICKED)
-							my_base->select(sel,true);
+						if (event.GUIEvent.EventType == (gui::EGUI_EVENT_TYPE)GUI_BUTTON_SHIFT_CLICKED)
+						{
+							my_base->select((Reflected_SceneNode*)sel, true);
+						}
 						else
-							my_base->select(sel, false);
+						{
+							my_base->select((Reflected_SceneNode*)sel, false);
+						}
 
 						return true;
 					}
@@ -323,19 +328,18 @@ std::string Node_Instances_Base::getTypesString()
 	}
 }
 
-void Node_Instances_Base::select( int sel, bool shift)
+void Node_Instances_Base::select(Reflected_SceneNode* sel, bool shift)
 {
 
 	std::vector<int> old_sel_faces = g_scene->getSelectedFaces();
-	std::vector<int> old_sel_nodes = g_scene->getSelectedNodes();
+	std::vector<Reflected_SceneNode*> old_sel_nodes = g_scene->getSelectedNodes();
 	std::vector<int> old_sel_brushes = g_scene->getBrushSelection();
 
 	if (shift)
 		g_scene->setSelectedNodes_ShiftAdd(sel);
 	else
 	{
-		std::vector<int> new_sel{sel};
-		g_scene->setSelectedNodes(new_sel);
+		g_scene->setSelectedNodes(std::vector<Reflected_SceneNode*>{ sel });
 	}
 
 	g_scene->setSelectedFaces(std::vector<int>{});
@@ -464,9 +468,14 @@ void Node_Instances_Base::build_struct()
 {
 	m_struct = m_initial_struct;
 
-	for (int i = 0; i < g_scene->getSceneNodes().size(); i++)
+	//for (int i = 0; i < g_scene->getSceneNodes().size(); i++)
+	//for (int i = 0; i < g_scene->getSelectedNodes().size(); i++)
+	int i = 0;
+	for(ISceneNode* it : g_scene->EditorNodes()->getChildren())
 	{
-		Reflected_SceneNode* node = g_scene->getSceneNodes()[i];
+		Reflected_SceneNode* node = (Reflected_SceneNode*)it;
+		//Reflected_SceneNode* node = g_scene->getSceneNodes()[i];
+		//Reflected_SceneNode* node = g_scene->getSelectedNodes()[i];
 		reflect::TypeDescriptor_Struct* typeDesc = node->GetDynamicReflection();
 
 		node_tree_item* res = m_struct.find_type(typeDesc);
@@ -474,9 +483,11 @@ void Node_Instances_Base::build_struct()
 		{
 			node_instance ni;
 			ni.id = i;
+			ni.node_ptr = (char*)node;
 			ni.name = std::string(typeDesc->alias);
 			ni.selected = node->bSelected;
 			res->instances.push_back(ni);
+			i++;
 		}
 	}
 

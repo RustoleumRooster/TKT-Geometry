@@ -1,0 +1,24 @@
+
+uniform mat4 mWorld;
+uniform mat4 mView;
+uniform mat4 mProj;
+uniform vec4 plane;
+
+varying vec2 texcoord;
+varying vec2 texcoord2;
+
+void main(void)
+{
+	gl_Position = mProj * mView * mWorld * gl_Vertex;
+
+
+	//gl_TexCoord[0] = gl_MultiTexCoord0;
+	//gl_TexCoord[1] = gl_MultiTexCoord1;
+
+	texcoord = vec2(gl_MultiTexCoord0);
+	texcoord2 = vec2(gl_MultiTexCoord1);
+
+	//vec4 plane0 = vec4(1,1,0,0);
+	gl_ClipDistance[0] = dot(plane, mWorld * gl_Vertex);
+
+}

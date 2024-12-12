@@ -276,7 +276,8 @@ bool TestPanel_2D::OnEvent(const SEvent& event)
                             }
                             else if(geo_scene->getSelectedNodes().size()==1 && bShiftDown==true)
                             {
-                                vRotateBrushOrigin=geo_scene->getSelectedSceneNode(0)->getPosition();
+                                //vRotateBrushOrigin=geo_scene->getSelectedSceneNode(0)->getPosition();
+                                vRotateBrushOrigin=geo_scene->getSelectedNodes()[0]->getPosition();
                                 bRotateNode=true;
 
                                 core::vector2di coords;
@@ -292,7 +293,7 @@ bool TestPanel_2D::OnEvent(const SEvent& event)
                             }
                             else if(geo_scene->getSelectedNodes().size()>0)
                             {
-                                vDragBrushOriginalPosition = this->geo_scene->getSelectedSceneNode(0)->getPosition();
+                                vDragBrushOriginalPosition = this->geo_scene->getSelectedNodes()[0]->getPosition();
                                 bDragNode=true;
                             }
                         }
@@ -466,14 +467,16 @@ bool TestPanel_2D::OnEvent(const SEvent& event)
                             core::matrix4 M;
                             int v0 = 0;//this->geo_scene->elements[this->selected_brush].selected_vertex;
                             //core::vector3df T = V-this->geo_scene->elements[geo_scene->getSelection()[0]].brush.vertices[v0].V;
-                            core::vector3df T = V-this->geo_scene->getSelectedSceneNode(0)->getPosition();
+                            core::vector3df T = V-this->geo_scene->getSelectedNodes()[0]->getPosition();
                             if(T.getLength()>0.05)
                             {
                                 M.setTranslation(T);
                                 //this->geo_scene->elements[this->selected_brush].brush.translate(M);
-                                for(int i : geo_scene->getSelectedNodes())
+                                //for(int i : geo_scene->getSelectedNodes())
+                                for(Reflected_SceneNode* node : geo_scene->getSelectedNodes())
                                 {
-                                    geo_scene->getSceneNodes()[i]->translate(M);
+                                    //geo_scene->getSceneNodes()[i]->translate(M);
+                                    node->translate(M);
                                 }
                             }
                         }
@@ -496,7 +499,7 @@ bool TestPanel_2D::OnEvent(const SEvent& event)
 
                             if(abs(delta)>0.01 && geo_scene->getSelectedNodes().size() > 0)
                             {
-                                core::vector3df rot = geo_scene->getSelectedSceneNode(0)->getRotation();
+                                core::vector3df rot = geo_scene->getSelectedNodes()[0]->getRotation();
                                 core::matrix4 R;
 
                                 R.setRotationDegrees(rot);
@@ -510,7 +513,7 @@ bool TestPanel_2D::OnEvent(const SEvent& event)
                                 R.rotateVect(z);
 
                                 rot = z.getHorizontalAngle();
-                                geo_scene->getSelectedSceneNode(0)->rotate(rot);
+                                geo_scene->getSelectedNodes()[0]->rotate(rot);
                             }
                         }
                         return true;
@@ -530,7 +533,7 @@ bool TestPanel_2D::OnEvent(const SEvent& event)
 void TestPanel_2D::left_click(core::vector2di pos)
 {
     std::vector<int> old_sel_faces = geo_scene->getSelectedFaces();
-    std::vector<int> old_sel_nodes = geo_scene->getSelectedNodes();
+    std::vector<Reflected_SceneNode*> old_sel_nodes = geo_scene->getSelectedNodes();
     std::vector<int> old_sel_brushes = geo_scene->getBrushSelection();
 
     if(click_hits_poly(&geo_scene->elements[0].brush,core::vector2di(clickx,clicky)))
@@ -543,7 +546,8 @@ void TestPanel_2D::left_click(core::vector2di pos)
         click_brush_info res;
         get_click_brush(clickx,clicky,res);
 
-        int hit_node_i = GetSceneNodeHit(clickx,clicky,false);
+        //int hit_node_i = GetSceneNodeHit(clickx,clicky,false);
+        Reflected_SceneNode* hit_node = GetSceneNodeHit(clickx,clicky,false);
 
         if(bShiftDown && geo_scene->getBrushSelection().size() > 0)
         {
@@ -554,25 +558,26 @@ void TestPanel_2D::left_click(core::vector2di pos)
         }
         else if(bShiftDown && geo_scene->getSelectedNodes().size() >0)
         {
-            if(hit_node_i !=-1)
+            //if(hit_node_i !=-1)
+            if(hit_node != NULL)
             {
-                geo_scene->setSelectedNodes_ShiftAdd(hit_node_i);
+                geo_scene->setSelectedNodes_ShiftAdd(hit_node);
             }
         }
-        else if(hit_node_i !=-1)
+        else if(hit_node != NULL)
         {
-            geo_scene->setSelectedNodes(std::vector<int>{hit_node_i});
+            geo_scene->setSelectedNodes(std::vector<Reflected_SceneNode*>{hit_node});
             geo_scene->setBrushSelection(std::vector<int>{});
         }
         else if(res.hit == true)
         {
             geo_scene->setBrushSelection(std::vector<int>{res.brush_n});
-            geo_scene->setSelectedNodes(std::vector<int>{});
+            geo_scene->setSelectedNodes(std::vector<Reflected_SceneNode*>{});
         }
         else
         {
             geo_scene->setBrushSelection(std::vector<int>{});
-            geo_scene->setSelectedNodes(std::vector<int>{});
+            geo_scene->setSelectedNodes(std::vector<Reflected_SceneNode*>{});
         }
 
     }

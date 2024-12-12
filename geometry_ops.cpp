@@ -196,6 +196,8 @@ void geometry_scene::add(polyfold pf)
     geo.brush = pf;
     geo.type = GEO_ADD;
 
+    geo.brush.generate_uids();
+
     {
         video::ITexture* tex = texture_picker_base->getCurrentTexture();
         io::path path = tex->getName();
@@ -220,6 +222,8 @@ void geometry_scene::add_plane(polyfold pf)
     geo_element geo;
     geo.brush = pf;
     geo.type = GEO_SEMISOLID;
+
+    geo.brush.generate_uids();
 
     {
         video::ITexture* tex = texture_picker_base->getCurrentTexture();
@@ -249,6 +253,8 @@ void geometry_scene::add_semisolid(polyfold pf)
     geo.brush = pf;
     geo.type = GEO_SEMISOLID;
 
+    geo.brush.generate_uids();
+
     {
         video::ITexture* tex = texture_picker_base->getCurrentTexture();
         io::path path = tex->getName();
@@ -273,6 +279,8 @@ void geometry_scene::subtract(polyfold pf)
     geo_element geo;
     geo.brush = pf;
     geo.type = GEO_SUBTRACT;
+
+    geo.brush.generate_uids();
 
     {
         video::ITexture* tex = texture_picker_base->getCurrentTexture();

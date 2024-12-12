@@ -10,6 +10,8 @@
 #include "BufferManager.h"
 #include "geometry_scene.h"
 
+#include "custom_nodes.h"
+
 void System_Test_MC::cleanup() {
 	descriptorSetLayout->cleanup();
 
@@ -49,11 +51,13 @@ void System_Test_MC::cleanup() {
 
 bool System_Test_MC::verify_inputs(geometry_scene* geo_scene)
 {
-	std::vector<Reflected_SceneNode*> scene_nodes = geo_scene->getSceneNodes();
+	//std::vector<Reflected_SceneNode*> scene_nodes = geo_scene->getSceneNodes();
 
 	int count = 0;
-	for (Reflected_SceneNode* node : scene_nodes)
+	//for (Reflected_SceneNode* node : scene_nodes)
+	for (ISceneNode* it : geo_scene->EditorNodes()->getChildren())
 	{
+		Reflected_SceneNode* node = (Reflected_SceneNode*)it;
 		if (strcmp(node->GetDynamicReflection()->name, "Reflected_LightSceneNode") == 0)
 		{
 			Reflected_LightSceneNode* lsnode = dynamic_cast<Reflected_LightSceneNode*>(node);
@@ -69,8 +73,10 @@ bool System_Test_MC::verify_inputs(geometry_scene* geo_scene)
 		return false;
 
 	count = 0;
-	for (Reflected_SceneNode* node : scene_nodes)
+	//for (Reflected_SceneNode* node : scene_nodes)
+	for (ISceneNode* it : geo_scene->EditorNodes()->getChildren())
 	{
+		Reflected_SceneNode* node = (Reflected_SceneNode*)it;
 		if (strcmp(node->GetDynamicReflection()->name, "Reflected_PointNode") == 0)
 		{
 			Reflected_PointNode* pnode = dynamic_cast<Reflected_PointNode*>(node);
@@ -98,12 +104,14 @@ typedef CMeshBuffer<video::S3DVertex2TCoords> mesh_buffer_type;
 
 void System_Test_MC::loadLights(geometry_scene* geo_scene)
 {
-	std::vector<Reflected_SceneNode*> scene_nodes = geo_scene->getSceneNodes();
+	//std::vector<Reflected_SceneNode*> scene_nodes = geo_scene->getSceneNodes();
 
 	lightSources.clear();
 
-	for (Reflected_SceneNode* node : scene_nodes)
+	//for (Reflected_SceneNode* node : scene_nodes)
+	for (ISceneNode* it : geo_scene->EditorNodes()->getChildren())
 	{
+		Reflected_SceneNode* node = (Reflected_SceneNode*)it;
 		if (strcmp(node->GetDynamicReflection()->name, "Reflected_LightSceneNode") == 0)
 		{
 			Reflected_LightSceneNode* lsnode = dynamic_cast<Reflected_LightSceneNode*>(node);
@@ -120,8 +128,10 @@ void System_Test_MC::loadLights(geometry_scene* geo_scene)
 	}
 	n_lights = lightSources.size();
 
-	for (Reflected_SceneNode* node : scene_nodes)
+	//for (Reflected_SceneNode* node : scene_nodes)
+	for (ISceneNode* it : geo_scene->EditorNodes()->getChildren())
 	{
+		Reflected_SceneNode* node = (Reflected_SceneNode*)it;
 		if (strcmp(node->GetDynamicReflection()->name, "Reflected_PointNode") == 0)
 		{
 			Reflected_PointNode* lsnode = dynamic_cast<Reflected_PointNode*>(node);

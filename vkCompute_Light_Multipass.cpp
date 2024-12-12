@@ -9,6 +9,7 @@
 #include "utils.h"
 #include "BufferManager.h"
 #include "geometry_scene.h"
+#include "custom_nodes.h"
 
 void System_Light_Multipass::cleanup() {
 	descriptorSetLayout->cleanup();
@@ -63,7 +64,7 @@ typedef CMeshBuffer<video::S3DVertex2TCoords> mesh_buffer_type;
 
 
 bool System_Light_Multipass::verify_inputs(geometry_scene* geo_scene)
-{
+{/*
 	std::vector<Reflected_SceneNode*> scene_nodes = geo_scene->getSceneNodes();
 
 	int count = 0;
@@ -88,18 +89,21 @@ bool System_Light_Multipass::verify_inputs(geometry_scene* geo_scene)
 	if (meshnode->getMesh() == NULL || meshnode->getMesh()->getMeshBufferCount() == 0 ||
 		meshnode->getMesh()->MeshBuffers[0]->getIndexCount() == 0)
 		return false;
-
+		*/
 	return true;
 }
 
 void System_Light_Multipass::loadLights(geometry_scene* geo_scene)
 {
-	std::vector<Reflected_SceneNode*> scene_nodes = geo_scene->getSceneNodes();
+	//std::vector<Reflected_SceneNode*> scene_nodes = geo_scene->getSceneNodes();
 
 	lightSources.clear();
 
-	for (Reflected_SceneNode* node : scene_nodes)
+	//for (Reflected_SceneNode* node : scene_nodes)
+	for (ISceneNode* it : geo_scene->EditorNodes()->getChildren())
 	{
+		Reflected_SceneNode* node = (Reflected_SceneNode*)it;
+
 		if (strcmp(node->GetDynamicReflection()->name, "Reflected_LightSceneNode") == 0)
 		{
 			Reflected_LightSceneNode* lsnode = dynamic_cast<Reflected_LightSceneNode*>(node);
@@ -161,11 +165,6 @@ void System_Light_Multipass::loadModel(MeshNode_Interface_Final* meshnode)
 			bounding_quads[c * 4 + 2].V = info.quads[i].verts[2];
 			bounding_quads[c * 4 + 3].V = info.quads[i].verts[3];
 
-			std::cout << bounding_quads[c * 4].V.X << "," << bounding_quads[c * 4].V.Y << "," << bounding_quads[c * 4].V.Z << " &&\n";
-			std::cout << bounding_quads[c * 4+1].V.X << "," << bounding_quads[c * 4+1].V.Y << "," << bounding_quads[c * 4+1].V.Z << " &&\n";
-			std::cout << bounding_quads[c * 4+2].V.X << "," << bounding_quads[c * 4+2].V.Y << "," << bounding_quads[c * 4+2].V.Z << " &&\n";
-			std::cout << bounding_quads[c * 4+3].V.X << "," << bounding_quads[c * 4+3].V.Y << "," << bounding_quads[c * 4+3].V.Z << " &&\n\n";
-
 			c++;
 		}
 	}
@@ -194,63 +193,6 @@ void System_Light_Multipass::loadModel(MeshNode_Interface_Final* meshnode)
 		else
 			my_bvh.nodes[i].n_prims = 0;
 	}
-
-	//==========================================================
-	// Store references to the adjacent triangles for each edge, in order to properly calculate the lighting at the edges
-	//
-	/*
-	triangle_edges.resize(master_triangle_list.size() * 3);
-	
-	for (int i = 0; i < master_triangle_list.size(); i++)
-	{
-		for (int j = 0; j < 3; j++)
-		{
-			vector<u16> hits;
-
-			triangle_edge edge;
-			u16 v_0 = master_triangle_list[i].v_i[j];
-			edge.v0 = vertices_soa.data0.operator[](v_0).V;
-
-			u16 v_1 = master_triangle_list[i].v_i[(j+1)%3];
-			edge.v1 = vertices_soa.data0.operator[](v_1).V;
-
-			vector3df N = master_triangle_list[i].normal(vertices_soa.data0);
-
-			vector3df edgeTan = vector3df(edge.v1 - edge.v0).crossProduct(N);
-
-			my_bvh.intersect(edge, hits);
-			bool ok = false;
-
-			for (u16 k : hits)
-			{
-				if (k != i && master_triangle_list[k].find_edge(v_1,v_0, vertices_soa.data0))
-				{
-					//Only consider the adjacent triangles which create a concave angle
-					if (master_triangle_list[k].normal(vertices_soa.data0).crossProduct(N).dotProduct(edgeTan.crossProduct(N)) < -0.001)
-					{
-						triangle_edges[i * 3 + j].x = k;
-					}
-					else
-					{
-						triangle_edges[i * 3 + j].x = 0xFFFF;
-					}
-					ok = true;
-					break;
-				}
-				else if (k != i)
-				{
-					//std::cout << " ???";
-				}
-			}
-
-			if (!ok)
-			{
-				triangle_edges[i].x = 0xFFFF;
-				std::cout << "warning: triangle missing adjacent \n";
-			}
-		}
-	}*/
-
 }
 
 
@@ -610,25 +552,6 @@ void System_Light_Multipass::createLightsBuffer() {
 	device->copyBuffer(stagingBuffer.getBuffer(), lightSourceBuffer, bufferSize);
 }
 
-/*
-void System_Light_Multipass::createEdgeBuffer()
-{
-	VkDeviceSize bufferSize = sizeof(aligned_uint) * n_indices;
-
-	MyBufferObject stagingBuffer(device, sizeof(aligned_uint), n_indices, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-		VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 1);
-
-	stagingBuffer.writeToBuffer((void*)triangle_edges.data());
-
-	device->createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT |
-		VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, edgeBuffer,
-		edgeBufferMemory);
-
-	device->copyBuffer(stagingBuffer.getBuffer(), edgeBuffer, bufferSize);
-}*/
-
 void System_Light_Multipass::createNodeBuffer()
 {
 	VkDeviceSize bufferSize = sizeof(BVH_node_gpu) * n_nodes;
@@ -690,6 +613,7 @@ void System_Light_Multipass::writeRaytraceInfoBuffer2(int lightmap_n)
 	info.n_triangles = n_indices / 3;
 	info.n_rays = N_RAYS;
 	info.n_nodes = n_nodes;
+	info.n_lights = n_lights;
 
 	//info.face_index_offset = indices_soa.offset[lightmap_n];
 	//info.face_triangle_offset = indices_soa.offset[lightmap_n] / 3 + lightmaps_info[lightmap_n].first_triangle[f_j];
@@ -918,9 +842,40 @@ void System_Light_Multipass::buildLightmaps_async()
 
 		vkDestroyBuffer(device->getDevice(), nTrianglesBuffer, nullptr);
 		vkFreeMemory(device->getDevice(), nTrianglesBufferMemory, nullptr);
-	}
 
-	
+		//=====================================
+		// Print output
+		//
+		/*
+		MyBufferObject stagingBuffer(device, sizeof(aligned_vec3), N_RAYS * 2, VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+			VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 1);
+
+		device->copyBuffer(hitResultsBufferObject->getBuffer(), stagingBuffer.getBuffer(), sizeof(aligned_vec3)* N_RAYS * 2);
+
+		stagingBuffer.readFromBuffer((void*)hit_results);
+
+		for (int i = 0; i < 32; i += 1)
+		{
+			//line3df line0 = line3df(vector3df(hit_results[i].V), vector3df(hit_results[i].V + hit_results[i + 1].V));
+			//line3df line1 = line3df(vector3df(hit_results[i].V), vector3df(hit_results[i].V + hit_results[i + 2].V));
+			//line3df line2 = line3df(vector3df(hit_results[i].V + hit_results[i + 1].V), vector3df(hit_results[i].V + hit_results[i + 2].V));
+			//line3df line0 = line3df(vector3df(hit_results[i].V), vector3df(hit_results[i].V + N));
+			//line3df line1 = line3df(vector3df(hit_results[i].V), vector3df(hit_results[i + 2].V));
+			//line3df line2 = line3df(vector3df(hit_results[i + 1].V), vector3df(hit_results[i + 2].V));
+
+			//line3df line0 = line3df(vector3df(hit_results[i].V), vector3df(hit_results[256 + i].V));
+			//m_graph.lines.push_back(line0);
+
+			//std::cout << hit_results[i].V.X << "," << hit_results[i].V.Y << "," << hit_results[i].V.Z << "\n";
+			//std::cout << hit_results[i].V.X << "," << hit_results[i].V.Y << "\n ";
+
+			//m_graph.lines.push_back(line1);
+			//m_graph.lines.push_back(line2);
+		}
+		std::cout << "\n";
+		*/
+	}
 }
 
 void System_Light_Multipass::buildLightmap(int lightmap_n, int f_j)
@@ -948,7 +903,7 @@ void System_Light_Multipass::buildLightmap(int lightmap_n, int f_j)
 	descriptorPool->freeDescriptorsSets(descriptorSets);
 
 	vkDeviceWaitIdle(device->getDevice());
-	/*
+	
 	MyBufferObject stagingBuffer(device, sizeof(aligned_vec3), N_RAYS * 2, VK_BUFFER_USAGE_TRANSFER_DST_BIT,
 		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
 		VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 1);
@@ -957,7 +912,7 @@ void System_Light_Multipass::buildLightmap(int lightmap_n, int f_j)
 
 	stagingBuffer.readFromBuffer((void*)hit_results);
 
-	for (int i = 0; i < 4; i++)
+	for (int i = 0; i < 32; i++)
 	{
 		//std::cout << hit_results[i].V.X << ", ";
 		std::cout << hit_results[i].V.X << "," << hit_results[i].V.Y << "  ";
@@ -980,7 +935,7 @@ void System_Light_Multipass::buildLightmap(int lightmap_n, int f_j)
 		//m_graph.lines.push_back(line1);
 		//m_graph.lines.push_back(line2);
 	}
-	std::cout << "\n";*/
+	std::cout << "\n";
 }
 
 void System_Light_Multipass::writeDrawLines(LineHolder& graph)
@@ -1003,7 +958,7 @@ void System_Light_Multipass::executeComputeShader()
 	}*/
 
 	buildLightmaps_async();
-
+	/*
 	vkDeviceWaitIdle(device->getDevice());
 
 	MyBufferObject stagingBuffer(device, sizeof(aligned_vec3), N_RAYS * 2, VK_BUFFER_USAGE_TRANSFER_DST_BIT,
@@ -1014,7 +969,7 @@ void System_Light_Multipass::executeComputeShader()
 
 	stagingBuffer.readFromBuffer((void*)hit_results);
 
-	for (int i = 0; i < 256; i += 1)
+	for (int i = 0; i < 32; i += 1)
 	{
 		//line3df line0 = line3df(vector3df(hit_results[i].V), vector3df(hit_results[i].V + hit_results[i + 1].V));
 		//line3df line1 = line3df(vector3df(hit_results[i].V), vector3df(hit_results[i].V + hit_results[i + 2].V));
@@ -1023,16 +978,17 @@ void System_Light_Multipass::executeComputeShader()
 		//line3df line1 = line3df(vector3df(hit_results[i].V), vector3df(hit_results[i + 2].V));
 		//line3df line2 = line3df(vector3df(hit_results[i + 1].V), vector3df(hit_results[i + 2].V));
 
-		line3df line0 = line3df(vector3df(hit_results[i].V), vector3df(hit_results[256 + i].V));
-		m_graph.lines.push_back(line0);
+		//line3df line0 = line3df(vector3df(hit_results[i].V), vector3df(hit_results[256 + i].V));
+		//m_graph.lines.push_back(line0);
 
-		std::cout << hit_results[i].V.X << "," << hit_results[i].V.Y << "," << hit_results[i].V.Z << "\n";
+		//std::cout << hit_results[i].V.X << "," << hit_results[i].V.Y << "," << hit_results[i].V.Z << "\n";
+		std::cout << hit_results[i].V.X << " ";
 
 		//m_graph.lines.push_back(line1);
 		//m_graph.lines.push_back(line2);
 	}
+	std::cout << "\n";*/
 	
-
 	System4* edges_compute_shader = new System4(device);
 
 	edges_compute_shader->setDescriptorPool(descriptorPool);

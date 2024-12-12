@@ -47,11 +47,7 @@ class System_Light_Multipass {
 		uint32_t lightmap_height;
 
 		uint32_t faces_offset;
-
-		/*uint32_t block_x0;
-		uint32_t block_y0;
-		uint32_t block_width;
-		uint32_t block_id;*/
+		uint32_t n_lights;
 	};
 
 public:

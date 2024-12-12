@@ -31,7 +31,7 @@ struct TypeDescriptor {
     const char* alias;
     size_t size;
 
-    TypeDescriptor(const char* name, size_t size) : name{name}, size{size} {}
+    TypeDescriptor(const char* name, size_t size) : name{ name }, alias{ NULL }, size{ size } {}
     virtual ~TypeDescriptor() {}
     virtual std::string getFullName() const { return name; }
 
@@ -168,6 +168,9 @@ struct EmptyStruct
 // Type descriptors for user-defined structs/classes
 //--------------------------------------------------------
 
+#define FLAG_NON_EDITABLE 1
+#define FLAG_NON_COLLAPSABLE 2
+
 struct Member {
          struct Attribute {
             int A;
@@ -180,6 +183,7 @@ struct Member {
         bool expanded;   //for editor widgets
         bool readwrite;  //for editor widgets
         bool modified;   //for editor widgets
+        char flags = 0;
 
         void* get(const void* obj)
         {
@@ -349,6 +353,7 @@ struct TypeDescriptor_Struct : TypeDescriptor {
             {
                 Member m{ members[i].name, p_inc, flat_type };
                 
+                m.flags = members[i].flags;
                 m.expanded = members[i].expanded;
                 m.modified = false;
 
@@ -427,6 +432,9 @@ struct TypeDescriptor_Struct : TypeDescriptor {
 #define REFLECT_STRUCT_MEMBER(name) \
         typeDesc->members.push_back(reflect::Member{#name, offsetof(T, name), reflect::TypeResolver<decltype(T::name)>::get()});
         //   {#name, offsetof(T, name), reflect::TypeResolver<decltype(T::name)>::get()},
+
+#define REFLECT_STRUCT_MEMBER_FLAG(flag) \
+        typeDesc->members[typeDesc->members.size()-1].flags |= flag;
 
 #define REFLECT_STRUCT_END() \
     }
@@ -819,6 +827,33 @@ struct TypeDescriptor_Texture : TypeDescriptor {
 
     virtual bool expandable(){return true;}
     virtual void addFormWidget(Reflected_GUI_Edit_Form*, TypeDescriptor_Struct*, std::vector<int> tree, size_t offset, bool bVisible, bool bEditable, int tab) override;
+};
+
+struct TypeDescriptor_Pointer : TypeDescriptor {
+    TypeDescriptor_Pointer() : TypeDescriptor{ "ptr", sizeof(char*) } {
+    }
+    virtual void dump(const void* obj, int /* unused */) const override {
+        std::cout << "ptr{" << *(const unsigned short*)obj << "}";
+    }
+
+    virtual void addFormWidget(Reflected_GUI_Edit_Form*, TypeDescriptor_Struct*, std::vector<int> tree, size_t offset, bool bVisible, bool bEditable, int tab) override
+    {}
+
+};
+
+struct TypeDescriptor_U64 : TypeDescriptor {
+    TypeDescriptor_U64() : TypeDescriptor{ "u64", sizeof(unsigned long long) } {
+    }
+    virtual void dump(const void* obj, int /* unused */) const override {
+        std::cout << "u64{" << *(const unsigned long long*)obj << "}";
+    }
+
+    virtual void addFormWidget(Reflected_GUI_Edit_Form*, TypeDescriptor_Struct*, std::vector<int> tree, size_t offset, bool bVisible, bool bEditable, int tab) override
+    {}
+
+    virtual bool isEqual(void* obj, void* obj2) {
+        return *(const unsigned long long*)obj == *(const unsigned long long*)obj2;
+    }
 };
 
 } // namespace reflect

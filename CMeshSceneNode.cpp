@@ -156,6 +156,33 @@ void CMeshSceneNode::render_special(video::SMaterial& material)
 		}
 }
 
+void CMeshSceneNode::render_with_material(video::SMaterial& material)
+{
+	video::IVideoDriver* driver = SceneManager->getVideoDriver();
+
+	if (!Mesh || !driver)
+		return;
+
+	driver->setTransform(video::ETS_WORLD, AbsoluteTransformation);
+
+	for (u32 i = 0; i < Mesh->getMeshBufferCount(); ++i)
+	{
+		scene::IMeshBuffer* mb = Mesh->getMeshBuffer(i);
+		if (mb)
+		{
+			//const video::SMaterial& material = ReadOnlyMaterials ? mb->getMaterial() : Materials[i];
+			material.BackfaceCulling = mb->getMaterial().BackfaceCulling;
+			material.FrontfaceCulling = mb->getMaterial().FrontfaceCulling;
+
+			material.setTexture(0, mb->getMaterial().getTexture(0));
+			material.setTexture(1, mb->getMaterial().getTexture(1));
+
+			driver->setMaterial(material);
+			driver->drawMeshBuffer(mb);
+		}
+	}
+}
+
 
 void CMeshSceneNode::render_special(int buffer_i, video::SMaterial& material, video::ITexture* texture)
 {

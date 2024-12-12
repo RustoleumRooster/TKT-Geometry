@@ -103,6 +103,8 @@ public:
     void selectionChanged();
     surface_group getFaceSurfaceGroup(int);
 
+    std::vector<Reflected_SceneNode*> editor_node_ptrs_from_uid(const std::vector<u64>& selection);
+    MeshBuffer_Chunk get_face_buffer_by_uid(u64);
 
     poly_face* get_original_brush_face(int f_i);
     polyfold* get_original_brush(int f_i);
@@ -168,11 +170,10 @@ public:
     void rebuildSceneGraph();
 
     void addSceneLight(core::vector3df pos);
-    std::vector<Reflected_SceneNode*> getSceneNodes();
-    void setSelectedNodes(std::vector<int>);
-    void setSelectedNodes_ShiftAdd(int new_sel);
-    std::vector<int> getSelectedNodes();
-    Reflected_SceneNode* getSelectedSceneNode(int i) {return getSceneNodes()[getSelectedNodes()[i]];}
+    void setSelectedNodes(std::vector<Reflected_SceneNode*>);
+    void setSelectedNodes_ShiftAdd(Reflected_SceneNode*);
+    std::vector<Reflected_SceneNode*> getSelectedNodes();
+
     void deleteSelectedNodes();
 
     reflect::TypeDescriptor_Struct* getSelectedNodeClass();
@@ -185,6 +186,9 @@ public:
     triangle_holder* get_triangles_for_face(int f_i);
 
     LineHolder special_graph;
+
+    ISceneNode* EditorNodes() { return editor_nodes; }
+    ISceneNode* ActualNodes() { return actual_nodes; }
 
 private:
     
@@ -199,7 +203,7 @@ private:
     polyfold total_geometry;
     std::vector<int> selected_brushes;
     std::vector<int> selected_faces;
-    std::vector<int> selected_scene_nodes;
+    std::vector<Reflected_SceneNode*> selected_scene_nodes;
     std::vector<int> edit_mesh_buffer_faces;
 
     scene::ISceneManager* smgr=NULL;
@@ -218,7 +222,9 @@ private:
     video::E_MATERIAL_TYPE special_material_type;
 
     core::vector3df drag_vec;
-    std::vector<Reflected_SceneNode*> scene_nodes;
+
+    USceneNode* editor_nodes = NULL;
+    USceneNode* actual_nodes = NULL;
 
     LineHolder intersections_graph;
 

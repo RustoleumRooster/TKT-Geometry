@@ -7,6 +7,8 @@
 #include <chrono>
 #include "clip_functions3.h"    //TODO, dependency 
 
+#include "polyfold_soa.h"
+
 using namespace irr;
 
 #define TIME_HEADER() auto startTime = std::chrono::high_resolution_clock::now();\
@@ -171,6 +173,9 @@ void combine_polyfolds_accelerated(const std::vector<polyfold*>& polies, polyfol
             res.edges.push_back(poly_edge(e.v0 + nVertices, e.v1 + nVertices));
         }
 
+        for (const poly_vert& vert : polies[i]->control_vertices)
+            res.control_vertices.push_back(vert);
+
         for (const poly_face& f : polies[i]->faces)
         {
             res.faces.push_back(poly_face());
@@ -206,6 +211,9 @@ void combine_polyfolds_accelerated(const std::vector<polyfold*>& polies, polyfol
     //PRINT_TIMER(combine_poly_accelerated)
 }
 
+
+
+
 void combine_polyfolds_linear(const std::vector<polyfold*>& polies, polyfold& res)
 {
     int n_surface_groups = 0;
@@ -216,6 +224,9 @@ void combine_polyfolds_linear(const std::vector<polyfold*>& polies, polyfold& re
 
         for (int s_i = 0; s_i < pf.surface_groups.size(); s_i++)
             res.surface_groups.push_back(pf.surface_groups[s_i]);
+
+        for (const poly_vert& vert : polies[j]->control_vertices)
+            res.control_vertices.push_back(vert);
 
         for (int f_i = 0; f_i < pf.faces.size(); f_i++)
         {

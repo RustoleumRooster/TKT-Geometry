@@ -93,6 +93,7 @@ struct bounding_quad
 struct LightMaps_Info_Struct
 {
     u16 size;
+    u16 type;
     std::vector<int> faces;
     std::vector<reflect::vector2u> lightmap_block_UL;
     std::vector<reflect::vector2u> lightmap_block_BR;
@@ -114,6 +115,7 @@ struct Model_Struct
     REFLECT()
 };
 
+u64 random_number();
 
 bool WriteGUIStateToFile(io::path fname);
 bool ReadGUIStateFromFile(io::path fname);

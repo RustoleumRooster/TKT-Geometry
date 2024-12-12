@@ -520,7 +520,7 @@ void LM_Viewer_Panel::OnMenuItemSelected(IGUIContextMenu* menu)
 void LM_Viewer_Panel::left_click(core::vector2di pos)
 {
     std::vector<int> old_sel_faces = geo_scene->getSelectedFaces();
-    std::vector<int> old_sel_nodes = geo_scene->getSelectedNodes();
+    std::vector<Reflected_SceneNode*> old_sel_nodes = geo_scene->getSelectedNodes();
     std::vector<int> old_sel_brushes = geo_scene->getBrushSelection();
 
     if (click_hits_poly(&geo_scene->elements[0].brush, core::vector2di(clickx, clicky)))

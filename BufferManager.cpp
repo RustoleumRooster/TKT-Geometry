@@ -91,7 +91,7 @@ void MeshNode_Interface_Final::refresh_material_groups(geometry_scene* geo_scene
         {
             int f_i = materials_used[i].faces[j];
 
-            geo_scene->get_total_geometry()->faces[f_i].get3DBoundingQuad(&materials_used[i].records[j].bounding_verts[0]);
+            geo_scene->get_total_geometry()->faces[f_i].get3DBoundingQuad(&materials_used[i].records[j].bounding_verts[0],0);
             
         }
     }

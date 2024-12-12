@@ -11,6 +11,7 @@
 #include "CPLYMeshWriter.h"
 #include "file_open.h"
 #include "CameraPanel.h"
+#include <random>
 
 extern IrrlichtDevice* device;
 
@@ -776,11 +777,14 @@ bool geometry_scene::WriteSceneNodesToFile(std::string fname)
 
     wf<<"38\n";
 
-    int e = this->scene_nodes.size();
+   // int e = this->scene_nodes.size();
+    int e = this->editor_nodes->getChildren().size();
     wf.write((char*)&e,sizeof(int));
 
-    for(Reflected_SceneNode* node : this->scene_nodes)
+    //for(Reflected_SceneNode* node : this->scene_nodes)
+    for(ISceneNode* it : this->editor_nodes->getChildren())
     {
+        Reflected_SceneNode* node = (Reflected_SceneNode*)it;
         node->preEdit();
         reflect::TypeDescriptor_Struct* td = node->GetDynamicReflection();
         wf<<node->GetDynamicReflection()->name<<'\0';
@@ -823,13 +827,22 @@ bool geometry_scene::ReadSceneNodesFromFile(io::path fname)
         return false;
     }
 
+    core::list<scene::ISceneNode*> child_list = editor_nodes->getChildren();
+
+    core::list<scene::ISceneNode*>::Iterator it = child_list.begin();
+    for (; it != child_list.end(); ++it)
+    {
+        editor_nodes->removeChild(*it);
+    }
+
+    /*
     for(Reflected_SceneNode* node : this->scene_nodes)
     {
         node->remove();
         node->drop();
     }
     this->scene_nodes.clear();
-
+    */
     int n_nodes;
     rf.read((char*)&n_nodes,sizeof(int));
 
@@ -841,7 +854,7 @@ bool geometry_scene::ReadSceneNodesFromFile(io::path fname)
         if(typeDescriptor)
         {
             //Reflected_SceneNode* new_node = ((reflect::TypeDescriptor_SN_Struct*)typeDescriptor)->create_func(smgr, -1, core::vector3df(0, 0, 0));
-            Reflected_SceneNode* new_node = Reflected_SceneNode_Factory::CreateNodeByTypeName(typeDescriptor->name,this->smgr);
+            Reflected_SceneNode* new_node = Reflected_SceneNode_Factory::CreateNodeByTypeName(typeDescriptor->name, this->editor_nodes, this->smgr);
             if(new_node)
             {
                 reflect::TypeDescriptor_Struct* td = typeDescriptor;
@@ -852,7 +865,7 @@ bool geometry_scene::ReadSceneNodesFromFile(io::path fname)
                     td = td->inherited_type;
                 }
                 new_node->postEdit();
-                this->scene_nodes.push_back(new_node);
+                //this->scene_nodes.push_back(new_node);
             }
             else
                 {
@@ -1142,7 +1155,17 @@ bool ReadGUIStateFromFile(io::path fname)
     return true;
 }
 
-bool WriteGUIStateToFile(io::path fname)
+    u64 random_number()
+    {
+        static random_device dev;
+        static mt19937 rng(dev());
+
+        std::uniform_int_distribution<u64> dist(0, std::numeric_limits<u64>::max());
+
+        return dist(rng);
+    }
+
+    bool WriteGUIStateToFile(io::path fname)
 {
     gui::IGUIEnvironment* env = device->getGUIEnvironment();
     gui::IGUIElement* root = env->getRootGUIElement();

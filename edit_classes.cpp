@@ -66,14 +66,14 @@ namespace reflect
             for(int i=0;i<members.size();i++)
             {
                 std::vector<int> tree{i};
-                members[i].type->addFormWidget(win,this,tree,0, bVisible, bEditable, tab+1);
+                members[i].type->addFormWidget(win,this,tree,0, bVisible, bEditable && (members[i].flags & FLAG_NON_EDITABLE) == 0, tab+1);
             }
         else 
             for(int i=0;i<members.size();i++)
             {
                 std::vector<int> tree = tree_0;
                 tree.push_back(i);
-                members[i].type->addFormWidget(win,this,tree,type_struct->members[m_i].offset + offset_base, type_struct->members[m_i].expanded && bVisible, bEditable,tab+1);
+                members[i].type->addFormWidget(win,this,tree,type_struct->members[m_i].offset + offset_base, type_struct->members[m_i].expanded && bVisible, bEditable && (members[i].flags & FLAG_NON_EDITABLE) == 0, tab+1);
             }
     }
 
@@ -727,7 +727,7 @@ int FormField::getWidth(int column)
     if(column == 0)
     {
         int tabdist = tab == 1 ? 20 : tab * 16;
-        return tabdist + text.length() * 6 + 4;
+        return tabdist + text.length() * 6 + 16;
     }
     else if (column > 0)
     {

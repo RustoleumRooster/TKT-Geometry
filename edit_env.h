@@ -125,6 +125,7 @@ enum
 	GUI_ID_MATERIAL_GROUPS_BASE,
     GUI_ID_GEO_SETTINGS_BASE,
     GUI_ID_MAT_BUFFERS_BASE,
+    GUI_ID_RENDER_TOOL_BASE,
     GUI_ID_FILE_OPEN_BASE,
     GUI_ID_LM_VIEWER_BASE,
     GUI_ID_UV_EDITOR_BASE
@@ -150,7 +151,7 @@ enum
 
     USER_EVENT_MATERIAL_GROUP_SELECTION_CHANGED,
 
-    USER_EVENT_CLEAR_LIGHTMAP_TEXTURES
+    USER_EVENT_CLEAR_LIGHTMAP_TEXTURES,
 };
 
 /*
@@ -168,7 +169,13 @@ public:
     int my_ID;
 };*/
 
-class MyEventReceiver : public IEventReceiver
+class ViewResizeObject
+{
+public:
+    virtual void resizeView(core::dimension2du newsize) = 0;
+};
+
+class MyEventReceiver : public IEventReceiver, public ViewResizeObject
 {
 public:
     // We'll create a struct to record info on the mouse state
@@ -214,11 +221,29 @@ public:
         safe_remove_receivers.push_back(receiver);
     }
 
+
+    virtual void resizeView(core::dimension2du newsize);
+
+    void Register_ViewResize(ViewResizeObject* receiver)
+    {
+        resize_receivers.push_back(receiver);
+        receiver->resizeView(view_size);
+    }
+    void UnRegister_ViewResize(ViewResizeObject* receiver)
+    {
+        resize_receivers.remove(receiver);
+    }
+
 private:
 	// We use this array to store the current state of each key
 	bool KeyIsDown[KEY_KEY_CODES_COUNT];
 	std::list<IEventReceiver*> receivers;
     std::list<IEventReceiver*> safe_remove_receivers;
+
+    std::list<ViewResizeObject*> resize_receivers;
+
+    // The dimensions of the main camera windows. Needed for nodes that create render targets.
+    core::dimension2du view_size;
 };
 
 bool hasModalDialogue();

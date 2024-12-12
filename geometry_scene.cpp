@@ -9,6 +9,7 @@
 #include "material_groups.h"
 #include "BVH.h"
 #include <chrono>
+#include "custom_nodes.h"
 
 
 #define TIME_HEADER() auto startTime = std::chrono::high_resolution_clock::now();\
@@ -43,6 +44,20 @@ geometry_scene::geometry_scene(scene::ISceneManager* smgr_,video::IVideoDriver* 
     this->base_material_type = base_material_type_;
     this->special_material_type = special_material_type_;
     this->event_receiver = receiver;
+
+    core::list<scene::ISceneNode*> child_list = smgr->getRootSceneNode()->getChildren();
+
+    core::list<scene::ISceneNode*>::Iterator it = child_list.begin();
+    for (; it != child_list.end(); ++it)
+    {
+        int id = (*it)->getID();
+        if ((*it)->getType() != scene::ESNT_CAMERA)
+            smgr->getRootSceneNode()->removeChild(*it);
+    }
+
+    this->editor_nodes = new USceneNode(smgr->getRootSceneNode(), smgr, 0, vector3df(0, 0, 0));
+    this->actual_nodes = new USceneNode(smgr->getRootSceneNode(), smgr, 0, vector3df(0, 0, 0));
+
     event_receiver->Register(this);
     geo_element red;
     red.brush= make_poly_cube(256,256,256);
@@ -158,19 +173,19 @@ void geometry_scene::setSelectedFaces_ShiftAdd(int new_sel)
     setSelectedFaces(selection);
 }
 
-void geometry_scene::setSelectedNodes_ShiftAdd(int new_sel)
+void geometry_scene::setSelectedNodes_ShiftAdd(Reflected_SceneNode* new_sel)
 {
     bool b = false;
-    std::vector<int> selection;
+    std::vector<Reflected_SceneNode*> selection;
 
-    for(int f_i : getSelectedNodes())
+    for(Reflected_SceneNode* n : getSelectedNodes())
     {
-        if(f_i == new_sel)
+        if(n == new_sel)
         {
             b = true;
         }
         else
-            selection.push_back(f_i);
+            selection.push_back(n);
     }
 
     if(!b)
@@ -206,7 +221,7 @@ void geometry_scene::setSelectedFaces(std::vector<int> selection)
             buffer->getMaterial().Lighting = false;
 
 
-            material_groups_base->apply_material_to_buffer(buffer, pf->faces[f_i].material_group, -1, bSelected);
+            material_groups_base->apply_material_to_buffer(buffer, pf->faces[f_i].material_group, -1, bSelected, false);
 
             if (b_Visualize)
             {
@@ -225,8 +240,8 @@ void geometry_scene::setSelectedFaces(std::vector<int> selection)
     //std::cout << " (selected faces)\n";
 }
 
-void geometry_scene::setSelectedNodes(std::vector<int> selection)
-{
+void geometry_scene::setSelectedNodes(std::vector<Reflected_SceneNode*> selection)
+{/*
     auto IsInSelection = [&](int ii) -> bool{
         bool b=false;
         for(int j : selection)
@@ -237,17 +252,32 @@ void geometry_scene::setSelectedNodes(std::vector<int> selection)
             }
         }
         return b;
-    };
+    };*/
 
-    for(int i=0; i<this->scene_nodes.size();i++)
-    {
-        if(IsInSelection(i))
+    auto IsInSelection = [&](Reflected_SceneNode* node) -> bool {
+        bool b = false;
+        for (Reflected_SceneNode* n: selection)
         {
-            this->scene_nodes[i]->Select();
+            if (node == n)
+            {
+                b = true;
+                break;
+            }
+        }
+        return b;
+        };
+
+   // for(int i=0; i<this->scene_nodes.size();i++)
+    for(ISceneNode* it : this->editor_nodes->getChildren())
+    {
+        Reflected_SceneNode* node = (Reflected_SceneNode*)it;
+        if(IsInSelection(node))
+        {
+            node->Select();
         }
         else
         {
-            this->scene_nodes[i]->UnSelect();
+            node->UnSelect();
         }
     }
 
@@ -354,12 +384,42 @@ surface_group geometry_scene::getFaceSurfaceGroup(int b_i)
     return elements[brush_j].brush.surface_groups[f->surface_group];
 }
 
+std::vector<Reflected_SceneNode*> geometry_scene::editor_node_ptrs_from_uid(const std::vector<u64>& selection)
+{
+    std::vector<Reflected_SceneNode*> ret;
+
+    for (ISceneNode* it : editor_nodes->getChildren())
+    {
+        Reflected_SceneNode* node = (Reflected_SceneNode*)it;
+        for (u64 uid : selection)
+        {
+            if (uid == node->UID())
+            {
+                ret.push_back(node);
+            }
+        }
+    }
+    return ret;
+}
+
+MeshBuffer_Chunk geometry_scene::get_face_buffer_by_uid(u64 uid)
+{
+    for(int f_i = 0; f_i<total_geometry.faces.size(); f_i++)
+    {
+        poly_face& f = total_geometry.faces[f_i];
+        if (f.uid == uid)
+        {
+            return final_meshnode_interface.get_mesh_buffer_by_face(f_i);
+        }
+    }
+}
+
 std::vector<int> geometry_scene::getSelectedFaces()
 {
     return this->selected_faces;
 }
 
-std::vector<int> geometry_scene::getSelectedNodes()
+std::vector<Reflected_SceneNode*> geometry_scene::getSelectedNodes()
 {
     return this->selected_scene_nodes;
 }
@@ -650,7 +710,8 @@ void geometry_scene::buildSceneGraph(bool finalMesh, bool addObjects, int light_
    // std::cout << "rebuilding scene...";
     //std::cout << "edit objects "<< addObjects<< ", final " << finalMesh << ", add lights " << addLights << "\n";
 
-    core::list<scene::ISceneNode*> child_list = smgr->getRootSceneNode()->getChildren();
+    //core::list<scene::ISceneNode*> child_list = smgr->getRootSceneNode()->getChildren();
+    core::list<scene::ISceneNode*> child_list = actual_nodes->getChildren();
 
     if(my_MeshNode)
         my_MeshNode->drop();
@@ -660,9 +721,21 @@ void geometry_scene::buildSceneGraph(bool finalMesh, bool addObjects, int light_
     {
         int id = (*it)->getID();
         if( (*it)->getType() != scene::ESNT_CAMERA )
-            smgr->getRootSceneNode()->removeChild(*it);
+            actual_nodes->removeChild(*it);
     }
 
+    child_list = editor_nodes->getChildren();
+    for (core::list<scene::ISceneNode*>::Iterator it = child_list.begin(); it != child_list.end(); ++it)
+    {
+        Reflected_SceneNode* node = (Reflected_SceneNode*)(*it);
+        node->onClear();
+
+        if (finalscene ||
+            (light_mode != LIGHTING_UNLIT && node->getType() == ESNT_LIGHT))
+            node->addSelfToScene(actual_nodes, smgr, this);
+    }
+
+    /*
     for(Reflected_SceneNode* node : this->scene_nodes)
     {
         node->onClear();
@@ -676,8 +749,8 @@ void geometry_scene::buildSceneGraph(bool finalMesh, bool addObjects, int light_
 
         if (finalscene ||
            (light_mode != LIGHTING_UNLIT && node->getType() == ESNT_LIGHT))
-            node->addSelfToScene(smgr);
-    }
+            node->addSelfToScene(smgr, this);
+    }*/
 
     if (final_mesh_dirty)
     {
@@ -690,6 +763,8 @@ void geometry_scene::buildSceneGraph(bool finalMesh, bool addObjects, int light_
 
     if(finalMesh) //final mesh
     {
+        editor_nodes->setVisible(false);
+
         b_isEditNode = false;
         this->my_MeshNode = final_meshnode_interface.addMeshSceneNode(smgr,this);
 
@@ -697,13 +772,15 @@ void geometry_scene::buildSceneGraph(bool finalMesh, bool addObjects, int light_
         {
             scene::IMeshBuffer* buffer = my_MeshNode->getMesh()->getMeshBuffer(i);
             int f_i = final_meshnode_interface.getMaterialsUsed()[i].faces[0];
-            material_groups_base->apply_material_to_buffer(buffer,pf->faces[f_i].material_group,light_mode,false);
+            material_groups_base->apply_material_to_buffer(buffer,pf->faces[f_i].material_group,light_mode,false,true);
             
         }
         my_MeshNode->copyMaterials();
     }
     else //edit mesh
     {
+        editor_nodes->setVisible(true);
+
         b_isEditNode = true;
         this->my_MeshNode = edit_meshnode_interface.addMeshSceneNode(smgr,this);
 
@@ -714,7 +791,7 @@ void geometry_scene::buildSceneGraph(bool finalMesh, bool addObjects, int light_
                 int buffer_index = edit_meshnode_interface.get_buffer_index_by_face(f_i);
                 scene::IMeshBuffer* buffer = this->getMeshNode()->getMesh()->getMeshBuffer(buffer_index);
 
-                material_groups_base->apply_material_to_buffer(buffer,pf->faces[f_i].material_group,light_mode,false);
+                material_groups_base->apply_material_to_buffer(buffer,pf->faces[f_i].material_group,light_mode,false,false);
 
                 video::ITexture* tex_j = driver->getTexture(pf->faces[f_i].texture_name.c_str());
 
@@ -766,12 +843,13 @@ void geometry_scene::clear_scene()
         this->getMeshNode()->remove();
     }
 
-    for(Reflected_SceneNode* node : this->scene_nodes)
+    //for(Reflected_SceneNode* node : this->scene_nodes)
+    for(ISceneNode* node : this->editor_nodes->getChildren())
     {
         node->remove();
         node->drop();
     }
-    this->scene_nodes.clear();
+    //this->scene_nodes.clear();
 
     this->rebuild_geometry();
 }
@@ -812,11 +890,11 @@ reflect::TypeDescriptor_Struct* geometry_scene::getSelectedNodeClass()
 
 void geometry_scene::addSceneLight(core::vector3df pos)
 {
-    Reflected_SceneNode* a_light = new Reflected_LightSceneNode(smgr,-1,pos);
+    Reflected_SceneNode* a_light = new Reflected_LightSceneNode(editor_nodes,smgr,-1,pos);
     a_light->preEdit();
-    scene_nodes.push_back(a_light);
+   // scene_nodes.push_back(a_light);
     if(b_dynamic_light)
-        a_light->addSelfToScene(smgr);
+        a_light->addSelfToScene(actual_nodes,smgr, this);
 }
 
 void geometry_scene::addSceneSelectedSceneNodeType(core::vector3df pos)
@@ -825,13 +903,13 @@ void geometry_scene::addSceneSelectedSceneNodeType(core::vector3df pos)
     if(typeDescriptor)
     {
         //Reflected_SceneNode* a_thing = CreateNodeByTypeName(typeDescriptor->name, smgr);
-        Reflected_SceneNode* a_thing = Reflected_SceneNode_Factory::CreateNodeByTypeName(typeDescriptor->name, smgr);
+        Reflected_SceneNode* a_thing = Reflected_SceneNode_Factory::CreateNodeByTypeName(typeDescriptor->name, editor_nodes, smgr);
         if(a_thing)
         {
             std::cout<<"added a "<<typeDescriptor->name<<"\n";
             a_thing->setPosition(pos);
             a_thing->preEdit();
-            scene_nodes.push_back(a_thing);
+           // scene_nodes.push_back(a_thing);
             //typeDescriptor->dump(a_thing,0);
         }
     }
@@ -839,6 +917,25 @@ void geometry_scene::addSceneSelectedSceneNodeType(core::vector3df pos)
 
 void geometry_scene::deleteSelectedNodes()
 {
+    if (selected_scene_nodes.size() == 0)
+        return;
+
+    core::list<scene::ISceneNode*> child_list = editor_nodes->getChildren();
+
+    for (Reflected_SceneNode* n : selected_scene_nodes)
+    {
+        core::list<scene::ISceneNode*>::Iterator it = child_list.begin();
+        for (; it != child_list.end(); ++it)
+        {
+            Reflected_SceneNode* node = (Reflected_SceneNode*)(*it);
+            if(node == n)
+                editor_nodes->removeChild(*it);
+        }
+    }
+
+    selectionChanged();
+
+    /*
     std::vector<Reflected_SceneNode*> new_nodes;
     int removed=0;
     for(int i=0;i<scene_nodes.size();i++)
@@ -865,14 +962,17 @@ void geometry_scene::deleteSelectedNodes()
 
     scene_nodes = new_nodes;
 
-    if(removed > 0)
-        selectionChanged();
+    */
+    //if(removed > 0)
+        
 }
 
+/*
 std::vector<Reflected_SceneNode*> geometry_scene::getSceneNodes()
 {
     return scene_nodes;
 }
+*/
 
 REFLECT_STRUCT_BEGIN(geo_element)
     REFLECT_STRUCT_MEMBER(type)

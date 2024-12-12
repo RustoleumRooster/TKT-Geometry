@@ -54,9 +54,17 @@ void System_Amb_Occlusion::loadModel(MeshNode_Interface_Final* meshnode)
 	writeLightmapsInfo(meshnode->getMaterialsUsed(), lightmaps_info, meshnode);
 
 	createLightmapImages();
+
+	vector<bool> include_materials;
+	include_materials.resize(lightmaps_info.size());
+
+	for (int i = 0; i < lightmaps_info.size(); i++)
+	{
+		include_materials[i] = lightmaps_info[i].type != 2 && lightmaps_info[i].type != 4;
+	}
 	
-	fill_vertex_struct(meshnode->getMesh(), vertices_soa);
-	fill_index_struct(meshnode->getMesh(), indices_soa);
+	fill_vertex_struct(meshnode->getMesh(), vertices_soa, include_materials);
+	fill_index_struct(meshnode->getMesh(), indices_soa, include_materials);
 
 	for (int i = 0; i < vertices_soa.offset.size(); i++)
 	{
@@ -91,7 +99,7 @@ void System_Amb_Occlusion::loadModel(MeshNode_Interface_Final* meshnode)
 			if (my_bvh.nodes[i].n_prims > 2)
 				std::cout << "WARNING: node " << i << " has " << my_bvh.nodes[i].n_prims << " triangles, max 2\n";
 
-			for (int j = 0; j < std::min(4u,my_bvh.nodes[i].n_prims); j++)
+			for (int j = 0; j < std::min(2u,my_bvh.nodes[i].n_prims); j++)
 			{
 				my_bvh.nodes[i].packing[j] = static_cast<f32> (my_bvh.indices[my_bvh.nodes[i].first_prim + j]);
 			}

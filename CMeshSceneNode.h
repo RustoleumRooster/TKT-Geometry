@@ -89,6 +89,7 @@ namespace scene
 
 		void render_special(video::SMaterial& material);
 		void render_special(int buffer_i, video::SMaterial& material, video::ITexture*);
+		void render_with_material(video::SMaterial& material);
 		static void initialize_unique_color(video::IVideoDriver* driver);
 
 		void SetFaceTexture(int f_i, video::ITexture* texture);

@@ -26,11 +26,13 @@ struct node_instance
     //REFLECTED MEMBERS:
     int id;
     std::string name;
+    char* node_ptr = NULL;
  
     //DEFINES:
     REFLECT_CUSTOM_STRUCT()
 
     //NON REFLECTED MEMBERS:
+    
     bool selected = false;
     void write_attributes(reflect::Member* m_struct);
 };
@@ -113,7 +115,7 @@ public:
 
     std::string getTypesString();
 
-    void select(int sel, bool shift);
+    void select(Reflected_SceneNode* sel, bool shift);
 
     virtual void* getObj() {
         return &m_struct;

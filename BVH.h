@@ -23,6 +23,17 @@ public:
 		return calc_surface_area(aabbMin,aabbMax);
 	}
 
+	void addPoint(vector3df v)
+	{
+		aabbMin[0] = fmin(aabbMin[0], v.X);
+		aabbMin[1] = fmin(aabbMin[1], v.Y);
+		aabbMin[2] = fmin(aabbMin[2], v.Z);
+
+		aabbMax[0] = fmax(aabbMax[0], v.X);
+		aabbMax[1] = fmax(aabbMax[1], v.Y);
+		aabbMax[2] = fmax(aabbMax[2], v.Z);
+	}
+
 	void clear()
 	{
 		aabbMin[0] = aabbMin[1] = aabbMin[2] = 1e30;

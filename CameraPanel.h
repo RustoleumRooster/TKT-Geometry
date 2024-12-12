@@ -14,38 +14,55 @@ using namespace std;
 class TestPanel;
 class ViewPanel;
 
+class RenderTarget
+{
+public:
+    RenderTarget() {}
+    ~RenderTarget() {}
+
+    virtual void render(video::IVideoDriver* driver) = 0;
+    virtual void resize(core::dimension2d<u32> new_size) = 0;
+    virtual bool isActive() = 0;
+
+};
+
 class RenderList
 {
 public:
     RenderList(video::IVideoDriver* driver) : driver(driver)
     {}
 
-    vector<ViewPanel*> view_panels;
+    vector<RenderTarget*> render_targets;
 
-    void add(ViewPanel* vp);
-    void remove(ViewPanel* vp);
+    void add(RenderTarget* vp);
+    void remove(RenderTarget* vp);
     void renderAll();
     
     private:
         video::IVideoDriver* driver;
 };
 
-class ViewPanel : public gui::IGUIElement
+
+
+class ViewPanel : public gui::IGUIElement, public RenderTarget
 {
 public:
 
     ViewPanel(IGUIEnvironment* environment, video::IVideoDriver* driver, IGUIElement* parent, s32 id, core::rect<s32> rectangle);
     ~ViewPanel();
 
-    void resize(core::dimension2d<s32> new_location, core::dimension2d<u32> new_size);
+    void resize(core::dimension2d<u32> new_size);
+    void set_location(core::dimension2d<s32> new_location);
     
     void draw();
     void hookup(TestPanel* panel);
-    void render(video::IVideoDriver* driver);
+    virtual void render(video::IVideoDriver* driver);
     void disconnect();
     void position(const core::recti& myrect, f32 x_split, f32 y_split, int quad);
 
     virtual bool OnEvent(const SEvent& event);
+    virtual bool isActive() { return isVisible(); }
+
 
     video::ITexture* getTexture()
     {
@@ -59,6 +76,8 @@ public:
 
     vector2d<s32> getClickPos() { return vector2d<s32>{clickx, clicky}; }
     void set_fullscreen(bool bFullscreen);
+
+    core::dimension2d<u32> getSize() { return panel_size; }
 
 private:
     s32 clickx;
@@ -100,6 +119,10 @@ public:
 
     void hookup_aux_panel(TestPanel* pan);
 
+    vector3df get_fp_camera_pos();
+    vector3df get_fp_camera_rot();
+    ICameraSceneNode* get_fp_camera();
+
 private:
 
     bool m_bFullscreen = false;
@@ -137,7 +160,8 @@ struct click_brush_info
 struct click_node_info
 {
     bool hit;
-    int node_n;
+    //int node_n;
+    Reflected_SceneNode* node_hit = NULL;
     f32 distance;
 };
 
@@ -192,6 +216,8 @@ public:
 
     ViewPanel* getViewPanel() { return m_viewPanel; }
 
+    virtual vector3df getCameraPos() { return (camera != NULL) ? camera->getAbsolutePosition() : vector3df(0, 0, 0); }
+
 protected:
 
     void draw_arrow(core::vector3df v, core::vector3df dir_);
@@ -200,7 +226,7 @@ protected:
     bool click_hits_poly(polyfold* brush, core::vector2di v);
     virtual bool get_click_brush(int x, int y, click_brush_info& ret);
     virtual bool get_click_node(int x, int y, click_node_info& ret);
-    virtual int GetSceneNodeHit(int x, int y, bool);
+    virtual Reflected_SceneNode* GetSceneNodeHit(int x, int y, bool);
 
     virtual void left_click(core::vector2di) {} ;
     virtual void right_click(core::vector2di) {} ;

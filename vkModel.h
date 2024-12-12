@@ -122,3 +122,6 @@ class MeshNode_Interface_Final;
 void writeLightmapsInfo(const vector<TextureMaterial>& materials_used, std::vector<LightMaps_Info_Struct>& dest, MeshNode_Interface_Final* meshnode);
 void fill_vertex_struct(SMesh* mesh, soa_struct_2<aligned_vec3, aligned_vec3>& dest);
 void fill_index_struct(SMesh* mesh, soa_struct<aligned_uint>& dest);
+
+void fill_vertex_struct(SMesh* mesh, soa_struct_2<aligned_vec3, aligned_vec3>& dest, const vector<bool>& include);
+void fill_index_struct(SMesh* mesh, soa_struct<aligned_uint>& dest, const vector<bool>& include);

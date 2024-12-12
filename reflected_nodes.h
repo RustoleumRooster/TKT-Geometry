@@ -15,13 +15,14 @@ class Reflected_SceneNode;
 class geometry_scene;
 class ListReflectedNodes_Base;
 class multi_tool_panel;
+class USceneNode;
 
 namespace reflect
 {
     struct TypeDescriptor_SN_Struct : TypeDescriptor_Struct
     {
         bool placeable;
-        Reflected_SceneNode* (*create_func)(irr::scene::ISceneManager* smgr, int id, const irr::core::vector3df& pos);
+        Reflected_SceneNode* (*create_func)(USceneNode* parent, irr::scene::ISceneManager* smgr, int id, const irr::core::vector3df& pos);
         TypeDescriptor_SN_Struct(void (*init)(TypeDescriptor_Struct*));
     };
 
@@ -30,12 +31,12 @@ namespace reflect
         friend struct reflect::DefaultResolver; \
         static reflect::TypeDescriptor_SN_Struct Reflection; \
         static void initReflection(reflect::TypeDescriptor_Struct*); \
-        static Reflected_SceneNode* create_self(ISceneManager* smgr, int id, const core::vector3df& pos); \
+        static Reflected_SceneNode* create_self(USceneNode* parent, irr::scene::ISceneManager* smgr, int id, const core::vector3df& pos); \
 
     #define REFLECT_STRUCT2_BEGIN(type) \
         reflect::TypeDescriptor_SN_Struct type::Reflection{type::initReflection}; \
-        Reflected_SceneNode* type::create_self(ISceneManager* smgr, int id, const core::vector3df& pos){ \
-            return new type(smgr,id,pos);\
+        Reflected_SceneNode* type::create_self(USceneNode* parent, irr::scene::ISceneManager* smgr, int id, const core::vector3df& pos){ \
+            return new type(parent, smgr,id,pos);\
             }\
         reflect::TypeDescriptor_Struct* type::GetDynamicReflection() {\
             return &type::Reflection;\
@@ -64,6 +65,19 @@ namespace reflect
 
     #define REFLECT_STRUCT2_END() \
     }
+
+    struct vector2i
+    {
+        int X;
+        int Y;
+
+        void operator=(core::vector2d<int> v) {
+            X = v.X;
+            Y = v.Y;
+        }
+
+        REFLECT()
+    };
 
     struct vector2u
     {
@@ -183,6 +197,19 @@ public:
     static multi_tool_panel* panel;
 };
 
+class USceneNode : public ISceneNode
+{
+public:
+    USceneNode(ISceneNode* parent, irr::scene::ISceneManager* smgr, int id, const core::vector3df& pos);
+
+    virtual void render() { }
+    virtual const core::aabbox3df& getBoundingBox() const { return core::aabbox3df(); }
+
+    u64 UID() const { return my_UID; }
+
+private:
+    u64 my_UID;
+};
 
 //
 //========================================================================================
@@ -190,10 +217,10 @@ public:
 //
 //
 
-class Reflected_SceneNode : public ISceneNode
+class Reflected_SceneNode : public USceneNode
 {
 public:
-    Reflected_SceneNode(ISceneManager* smgr, int id, const core::vector3df& pos);
+    Reflected_SceneNode(USceneNode* parent, irr::scene::ISceneManager* smgr, int id, const core::vector3df& pos);
 
     virtual void render(){}
     void draw_arrow(video::IVideoDriver* driver, core::vector3df v, core::vector3df rot);
@@ -217,10 +244,12 @@ public:
     virtual void setUnlit(bool){}
 
     virtual void onClear() {}
-    virtual void addSelfToScene(ISceneManager* smgr) {}
+    virtual void addSelfToScene(USceneNode* parent, irr::scene::ISceneManager* smgr, geometry_scene* geo_scene) {}
 
     static void SetBaseMaterialType(video::E_MATERIAL_TYPE m) {base_material_type=m;}
     static void SetSpecialMaterialType(video::E_MATERIAL_TYPE m) {special_material_type=m;}
+
+    int get_node_instance_id() { return node_instance_id; }
 
     f32 getDistanceFromCamera(TestPanel* viewPanel);
 
@@ -238,6 +267,8 @@ public:
     reflect::vector3 Rotation;
     bool bSelected=false;
 
+    int node_instance_id=0;
+
     REFLECT2()
 };
 
@@ -245,7 +276,7 @@ public:
 class Reflected_Sprite_SceneNode : public Reflected_SceneNode
 {
 public:
-    Reflected_Sprite_SceneNode(ISceneManager* smgr, int id, const core::vector3df& pos);
+    Reflected_Sprite_SceneNode(USceneNode* parent, irr::scene::ISceneManager* smgr, int id, const core::vector3df& pos);
 
     virtual const core::aabbox3df& getBoundingBox() const;
     virtual void OnRegisterSceneNode();
@@ -268,7 +299,7 @@ public:
 class Reflected_Model_SceneNode : public Reflected_SceneNode
 {
 public:
-    Reflected_Model_SceneNode(ISceneManager* smgr, int id, const core::vector3df& pos);
+    Reflected_Model_SceneNode(USceneNode* parent, irr::scene::ISceneManager* smgr, int id, const core::vector3df& pos);
 
     virtual const core::aabbox3df& getBoundingBox() const;
     virtual void OnRegisterSceneNode();
@@ -292,84 +323,10 @@ public:
     REFLECT2()
 };
 
-class Reflected_LightSceneNode : public Reflected_Sprite_SceneNode
-{
-public:
-    Reflected_LightSceneNode(ISceneManager* smgr, int id, const core::vector3df& pos) :
-        Reflected_Sprite_SceneNode(smgr,id,pos){}
-
-    virtual bool bShowEditorArrow() {return true;}
-    virtual ESCENE_NODE_TYPE getType() {return ESNT_LIGHT;}
-
-    virtual void render(){Reflected_Sprite_SceneNode::render();}
-    virtual void translate(core::matrix4);
-    virtual void onClear() { my_light = NULL; }
-    virtual void postEdit();
-    virtual void addSelfToScene(ISceneManager* smgr);
-
-    scene::ILightSceneNode* my_light=NULL;
-    bool enabled=true;
-    int light_radius=50;
-    REFLECT2()
-};
-
-class Reflected_SimpleEmitterSceneNode : public Reflected_Sprite_SceneNode
-{
-public:
-    Reflected_SimpleEmitterSceneNode(ISceneManager* smgr, int id, const core::vector3df& pos) :
-        Reflected_Sprite_SceneNode(smgr,id,pos){}
-
-    virtual bool bShowEditorArrow() {return true;}
-
-    virtual void render();
-    virtual void addSelfToScene(ISceneManager* smgr);
-
-    core::vector3df EmitBox = core::vector3df(64,64,64);
-    video::ITexture* texture = NULL;
-    core::vector2df particle_scale = core::vector2df(10,10);
-    int minParticlesPerSecond = 10;
-    int maxParticlesPerSecond = 25;
-    int lifeTimeMin = 500;
-    int lifeTimeMax = 1000;
-    bool bool_A;
-    bool bool_B;
-    video::SColor color;
-    core::vector3df Vector_A = core::vector3df(64,64,64);
-    core::vector3df Vector_B = core::vector3df(64,64,64);
-    core::vector3df Vector_C = core::vector3df(64,64,64);
-
-    REFLECT2()
-};
-
-class Reflected_PointNode : public Reflected_Sprite_SceneNode
-{
-public:
-    Reflected_PointNode(ISceneManager* smgr, int id, const core::vector3df& pos);
-
-    virtual void addSelfToScene(ISceneManager* smgr) {}
-
-    REFLECT2()
-};
-
-
-class Reflected_TestNode : public Reflected_Sprite_SceneNode
-{
-public:
-    Reflected_TestNode(ISceneManager* smgr, int id, const core::vector3df& pos) :
-        Reflected_Sprite_SceneNode(smgr,id,pos){}
-
-    virtual void addSelfToScene(ISceneManager* smgr) {}
-    bool bEnabled;
-    int nParticles=10;
-    float velocity=3.5;
-    reflect::SomeOptions options;
-    reflect::vector2 scale{1.0,1.0};
-    reflect::vector3 my_vec{5.0,4.0,3.0};
-    reflect::vector3 vec2{100.0,200.0,300.0};
-    reflect::color3 color;
-
-    REFLECT2()
-};
+//========================================================================================
+//  FACTORY CLASS
+//
+//
 
 class Reflected_SceneNode_Factory
 {
@@ -378,7 +335,7 @@ public:
     static void addType(reflect::TypeDescriptor_SN_Struct*);
     static int getNumTypes();
     static reflect::TypeDescriptor_Struct* getNodeTypeDescriptorByName(std::string name);
-    static Reflected_SceneNode* CreateNodeByTypeName(std::string name, ISceneManager* smgr);
+    static Reflected_SceneNode* CreateNodeByTypeName(std::string name, USceneNode* parent, irr::scene::ISceneManager* smgr);
     static int getTypeNum(reflect::TypeDescriptor_Struct*);
     static std::vector<reflect::TypeDescriptor_Struct*> getAllTypes() {
         return SceneNode_Types;

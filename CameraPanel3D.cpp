@@ -514,13 +514,13 @@ bool TestPanel_3D::OnEvent(const SEvent& event)
 
 bool TestPanel::get_click_node(int x, int y, click_node_info& ret)
 {
-    ret.distance = 9999;
-    ret.node_n = -1;
+    ret.distance = 0xFFFF;
+    ret.node_hit = NULL;
     ret.hit = false;
-    //for(Reflected_SceneNode* sn : geo_scene->getSceneNodes())
-    for (int i = 0; i < geo_scene->getSceneNodes().size(); i++)
+    for(Reflected_SceneNode* sn : geo_scene->getSelectedNodes())
+    //for (int i = 0; i < geo_scene->getSceneNodes().size(); i++)
     {
-        Reflected_SceneNode* sn = geo_scene->getSceneNodes()[i];
+        //Reflected_SceneNode* sn = geo_scene->getSceneNodes()[i];
 
         core::rect<s32> v_rect = ((Reflected_Sprite_SceneNode*)sn)->GetVisibleRectangle(this);
 
@@ -532,7 +532,8 @@ bool TestPanel::get_click_node(int x, int y, click_node_info& ret)
                 //std::cout<<"hit object!\n";
                 ret.hit = true;
                 ret.distance = d;
-                ret.node_n = i;
+                //ret.node_n = i;
+                ret.node_hit = sn;
             }
         }
     }
@@ -642,13 +643,13 @@ bool TestPanel_3D::get_click_face(int x, int y, click_brush_info& ret)
 void TestPanel_3D::left_click(core::vector2di pos)
 {
     std::vector<int> old_sel_faces = geo_scene->getSelectedFaces();
-    std::vector<int> old_sel_nodes = geo_scene->getSelectedNodes();
+    std::vector<Reflected_SceneNode*> old_sel_nodes = geo_scene->getSelectedNodes();
     std::vector<int> old_sel_brushes = geo_scene->getBrushSelection();
 
     if (click_hits_poly(&geo_scene->elements[0].brush, core::vector2di(clickx, clicky)))
     {
         geo_scene->setSelectedFaces(std::vector<int>{});
-        geo_scene->setSelectedNodes(std::vector<int>{});
+        geo_scene->setSelectedNodes(std::vector<Reflected_SceneNode*>{});
         geo_scene->setBrushSelection(std::vector<int>{0});
     }
     else if (this->bShowBrushes && !this->bShowGeometry)
@@ -671,23 +672,23 @@ void TestPanel_3D::left_click(core::vector2di pos)
         {
             if (node_hit.hit == true)
             {
-                geo_scene->setSelectedNodes_ShiftAdd(node_hit.node_n);
+                geo_scene->setSelectedNodes_ShiftAdd(node_hit.node_hit);
             }
         }
         else if (node_hit.hit == true && (res.hit == false || node_hit.distance < res.distance))
         {
             geo_scene->setBrushSelection(std::vector<int>{});
-            geo_scene->setSelectedNodes(std::vector<int>{node_hit.node_n});
+            geo_scene->setSelectedNodes(std::vector<Reflected_SceneNode*>{node_hit.node_hit});
         }
         else if (res.hit == true)
         {
-            geo_scene->setSelectedNodes(std::vector<int>{});
+            geo_scene->setSelectedNodes(std::vector<Reflected_SceneNode*>{});
             geo_scene->setBrushSelection(std::vector<int>{res.brush_n});
         }
         else
         {
             geo_scene->setBrushSelection(std::vector<int>{});
-            geo_scene->setSelectedNodes(std::vector<int>{});
+            geo_scene->setSelectedNodes(std::vector<Reflected_SceneNode*>{});
         }
 
     }
@@ -702,7 +703,8 @@ void TestPanel_3D::left_click(core::vector2di pos)
             selected_face = res.face_n;
         }
 
-        int hit_node_i = GetSceneNodeHit(clickx, clicky, true);
+        //int hit_node_i = GetSceneNodeHit(clickx, clicky, true);
+        Reflected_SceneNode* node_hit = GetSceneNodeHit(clickx, clicky, true);
 
         this->geo_scene->setBrushSelection(std::vector<int>{});
 
@@ -715,53 +717,53 @@ void TestPanel_3D::left_click(core::vector2di pos)
         }
         else if (bShiftDown && geo_scene->getSelectedNodes().size() > 0)
         {
-            if (hit_node_i != -1)
+            if (node_hit != NULL)
             {
-                geo_scene->setSelectedNodes_ShiftAdd(hit_node_i);
+                geo_scene->setSelectedNodes_ShiftAdd(node_hit);
             }
         }
-        else if (hit_node_i != -1)
+        else if (node_hit != NULL)
         {
             geo_scene->setSelectedFaces(std::vector<int>{});
-            geo_scene->setSelectedNodes(std::vector<int>{hit_node_i});
+            geo_scene->setSelectedNodes(std::vector<Reflected_SceneNode*>{node_hit});
         }
         else if (res.hit == true)
         {
-            geo_scene->setSelectedNodes(std::vector<int>{});
+            geo_scene->setSelectedNodes(std::vector<Reflected_SceneNode*>{});
             geo_scene->setSelectedFaces(std::vector<int>{selected_face});
         }
         else
         {
             geo_scene->setSelectedFaces(std::vector<int>{});
-            geo_scene->setSelectedNodes(std::vector<int>{});
+            geo_scene->setSelectedNodes(std::vector<Reflected_SceneNode*>{});
 
         }
     }
     else if (this->bShowGeometry && this->view_style == PANEL3D_VIEW_LOOPS)
     {
-        int hit_node_i = GetSceneNodeHit(clickx, clicky, false);
+        Reflected_SceneNode* node_hit = GetSceneNodeHit(clickx, clicky, false);
 
         geo_scene->setSelectedFaces(std::vector<int>{});
         geo_scene->setBrushSelection(std::vector<int>{});
 
         if (bShiftDown && geo_scene->getSelectedNodes().size() > 0)
         {
-            if (hit_node_i != -1)
+            if (node_hit != NULL)
             {
-                geo_scene->setSelectedNodes_ShiftAdd(hit_node_i);
+                geo_scene->setSelectedNodes_ShiftAdd(node_hit);
             }
         }
-        else if (hit_node_i != -1)
+        else if (node_hit != NULL)
         {
-            geo_scene->setSelectedNodes(std::vector<int>{hit_node_i});
+            geo_scene->setSelectedNodes(std::vector<Reflected_SceneNode*>{node_hit});
         }
         else
-            geo_scene->setSelectedNodes(std::vector<int>{});
+            geo_scene->setSelectedNodes(std::vector<Reflected_SceneNode*>{});
     }
     else if (this->bShowGeometry)
     {
         this->geo_scene->setBrushSelection(std::vector<int>{});
-        this->geo_scene->setSelectedNodes(std::vector<int>{});
+        this->geo_scene->setSelectedNodes(std::vector<Reflected_SceneNode*>{});
         this->geo_scene->setSelectedFaces(std::vector<int>{});
     }
 
@@ -1205,7 +1207,7 @@ void TestPanel_3D::SetViewStyle(s32 vtype)
 
         if (!mesh_node)
         {
-            geo_scene->buildSceneGraph(false, true, false);
+            geo_scene->buildSceneGraph(false, true, true);
             mesh_node = geo_scene->getMeshNode();
         }
 
@@ -1233,7 +1235,7 @@ void TestPanel_3D::SetViewStyle(s32 vtype)
         }
         //
 
-        geo_scene->buildSceneGraph(true, false, this->lighting_type, false);
+        geo_scene->buildSceneGraph(true, false, this->lighting_type, true);
         mesh_node = geo_scene->getMeshNode();
 
         bShowGeometry = true;
@@ -1274,12 +1276,12 @@ void TestPanel_3D::render()
     {
         if (bShowBrushes)
         {
-            for (geo_element geo : this->geo_scene->elements)
+            for (geo_element& geo : this->geo_scene->elements)
             {
                 if (!geo.bSelected)
                     geo.draw_brush(driver, someMaterial);
             }
-            for (geo_element geo : this->geo_scene->elements)
+            for (geo_element& geo : this->geo_scene->elements)
             {
                 if (geo.bSelected)
                     geo.draw_brush(driver, someMaterial);

@@ -71,8 +71,9 @@ void CameraQuad::SetFullscreen(bool bFullscreen, ViewPanel* panel)
         //renderList->add(vp_FS);
         //renderList->remove(vp_TL);
         vp_TL->position(AbsoluteRect, 1.0, 1.0, 0);
+        ((MyEventReceiver*)device->getEventReceiver())->resizeView(vp_TL->getSize());
+
         renderList->remove(vp_TR);
-        
         renderList->remove(vp_BL);
         renderList->remove(vp_BR);
 
@@ -86,6 +87,8 @@ void CameraQuad::SetFullscreen(bool bFullscreen, ViewPanel* panel)
         //renderList->remove(vp_FS);
         //renderList->add(vp_TL);
         vp_TL->position(AbsoluteRect, 0.5, 0.5, 0);
+        ((MyEventReceiver*)device->getEventReceiver())->resizeView(vp_TL->getSize());
+
         renderList->add(vp_TR);
         renderList->add(vp_BL);
         renderList->add(vp_BR);
@@ -130,16 +133,25 @@ void CameraQuad::initialize(scene::ISceneManager* smgr,geometry_scene* geo_scene
     core::rect<s32> FS_rect = core::rect<s32>(core::position2d<s32>(0, 0), core::dimension2d<u32>(0, 0));
 
     vp_TL = new ViewPanel(Environment, driver, this, GUI_ID_PANEL_3D, TL_rect);
-    vp_TL->resize(core::vector2di(border, border), core::dimension2d<u32>(width / 2 - border * 1.5, height / 2 - border * 1.5));
+    //vp_TL->resize(core::vector2di(border, border), core::dimension2d<u32>(width / 2 - border * 1.5, height / 2 - border * 1.5));
+    vp_TL->resize(core::dimension2d<u32>(width / 2 - border * 1.5, height / 2 - border * 1.5));
+    ((MyEventReceiver*)device->getEventReceiver())->resizeView(vp_TL->getSize());
+    vp_TL->set_location(core::vector2di(border, border));
 
     vp_TR = new ViewPanel(Environment, driver, this, 0, TR_rect);
-    vp_TR->resize(core::vector2di(width / 2 + border * 0.5, border), core::dimension2d<u32>(width / 2 - border * 1.5, height / 2 - border * 1.5));
+    //vp_TR->resize(core::vector2di(width / 2 + border * 0.5, border), core::dimension2d<u32>(width / 2 - border * 1.5, height / 2 - border * 1.5));
+    vp_TR->resize(core::dimension2d<u32>(width / 2 - border * 1.5, height / 2 - border * 1.5));
+    vp_TR->set_location(core::vector2di(width / 2 + border * 0.5, border));
 
     vp_BL = new ViewPanel(Environment, driver, this, 0, BL_rect);
-    vp_BL->resize(core::vector2di(border, height / 2 + border * 0.5), core::dimension2d<u32>(width / 2 - border * 1.5, height / 2 - border * 1.5));
+    //vp_BL->resize(core::vector2di(border, height / 2 + border * 0.5), core::dimension2d<u32>(width / 2 - border * 1.5, height / 2 - border * 1.5));
+    vp_BL->resize(core::dimension2d<u32>(width / 2 - border * 1.5, height / 2 - border * 1.5));
+    vp_BL->set_location(core::vector2di(border, height / 2 + border * 0.5));
 
     vp_BR = new ViewPanel(Environment, driver, this, 0, BR_rect);
-    vp_BR->resize(core::vector2di(width / 2 + border * 0.5, height / 2 + border * 0.5), core::dimension2d<u32>(width / 2 - border * 1.5, height / 2 - border * 1.5));
+    //vp_BR->resize(core::vector2di(width / 2 + border * 0.5, height / 2 + border * 0.5), core::dimension2d<u32>(width / 2 - border * 1.5, height / 2 - border * 1.5));
+    vp_BR->resize(core::dimension2d<u32>(width / 2 - border * 1.5, height / 2 - border * 1.5));
+    vp_BR->set_location(core::vector2di(width / 2 + border * 0.5, height / 2 + border * 0.5));
 
     //vp_FS = new ViewPanel(Environment, driver, this, 0, FS_rect);
     //vp_FS->resize(core::vector2di(0, 0), core::dimension2d<u32>(0, 0));
@@ -188,6 +200,33 @@ void CameraQuad::resize(core::rect<s32> rect)
 void CameraQuad::hookup_aux_panel(TestPanel* pan)
 {
     vp_TR->hookup(pan);
+}
+
+vector3df CameraQuad::get_fp_camera_pos()
+{
+    if (panel_TL)
+    {
+        return panel_TL->getCameraPos();
+    }
+    return vector3df();
+}
+
+vector3df CameraQuad::get_fp_camera_rot()
+{
+    if (panel_TL)
+    {
+        return panel_TL->getCamera()->getRotation();
+    }
+    return vector3df();
+}
+
+ICameraSceneNode* CameraQuad::get_fp_camera()
+{
+    if (panel_TL)
+    {
+        return panel_TL->getCamera();
+    }
+    return nullptr;
 }
 
 void CameraQuad::SetPanel(int i,TestPanel* panel)
@@ -446,7 +485,9 @@ void ViewPanel::position(const core::recti& myrect, f32 x_split, f32 y_split, in
         xlen = width * (1.0f - x_split) - (border * 1.5);
     }
 
-    resize(core::vector2di(xpos, ypos), core::dimension2d<u32>(xlen, ylen)); 
+    //resize(core::vector2di(xpos, ypos), core::dimension2d<u32>(xlen, ylen)); 
+    resize(core::dimension2d<u32>(xlen, ylen)); 
+    set_location(core::vector2di(xpos, ypos));
 }
 
 
@@ -488,7 +529,7 @@ bool click_hits_scene_node(Reflected_SceneNode*,core::vector2di v)
     return false;
 }
 
-int TestPanel::GetSceneNodeHit(int x, int y, bool bGeometry)
+Reflected_SceneNode* TestPanel::GetSceneNodeHit(int x, int y, bool bGeometry)
 {
     driver->setRenderTarget(Special_Texture, true, true, video::SColor(255,0,0,0));
     smgr->setActiveCamera(getCamera());
@@ -507,11 +548,14 @@ int TestPanel::GetSceneNodeHit(int x, int y, bool bGeometry)
     someMaterial.Lighting = false;
     someMaterial.MaterialType = video::EMT_SOLID;
 
-    std::vector<video::SColor> colors;
+    //std::vector<video::SColor> colors;
 
-    for(Reflected_SceneNode* node : this->geo_scene->getSceneNodes())
+    //for(Reflected_SceneNode* node : this->geo_scene->getSceneNodes())
+    for(ISceneNode* it : geo_scene->EditorNodes()->getChildren())
     {
-        colors.push_back(node->m_unique_color);
+        Reflected_SceneNode* node = (Reflected_SceneNode*)it;
+
+        //colors.push_back(node->m_unique_color);
         node->render_special(someMaterial);
     }
 
@@ -524,13 +568,22 @@ int TestPanel::GetSceneNodeHit(int x, int y, bool bGeometry)
     video::SColor h_col = img->getPixel(x,y);
     img->drop();
 
-    for(int i=0;i<colors.size();i++)
+    for (ISceneNode* it : geo_scene->EditorNodes()->getChildren())
     {
-        if(colors[i]==h_col)
-            return i;
+        Reflected_SceneNode* node = (Reflected_SceneNode*)it;
+
+        //colors.push_back(node->m_unique_color);
+        if (node->m_unique_color == h_col)
+            return node;
     }
 
-    return -1;
+    //for(int i=0;i<colors.size();i++)
+    //{
+    //    if(colors[i]==h_col)
+    //        return i;
+    //}
+
+    return NULL;
 }
 
 bool TestPanel::click_hits_poly(polyfold* brush, core::vector2di v)
@@ -655,26 +708,26 @@ void TestPanel::disconnect_panel()
 }
 
 
-void RenderList::add(ViewPanel* vp)
+void RenderList::add(RenderTarget* vp)
 {
-    view_panels.push_back(vp);
+    render_targets.push_back(vp);
 }
-void RenderList::remove(ViewPanel* vp)
+void RenderList::remove(RenderTarget* vp)
 {
-    vector<ViewPanel*> new_panels;
-    for (ViewPanel* p : view_panels)
+    vector<RenderTarget*> new_panels;
+    for (RenderTarget* p : render_targets)
     {
         if (p != vp)
             new_panels.push_back(p);
     }
-    view_panels = std::move(new_panels);
+    render_targets = std::move(new_panels);
 }
 
 void RenderList::renderAll()
 {
-    for (ViewPanel* vp : view_panels)
+    for (RenderTarget* vp : render_targets)
     {
-        if (vp->isVisible())
+        if (vp->isActive())
             vp->render(driver);
     }
 }
@@ -705,7 +758,14 @@ ViewPanel::~ViewPanel()
     ((MyEventReceiver*)device->getEventReceiver())->UnRegister(this);
 }
 
-void ViewPanel::resize(core::dimension2d<s32> new_location, core::dimension2d<u32> new_size)
+void ViewPanel::set_location(core::dimension2d<s32> new_location)
+{
+    this->DesiredRect = core::rect<s32>(new_location, panel_size);
+
+    recalculateAbsolutePosition(false);
+}
+
+void ViewPanel::resize(core::dimension2d<u32> new_size)
 {
     if (this->Texture)
     {
@@ -720,9 +780,9 @@ void ViewPanel::resize(core::dimension2d<s32> new_location, core::dimension2d<u3
     this->Texture = driver->addRenderTargetTexture(new_size, "rtt", irr::video::ECF_A8R8G8B8);
     this->Special_Texture = driver->addRenderTargetTexture(new_size, "rtt", irr::video::ECF_A8R8G8B8);
 
-    this->DesiredRect = core::rect<s32>(new_location, new_size);
+    //this->DesiredRect = core::rect<s32>(new_location, new_size);
 
-    recalculateAbsolutePosition(false);
+    //recalculateAbsolutePosition(false);
 
     panel_size = new_size;
 

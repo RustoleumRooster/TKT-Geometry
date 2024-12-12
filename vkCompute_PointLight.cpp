@@ -9,6 +9,7 @@
 #include "utils.h"
 #include "BufferManager.h"
 #include "geometry_scene.h"
+#include "custom_nodes.h"
 
 void System_Point_Light::cleanup() {
 	descriptorSetLayout->cleanup();
@@ -49,11 +50,14 @@ void System_Point_Light::cleanup() {
 
 bool System_Point_Light::verify_inputs(geometry_scene* geo_scene)
 {
-	std::vector<Reflected_SceneNode*> scene_nodes = geo_scene->getSceneNodes();
+	//std::vector<Reflected_SceneNode*> scene_nodes = geo_scene->getSceneNodes();
 
 	int count = 0;
-	for (Reflected_SceneNode* node : scene_nodes)
+	//for (Reflected_SceneNode* node : scene_nodes)
+	for (ISceneNode* it : geo_scene->EditorNodes()->getChildren())
 	{
+		Reflected_SceneNode* node = (Reflected_SceneNode*)it;
+
 		if (strcmp(node->GetDynamicReflection()->name, "Reflected_LightSceneNode") == 0)
 		{
 			Reflected_LightSceneNode* lsnode = dynamic_cast<Reflected_LightSceneNode*>(node);
@@ -81,12 +85,15 @@ typedef CMeshBuffer<video::S3DVertex2TCoords> mesh_buffer_type;
 
 void System_Point_Light::loadLights(geometry_scene* geo_scene)
 {
-	std::vector<Reflected_SceneNode*> scene_nodes = geo_scene->getSceneNodes();
+	//std::vector<Reflected_SceneNode*> scene_nodes = geo_scene->getSceneNodes();
 
 	lightSources.clear();
 
-	for (Reflected_SceneNode* node : scene_nodes)
+	//for (Reflected_SceneNode* node : scene_nodes)
+	for (ISceneNode* it : geo_scene->EditorNodes()->getChildren())
 	{
+		Reflected_SceneNode* node = (Reflected_SceneNode*)it;
+
 		if (strcmp(node->GetDynamicReflection()->name, "Reflected_LightSceneNode") == 0)
 		{
 			Reflected_LightSceneNode* lsnode = dynamic_cast<Reflected_LightSceneNode*>(node);

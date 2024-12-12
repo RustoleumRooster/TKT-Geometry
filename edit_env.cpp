@@ -22,6 +22,8 @@
 #include "ex_gui_elements.h"
 #include "vulkan_app.h"
 #include "LightMaps.h"
+#include "custom_nodes.h"
+
 
 extern IrrlichtDevice* device;
 using namespace irr;
@@ -485,6 +487,7 @@ bool MyEventReceiver::OnEvent(const SEvent& event)
                         //Node_Instances_Tool::show();
                         //g_scene->clip_active_brush_plane_geometry();
                         //LM_Viewer_Tool::show();
+                        Render_Tool::show();
                         break;
                     case GUI_ID_BUTTON_NODES:
                         ListReflectedNodes_Tool::show();
@@ -575,6 +578,11 @@ bool MyEventReceiver::OnEvent(const SEvent& event)
     }
 
     return false;
+}
+void MyEventReceiver::resizeView(core::dimension2du newsize)
+{
+    for (auto it = resize_receivers.begin(); it != resize_receivers.end(); ++it)
+        (*it)->resizeView(newsize);
 }
 /*
 bool hasModalDialogue()

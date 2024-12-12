@@ -6,6 +6,7 @@
 #include "utils.h"
 #include "geometry_scene.h"
 #include "GUI_tools.h"
+#include "custom_nodes.h"
 
 using namespace irr;
 
@@ -149,10 +150,22 @@ void ListReflectedNodes_Base::initialize(std::wstring name_, int my_id, gui::IGU
     tool_base::initialize(name_,my_id,env_,g_scene_,panel_);
 }
 
+//============================================================================
+//  Unique Scene Node
+//
+
+
+USceneNode::USceneNode(ISceneNode* parent, irr::scene::ISceneManager* smgr, int id, const core::vector3df& pos) :
+    ISceneNode(parent,smgr,id,pos), my_UID(random_number())
+{
+}
+
 
 //============================================================================
 //  Reflected_SceneNode
 //
+
+
 
 REFLECT_STRUCT2_BEGIN(Reflected_SceneNode)
     ALIAS("Node")
@@ -162,8 +175,8 @@ REFLECT_STRUCT2_BEGIN(Reflected_SceneNode)
     REFLECT_STRUCT2_MEMBER(Rotation)
 REFLECT_STRUCT2_END()
 
-Reflected_SceneNode::Reflected_SceneNode(ISceneManager* smgr, int id, const core::vector3df& pos)
-    : ISceneNode(smgr->getRootSceneNode(),smgr, id, pos)
+Reflected_SceneNode::Reflected_SceneNode(USceneNode* parent, irr::scene::ISceneManager* smgr, int id, const core::vector3df& pos)
+    : USceneNode(parent,smgr, id, pos)
 {
     m_unique_color = makeUniqueColor();
 
@@ -297,8 +310,8 @@ f32 Reflected_SceneNode::getDistanceFromCamera(TestPanel* viewPanel)
     return cam_pos.getDistanceFrom(getPosition());
 }
 
-Reflected_Sprite_SceneNode::Reflected_Sprite_SceneNode(ISceneManager* smgr, int id, const core::vector3df& pos)
-    : Reflected_SceneNode(smgr, id, pos)
+Reflected_Sprite_SceneNode::Reflected_Sprite_SceneNode(USceneNode* parent, irr::scene::ISceneManager* smgr, int id, const core::vector3df& pos)
+    : Reflected_SceneNode(parent, smgr, id, pos)
 {
     m_texture = device->getVideoDriver()->getTexture("sun.jpg");
 
@@ -463,8 +476,8 @@ REFLECT_STRUCT2_BEGIN(Reflected_Model_SceneNode)
     INHERIT_FROM(Reflected_SceneNode)
 REFLECT_STRUCT2_END()
 
-Reflected_Model_SceneNode::Reflected_Model_SceneNode(ISceneManager* smgr, int id, const core::vector3df& pos)
-: Reflected_SceneNode(smgr, id, pos)
+Reflected_Model_SceneNode::Reflected_Model_SceneNode(USceneNode* parent, irr::scene::ISceneManager* smgr, int id, const core::vector3df& pos)
+: Reflected_SceneNode(parent, smgr, id, pos)
 {
 
     Mesh = SceneManager->getMesh("baby_shark.3ds");
@@ -574,175 +587,6 @@ void Reflected_Model_SceneNode::setUnlit(bool unlit)
     //this->Mesh->setMaterialFlag(video::EMF_LIGHTING,!unlit);
 }
 
-//============================================================================
-//  Reflected_LightSceneNode
-//
-
-REFLECT_STRUCT2_BEGIN(Reflected_LightSceneNode)
-    ALIAS("Light")
-    INHERIT_FROM(Reflected_Sprite_SceneNode)
-    REFLECT_STRUCT2_MEMBER(enabled)
-    REFLECT_STRUCT2_MEMBER(light_radius)
-REFLECT_STRUCT2_END()
-
-void Reflected_LightSceneNode::postEdit()
-{
-    if(my_light)
-    {
-        my_light->setRadius(light_radius);
-        my_light->setVisible(enabled);
-    }
-
-    Reflected_SceneNode::postEdit();
-}
-
-void Reflected_LightSceneNode::translate(core::matrix4 M)
-{
-    core::vector3df p = this->getPosition();
-    M.translateVect(p);
-    if(my_light)
-        my_light->setPosition(p);
-
-    Reflected_SceneNode::translate(M);
-}
-
-void Reflected_LightSceneNode::addSelfToScene(ISceneManager* smgr)
-{
-    scene::ILightSceneNode* light =  smgr->addLightSceneNode(NULL, getPosition(), video::SColorf(1.0, 1.0, 1.0), this->light_radius, this->ID);
-    this->my_light = light;
-}
-
-
-//============================================================================
-//  Reflected_SimpleEmitterSceneNode
-//
-
-//================= Reflection Registration
-
-REFLECT_STRUCT2_BEGIN(Reflected_SimpleEmitterSceneNode)
-    ALIAS("Particle Emitter")
-    INHERIT_FROM(Reflected_Sprite_SceneNode)
-
-    REFLECT_STRUCT2_MEMBER(EmitBox)
-    REFLECT_STRUCT2_MEMBER(texture)
-    REFLECT_STRUCT2_MEMBER(particle_scale)
-    REFLECT_STRUCT2_MEMBER(minParticlesPerSecond)
-    REFLECT_STRUCT2_MEMBER(maxParticlesPerSecond)
-    REFLECT_STRUCT2_MEMBER(lifeTimeMin)
-    REFLECT_STRUCT2_MEMBER(lifeTimeMax)
-
-    REFLECT_STRUCT2_MEMBER(bool_A)
-    REFLECT_STRUCT2_MEMBER(bool_B)
-    REFLECT_STRUCT2_MEMBER(color)
-    REFLECT_STRUCT2_MEMBER(Vector_A)
-    REFLECT_STRUCT2_MEMBER(Vector_B)
-    REFLECT_STRUCT2_MEMBER(Vector_C)
-
-REFLECT_STRUCT2_END()
-
-
-void Reflected_SimpleEmitterSceneNode::render()
-{
-    video::IVideoDriver* driver = SceneManager->getVideoDriver();
-
-    if(bSelected)
-    {/*
-        core::aabbox3df box = core::aabbox3df(getPosition().X - EmitBox.X /2,
-                                              getPosition().Y - EmitBox.Y /2,
-                                              getPosition().Z - EmitBox.Z /2,
-                                              getPosition().X + EmitBox.X /2,
-                                              getPosition().Y + EmitBox.Y /2,
-                                              getPosition().Z + EmitBox.Z /2);*/
-        core::aabbox3df box = core::aabbox3df(Location.X - EmitBox.X /2,
-                                          Location.Y - EmitBox.Y /2,
-                                          Location.Z - EmitBox.Z /2,
-                                          Location.X + EmitBox.X /2,
-                                          Location.Y + EmitBox.Y /2,
-                                          Location.Z + EmitBox.Z /2);
-
-        draw_box(driver, box);
-    }
-
-    Reflected_Sprite_SceneNode::render();
-}
-
-
-void Reflected_SimpleEmitterSceneNode::addSelfToScene(scene::ISceneManager* smgr)
-{
-    //std::cout<<"go!\n";
-    core::aabbox3df box = core::aabbox3df(Location.X - EmitBox.X /2,
-                                          Location.Y - EmitBox.Y /2,
-                                          Location.Z - EmitBox.Z /2,
-                                          Location.X + EmitBox.X /2,
-                                          Location.Y + EmitBox.Y /2,
-                                          Location.Z + EmitBox.Z /2);
-
-    //std::cout<<Location.X<<","<<Location.Y<<","<<Location.Z<<"\n";
-
-    scene::IParticleSystemSceneNode* ps = smgr->addParticleSystemSceneNode();
-    /*
-    scene::IParticleEmitter* em = ps->createBoxEmitter(core::aabbox3df(-5000,500,-5000,5000,1000,5000),
-                                                        core::vector3df(0,0.0,0),
-                                                        500,1000,
-                                                        video::SColor(255,255,255,255),
-                                                        video::SColor(255,255,255,255),
-                                                        400,1000);
-                                                        */
-
-    scene::IParticleEmitter* em = ps->createBoxEmitter(box,
-                                                        core::vector3df(0,0.0,0),
-                                                        minParticlesPerSecond,
-                                                        maxParticlesPerSecond,
-                                                        video::SColor(255,255,255,255),
-                                                        video::SColor(255,255,255,255),
-                                                        lifeTimeMin,lifeTimeMax);
-    em->setMinStartSize(core::dimension2df(32,32));
-    em->setMaxStartSize(core::dimension2df(48,48));
-    em->setDirection(core::vector3df(0,0.09,0));
-
-    ps->setMaterialFlag(video::EMF_LIGHTING, false);
-    video::IVideoDriver* driver = smgr->getVideoDriver();
-    ps->setMaterialTexture(0,driver->getTexture("fireball.bmp"));
-    //ps->setMaterialTexture(0,this->texture);
-    ps->setMaterialType(video::EMT_TRANSPARENT_ADD_COLOR);
-    ps->setEmitter(em);
-    em->drop();
-
-    scene::IParticleAffector* paf = ps->createFadeOutParticleAffector();
-    ps->addAffector(paf);
-    paf->drop();
-
-    paf = ps->createScaleParticleAffector(particle_scale);
-    ps->addAffector(paf);
-    paf->drop();
-
-    //paf = ps->createGravityAffector()
-
-  /*
-    scene::IParticleSystemSceneNode* ps = smgr->addParticleSystemSceneNode();
-    scene::IParticleEmitter* em = ps->createBoxEmitter(core::aabbox3df(-5000,500,-5000,5000,1000,5000),
-                                                        core::vector3df(0,0.0,0),
-                                                        500,1000,
-                                                        video::SColor(255,255,255,255),
-                                                        video::SColor(255,255,255,255),
-                                                        400,1000);
-    ps->setMaterialFlag(video::EMF_LIGHTING, false);
-    ps->setMaterialTexture(0,driver->getTexture("sun.jpg"));
-    ps->setMaterialType(video::EMT_TRANSPARENT_ADD_COLOR);
-    em->setMinStartSize(core::dimension2df(16,16));
-    em->setMaxStartSize(core::dimension2df(32,32));
-    ps->setEmitter(em);
-    em->drop();
-
-    scene::IParticleAffector* paf = ps->createFadeOutParticleAffector();
-    ps->addAffector(paf);
-    paf->drop();
-
-    paf = ps->createScaleParticleAffector(core::dimension2df(64,64));
-    ps->addAffector(paf);
-    paf->drop();
-    */
-}
 
 
 //
@@ -779,12 +623,12 @@ reflect::TypeDescriptor_Struct* Reflected_SceneNode_Factory::getNodeTypeDescript
     return NULL;
 }
 
-Reflected_SceneNode* Reflected_SceneNode_Factory::CreateNodeByTypeName(std::string name, ISceneManager* smgr)
+Reflected_SceneNode* Reflected_SceneNode_Factory::CreateNodeByTypeName(std::string name, USceneNode* parent, ISceneManager* smgr)
 {
     for (reflect::TypeDescriptor_Struct* typeDesc : SceneNode_Types)
     {
         if (typeDesc->name == name)
-            return ((reflect::TypeDescriptor_SN_Struct*)typeDesc)->create_func(smgr, -1, core::vector3df(0, 0, 0));
+            return ((reflect::TypeDescriptor_SN_Struct*)typeDesc)->create_func(parent, smgr, -1, core::vector3df(0, 0, 0));
     }
     return NULL;
 }
@@ -799,15 +643,13 @@ int Reflected_SceneNode_Factory::getTypeNum(reflect::TypeDescriptor_Struct* td)
     return 0;
 }
 
-Reflected_PointNode::Reflected_PointNode(ISceneManager* smgr, int id, const core::vector3df& pos) :
-    Reflected_Sprite_SceneNode(smgr, id, pos)
-{
-    m_texture = device->getVideoDriver()->getTexture("triangle_symbol.png");
-    Buffer->Material.setTexture(0, m_texture);
-
-}
 
 REFLECT_STRUCT_BEGIN(reflect::vector2)
+    REFLECT_STRUCT_MEMBER(X)
+    REFLECT_STRUCT_MEMBER(Y)
+REFLECT_STRUCT_END()
+
+REFLECT_STRUCT_BEGIN(reflect::vector2i)
     REFLECT_STRUCT_MEMBER(X)
     REFLECT_STRUCT_MEMBER(Y)
 REFLECT_STRUCT_END()
@@ -835,6 +677,27 @@ REFLECT_CUSTOM_STRUCT_BEGIN(reflect::color3)
     REFLECT_STRUCT_MEMBER(Red)
 REFLECT_STRUCT_END()
 
+//=======================================================
+// CUSTOM NODE REFLECT DECLARATIONS
+//
+
+REFLECT_STRUCT2_BEGIN(Reflected_LightSceneNode)
+    ALIAS("Light")
+    INHERIT_FROM(Reflected_Sprite_SceneNode)
+    REFLECT_STRUCT2_MEMBER(enabled)
+    REFLECT_STRUCT2_MEMBER(light_radius)
+REFLECT_STRUCT2_END()
+
+REFLECT_STRUCT2_BEGIN(Reflected_WaterSurfaceNode)
+    ALIAS("Water Surface")
+    INHERIT_FROM(Reflected_Sprite_SceneNode)
+REFLECT_STRUCT2_END()
+
+REFLECT_STRUCT2_BEGIN(Reflected_PointNode)
+    ALIAS("Point Node")
+    INHERIT_FROM(Reflected_Sprite_SceneNode)
+REFLECT_STRUCT2_END()
+
 REFLECT_STRUCT2_BEGIN(Reflected_TestNode)
     ALIAS("Test Node")
     INHERIT_FROM(Reflected_Sprite_SceneNode)
@@ -848,8 +711,24 @@ REFLECT_STRUCT2_BEGIN(Reflected_TestNode)
     REFLECT_STRUCT2_MEMBER(color)
 REFLECT_STRUCT2_END()
 
-REFLECT_STRUCT2_BEGIN(Reflected_PointNode)
-    ALIAS("Point Node")
+REFLECT_STRUCT2_BEGIN(Reflected_SimpleEmitterSceneNode)
+    ALIAS("Particle Emitter")
     INHERIT_FROM(Reflected_Sprite_SceneNode)
+
+    REFLECT_STRUCT2_MEMBER(EmitBox)
+    REFLECT_STRUCT2_MEMBER(texture)
+    REFLECT_STRUCT2_MEMBER(particle_scale)
+    REFLECT_STRUCT2_MEMBER(minParticlesPerSecond)
+    REFLECT_STRUCT2_MEMBER(maxParticlesPerSecond)
+    REFLECT_STRUCT2_MEMBER(lifeTimeMin)
+    REFLECT_STRUCT2_MEMBER(lifeTimeMax)
+
+    REFLECT_STRUCT2_MEMBER(bool_A)
+    REFLECT_STRUCT2_MEMBER(bool_B)
+    REFLECT_STRUCT2_MEMBER(color)
+    REFLECT_STRUCT2_MEMBER(Vector_A)
+    REFLECT_STRUCT2_MEMBER(Vector_B)
+    REFLECT_STRUCT2_MEMBER(Vector_C)
 REFLECT_STRUCT2_END()
+
 
