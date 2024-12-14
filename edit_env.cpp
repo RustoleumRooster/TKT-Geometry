@@ -82,7 +82,7 @@ void do_add_geometry()
 {
     if(g_scene)
     {
-        g_scene->add(g_scene->elements[0].brush);
+        g_scene->geoNode()->add(g_scene->geoNode()->elements[0].brush);
     }
 }
 
@@ -90,7 +90,7 @@ void do_subtract_geometry()
 {
     if(g_scene)
     {
-        g_scene->subtract(g_scene->elements[0].brush);
+        g_scene->geoNode()->subtract(g_scene->geoNode()->elements[0].brush);
     }
 }
 
@@ -99,7 +99,7 @@ void do_add_semisolid_geometry()
 {
     if(g_scene)
     {
-        g_scene->add_semisolid(g_scene->elements[0].brush);
+        g_scene->geoNode()->add_semisolid(g_scene->geoNode()->elements[0].brush);
     }
 }
 
@@ -107,7 +107,7 @@ void do_intersect_brush()
 {
     if(g_scene)
     {
-        g_scene->intersect_active_brush();
+        g_scene->geoNode()->intersect_active_brush();
     }
 }
 
@@ -116,7 +116,7 @@ void do_clip_brush()
 {
     if(g_scene)
     {
-        g_scene->clip_active_brush();
+        g_scene->geoNode()->clip_active_brush();
     }
 }
 
@@ -124,7 +124,7 @@ void do_rebuild()
 {
     if(g_scene)
     {
-        g_scene->rebuild_geometry();
+        g_scene->geoNode()->rebuild_geometry();
     }
 }
 
@@ -257,7 +257,7 @@ void do_add_plane_test()
 {
     if(g_scene)
     {
-        g_scene->add_plane(g_scene->elements[0].brush);
+        g_scene->geoNode()->add_plane(g_scene->geoNode()->elements[0].brush);
     }
 }
 
@@ -471,7 +471,7 @@ bool MyEventReceiver::OnEvent(const SEvent& event)
                         if (System_Point_Light::verify_inputs(g_scene))
                         {
                             //vk.run_point_light(g_scene);
-                            g_scene->getLightmapManager()->loadLightmapTextures(g_scene, g_scene->final_meshnode_interface.getMaterialsUsed());
+                            g_scene->getLightmapManager()->loadLightmapTextures(g_scene->geoNode(), g_scene->geoNode()->final_meshnode_interface.getMaterialsUsed());
                         }
                     }
                         //std::cout<<"Rebuild\n";
@@ -501,7 +501,7 @@ bool MyEventReceiver::OnEvent(const SEvent& event)
                             //vk.run_soft_light(g_scene);
                             //vk.run_multipass_light(g_scene);
                             vk.run_amb_occlusion(g_scene);
-                            g_scene->getLightmapManager()->loadLightmapTextures(g_scene, g_scene->final_meshnode_interface.getMaterialsUsed());
+                            g_scene->getLightmapManager()->loadLightmapTextures(g_scene->geoNode(), g_scene->geoNode()->final_meshnode_interface.getMaterialsUsed());
                         }
                     }
                         break;

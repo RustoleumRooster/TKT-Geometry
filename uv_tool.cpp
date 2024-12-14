@@ -48,6 +48,7 @@ UV_Editor_Panel::UV_Editor_Panel(IGUIEnvironment* environment, video::IVideoDriv
     vAxis = core::vector3df(0, 1, 0);
 
     geo_scene = new geometry_scene(device->getVideoDriver(), (MyEventReceiver*)device->getEventReceiver());
+    geo_scene->geoNode()->setRenderType(true, false, false, false);
 }
 
 UV_Editor_Panel::~UV_Editor_Panel()
@@ -119,6 +120,8 @@ scene::ICameraSceneNode* UV_Editor_Panel::getCamera()
 
 bool UV_Editor_Panel::OnEvent(const SEvent& event)
 {
+    GeometryStack* real_geo_node = real_g_scene->geoNode();
+
     switch (event.EventType)
     {
     case EET_USER_EVENT:
@@ -133,16 +136,16 @@ bool UV_Editor_Panel::OnEvent(const SEvent& event)
 
                 if (selection.size() > 0)
                 {
-                    int brush_j = real_g_scene->get_total_geometry()->faces[selection[0]].original_brush;
-                    int face_j = real_g_scene->get_total_geometry()->faces[selection[0]].original_face;
+                    int brush_j = real_geo_node->get_total_geometry()->faces[selection[0]].original_brush;
+                    int face_j = real_geo_node->get_total_geometry()->faces[selection[0]].original_face;
 
-                    poly_face* f = &real_g_scene->elements[brush_j].brush.faces[face_j];
+                    poly_face* f = &real_geo_node->elements[brush_j].brush.faces[face_j];
 
                     if (group_select)
                     {
-                        if ((real_g_scene->elements[brush_j].brush.surface_groups[f->surface_group].type == SURFACE_GROUP_CYLINDER ||
-                            real_g_scene->elements[brush_j].brush.surface_groups[f->surface_group].type == SURFACE_GROUP_SPHERE ||
-                            real_g_scene->elements[brush_j].brush.surface_groups[f->surface_group].type == SURFACE_GROUP_DOME
+                        if ((real_geo_node->elements[brush_j].brush.surface_groups[f->surface_group].type == SURFACE_GROUP_CYLINDER ||
+                            real_geo_node->elements[brush_j].brush.surface_groups[f->surface_group].type == SURFACE_GROUP_SPHERE ||
+                            real_geo_node->elements[brush_j].brush.surface_groups[f->surface_group].type == SURFACE_GROUP_DOME
                             ))
                         {
                             real_g_scene->selectSurfaceGroup();
@@ -150,9 +153,9 @@ bool UV_Editor_Panel::OnEvent(const SEvent& event)
                         selection = real_g_scene->getSelectedFaces();
                     }
                     
-                    geo_scene->elements.clear();
+                    geo_scene->geoNode()->elements.clear();
 
-                    polyfold* pf = real_g_scene->get_total_geometry();
+                    polyfold* pf = real_geo_node->get_total_geometry();
 
                     first_texcoord = true;
 
@@ -168,9 +171,9 @@ bool UV_Editor_Panel::OnEvent(const SEvent& event)
                     {
                         int og_brush = pf->faces[f_i].original_brush;
                         int og_face = pf->faces[f_i].original_face;
-                        int og_sfg = real_g_scene->elements[og_brush].geometry.faces[og_face].surface_group;
+                        int og_sfg = real_geo_node->elements[og_brush].geometry.faces[og_face].surface_group;
 
-                        surface_group* sfg = &real_g_scene->elements[og_brush].geometry.surface_groups[og_sfg];
+                        surface_group* sfg = &real_geo_node->elements[og_brush].geometry.surface_groups[og_sfg];
 
                         bool b = false;
 
@@ -190,9 +193,9 @@ bool UV_Editor_Panel::OnEvent(const SEvent& event)
                             original_brushes.push_back(og_brush);
                             surface_groups.push_back(og_sfg);
 
-                            geo_scene->elements.push_back(geo_element{});
+                            geo_scene->geoNode()->elements.push_back(geo_element{});
 
-                            int n_brush_vertices = real_g_scene->elements[og_brush].geometry.vertices.size();
+                            int n_brush_vertices = real_geo_node->elements[og_brush].geometry.vertices.size();
 
                             brush_vertices_index.push_back(vector<int>{});
                             brush_vertices_index[brush_vertices_index.size() - 1].assign(n_brush_vertices, -1);
@@ -211,7 +214,7 @@ bool UV_Editor_Panel::OnEvent(const SEvent& event)
                         delete my_image;
                     my_image = NULL;
 
-                    core::stringw texname = real_g_scene->get_original_brush_face(selection[0])->texture_name;
+                    core::stringw texname = real_geo_node->get_original_brush_face(selection[0])->texture_name;
                     video::ITexture* my_texture = device->getVideoDriver()->getTexture(texname);
 
                     my_image = new TextureImage(my_texture, true);
@@ -269,10 +272,10 @@ bool UV_Editor_Panel::OnEvent(const SEvent& event)
                 else
                 {
                     
-                    geo_scene->elements.clear();
+                    geo_scene->geoNode()->elements.clear();
                     if (geo_scene)
                     {
-                        geo_scene->elements.clear();
+                        geo_scene->geoNode()->elements.clear();
                     }
                 }
                 return true;
@@ -286,11 +289,11 @@ bool UV_Editor_Panel::OnEvent(const SEvent& event)
 
 void UV_Editor_Panel::make_face(polyfold* pf_0, int f_no, video::ITexture* face_texture2)
 {
-    MeshBuffer_Chunk chunk = real_g_scene->edit_meshnode_interface.get_mesh_buffer_by_face(f_no);
+    MeshBuffer_Chunk chunk = real_g_scene->geoNode()->edit_meshnode_interface.get_mesh_buffer_by_face(f_no);
 
     int original_face = pf_0->faces[f_no].original_face;
     int original_brush = pf_0->faces[f_no].original_brush;
-    int original_sfg = real_g_scene->elements[original_brush].geometry.faces[original_face].surface_group;
+    int original_sfg = real_g_scene->geoNode()->elements[original_brush].geometry.faces[original_face].surface_group;
 
     polyfold* uv_poly = NULL;
     vector<int>* vertex_index = NULL;
@@ -300,7 +303,7 @@ void UV_Editor_Panel::make_face(polyfold* pf_0, int f_no, video::ITexture* face_
         if (original_brushes[i] == original_brush && surface_groups[i] == original_sfg && 
             std::any_of(brush_faces_index[i].begin(), brush_faces_index[i].end(), [&](int n) {return n == original_face; }))
         {
-            uv_poly = &geo_scene->elements[i].brush;
+            uv_poly = &geo_scene->geoNode()->elements[i].brush;
             vertex_index = &brush_vertices_index[i];
         }
     }
@@ -330,7 +333,7 @@ void UV_Editor_Panel::make_face(polyfold* pf_0, int f_no, video::ITexture* face_
 
         if (use_geometry_brush)
         {
-            source_brush = &real_g_scene->elements[original_brush].geometry;
+            source_brush = &real_g_scene->geoNode()->elements[original_brush].geometry;
         }
 
         for (int i = chunk.begin_i; i < chunk.end_i; i += 3)
@@ -425,8 +428,8 @@ void UV_Editor_Panel::make_custom_surface_group()
         int sfg_j = surface_groups[p_i];
         vector<int> faces = brush_faces_index[p_i];
 
-        polyfold* pf = &real_g_scene->elements[brush_j].brush;
-        polyfold* uv_poly = &geo_scene->elements[p_i].brush;
+        polyfold* pf = &real_g_scene->geoNode()->elements[brush_j].brush;
+        polyfold* uv_poly = &geo_scene->geoNode()->elements[p_i].brush;
 
         surface_group* sfg = &pf->surface_groups[sfg_j];
 
@@ -467,12 +470,12 @@ void UV_Editor_Panel::make_custom_surface_group()
 
         }
 
-        real_g_scene->elements[brush_j].geometry.surface_groups = real_g_scene->elements[brush_j].brush.surface_groups;
+        real_g_scene->geoNode()->elements[brush_j].geometry.surface_groups = real_g_scene->geoNode()->elements[brush_j].brush.surface_groups;
 
         for (int i=0; i<faces.size(); i++)
         {
-            real_g_scene->edit_meshnode_interface.recalc_uvs_for_face_custom(real_g_scene, brush_j, brush_faces_index[p_i][i], faces_index[p_i][i]);
-            real_g_scene->final_meshnode_interface.recalc_uvs_for_face_custom(real_g_scene, brush_j, brush_faces_index[p_i][i], faces_index[p_i][i]);
+            real_g_scene->geoNode()->edit_meshnode_interface.recalc_uvs_for_face_custom(real_g_scene->geoNode(), brush_j, brush_faces_index[p_i][i], faces_index[p_i][i]);
+            real_g_scene->geoNode()->final_meshnode_interface.recalc_uvs_for_face_custom(real_g_scene->geoNode(), brush_j, brush_faces_index[p_i][i], faces_index[p_i][i]);
         }
        
     }
@@ -518,7 +521,6 @@ void UV_Editor_Panel::drawGrid(video::IVideoDriver* driver, const video::SMateri
 
 void UV_Editor_Panel::render()
 {
-
     driver->setRenderTarget(getImage(), true, true, video::SColor(255, 4, 4, 4));
     smgr->setActiveCamera(getCamera());
 
@@ -542,52 +544,7 @@ void UV_Editor_Panel::render()
 
     if (this->geo_scene)
     {
-        if (bShowBrushes)
-        {
-            for (int e_i = 0; e_i < this->geo_scene->elements.size(); e_i++)
-            {
-                this->geo_scene->elements[e_i].draw_brush(driver, someMaterial);
-            }
-
-            for (int e_i = 0; e_i < this->geo_scene->elements.size(); e_i++)
-            {
-                geo_element* geo = &this->geo_scene->elements[e_i];
-
-                if (geo->bSelected)
-                {
-
-                    core::vector2di coords;
-                    for (int i = 0; i < geo->brush.vertices.size(); i++)
-                    {
-                        GetScreenCoords(geo->brush.vertices[i].V, coords);
-                        coords.X -= 4;
-                        coords.Y -= 4;
-                        if (geo_scene->selected_brush_vertex_editing == e_i && geo->selected_vertex == i)
-                        {
-                            if (geo->type == GEO_ADD)
-                                driver->draw2DImage(med_circle_tex_add_selected, coords, core::rect<int>(0, 0, 8, 8), 0, video::SColor(255, 255, 255, 255), true);
-                            else if (geo->type == GEO_SUBTRACT)
-                                driver->draw2DImage(med_circle_tex_sub_selected, coords, core::rect<int>(0, 0, 8, 8), 0, video::SColor(255, 255, 255, 255), true);
-                            else if (geo->type == GEO_RED)
-                                driver->draw2DImage(med_circle_tex_red_selected, coords, core::rect<int>(0, 0, 8, 8), 0, video::SColor(255, 255, 255, 255), true);
-                        }
-                        else
-                        {
-                            if (geo->type == GEO_ADD)
-                                driver->draw2DImage(small_circle_tex_add_selected, coords, core::rect<int>(0, 0, 8, 8), 0, video::SColor(255, 255, 255, 255), true);
-                            else if (geo->type == GEO_SUBTRACT)
-                                driver->draw2DImage(small_circle_tex_sub_selected, coords, core::rect<int>(0, 0, 8, 8), 0, video::SColor(255, 255, 255, 255), true);
-                            else if (geo->type == GEO_RED)
-                                driver->draw2DImage(small_circle_tex_red_selected, coords, core::rect<int>(0, 0, 8, 8), 0, video::SColor(255, 255, 255, 255), true);
-                        }
-                    }
-                }
-            }
-        }
-
-        if (bShowGeometry)
-            for (geo_element geo : this->geo_scene->elements)
-                geo.draw_geometry(driver, someMaterial);
+        geo_scene->geoNode()->render();
     }
 
     driver->setRenderTarget(0, true, true, video::SColor(0, 0, 0, 0));
@@ -603,12 +560,13 @@ void UV_Editor_Panel::OnMenuItemSelected(IGUIContextMenu* menu)
 void UV_Editor_Panel::left_click(core::vector2di pos)
 {
     vector<int> selection = std::vector<int>{};
+    GeometryStack* geo_node = geo_scene->geoNode();
 
     geo_scene->setBrushSelection(std::vector<int>{});
 
-    for (int i = 0; i < geo_scene->elements.size(); i++)
+    for (int i = 0; i < geo_node->elements.size(); i++)
     {
-        if (click_hits_poly(&geo_scene->elements[i].brush, core::vector2di(clickx, clicky)))
+        if (click_hits_poly(&geo_node->elements[i].brush, core::vector2di(clickx, clicky)))
         {
             geo_scene->setBrushSelection(std::vector<int>{i});
         }
@@ -618,21 +576,23 @@ void UV_Editor_Panel::left_click(core::vector2di pos)
 
 void UV_Editor_Panel::right_click(core::vector2di pos)
 {
+    GeometryStack* geo_node = geo_scene->geoNode();
+
     if (geo_scene && geo_scene->getBrushSelection().size() > 0)
     {
         bool bVertexClick = false;
         for (int p_i : geo_scene->getBrushSelection())
         {
-            if (click_hits_poly(&geo_scene->elements[p_i].brush, core::vector2di(clickx, clicky)))
+            if (click_hits_poly(&geo_node->elements[p_i].brush, core::vector2di(clickx, clicky)))
             {
-                for (int v_i = 0; v_i < geo_scene->elements[p_i].brush.vertices.size(); v_i++)
+                for (int v_i = 0; v_i < geo_node->elements[p_i].brush.vertices.size(); v_i++)
                 {
                     core::vector2di coords;
-                    GetScreenCoords(geo_scene->elements[p_i].brush.vertices[v_i].V, coords);
+                    GetScreenCoords(geo_node->elements[p_i].brush.vertices[v_i].V, coords);
                     if (core::vector2di(clickx, clicky).getDistanceFrom(coords) < 4)
                     {
                         geo_scene->selected_brush_vertex_editing = p_i;
-                        geo_scene->elements[p_i].selected_vertex = v_i;
+                        geo_node->elements[p_i].selected_vertex = v_i;
                         bVertexClick = true;
                     }
                 }

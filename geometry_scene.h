@@ -14,6 +14,8 @@
 void print_geometry_ops_timers();
 void reset_geometry_ops_timers();
 
+typedef core::list<scene::ISceneNode*> iNodeList;
+
 class geo_element
 {
 public:
@@ -53,16 +55,103 @@ private:
 
 };
 
-enum
-{
-    SCENE_EDIT_UNLIT,
-    SCENE_EDIT_LIGHTING,
-    SCENE_FINAL_UNLIT,
-    SCENE_FINAL_LIGHTING
-};
 
 class Lightmap_Manager;
 class MyEventReceiver;
+
+class GeometryStack : public USceneNode
+{
+public:
+    GeometryStack(ISceneNode* parent, scene::ISceneManager* smgr_, MyEventReceiver* receiver,
+        video::E_MATERIAL_TYPE base_material_type_,
+        video::E_MATERIAL_TYPE special_material_type_,
+        TexturePicker_Base*,
+        Material_Groups_Base*);
+
+    GeometryStack(ISceneNode* parent, scene::ISceneManager* smgr_, MyEventReceiver* receiver);
+
+    ~GeometryStack();
+
+    virtual void GeometryStack::OnRegisterSceneNode() override;
+    virtual void render() override;
+
+    void set_type(int);
+    
+    void add(polyfold);
+    void subtract(polyfold);
+    void add_semisolid(polyfold);
+    void add_plane(polyfold);
+    void rebuild_geometry(bool = false);
+    void clear_scene();
+
+    void intersect_active_brush();
+    void clip_active_brush();
+    void clip_active_brush_plane_geometry();
+
+    polyfold get_intersecting_geometry(polyfold pf);
+    void build_intersecting_target(const polyfold& pf, polyfold& out);
+    polyfold* get_total_geometry();
+    std::vector<int> getSurfaceFromFace(int);
+
+    poly_face* get_original_brush_face(int f_i);
+    polyfold* get_original_brush(int f_i);
+
+    void buildSceneNode(bool finalMesh, int light_mode);
+    scene::CMeshSceneNode* getMeshNode() { return my_MeshNode; }
+    void setFinalMeshDirty(bool dirty = true) { final_mesh_dirty = dirty; }
+
+    triangle_holder* get_triangles_for_face(int f_i);
+
+    void setRenderType(bool brushes, bool geo, bool loops, bool triangles);
+
+    bool renderGeometry() { return render_geometry; }
+
+    MeshNode_Interface_Edit edit_meshnode_interface;
+    MeshNode_Interface_Final final_meshnode_interface;
+
+    std::vector<geo_element> elements;
+
+private:
+
+    void trianglize_total_geometry();
+    void generate_meshes();
+    void build_total_geometry();
+    void set_originals();
+
+    int base_type = GEO_SOLID;
+
+    std::vector<triangle_holder> total_geometry_triangles;
+
+    int build_progress = 0;
+    bool progressive_build = true;
+
+    polyfold total_geometry;
+
+    TexturePicker_Base* texture_picker_base = NULL;
+    Material_Groups_Base* material_groups_base = NULL;
+    MyEventReceiver* event_receiver = NULL;
+
+    video::E_MATERIAL_TYPE base_material_type = video::EMT_SOLID;
+    video::E_MATERIAL_TYPE special_material_type = video::EMT_SOLID;
+
+    int new_geometry_material_group = 0;
+
+    scene::CMeshSceneNode* my_MeshNode = NULL;
+
+    bool final_mesh_dirty = false;
+    bool b_isEditNode = true;
+    bool render_brushes = false;
+    bool render_geometry = true;
+    bool render_loops = false;
+    bool render_triangles = false;
+    bool render_active_brush = true;
+
+    LineHolder loops_graph;
+
+    friend class Open_Geometry_File;
+    friend class geometry_scene;
+};
+
 class geometry_scene : public irr::IEventReceiver
 {
 public:
@@ -73,28 +162,32 @@ public:
 
     int base_type=GEO_SOLID;
 
-    void set_type(int);
-    std::vector<geo_element> elements;
-    void add(polyfold);
-    void subtract(polyfold);
-    void add_semisolid(polyfold);
-    void add_plane(polyfold);
-    void rebuild_geometry(bool = false);
+    void set_type(int t) { base_type = t; }
+    //std::vector<geo_element> elements;
+    //void add(polyfold);
+    //void subtract(polyfold);
+    //void add_semisolid(polyfold);
+    //void add_plane(polyfold);
+    //void rebuild_geometry(bool = false);
     void clear_scene();
 
     virtual bool OnEvent(const SEvent& event);
 
-    polyfold get_intersecting_geometry(polyfold pf);
-    void build_intersecting_target(const polyfold& pf, polyfold& out);
-    polyfold* get_total_geometry();
+    //polyfold get_intersecting_geometry(polyfold pf);
+    //void build_intersecting_target(const polyfold& pf, polyfold& out);
+    //polyfold* get_total_geometry();
 
+   
+
+    //========= Selection
     void setBrushSelection(std::vector<int>);
     void setBrushSelection_ShiftAdd(int);
     std::vector<int> getBrushSelection();
     core::vector3df getSelectedVertex();
     void delete_selected_brushes();
 
-    //========= Selection
+    //GeometryStack* getSelectedGeo();
+
     void setSelectedFaces(std::vector<int>);
     void setSelectedFaces_ShiftAdd(int new_sel);
     std::vector<int> getSelectedFaces();
@@ -106,8 +199,8 @@ public:
     std::vector<Reflected_SceneNode*> editor_node_ptrs_from_uid(const std::vector<u64>& selection);
     MeshBuffer_Chunk get_face_buffer_by_uid(u64);
 
-    poly_face* get_original_brush_face(int f_i);
-    polyfold* get_original_brush(int f_i);
+    //poly_face* get_original_brush_face(int f_i);
+    //polyfold* get_original_brush(int f_i);
 
     void setTexturePickerBase(TexturePicker_Base*);
     TexturePicker_Base* getTexturePickerBase();
@@ -116,9 +209,9 @@ public:
 
     bool progressive_build_enabled() {return this->progressive_build;}
     void toggle_progressive_build() {this->progressive_build = !this->progressive_build;}
-    void intersect_active_brush();
-    void clip_active_brush();
-    void clip_active_brush_plane_geometry();
+    //void intersect_active_brush();
+    //void clip_active_brush();
+    //void clip_active_brush_plane_geometry();
 
     //==============Read and Write to file
     bool WriteTextures(std::string fname);
@@ -146,7 +239,7 @@ public:
 
     void setMaterialGroupsBase(Material_Groups_Base*);
     Material_Groups_Base* getMaterialGroupsBase();
-    void setFinalMeshDirty(bool dirty = true) { final_mesh_dirty = dirty; }
+    //void setFinalMeshDirty(bool dirty = true) { final_mesh_dirty = dirty; }
     void visualizeMaterialGroups();
     void showLightMaps();
 
@@ -160,9 +253,9 @@ public:
     //===============Mesh Node Interfaces
 
     bool IsEditNode(){return b_isEditNode; }
-    MeshNode_Interface_Edit edit_meshnode_interface;
-    MeshNode_Interface_Final final_meshnode_interface;
-    scene::CMeshSceneNode* getMeshNode() { return my_MeshNode; }
+    //MeshNode_Interface_Edit edit_meshnode_interface;
+    //MeshNode_Interface_Final final_meshnode_interface;
+    scene::CMeshSceneNode* getMeshNode() { return geometry_stack->getMeshNode(); }
     bool DynamicLightEnabled() { return b_dynamic_light; }
 
     //===============Reflected Scene Node Stuff
@@ -183,19 +276,26 @@ public:
     int selected_brush_vertex_editing;
     void drawGraph(LineHolder& graph);
 
-    triangle_holder* get_triangles_for_face(int f_i);
+    //triangle_holder* get_triangles_for_face(int f_i);
 
     LineHolder special_graph;
 
+    //core::list<ISceneNode*> getGeometryNodes();
+    //int nGeometryNodes();
+
+    void setRenderType(bool brushes, bool geo, bool loops, bool triangles);
+
     ISceneNode* EditorNodes() { return editor_nodes; }
     ISceneNode* ActualNodes() { return actual_nodes; }
+    //ISceneNode* GeometryNodes() { return geometry_nodes; }
+    GeometryStack* geoNode() { return geometry_stack; }
 
 private:
     
-    void trianglize_total_geometry();
-    void generate_meshes();
-    void build_total_geometry();
-    void set_originals();
+   // void trianglize_total_geometry();
+   // void generate_meshes();
+   // void build_total_geometry();
+   // void set_originals();
 
     int build_progress=0;
     bool progressive_build=true;
@@ -215,16 +315,19 @@ private:
     Node_Classes_Base* node_classes_base=NULL;
     Lightmap_Manager* lightmap_manager = NULL;
 
-    scene::CMeshSceneNode* my_MeshNode=NULL;
+    //scene::CMeshSceneNode* my_MeshNode=NULL;
 
     int new_geometry_material_group = 0;
-    video::E_MATERIAL_TYPE base_material_type;
-    video::E_MATERIAL_TYPE special_material_type;
+    video::E_MATERIAL_TYPE base_material_type = video::EMT_SOLID;
+    video::E_MATERIAL_TYPE special_material_type = video::EMT_SOLID;
 
     core::vector3df drag_vec;
 
     USceneNode* editor_nodes = NULL;
     USceneNode* actual_nodes = NULL;
+    GeometryStack* geometry_stack = NULL;
+
+    //USceneNode* geometry_nodes = NULL;
 
     LineHolder intersections_graph;
 

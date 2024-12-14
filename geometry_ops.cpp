@@ -13,6 +13,8 @@
 
 #include "clip_functions.h"
 
+extern IrrlichtDevice* device;
+
 float rebuild_geometry_time = 0.0;
 float build_total_geometry_time = 0.0;
 float trianglize_time = 0.0;
@@ -57,12 +59,144 @@ void print_geometry_ops_timers()
 
 #define printvec(v) v.X<<","<<v.Y<<","<<v.Z
 
-polyfold* geometry_scene::get_total_geometry()
+GeometryStack::GeometryStack(ISceneNode* parent, scene::ISceneManager* smgr, MyEventReceiver* receiver, 
+    video::E_MATERIAL_TYPE base_material_type, 
+    video::E_MATERIAL_TYPE special_material_type, 
+    TexturePicker_Base* texture_picker_base, 
+    Material_Groups_Base* material_groups_base)
+    : USceneNode(parent,smgr,-1,vector3df(0,0,0)), 
+    base_material_type(base_material_type),
+    special_material_type(special_material_type),
+    event_receiver(receiver), 
+    material_groups_base(material_groups_base), 
+    texture_picker_base(texture_picker_base)
+{
+    geo_element red;
+    red.brush = make_poly_cube(256, 256, 256);
+    red.type = GEO_RED;
+    elements.push_back(red);
+
+    this->edit_meshnode_interface.init(smgr, device->getVideoDriver(), event_receiver, base_material_type, special_material_type);
+    this->final_meshnode_interface.init(smgr, device->getVideoDriver(), event_receiver, base_material_type, special_material_type);
+    this->setAutomaticCulling(EAC_OFF);
+}
+
+GeometryStack::GeometryStack(ISceneNode* parent, scene::ISceneManager* smgr, MyEventReceiver* receiver)
+    : USceneNode(parent, smgr, -1, vector3df(0, 0, 0)), event_receiver(receiver)
+{
+
+}
+
+GeometryStack::~GeometryStack()
+{
+}
+
+void GeometryStack::OnRegisterSceneNode()
+{
+    if (IsVisible)
+    {
+        SceneManager->registerNodeForRendering(this);
+
+        ISceneNodeList::ConstIterator it = Children.begin();
+        for (; it != Children.end(); ++it)
+            (*it)->OnRegisterSceneNode();
+    }
+}
+
+void GeometryStack::render()
+{
+    video::IVideoDriver* driver = device->getVideoDriver();
+
+    video::SMaterial someMaterial;
+    someMaterial.Lighting = false;
+    someMaterial.Thickness = 1.0;
+    someMaterial.MaterialType = video::EMT_SOLID;
+
+    driver->setMaterial(someMaterial);
+
+    if(render_active_brush)
+        this->elements[0].draw_brush(driver, someMaterial);
+
+    if (render_brushes)
+    {
+
+        for (int e_i = 0; e_i < this->elements.size(); e_i++)
+        {
+            this->elements[e_i].draw_brush(driver, someMaterial);
+        }
+
+        for (int e_i = 0; e_i < this->elements.size(); e_i++)
+        {
+            geo_element* geo = &this->elements[e_i];
+            /*
+            if (geo->bSelected)
+            {
+
+                core::vector2di coords;
+                for (int i = 0; i < geo->brush.vertices.size(); i++)
+                {
+                    GetScreenCoords(geo->brush.vertices[i].V, coords);
+                    coords.X -= 4;
+                    coords.Y -= 4;
+                    if (geo_scene->selected_brush_vertex_editing == e_i && geo->control_vertex_selected == false && geo->selected_vertex == i)
+                    {
+                        if (geo->type == GEO_ADD)
+                            driver->draw2DImage(med_circle_tex_add_selected, coords, core::rect<int>(0, 0, 8, 8), 0, video::SColor(255, 255, 255, 255), true);
+                        else if (geo->type == GEO_SUBTRACT)
+                            driver->draw2DImage(med_circle_tex_sub_selected, coords, core::rect<int>(0, 0, 8, 8), 0, video::SColor(255, 255, 255, 255), true);
+                        else if (geo->type == GEO_RED)
+                            driver->draw2DImage(med_circle_tex_red_selected, coords, core::rect<int>(0, 0, 8, 8), 0, video::SColor(255, 255, 255, 255), true);
+                    }
+                    else
+                    {
+                        if (geo->type == GEO_ADD)
+                            driver->draw2DImage(small_circle_tex_add_selected, coords, core::rect<int>(0, 0, 8, 8), 0, video::SColor(255, 255, 255, 255), true);
+                        else if (geo->type == GEO_SUBTRACT)
+                            driver->draw2DImage(small_circle_tex_sub_selected, coords, core::rect<int>(0, 0, 8, 8), 0, video::SColor(255, 255, 255, 255), true);
+                        else if (geo->type == GEO_RED)
+                            driver->draw2DImage(small_circle_tex_red_selected, coords, core::rect<int>(0, 0, 8, 8), 0, video::SColor(255, 255, 255, 255), true);
+                    }
+                }
+                for (int i = 0; i < geo->brush.control_vertices.size(); i++)
+                {
+                    GetScreenCoords(geo->brush.control_vertices[i].V, coords);
+                    coords.X -= 4;
+                    coords.Y -= 4;
+                    if (geo_scene->selected_brush_vertex_editing == e_i && geo->control_vertex_selected == true && geo->selected_vertex == i)
+                    {
+                        if (geo->type == GEO_ADD)
+                            driver->draw2DImage(med_circle_tex_add_selected, coords, core::rect<int>(0, 0, 8, 8), 0, video::SColor(255, 255, 255, 255), true);
+                        else if (geo->type == GEO_SUBTRACT)
+                            driver->draw2DImage(med_circle_tex_sub_selected, coords, core::rect<int>(0, 0, 8, 8), 0, video::SColor(255, 255, 255, 255), true);
+                        else if (geo->type == GEO_RED)
+                            driver->draw2DImage(med_circle_tex_red_selected, coords, core::rect<int>(0, 0, 8, 8), 0, video::SColor(255, 255, 255, 255), true);
+                    }
+                    else
+                    {
+                        if (geo->type == GEO_ADD)
+                            driver->draw2DImage(small_circle_tex_add_selected, coords, core::rect<int>(0, 0, 8, 8), 0, video::SColor(255, 255, 255, 255), true);
+                        else if (geo->type == GEO_SUBTRACT)
+                            driver->draw2DImage(small_circle_tex_sub_selected, coords, core::rect<int>(0, 0, 8, 8), 0, video::SColor(255, 255, 255, 255), true);
+                        else if (geo->type == GEO_RED)
+                            driver->draw2DImage(small_circle_tex_red_selected, coords, core::rect<int>(0, 0, 8, 8), 0, video::SColor(255, 255, 255, 255), true);
+                    }
+                }
+            }*/
+        }
+    }
+}
+
+void GeometryStack::set_type(int t)
+{
+    this->base_type = t;
+}
+
+polyfold* GeometryStack::get_total_geometry()
 {
     return &this->total_geometry;
 }
 
-void geometry_scene::build_total_geometry()
+void GeometryStack::build_total_geometry()
 {
     polyfold combo, combo2;
     std::vector<polyfold*> polies;
@@ -75,94 +209,12 @@ void geometry_scene::build_total_geometry()
 
     for (int i = 1; i < this->elements.size(); i++)
     {
-        //add_pfold(this->elements[i].geometry,combo);
         polies.push_back(&this->elements[i].geometry);
     }
-    //std::cout << "total geometry:\n";
-
-    //combine_polyfolds_accelerated(polies, combo);
 
     combine_polyfolds(polies, combo);
 
-    //std::cout << combo.vertices.size() << " vertices\n";
-
-    // combine_polyfolds_linear(polies, combo2);
-     /*
-     for (int f_i = 0; f_i < combo.faces.size(); f_i++)
-     {
-         for (int p_i = 0; p_i < combo.faces[f_i].loops.size(); p_i++)
-         {
-             for (int i = 0; i < combo.faces[f_i].loops[p_i].vertices.size(); i++)
-             {
-                 //std::cout << i << " ";
-                 int v_i0 = combo.faces[f_i].loops[p_i].vertices[i];
-                 int v_i1 = combo2.faces[f_i].loops[p_i].vertices[i];
-                 if (combo.vertices[v_i0].V != combo2.vertices[v_i1].V)
-                 {
-                     std::cout << "mismatch: "<<printvec(combo.vertices[v_i0].V)<<"  "<<printvec(combo2.vertices[v_i1].V)<<"\n";
-                 }
-             }
-         }
-     }*/
-     /*
-     for (poly_vert v0 : combo.vertices)
-     {
-         if (combo2.find_point(v0.V) == -1)
-             std::cout << "could not find point\n";
-     }
-
-     for (poly_edge e0 : combo.edges)
-     {
-         if (combo2.find_edge(combo.vertices[e0.v0].V, combo.vertices[e0.v1].V) == -1)
-             std::cout << "could not find edge\n";
-     }
-
-     for (poly_vert v0 : combo2.vertices)
-     {
-         if (combo.find_point(v0.V) == -1)
-             std::cout << "could not find point2\n";
-     }
-
-     for (poly_edge e0 : combo2.edges)
-     {
-         if (combo.find_edge(combo2.vertices[e0.v0].V, combo2.vertices[e0.v1].V) == -1)
-             std::cout << "could not find edge2\n";
-     }
-
-     if (combo.edges.size() != combo2.edges.size())
-         std::cout << "edges size mismatch: "<< combo.edges.size()<<" to " << combo2.edges.size()<<"\n";
-
-     if (combo.vertices.size() != combo2.vertices.size())
-     {
-         std::cout << "verts size mismatch: " << combo.vertices.size() << " to " << combo2.vertices.size() << "\n";
-         for(int v_i=0;v_i<combo.vertices.size(); v_i++)
-         {
-             for (int v_i2 = 0; v_i2 < combo.vertices.size(); v_i2++)
-             {
-                 if (is_same_point(combo.vertices[v_i].V, combo.vertices[v_i2].V) && v_i != v_i2)
-                 {
-                     std::cout << v_i << ", " << v_i2 << " is duplicate\n";
-                     std::cout << combo.vertices[v_i].V.X << "," << combo.vertices[v_i].V.Y << "," << combo.vertices[v_i].V.Z << "\n";
-                     std::cout << combo.vertices[v_i2].V.X << "," << combo.vertices[v_i2].V.Y << "," << combo.vertices[v_i2].V.Z << "\n";
-                 }
-             }
-         }
-     }*/
-
-     // intersections_graph.lines.clear();
-
-
-      //std::cout << combo2.edges.size() << " edges\n";
-      //combo.addDrawLinesEdges(intersections_graph);
-
-
-    //std::cout << "total geometry created " << this->elements.size() << " elements\n";
-
     this->total_geometry = combo;
-    //for (int i = 0; i < total_geometry.faces.size(); i++)
-    //{
-    //    total_geometry.calc_tangent(i);
-    //}
 
     if (this->base_type == GEO_EMPTY)
         this->total_geometry.topology = TOP_CONVEX;
@@ -170,7 +222,7 @@ void geometry_scene::build_total_geometry()
         this->total_geometry.topology = TOP_CONCAVE;
 }
 
-void geometry_scene::set_originals()
+void GeometryStack::set_originals()
 {
     for (int i = 1; i < this->elements.size(); i++)
     {
@@ -188,7 +240,7 @@ bool geo_element::has_geometry()
     return this->geometry.edges.size() > 2;
 }
 
-void geometry_scene::add(polyfold pf)
+void GeometryStack::add(polyfold pf)
 {
     //this->WriteGeometryToFile("backup.pol");
 
@@ -215,7 +267,7 @@ void geometry_scene::add(polyfold pf)
         this->rebuild_geometry(true);
 }
 
-void geometry_scene::add_plane(polyfold pf)
+void GeometryStack::add_plane(polyfold pf)
 {
     //this->WriteGeometryToFile("backup.pol");
 
@@ -245,7 +297,7 @@ void geometry_scene::add_plane(polyfold pf)
         this->rebuild_geometry(true);
 }
 
-void geometry_scene::add_semisolid(polyfold pf)
+void GeometryStack::add_semisolid(polyfold pf)
 {
     //this->WriteGeometryToFile("backup.pol");
 
@@ -272,7 +324,7 @@ void geometry_scene::add_semisolid(polyfold pf)
         this->rebuild_geometry(true);
 }
 
-void geometry_scene::subtract(polyfold pf)
+void GeometryStack::subtract(polyfold pf)
 {
     //this->WriteGeometryToFile("backup.pol");
 
@@ -299,7 +351,7 @@ void geometry_scene::subtract(polyfold pf)
         this->rebuild_geometry(true);
 }
 
-void geometry_scene::build_intersecting_target(const polyfold& pf, polyfold& out)
+void GeometryStack::build_intersecting_target(const polyfold& pf, polyfold& out)
 {
     std::vector<polyfold*> polies;
 
@@ -329,9 +381,8 @@ void geometry_scene::build_intersecting_target(const polyfold& pf, polyfold& out
     }
 }
 
-void geometry_scene::rebuild_geometry(bool only_build_new_geometry)
+void GeometryStack::rebuild_geometry(bool only_build_new_geometry)
 {
-    //std::cout << "rebuild...\n";
 
     TIME_HEADER()
 
@@ -349,7 +400,7 @@ void geometry_scene::rebuild_geometry(bool only_build_new_geometry)
     for (int i = build_start; i < this->elements.size(); i++)
         this->elements[i].geometry = no_poly;
 
-    intersections_graph.lines.clear();
+    //intersections_graph.lines.clear();
 
     START_TIMER()
 
@@ -403,14 +454,14 @@ void geometry_scene::rebuild_geometry(bool only_build_new_geometry)
                 this->elements[i].brush.make_convex();
                 this->elements[i].geometry = this->elements[i].brush;
 
-                clip_poly_accelerated(this->elements[i].geometry, combo, GEO_ADD, this->base_type, results, intersections_graph);
+                clip_poly_accelerated(this->elements[i].geometry, combo, GEO_ADD, this->base_type, results, nograph);
             }
             else if (this->elements[i].type == GEO_SUBTRACT)
             {
                 this->elements[i].brush.make_concave();
                 this->elements[i].geometry = this->elements[i].brush;
 
-                clip_poly_accelerated(this->elements[i].geometry, combo, GEO_SUBTRACT, this->base_type, results, intersections_graph);
+                clip_poly_accelerated(this->elements[i].geometry, combo, GEO_SUBTRACT, this->base_type, results, nograph);
             }
         }
 
@@ -515,8 +566,6 @@ void geometry_scene::rebuild_geometry(bool only_build_new_geometry)
 
         combine_polyfolds(polies, combo);
 
-        //std::cout << i << ": intersects " << num << " other elements (plane geometry) \n";
-
         if (this->base_type == GEO_EMPTY)
             combo.topology = TOP_CONVEX;
         else if (this->base_type == GEO_SOLID)
@@ -585,6 +634,12 @@ void geometry_scene::rebuild_geometry(bool only_build_new_geometry)
 
     INC_TIMER(generate_meshes_time)
 
+    loops_graph.lines.clear();
+    for (geo_element el : elements)
+    {
+        el.geometry.addDrawLinesEdges(loops_graph);
+    }
+
     //GenLightMaps* LM = LightMaps_Tool::getLightmaps();
 
     //if(LM)
@@ -597,7 +652,7 @@ void geometry_scene::rebuild_geometry(bool only_build_new_geometry)
 }
 
 
-void geometry_scene::intersect_active_brush()
+void GeometryStack::intersect_active_brush()
 {
     polyfold cube = this->elements[0].brush;
     cube.make_convex();
@@ -639,7 +694,7 @@ void geometry_scene::intersect_active_brush()
     }
 }
 
-void geometry_scene::clip_active_brush()
+void GeometryStack::clip_active_brush()
 {
     if (this->elements[0].brush.topology != TOP_CONVEX &&
         this->elements[0].brush.topology != TOP_CONCAVE)
@@ -688,7 +743,7 @@ void geometry_scene::clip_active_brush()
     }
 }
 
-void geometry_scene::clip_active_brush_plane_geometry()
+void GeometryStack::clip_active_brush_plane_geometry()
 {
     polyfold cube = this->elements[0].brush;
 
@@ -716,4 +771,193 @@ void geometry_scene::clip_active_brush_plane_geometry()
     clip_poly_accelerated_single(cube, pf2, GEO_ADD, base_type, results, nograph);
 
     this->elements[0].brush = cube;
+}
+
+void GeometryStack::clear_scene()
+{
+    geo_element active_brush = this->elements[0];
+    this->elements.clear();
+    this->elements.push_back(active_brush);
+
+    this->build_progress = 0;
+
+    if (this->getMeshNode())
+    {
+        this->getMeshNode()->remove();
+    }
+
+    this->rebuild_geometry();
+}
+
+polyfold GeometryStack::get_intersecting_geometry(polyfold pf)
+{
+    polyfold combo;
+    std::vector<int> touched_brushes;
+    int num = 0;
+    std::vector<polyfold*> polies;
+    for (int j = 1; j < this->elements.size(); j++)
+    {
+        if (this->elements[j].has_geometry() &&
+            BoxIntersectsWithBox(pf.bbox, this->elements[j].brush.bbox))
+        {
+            for (int f_j = 0; f_j < this->elements[j].geometry.faces.size(); f_j++)
+            {
+                this->elements[j].geometry.faces[f_j].original_brush = j;
+                this->elements[j].geometry.faces[f_j].original_face = this->elements[j].geometry.faces[f_j].surface_group;
+            }
+            touched_brushes.push_back(j);
+
+            polies.push_back(&elements[j].geometry);
+            num++;
+        }
+    }
+    combine_polyfolds(polies, combo);
+
+    return combo;
+}
+
+triangle_holder* GeometryStack::get_triangles_for_face(int f_i)
+{
+    return &total_geometry_triangles[f_i];
+}
+
+void GeometryStack::setRenderType(bool brushes, bool geo, bool loops, bool triangles)
+{
+    render_brushes = brushes;
+    render_geometry = geo;
+    render_loops = loops;
+    render_triangles = triangles;
+}
+
+
+void GeometryStack::trianglize_total_geometry()
+{
+    LineHolder nograph;
+    polyfold* pf = get_total_geometry();
+
+    total_geometry_triangles.clear();
+
+    total_geometry_triangles.resize(pf->faces.size());
+
+    for (int i = 0; i < pf->faces.size(); i++)
+    {
+        if (pf->faces[i].loops.size() > 0)
+        {
+            pf->trianglize(i, total_geometry_triangles[i], NULL, nograph, nograph);
+        }
+    }
+}
+
+std::vector<int> GeometryStack::getSurfaceFromFace(int b_i)
+{
+    int brush_j = get_total_geometry()->faces[b_i].original_brush;
+    int face_j = get_total_geometry()->faces[b_i].original_face;
+
+    poly_face* f = &elements[brush_j].brush.faces[face_j];
+    std::vector<int> sel;
+    int sg = f->surface_group;
+    for (int i = 0; i < get_total_geometry()->faces.size(); i++)
+    {
+        if (get_total_geometry()->faces[i].original_brush == brush_j)
+        {
+            int face_i = get_total_geometry()->faces[i].original_face;
+
+            if (elements[brush_j].brush.faces[face_i].surface_group == sg &&
+                elements[brush_j].geometry.faces[face_i].loops.size() > 0)
+                sel.push_back(i);
+        }
+    }
+    return sel;
+
+}
+
+void GeometryStack::buildSceneNode(bool finalMesh, int light_mode)
+{
+    video::IVideoDriver* driver = device->getVideoDriver();
+
+    polyfold* pf = get_total_geometry();
+
+    if (my_MeshNode)
+        my_MeshNode->remove();
+    my_MeshNode = NULL;
+
+    if (final_mesh_dirty)
+    {
+        final_meshnode_interface.refresh_material_groups(this);
+        final_meshnode_interface.generate_mesh_node(this);
+    }
+
+    if (finalMesh) //final mesh
+    {
+        b_isEditNode = false;
+        this->my_MeshNode = final_meshnode_interface.addMeshSceneNode(this, SceneManager, this);
+
+        for (int i = 0; i < my_MeshNode->getMesh()->getMeshBufferCount(); i++)
+        {
+            scene::IMeshBuffer* buffer = my_MeshNode->getMesh()->getMeshBuffer(i);
+            int f_i = final_meshnode_interface.getMaterialsUsed()[i].faces[0];
+            material_groups_base->apply_material_to_buffer(buffer, pf->faces[f_i].material_group, light_mode, false, true);
+
+        }
+
+        my_MeshNode->copyMaterials();
+    }
+    else //edit mesh
+    {
+        b_isEditNode = true;
+        this->my_MeshNode = edit_meshnode_interface.addMeshSceneNode(this, SceneManager, this);
+
+        for (int f_i = 0; f_i < pf->faces.size(); f_i++)
+        {
+            if (pf->faces[f_i].loops.size() > 0)
+            {
+                int buffer_index = edit_meshnode_interface.get_buffer_index_by_face(f_i);
+                scene::IMeshBuffer* buffer = this->my_MeshNode->getMesh()->getMeshBuffer(buffer_index);
+
+                material_groups_base->apply_material_to_buffer(buffer, pf->faces[f_i].material_group, light_mode, false, false);
+
+                video::ITexture* tex_j = driver->getTexture(pf->faces[f_i].texture_name.c_str());
+
+                buffer->getMaterial().setTexture(0, tex_j);
+            }
+        }
+
+        my_MeshNode->copyMaterials();
+    }
+
+    my_MeshNode->setMaterialFlag(video::EMF_LIGHTING, false);
+
+    my_MeshNode->getMesh()->setHardwareMappingHint(scene::EHM_STATIC);
+
+    my_MeshNode->setVisible(true);
+}
+
+void GeometryStack::generate_meshes()
+{
+    trianglize_total_geometry();
+
+    edit_meshnode_interface.generate_mesh_node(this);
+
+    final_meshnode_interface.refresh_material_groups(this);
+    final_meshnode_interface.generate_mesh_node(this);
+}
+
+poly_face* GeometryStack::get_original_brush_face(int f_i)
+{
+    int brush_j = total_geometry.faces[f_i].original_brush;
+    int face_j = total_geometry.faces[f_i].original_face;
+
+    poly_face* f = &elements[brush_j].brush.faces[face_j];
+
+    return f;
+}
+
+
+polyfold* GeometryStack::get_original_brush(int f_i)
+{
+    int brush_j = total_geometry.faces[f_i].original_brush;
+
+    polyfold* pf = &elements[brush_j].brush;
+
+    return pf;
 }

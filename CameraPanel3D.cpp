@@ -49,16 +49,16 @@ TestPanel_3D::~TestPanel_3D()
 }
 
 void TestPanel_3D::AddGraph(LineHolder& graph4)
-{
+{/*
     for (vector3df v : graph4.points)
         this->graph.points.push_back(v);
     for (line3df lv : graph4.lines)
-        this->graph.lines.push_back(lv);
+        this->graph.lines.push_back(lv);*/
 }
 
 
 void TestPanel_3D::AddGraphs(LineHolder& graph1, LineHolder& graph2, LineHolder& graph3)
-{
+{/*
     for (vector3df v : graph1.points)
         this->graph.points.push_back(v);
     for (vector3df v : graph2.points)
@@ -68,7 +68,7 @@ void TestPanel_3D::AddGraphs(LineHolder& graph1, LineHolder& graph2, LineHolder&
     for (line3df lv : graph2.lines)
         this->graph2.lines.push_back(lv);
     for (line3df lv : graph3.lines)
-        this->graph3.lines.push_back(lv);
+        this->graph3.lines.push_back(lv);*/
 }
 
 scene::ICameraSceneNode* TestPanel_3D::getCamera()
@@ -517,11 +517,9 @@ bool TestPanel::get_click_node(int x, int y, click_node_info& ret)
     ret.distance = 0xFFFF;
     ret.node_hit = NULL;
     ret.hit = false;
-    for(Reflected_SceneNode* sn : geo_scene->getSelectedNodes())
-    //for (int i = 0; i < geo_scene->getSceneNodes().size(); i++)
-    {
-        //Reflected_SceneNode* sn = geo_scene->getSceneNodes()[i];
 
+    for(Reflected_SceneNode* sn : geo_scene->getSelectedNodes())
+    {
         core::rect<s32> v_rect = ((Reflected_Sprite_SceneNode*)sn)->GetVisibleRectangle(this);
 
         if (v_rect.isPointInside(core::vector2di(clickx, clicky)))
@@ -529,10 +527,8 @@ bool TestPanel::get_click_node(int x, int y, click_node_info& ret)
             f32 d = sn->getDistanceFromCamera(this);
             if (d < ret.distance)
             {
-                //std::cout<<"hit object!\n";
                 ret.hit = true;
                 ret.distance = d;
-                //ret.node_n = i;
                 ret.node_hit = sn;
             }
         }
@@ -544,12 +540,14 @@ bool TestPanel::get_click_node(int x, int y, click_node_info& ret)
 bool TestPanel::get_click_brush(int x, int y, click_brush_info& ret)
 {
     core::vector3df cam_pos = this->getCamera()->getAbsolutePosition();
-    f32 distance = 9999;
+    f32 distance = 0xFFFF;
     ret.hit = false;
 
-    for (int i = 0; i < geo_scene->elements.size(); i++)
+    GeometryStack* geo_node = geo_scene->geoNode();
+
+    for (int i = 0; i < geo_node->elements.size(); i++)
     {
-        polyfold* brush = &geo_scene->elements[i].brush;
+        polyfold* brush = &geo_node->elements[i].brush;
 
         for (int j = 0; j < brush->edges.size(); j++)
         {
@@ -585,6 +583,7 @@ bool TestPanel::get_click_brush(int x, int y, click_brush_info& ret)
             }
         }
     }
+
     return ret.hit;
 }
 
@@ -595,22 +594,25 @@ bool TestPanel_3D::get_click_face(int x, int y, click_brush_info& ret)
     core::vector3df hitvec;
     core::plane3df ret_plane;
     core::vector3df ret_vec;
-    int selected_poly = -1;
+    int selected_poly = 0;
     int selected_face = -1;
-    f32 dist = 9999;
 
-    for (int j = 0; j < this->geo_scene->get_total_geometry()->faces.size(); j++)
+    f32 dist = 0xFFFF;
+
+    GeometryStack* geo_node = geo_scene->geoNode();
+
+    for (int j = 0; j < geo_node->get_total_geometry()->faces.size(); j++)
     {
-        core::plane3df f_plane(this->geo_scene->get_total_geometry()->faces[j].m_center,
-            this->geo_scene->get_total_geometry()->faces[j].m_normal);
+        core::plane3df f_plane(geo_node->get_total_geometry()->faces[j].m_center,
+            geo_node->get_total_geometry()->faces[j].m_normal);
 
         if (GetAnyPlaneClickVector(this->Texture->getOriginalSize(), this->getCamera(), f_plane, x, y, hitvec) &&
-            this->geo_scene->get_total_geometry()->is_point_on_face(j, hitvec))
+            geo_node->get_total_geometry()->is_point_on_face(j, hitvec))
         {
             f32 d = hitvec.getDistanceFrom(cam_pos);
             if (d<dist && d > near_dist &&
-                (this->geo_scene->get_total_geometry()->faces[j].m_normal.dotProduct(cam_pos - hitvec) > 0 ||
-                    this->geo_scene->getMaterialGroupsBase()->material_groups[this->geo_scene->get_total_geometry()->faces[j].material_group].two_sided == true
+                (geo_node->get_total_geometry()->faces[j].m_normal.dotProduct(cam_pos - hitvec) > 0 ||
+                    this->geo_scene->getMaterialGroupsBase()->material_groups[geo_node->get_total_geometry()->faces[j].material_group].two_sided == true
                     )
                 &&
                 (hitvec - cam_pos).dotProduct(this->getCamera()->getTarget() - cam_pos) > 0)
@@ -618,13 +620,13 @@ bool TestPanel_3D::get_click_face(int x, int y, click_brush_info& ret)
                 ret_vec = hitvec;
                 ret_plane = f_plane;
                 dist = d;
-                selected_poly = 0;
+                selected_poly = 1;
                 selected_face = j;
             }
         }
     }
 
-    if (selected_poly != -1)
+    if (selected_poly != 0)
     {
         ret.hit = true;
         ret.hitvec = ret_vec;
@@ -646,7 +648,8 @@ void TestPanel_3D::left_click(core::vector2di pos)
     std::vector<Reflected_SceneNode*> old_sel_nodes = geo_scene->getSelectedNodes();
     std::vector<int> old_sel_brushes = geo_scene->getBrushSelection();
 
-    if (click_hits_poly(&geo_scene->elements[0].brush, core::vector2di(clickx, clicky)))
+    
+    if (click_hits_poly(&geo_scene->geoNode()->elements[0].brush, core::vector2di(clickx, clicky)))
     {
         geo_scene->setSelectedFaces(std::vector<int>{});
         geo_scene->setSelectedNodes(std::vector<Reflected_SceneNode*>{});
@@ -703,7 +706,6 @@ void TestPanel_3D::left_click(core::vector2di pos)
             selected_face = res.face_n;
         }
 
-        //int hit_node_i = GetSceneNodeHit(clickx, clicky, true);
         Reflected_SceneNode* node_hit = GetSceneNodeHit(clickx, clicky, true);
 
         this->geo_scene->setBrushSelection(std::vector<int>{});
@@ -782,6 +784,7 @@ void TestPanel_3D::ClickAddLight()
 {
     int selected_face = -1;
     int selected_poly = -1;
+
     if (geo_scene && view_style == PANEL3D_VIEW_RENDER)
     {
         click_brush_info res;
@@ -790,7 +793,7 @@ void TestPanel_3D::ClickAddLight()
             selected_face = res.face_n;
             selected_poly = res.brush_n;
 
-            core::vector3df N = geo_scene->get_total_geometry()->faces[selected_face].m_normal;
+            core::vector3df N = geo_scene->geoNode()->get_total_geometry()->faces[selected_face].m_normal;
 
             geo_scene->addSceneLight(res.hitvec + N * 32);
         }
@@ -810,7 +813,7 @@ void TestPanel_3D::ClickAddNode()
             selected_face = res.face_n;
             selected_poly = res.brush_n;
 
-            core::vector3df N = geo_scene->get_total_geometry()->faces[selected_face].m_normal;
+            core::vector3df N = geo_scene->geoNode()->get_total_geometry()->faces[selected_face].m_normal;
 
             geo_scene->addSceneSelectedSceneNodeType(res.hitvec + N * 32);
         }
@@ -851,31 +854,33 @@ void TestPanel_3D::right_click(core::vector2di pos)
     }
     else if (geo_scene && geo_scene->getBrushSelection().size() > 0)
     {
+        GeometryStack* geo_node = geo_scene->geoNode();
+
         for (int p_i : geo_scene->getBrushSelection())
         {
-            if (click_hits_poly(&geo_scene->elements[p_i].brush, core::vector2di(clickx, clicky)))
+            if (click_hits_poly(&geo_node->elements[p_i].brush, core::vector2di(clickx, clicky)))
             {
-                for (int v_i = 0; v_i < geo_scene->elements[p_i].brush.vertices.size(); v_i++)
+                for (int v_i = 0; v_i < geo_node->elements[p_i].brush.vertices.size(); v_i++)
                 {
                     core::vector2di coords;
-                    GetScreenCoords(geo_scene->elements[p_i].brush.vertices[v_i].V, coords);
+                    GetScreenCoords(geo_node->elements[p_i].brush.vertices[v_i].V, coords);
                     if (core::vector2di(clickx, clicky).getDistanceFrom(coords) < 4)
                     {
                         geo_scene->selected_brush_vertex_editing = p_i;
-                        geo_scene->elements[p_i].selected_vertex = v_i;
-                        geo_scene->elements[p_i].control_vertex_selected = false;
+                        geo_node->elements[p_i].selected_vertex = v_i;
+                        geo_node->elements[p_i].control_vertex_selected = false;
                     }
                 }
             }
-            for (int v_i = 0; v_i < geo_scene->elements[p_i].brush.control_vertices.size(); v_i++)
+            for (int v_i = 0; v_i < geo_node->elements[p_i].brush.control_vertices.size(); v_i++)
             {
                 core::vector2di coords;
-                GetScreenCoords(geo_scene->elements[p_i].brush.control_vertices[v_i].V, coords);
+                GetScreenCoords(geo_node->elements[p_i].brush.control_vertices[v_i].V, coords);
                 if (core::vector2di(clickx, clicky).getDistanceFrom(coords) < 4)
                 {
                     geo_scene->selected_brush_vertex_editing = p_i;
-                    geo_scene->elements[p_i].selected_vertex = v_i;
-                    geo_scene->elements[p_i].control_vertex_selected = true;
+                    geo_node->elements[p_i].selected_vertex = v_i;
+                    geo_node->elements[p_i].control_vertex_selected = true;
                 }
             }
         }
@@ -961,8 +966,6 @@ void TestPanel_3D::OnMenuItemSelected(IGUIContextMenu* menu)
 
     scene::CMeshSceneNode* mesh_node = this->geo_scene->getMeshNode();
 
-    //BVH_structure<poly_edge> test_bvh(geo_scene->get_total_geometry());
-
     switch (id)
     {
     case GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_GRID_TOGGLE:
@@ -1032,33 +1035,15 @@ void TestPanel_3D::OnMenuItemSelected(IGUIContextMenu* menu)
         break;
     case GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_NODE_PROPERTIES:
         NodeProperties_Tool::show();
-        //NodeProperties_Tool2::show();
         break;
     case GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_DELETE_NODE:
         geo_scene->deleteSelectedNodes();
         break;
     case GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_TEST:
-        //bTest = !bTest;
-        //if(bTest)
-       // TestLM();
-
-        //test_bvh.build(geo_scene->get_total_geometry()->edges.data(), geo_scene->get_total_geometry()->edges.size());
-
-        graph.lines.clear();
-        graph2.lines.clear();
-        graph3.lines.clear();
-        graph.points.clear();
-        graph2.points.clear();
-        graph3.points.clear();
-
-        geo_scene->drawGraph(graph);
-
-        // test_bvh.addDrawLines(graph);
          //    RenderHitTexture();
         break;
     case GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_FULLSCREEN_TOGGLE:
         this->bFullscreen = !this->bFullscreen;
-       // ((CameraQuad*)this->getParent())->SetFullscreen(this->bFullscreen, this);
         m_viewPanel->set_fullscreen(bFullscreen);
         break;
     default:
@@ -1090,10 +1075,9 @@ void TestPanel_3D::SetMeshNodesVisible()
         }
 
     }
-    else
+    else if(geo_scene->getMeshNode())
     {
         geo_scene->getMeshNode()->setVisible(false);
-        //geo_scene->getFinalMeshNode()->setVisible(false);
     }
 
 }
@@ -1114,137 +1098,49 @@ void TestPanel_3D::SetViewStyle(s32 vtype)
     case PANEL3D_VIEW_LOOPS:
     {
         bShowGeometry = true;
-        graph.lines.clear();
-        graph2.lines.clear();
-        graph3.lines.clear();
-        graph.points.clear();
-        graph2.points.clear();
-        graph3.points.clear();
 
-        for (geo_element el : geo_scene->elements)
-        {
-            el.geometry.addDrawLinesEdges(graph2);
-        }
-
-        geo_scene->drawGraph(graph);
-
-        if (!mesh_node)
-        {
-            geo_scene->buildSceneGraph(false, true, false);
-            mesh_node = geo_scene->getMeshNode();
-        }
-
-        if (mesh_node)
-            mesh_node->setVisible(false);
+        geo_scene->setRenderType(false, true, true, false);
 
         if (geo_scene->getSelectedFaces().size() > 0)
         {
             geo_scene->setSelectedFaces(std::vector<int>{});
-        }
-
-       // geo_scene->drawGraph(graph);
-
-        if (this->geo_scene->get_total_geometry())
-        {/*
-        graph.lines.clear();
-        graph2.lines.clear();
-        graph3.lines.clear();
-        graph.points.clear();
-        graph2.points.clear();
-        graph3.points.clear();
-
-        if (LightMaps_Tool::getLightmaps())
-        {
-            LightMaps_Tool::getLightmaps()->addDrawLines(graph);
-        }*/
-        /*
-        {
-            if (this->total_geometry)
-                addDrawLines(*this->total_geometry, graph, graph2, graph3);
-            else
-                addDrawLines(*this->geo_scene->get_total_geometry(), graph, graph2, graph2);
-        }*/
-
         }
     }
     break;
     case PANEL3D_VIEW_TRIANGLES:
         bShowGeometry = true;
-        //std::cout << "triangles\n";
-        geo_scene->buildSceneGraph(false, false, false);
-        mesh_node = geo_scene->getMeshNode();
 
-        graph.lines.clear();
-        geo_scene->drawGraph(graph);
+        geo_scene->buildSceneGraph(false, false, LIGHTING_UNLIT);
+       
+        geo_scene->setRenderType(false, true, false, true);
 
         if (geo_scene->getSelectedFaces().size() > 0)
         {
             geo_scene->setSelectedFaces(std::vector<int>{});
         }
-        if (mesh_node)
-        {
-            mesh_node->setVisible(true);
-            mesh_node->setWireFrame(true);
-        }
+        
         break;
     case PANEL3D_VIEW_RENDER:
-        //std::cout << "edit\n";
         bShowGeometry = true;
 
-        geo_scene->buildSceneGraph(false, true, this->lighting_type, false);
+        geo_scene->buildSceneGraph(false, true, LIGHTING_UNLIT, false);
 
-        mesh_node = geo_scene->getMeshNode();
+        geo_scene->setRenderType(false, true, false, false);
 
-        if (mesh_node)
-        {
-            mesh_node->setVisible(true);
-            mesh_node->setWireFrame(false);
-        }
         break;
     case PANEL3D_VIEW_RENDER_FINAL:
-        //std::cout << "final\n";
-        //
-
-        if (!mesh_node)
-        {
-            geo_scene->buildSceneGraph(false, true, true);
-            mesh_node = geo_scene->getMeshNode();
-        }
-
-        if (mesh_node)
-            mesh_node->setVisible(false);
+       
 
         if (geo_scene->getSelectedFaces().size() > 0)
         {
             geo_scene->setSelectedFaces(std::vector<int>{});
         }
-        if (this->geo_scene->get_total_geometry())
-        {
-            graph.lines.clear();
-            graph2.lines.clear();
-            graph3.lines.clear();
-            graph.points.clear();
-            graph2.points.clear();
-            graph3.points.clear();
 
-            if (this->total_geometry)
-                addDrawLines(*this->total_geometry, graph, graph2, graph3);
-            else
-                addDrawLines(*this->geo_scene->get_total_geometry(), graph, graph2, graph2);
-
-        }
-        //
-
-        geo_scene->buildSceneGraph(true, false, this->lighting_type, true);
-        mesh_node = geo_scene->getMeshNode();
+        geo_scene->buildSceneGraph(true, false, LIGHTING_UNLIT, true);
+       
+        geo_scene->setRenderType(false, true, false, false);
 
         bShowGeometry = true;
-
-        if (mesh_node)
-        {
-            mesh_node->setVisible(true);
-            mesh_node->setWireFrame(false);
-        }
 
         break;
     }
@@ -1253,7 +1149,6 @@ void TestPanel_3D::SetViewStyle(s32 vtype)
 
 void TestPanel_3D::render()
 {
-
     driver->setRenderTarget(getImage(), true, true, video::SColor(255, 16, 16, 16));
     smgr->setActiveCamera(getCamera());
 
@@ -1261,183 +1156,7 @@ void TestPanel_3D::render()
 
     smgr->drawAll();
 
-    video::SMaterial someMaterial;
-    someMaterial.Lighting = false;
-    someMaterial.Thickness = 1.0;
-    someMaterial.MaterialType = video::EMT_SOLID;
-
-    driver->setTransform(video::ETS_WORLD, core::IdentityMatrix);
-    driver->setMaterial(someMaterial);
-
-    //if(bShowGrid)
-    //    this->drawGrid(driver,someMaterial);
-
-    if (this->geo_scene)
-    {
-        if (bShowBrushes)
-        {
-            for (geo_element& geo : this->geo_scene->elements)
-            {
-                if (!geo.bSelected)
-                    geo.draw_brush(driver, someMaterial);
-            }
-            for (geo_element& geo : this->geo_scene->elements)
-            {
-                if (geo.bSelected)
-                    geo.draw_brush(driver, someMaterial);
-            }
-            for (int e_i = 0; e_i < this->geo_scene->elements.size(); e_i++)
-            {
-                geo_element* geo = &this->geo_scene->elements[e_i];
-                if (geo->bSelected)
-                {
-
-                    core::vector2di coords;
-                    for (int i = 0; i < geo->brush.vertices.size(); i++)
-                    {
-                        GetScreenCoords(geo->brush.vertices[i].V, coords);
-                        coords.X -= 4;
-                        coords.Y -= 4;
-                        if (geo_scene->selected_brush_vertex_editing == e_i && geo->control_vertex_selected == false && geo->selected_vertex == i)
-                        {
-                            if (geo->type == GEO_ADD)
-                                driver->draw2DImage(med_circle_tex_add_selected, coords, core::rect<int>(0, 0, 8, 8), 0, video::SColor(255, 255, 255, 255), true);
-                            else if (geo->type == GEO_SUBTRACT)
-                                driver->draw2DImage(med_circle_tex_sub_selected, coords, core::rect<int>(0, 0, 8, 8), 0, video::SColor(255, 255, 255, 255), true);
-                            else if (geo->type == GEO_RED)
-                                driver->draw2DImage(med_circle_tex_red_selected, coords, core::rect<int>(0, 0, 8, 8), 0, video::SColor(255, 255, 255, 255), true);
-                        }
-                        else
-                        {
-                            if (geo->type == GEO_ADD)
-                                driver->draw2DImage(small_circle_tex_add_selected, coords, core::rect<int>(0, 0, 8, 8), 0, video::SColor(255, 255, 255, 255), true);
-                            else if (geo->type == GEO_SUBTRACT)
-                                driver->draw2DImage(small_circle_tex_sub_selected, coords, core::rect<int>(0, 0, 8, 8), 0, video::SColor(255, 255, 255, 255), true);
-                            else if (geo->type == GEO_RED)
-                                driver->draw2DImage(small_circle_tex_red_selected, coords, core::rect<int>(0, 0, 8, 8), 0, video::SColor(255, 255, 255, 255), true);
-                        }
-                    }
-                    for (int i = 0; i < geo->brush.control_vertices.size(); i++)
-                    {
-                        GetScreenCoords(geo->brush.control_vertices[i].V, coords);
-                        coords.X -= 4;
-                        coords.Y -= 4;
-                        if (geo_scene->selected_brush_vertex_editing == e_i && geo->control_vertex_selected == true && geo->selected_vertex == i)
-                        {
-                            if (geo->type == GEO_ADD)
-                                driver->draw2DImage(med_circle_tex_add_selected, coords, core::rect<int>(0, 0, 8, 8), 0, video::SColor(255, 255, 255, 255), true);
-                            else if (geo->type == GEO_SUBTRACT)
-                                driver->draw2DImage(med_circle_tex_sub_selected, coords, core::rect<int>(0, 0, 8, 8), 0, video::SColor(255, 255, 255, 255), true);
-                            else if (geo->type == GEO_RED)
-                                driver->draw2DImage(med_circle_tex_red_selected, coords, core::rect<int>(0, 0, 8, 8), 0, video::SColor(255, 255, 255, 255), true);
-                        }
-                        else
-                        {
-                            if (geo->type == GEO_ADD)
-                                driver->draw2DImage(small_circle_tex_add_selected, coords, core::rect<int>(0, 0, 8, 8), 0, video::SColor(255, 255, 255, 255), true);
-                            else if (geo->type == GEO_SUBTRACT)
-                                driver->draw2DImage(small_circle_tex_sub_selected, coords, core::rect<int>(0, 0, 8, 8), 0, video::SColor(255, 255, 255, 255), true);
-                            else if (geo->type == GEO_RED)
-                                driver->draw2DImage(small_circle_tex_red_selected, coords, core::rect<int>(0, 0, 8, 8), 0, video::SColor(255, 255, 255, 255), true);
-                        }
-                    }
-                }
-            }
-        }
-        else
-        {   //always draw the red brush
-            geo_scene->elements[0].draw_brush(driver, someMaterial);
-
-            if (geo_scene->elements[0].bSelected)
-            {
-
-                core::vector2di coords;
-                for (int i = 0; i < geo_scene->elements[0].brush.vertices.size(); i++)
-                {
-                    GetScreenCoords(geo_scene->elements[0].brush.vertices[i].V, coords);
-                    coords.X -= 4;
-                    coords.Y -= 4;
-                    if (geo_scene->selected_brush_vertex_editing == 0 && geo_scene->elements[0].control_vertex_selected == false && geo_scene->elements[0].selected_vertex == i)
-                    {
-                        driver->draw2DImage(med_circle_tex_red_selected, coords, core::rect<int>(0, 0, 8, 8), 0, video::SColor(255, 255, 255, 255), true);
-                    }
-                    else
-                    {
-                        driver->draw2DImage(small_circle_tex_red_selected, coords, core::rect<int>(0, 0, 8, 8), 0, video::SColor(255, 255, 255, 255), true);
-                    }
-                }
-                for (int i = 0; i < geo_scene->elements[0].brush.control_vertices.size(); i++)
-                {
-                    GetScreenCoords(geo_scene->elements[0].brush.control_vertices[i].V, coords);
-                    coords.X -= 4;
-                    coords.Y -= 4;
-                    if (geo_scene->selected_brush_vertex_editing == 0 && geo_scene->elements[0].control_vertex_selected == true && geo_scene->elements[0].selected_vertex == i)
-                    {
-                        driver->draw2DImage(med_circle_tex_red_selected, coords, core::rect<int>(0, 0, 8, 8), 0, video::SColor(255, 255, 255, 255), true);
-                    }
-                    else
-                    {
-                        driver->draw2DImage(small_circle_tex_red_selected, coords, core::rect<int>(0, 0, 8, 8), 0, video::SColor(255, 255, 255, 255), true);
-                    }
-                }
-            }
-        }
-    }
-
-    driver->setTransform(video::ETS_WORLD, core::IdentityMatrix);
-    driver->setMaterial(someMaterial);
-    /*
-        if(geo_scene->getSelectedNodes().size() > 0)
-        {
-            for(int i : geo_scene->getSelectedNodes())
-            {
-                if(geo_scene->getSceneNodes()[i]->bShowEditorArrow())
-                {
-                    draw_arrow(geo_scene->getSceneNodes()[i]->getPosition(),geo_scene->getSceneNodes()[i]->getRotation());
-                }
-            }
-        }*/
-
-    if (bShowGeometry && view_style == PANEL3D_VIEW_LOOPS)
-    {
-        for (core::line3df aline : graph2.lines)
-        {
-            driver->draw3DLine(aline.start, aline.end, video::SColor(255, 96, 128, 96));
-        }
-        for (core::line3df aline : graph3.lines)
-        {
-            driver->draw3DLine(aline.start, aline.end, video::SColor(255, 32, 0, 150));
-        }
-        for (core::line3df aline : graph.lines)
-        {
-            driver->draw3DLine(aline.start, aline.end, video::SColor(255, 255, 0, 255));
-        }
-        for (core::vector3df v : graph.points)
-        {
-            int len = 4;
-            driver->draw3DLine(v + core::vector3df(len, 0, 0), v - core::vector3df(len, 0, 0), video::SColor(128, 255, 0, 255));
-            driver->draw3DLine(v + core::vector3df(0, len, 0), v - core::vector3df(0, len, 0), video::SColor(128, 255, 0, 255));
-            driver->draw3DLine(v + core::vector3df(0, 0, len), v - core::vector3df(0, 0, len), video::SColor(128, 255, 0, 255));
-        }
-
-        for (core::vector3df v : graph2.points)
-        {
-            int len = 4;
-            driver->draw3DLine(v + core::vector3df(len, 0, 0), v - core::vector3df(len, 0, 0), video::SColor(255, 96, 128, 96));
-            driver->draw3DLine(v + core::vector3df(0, len, 0), v - core::vector3df(0, len, 0), video::SColor(255, 96, 128, 96));
-            driver->draw3DLine(v + core::vector3df(0, 0, len), v - core::vector3df(0, 0, len), video::SColor(255, 96, 128, 96));
-        }
-    }
-    else if (view_style == PANEL3D_VIEW_TRIANGLES)
-    {
-        for (core::line3df aline : graph.lines)
-        {
-            driver->draw3DLine(aline.start, aline.end, video::SColor(255, 255, 0, 255));
-        }
-    }
-
     driver->setRenderTarget(NULL, true, true, video::SColor(0, 0, 0, 0));
-
 }
 
 

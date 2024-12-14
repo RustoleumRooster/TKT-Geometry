@@ -49,7 +49,14 @@ LM_Viewer_Panel::LM_Viewer_Panel(IGUIEnvironment* environment, video::IVideoDriv
     vVertical = core::vector3df(1, 0, 0);
     vAxis = core::vector3df(0, 1, 0);
 
-    uv_scene = new geometry_scene(device->getVideoDriver(), (MyEventReceiver*)device->getEventReceiver());
+   // uv_scene = new geometry_scene(device->getVideoDriver(), (MyEventReceiver*)device->getEventReceiver());
+   // uv_scene = new GeometryStack(NULL,Scen)
+}
+
+void LM_Viewer_Panel::Initialize(scene::ISceneManager* smgr, geometry_scene* geo_scene)
+{
+    uv_scene = new GeometryStack(NULL, smgr, (MyEventReceiver*)device->getEventReceiver());
+    TestPanel::Initialize(smgr, geo_scene);
 }
 
 LM_Viewer_Panel::~LM_Viewer_Panel()
@@ -114,9 +121,9 @@ void LM_Viewer_Panel::showMaterialGroup(int mg_n)
         uv_scene->elements.clear();
         faces.clear();
 
-        polyfold* pf = geo_scene->get_total_geometry();
+        polyfold* pf = geo_scene->geoNode()->get_total_geometry();
 
-        const vector<TextureMaterial>& mat_groups = geo_scene->final_meshnode_interface.getMaterialsUsed();
+        const vector<TextureMaterial>& mat_groups = geo_scene->geoNode()->final_meshnode_interface.getMaterialsUsed();
 
         if (mg_n < mat_groups.size())
         {
@@ -248,7 +255,7 @@ bool LM_Viewer_Panel::OnEvent(const SEvent& event)
 
 void LM_Viewer_Panel::make_face(polyfold* pf_0, int f_no, video::ITexture* face_texture2)
 {
-    MeshBuffer_Chunk chunk = geo_scene->edit_meshnode_interface.get_mesh_buffer_by_face(f_no);
+    MeshBuffer_Chunk chunk = geo_scene->geoNode()->edit_meshnode_interface.get_mesh_buffer_by_face(f_no);
 
     my_face_no = f_no;
 
@@ -260,7 +267,7 @@ void LM_Viewer_Panel::make_face(polyfold* pf_0, int f_no, video::ITexture* face_
     scene::IMeshBuffer* buffer = chunk.buffer;
     if (buffer)
     {
-        polyfold* source_brush = &geo_scene->elements[original_brush].brush;
+        polyfold* source_brush = &geo_scene->geoNode()->elements[original_brush].brush;
         //poly_face* face = &(og_brush->faces[original_face]);
 
         u32 n_points = source_brush->vertices.size();
@@ -289,7 +296,7 @@ void LM_Viewer_Panel::make_face(polyfold* pf_0, int f_no, video::ITexture* face_
 
         if (use_geometry_brush)
         {
-            source_brush = &geo_scene->elements[original_brush].geometry;
+            source_brush = &geo_scene->geoNode()->elements[original_brush].geometry;
 
             n_points = source_brush->vertices.size();
             vertex_index.assign(n_points, -1);
@@ -476,7 +483,7 @@ void LM_Viewer_Panel::render()
                     {
                         GetScreenCoords(geo->brush.vertices[i].V, coords);
                         coords.X -= 4;
-                        coords.Y -= 4;
+                        coords.Y -= 4;/*
                         if (uv_scene->selected_brush_vertex_editing == e_i && geo->selected_vertex == i)
                         {
                             if (geo->type == GEO_ADD)
@@ -486,7 +493,7 @@ void LM_Viewer_Panel::render()
                             else if (geo->type == GEO_RED)
                                 driver->draw2DImage(med_circle_tex_red_selected, coords, core::rect<int>(0, 0, 8, 8), 0, video::SColor(255, 255, 255, 255), true);
                         }
-                        else
+                        else*/
                         {
                             if (geo->type == GEO_ADD)
                                 driver->draw2DImage(small_circle_tex_add_selected, coords, core::rect<int>(0, 0, 8, 8), 0, video::SColor(255, 255, 255, 255), true);
@@ -519,11 +526,12 @@ void LM_Viewer_Panel::OnMenuItemSelected(IGUIContextMenu* menu)
 
 void LM_Viewer_Panel::left_click(core::vector2di pos)
 {
+    /*
     std::vector<int> old_sel_faces = geo_scene->getSelectedFaces();
     std::vector<Reflected_SceneNode*> old_sel_nodes = geo_scene->getSelectedNodes();
     std::vector<int> old_sel_brushes = geo_scene->getBrushSelection();
 
-    if (click_hits_poly(&geo_scene->elements[0].brush, core::vector2di(clickx, clicky)))
+    if (click_hits_poly(&geo_scene->geoNode()->elements[0].brush, core::vector2di(clickx, clicky)))
     {
         geo_scene->setBrushSelection(std::vector<int>{0});
     }
@@ -539,12 +547,12 @@ void LM_Viewer_Panel::left_click(core::vector2di pos)
         return;
     }
 
-    geo_scene->selectionChanged();
+    geo_scene->selectionChanged();*/
 }
 
 
 void LM_Viewer_Panel::right_click(core::vector2di pos)
-{
+{/*
     if (geo_scene && geo_scene->getBrushSelection().size() > 0)
     {
         bool bVertexClick = false;
@@ -565,7 +573,7 @@ void LM_Viewer_Panel::right_click(core::vector2di pos)
                 }
             }
         }
-    }
+    }*/
 }
 
 
@@ -881,7 +889,7 @@ void Material_Buffers_Base::show()
 {
     refresh_panel_view();
 
-    std::vector<TextureMaterial> materials = g_scene->final_meshnode_interface.getMaterialsUsed();
+    std::vector<TextureMaterial> materials = g_scene->geoNode()->final_meshnode_interface.getMaterialsUsed();
     m_struct.nBuffers = materials.size();
 
     m_struct.material_groups.clear();

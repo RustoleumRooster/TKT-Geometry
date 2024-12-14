@@ -114,12 +114,12 @@ void make_meshbuffer_from_triangles(const triangle_holder& t_h, scene::IMeshBuff
 }
 
 
-void calculate_meshbuffer_uvs_cylinder(geometry_scene* g_scene, int e_i, int f_i, scene::IMeshBuffer* buffer)
+void calculate_meshbuffer_uvs_cylinder(GeometryStack* g_scene, int e_i, int f_i, scene::IMeshBuffer* buffer)
 {
     calculate_meshbuffer_uvs_cylinder(g_scene, e_i, f_i, buffer, 0, buffer->getVertexCount());
 }
 
-void calculate_meshbuffer_uvs_cylinder(geometry_scene* g_scene, int e_i, int f_i, scene::IMeshBuffer* buffer, int v_start, int v_end)
+void calculate_meshbuffer_uvs_cylinder(GeometryStack* g_scene, int e_i, int f_i, scene::IMeshBuffer* buffer, int v_start, int v_end)
 {
     polyfold* brush = &g_scene->elements[e_i].brush;
 
@@ -191,12 +191,12 @@ void calculate_meshbuffer_uvs_cylinder(geometry_scene* g_scene, int e_i, int f_i
         */
 }
 
-void calculate_meshbuffer_uvs_dome(geometry_scene* g_scene, int e_i, int f_i, scene::IMeshBuffer* buffer)
+void calculate_meshbuffer_uvs_dome(GeometryStack* g_scene, int e_i, int f_i, scene::IMeshBuffer* buffer)
 {
     calculate_meshbuffer_uvs_dome(g_scene, e_i, f_i, buffer, 0, buffer->getVertexCount());
 }
 
-void calculate_meshbuffer_uvs_dome(geometry_scene* g_scene, int e_i, int f_i, scene::IMeshBuffer* buffer, int v_start, int v_end)
+void calculate_meshbuffer_uvs_dome(GeometryStack* g_scene, int e_i, int f_i, scene::IMeshBuffer* buffer, int v_start, int v_end)
 {
     polyfold* brush = &g_scene->elements[e_i].brush;
 
@@ -231,12 +231,12 @@ void calculate_meshbuffer_uvs_dome(geometry_scene* g_scene, int e_i, int f_i, sc
     }
 }
 
-void calculate_meshbuffer_uvs_sphere(geometry_scene* g_scene, int e_i, int f_i, scene::IMeshBuffer* buffer)
+void calculate_meshbuffer_uvs_sphere(GeometryStack* g_scene, int e_i, int f_i, scene::IMeshBuffer* buffer)
 {
     calculate_meshbuffer_uvs_sphere(g_scene, e_i, f_i, buffer, 0, buffer->getVertexCount());
 }
 
-void calculate_meshbuffer_uvs_sphere(geometry_scene* g_scene, int e_i, int f_i, scene::IMeshBuffer* buffer, int v_start, int v_end)
+void calculate_meshbuffer_uvs_sphere(GeometryStack* g_scene, int e_i, int f_i, scene::IMeshBuffer* buffer, int v_start, int v_end)
 {
     polyfold* brush = &g_scene->elements[e_i].brush;
 
@@ -289,12 +289,12 @@ void calculate_meshbuffer_uvs_sphere(geometry_scene* g_scene, int e_i, int f_i, 
 }
 
 
-void calculate_meshbuffer_uvs_cube(geometry_scene* g_scene, int e_i, int f_i, scene::IMeshBuffer* buffer)
+void calculate_meshbuffer_uvs_cube(GeometryStack* g_scene, int e_i, int f_i, scene::IMeshBuffer* buffer)
 {
     calculate_meshbuffer_uvs_cube(g_scene, e_i, f_i, buffer, 0, buffer->getVertexCount());
 }
 
-void calculate_meshbuffer_uvs_cube(geometry_scene* g_scene, int e_i, int f_i, scene::IMeshBuffer* buffer, int v_start, int v_end)
+void calculate_meshbuffer_uvs_cube(GeometryStack* g_scene, int e_i, int f_i, scene::IMeshBuffer* buffer, int v_start, int v_end)
 {
     polyfold* brush = &g_scene->elements[e_i].brush;
 
@@ -340,12 +340,12 @@ void calculate_meshbuffer_uvs_cube(geometry_scene* g_scene, int e_i, int f_i, sc
 }
 
 
-void calculate_meshbuffer_uvs_custom(geometry_scene* g_scene, int e_i, int f_i, scene::IMeshBuffer* buffer)
+void calculate_meshbuffer_uvs_custom(GeometryStack* g_scene, int e_i, int f_i, scene::IMeshBuffer* buffer)
 {
     calculate_meshbuffer_uvs_custom(g_scene, e_i, f_i, buffer, 0, buffer->getVertexCount());
 }
 
-void calculate_meshbuffer_uvs_custom(geometry_scene* g_scene, int e_i, int f_i, scene::IMeshBuffer* buffer, int v_start, int v_end)
+void calculate_meshbuffer_uvs_custom(GeometryStack* g_scene, int e_i, int f_i, scene::IMeshBuffer* buffer, int v_start, int v_end)
 {
     polyfold* brush = &g_scene->elements[e_i].brush;
     polyfold* geometry = &g_scene->elements[e_i].geometry;

@@ -504,7 +504,7 @@ public:
 		for (int i = 0; i < n_rows; i++)
 		{
 			column_width[i] = (pixel_width - 3 - (n_columns[i] - 1));
-			std::cout << row_theta_upper[i] << " - " << row_theta_lower[i] << "\n";
+			//std::cout << row_theta_upper[i] << " - " << row_theta_lower[i] << "\n";
 		}
 
 		column_height = ((pixel_height - 3) / n_rows) - 1;
@@ -789,9 +789,9 @@ enum {
 };
 
 template<class map_type>
-void map_uvs(geometry_scene* geo_scene, MeshNode_Interface* mesh_node, const std::vector<int>& surface, map_type& mapper, int uv_type)
+void map_uvs(GeometryStack* geo_node, MeshNode_Interface* mesh_node, const std::vector<int>& surface, map_type& mapper, int uv_type)
 {
-	polyfold* pf = geo_scene->get_total_geometry();
+	polyfold* pf = geo_node->get_total_geometry();
 
 	video::S3DVertex2TCoords* vtx[3];
 

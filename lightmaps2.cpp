@@ -22,7 +22,7 @@ f32 reduce_dimension_base2(f32 dim, int n = 1)
 	u16 lwi = static_cast<u16>(floor(log_width));
 	lwi -= n;
 	lwi = lwi > 3 ? lwi : 3;
-	lwi = lwi > 7 ? 7 : lwi;
+	lwi = lwi > 6 ? 6 : lwi;
 
 	return exp2(lwi);
 }
@@ -340,9 +340,9 @@ int is_reducible(geometry_scene* geo_scene, int f_i, int reduce)
 */
 
 template<typename back_type>
-void initialize_block(geometry_scene* geo_scene, int f_i, back_type ret, int reduce)
+void initialize_block(GeometryStack* geo_node, int f_i, back_type ret, int reduce)
 {
-	polyfold* pf = geo_scene->get_total_geometry();
+	polyfold* pf = geo_node->get_total_geometry();
 
 	matrix4 m_translate;
 	matrix4 m_scale;
@@ -362,7 +362,7 @@ void initialize_block(geometry_scene* geo_scene, int f_i, back_type ret, int red
 			case SURFACE_GROUP_CYLINDER:
 			case SURFACE_GROUP_DOME:
 			case SURFACE_GROUP_SPHERE:
-				surface = geo_scene->getSurfaceFromFace(f_i);
+				surface = geo_node->getSurfaceFromFace(f_i);
 				break;
 			default:
 				surface = vector<int>{ f_i };
@@ -400,10 +400,10 @@ void initialize_block(geometry_scene* geo_scene, int f_i, back_type ret, int red
 			f->bbox2d = new_box;
 			f->m_tangent = f->m_normal.crossProduct(f->m_tangent);
 
-			//mapper.init(&geo_scene->get_total_geometry()->faces[f_i], 1,b.width,b.height);
-			mapper.init(&geo_scene->get_total_geometry()->faces[f_i], 0, b.width, b.height);
+			//mapper.init(&geo_node->get_total_geometry()->faces[f_i], 1,b.width,b.height);
+			mapper.init(&geo_node->get_total_geometry()->faces[f_i], 0, b.width, b.height);
 
-			map_uvs(geo_scene, &geo_scene->edit_meshnode_interface, vector<int>{ f_i }, mapper, MAP_UVS_LIGHTMAP);
+			map_uvs(geo_node, &geo_node->edit_meshnode_interface, vector<int>{ f_i }, mapper, MAP_UVS_LIGHTMAP);
 
 			b.faces = vector<int>{ f_i };
 		}*/
@@ -432,10 +432,10 @@ void initialize_block(geometry_scene* geo_scene, int f_i, back_type ret, int red
 				f->bbox2d = new_box;
 				f->m_tangent = f->m_normal.crossProduct(f->m_tangent);
 				
-				//mapper.init(&geo_scene->get_total_geometry()->faces[f_i], 1,b.width,b.height);
-				mapper.init(&geo_scene->get_total_geometry()->faces[f_i], 0,b.width,b.height);
+				//mapper.init(&geo_node->get_total_geometry()->faces[f_i], 1,b.width,b.height);
+				mapper.init(&geo_node->get_total_geometry()->faces[f_i], 0,b.width,b.height);
 
-				map_uvs(geo_scene, &geo_scene->edit_meshnode_interface, vector<int>{ f_i }, mapper, MAP_UVS_LIGHTMAP);
+				map_uvs(geo_node, &geo_node->edit_meshnode_interface, vector<int>{ f_i }, mapper, MAP_UVS_LIGHTMAP);
 
 				b.faces = vector<int>{ f_i };
 
@@ -472,7 +472,7 @@ void initialize_block(geometry_scene* geo_scene, int f_i, back_type ret, int red
 					}
 				}
 
-				map_uvs(geo_scene, &geo_scene->edit_meshnode_interface, surface, mapper, MAP_UVS_LIGHTMAP);
+				map_uvs(geo_node, &geo_node->edit_meshnode_interface, surface, mapper, MAP_UVS_LIGHTMAP);
 
 				
 				//std::cout << " width = " << b.width << "\n";
@@ -485,8 +485,8 @@ void initialize_block(geometry_scene* geo_scene, int f_i, back_type ret, int red
 				//m_scale.setScale(vector3df(1.0f / mapper.uv_width(), 1.0f / mapper.uv_height(), 1.0f));
 				//m_translate.setTranslation(vector3df(-mapper.m_min.X,-mapper.m_min.Y,0.0f));
 
-				//apply_transform_to_uvs(&geo_scene->edit_meshnode_interface, surface, MAP_UVS_LIGHTMAP, m_translate);
-				//apply_transform_to_uvs(&geo_scene->edit_meshnode_interface, surface, MAP_UVS_LIGHTMAP, m_scale);
+				//apply_transform_to_uvs(&geo_node->edit_meshnode_interface, surface, MAP_UVS_LIGHTMAP, m_translate);
+				//apply_transform_to_uvs(&geo_node->edit_meshnode_interface, surface, MAP_UVS_LIGHTMAP, m_scale);
 
 			} break;
 			case SURFACE_GROUP_DOME:
@@ -521,7 +521,7 @@ void initialize_block(geometry_scene* geo_scene, int f_i, back_type ret, int red
 					}
 				}
 
-				map_uvs(geo_scene, &geo_scene->edit_meshnode_interface, surface, mapper, MAP_UVS_LIGHTMAP);
+				map_uvs(geo_node, &geo_node->edit_meshnode_interface, surface, mapper, MAP_UVS_LIGHTMAP);
 
 				//std::cout << " trans = " << -mapper.m_min.X << " / " << -mapper.m_min.Y << "\n";
 				//std::cout << " scale = " << 1.0f / mapper.uv_width() << " / " << 1.0f / mapper.uv_height() << "\n";
@@ -529,8 +529,8 @@ void initialize_block(geometry_scene* geo_scene, int f_i, back_type ret, int red
 				//m_scale.setScale(vector3df(1.0f / mapper.uv_width(), 1.0f / mapper.uv_height(), 1.0f));
 				//m_translate.setTranslation(vector3df(-mapper.m_min.X, -mapper.m_min.Y, 0.0f));
 
-				//apply_transform_to_uvs(&geo_scene->edit_meshnode_interface, surface, MAP_UVS_LIGHTMAP, m_translate);
-				//apply_transform_to_uvs(&geo_scene->edit_meshnode_interface, surface, MAP_UVS_LIGHTMAP, m_scale);
+				//apply_transform_to_uvs(&geo_node->edit_meshnode_interface, surface, MAP_UVS_LIGHTMAP, m_translate);
+				//apply_transform_to_uvs(&geo_node->edit_meshnode_interface, surface, MAP_UVS_LIGHTMAP, m_scale);
 
 			} break;
 			/*
@@ -542,7 +542,7 @@ void initialize_block(geometry_scene* geo_scene, int f_i, back_type ret, int red
 
 				mapper.init(&sfg);
 
-				map_uvs(geo_scene, &geo_scene->edit_meshnode_interface, surface, mapper, MAP_UVS_LIGHTMAP);
+				map_uvs(geo_node, &geo_node->edit_meshnode_interface, surface, mapper, MAP_UVS_LIGHTMAP);
 
 				b.faces = surface;
 				b.width = reduce_dimension_base2(mapper.uv_width() * sfg.radius * 2 * 3.1459, reduce);
@@ -554,8 +554,8 @@ void initialize_block(geometry_scene* geo_scene, int f_i, back_type ret, int red
 				m_scale.setScale(vector3df(1.0f / mapper.uv_width(), 1.0f / mapper.uv_height(), 1.0f));
 				m_translate.setTranslation(vector3df(-mapper.m_min.X, -mapper.m_min.Y, 0.0f));
 
-				apply_transform_to_uvs(&geo_scene->edit_meshnode_interface, surface, MAP_UVS_LIGHTMAP, m_translate);
-				apply_transform_to_uvs(&geo_scene->edit_meshnode_interface, surface, MAP_UVS_LIGHTMAP, m_scale);
+				apply_transform_to_uvs(&geo_node->edit_meshnode_interface, surface, MAP_UVS_LIGHTMAP, m_translate);
+				apply_transform_to_uvs(&geo_node->edit_meshnode_interface, surface, MAP_UVS_LIGHTMAP, m_scale);
 
 			} break;
 			*/
@@ -583,7 +583,7 @@ void initialize_block(geometry_scene* geo_scene, int f_i, back_type ret, int red
 	}
 }
 
-void lightmaps_divideMaterialGroups(geometry_scene* geo_scene, std::vector<TextureMaterial>& material_groups)
+void lightmaps_divideMaterialGroups(GeometryStack* geo_scene, std::vector<TextureMaterial>& material_groups)
 {
 	std::vector<TextureMaterial> ret;
 	auto ret_back = std::back_inserter(ret);
@@ -644,7 +644,7 @@ Lightmap_Manager::Lightmap_Manager()
 	event_receiver = receiver;
 }
 
-void Lightmap_Manager::loadLightmapTextures(geometry_scene* geo_scene, const std::vector<TextureMaterial>& material_groups)
+void Lightmap_Manager::loadLightmapTextures(GeometryStack* geo_node, const std::vector<TextureMaterial>& material_groups)
 {
 	SEvent event;
 	event.EventType = EET_USER_EVENT;
@@ -669,15 +669,15 @@ void Lightmap_Manager::loadLightmapTextures(geometry_scene* geo_scene, const std
 		for (int f_i : material_groups[i].faces)
 		{
 			MeshBuffer_Chunk chunk;
-			chunk = geo_scene->final_meshnode_interface.get_mesh_buffer_by_face(f_i);
+			chunk = geo_node->final_meshnode_interface.get_mesh_buffer_by_face(f_i);
 			chunk.buffer->getMaterial().setTexture(1, tex);
 
-			chunk = geo_scene->edit_meshnode_interface.get_mesh_buffer_by_face(f_i);
+			chunk = geo_node->edit_meshnode_interface.get_mesh_buffer_by_face(f_i);
 			chunk.buffer->getMaterial().setTexture(1, tex);
 		}
 	}
 
-	geo_scene->getMeshNode()->copyMaterials();
+	geo_node->getMeshNode()->copyMaterials();
 
 	event.EventType = EET_USER_EVENT;
 	event.UserEvent.UserData1 = USER_EVENT_MATERIAL_GROUP_SELECTION_CHANGED;

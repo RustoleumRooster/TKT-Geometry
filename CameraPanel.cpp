@@ -622,36 +622,38 @@ std::vector<int>  TestPanel::click_hits_poly_brushes(core::vector2di v)
     look_dir.normalize();
     core::line3df line(hit_vec,hit_vec+look_dir*3000);
 */
-    for(int i=0;i<geo_scene->elements.size();i++)
+    GeometryStack* geo_node = geo_scene->geoNode();
+    for (int i = 0; i < geo_node->elements.size(); i++)
     {
-        polyfold* brush = &geo_scene->elements[i].brush;
+        polyfold* brush = &geo_node->elements[i].brush;
 
-        for(int j=0;j<brush->edges.size();j++)
+        for (int j = 0; j < brush->edges.size(); j++)
         {
-            core::vector3df v0 = brush->getVertex(j,0).V;
-            core::vector3df v1 = brush->getVertex(j,1).V;
+            core::vector3df v0 = brush->getVertex(j, 0).V;
+            core::vector3df v1 = brush->getVertex(j, 1).V;
             core::vector2di w0;
             core::vector2di w1;
 
-            if(GetScreenCoords(v0,w0) && GetScreenCoords(v1,w1))
-                {
-                core::line2di screen_line(w0,w1);
+            if (GetScreenCoords(v0, w0) && GetScreenCoords(v1, w1))
+            {
+                core::line2di screen_line(w0, w1);
 
-                core::vector2di click_coord(v.X,v.Y);
+                core::vector2di click_coord(v.X, v.Y);
                 core::vector2di r = screen_line.getClosestPoint(click_coord);
                 f32 d = r.getDistanceFrom(click_coord);
-                if(d<4)
-                    {
+                if (d < 4)
+                {
                     bool b = false;
-                    for(int k : ret)
-                        if(k==i)
-                            b=true;
-                    if(!b)
+                    for (int k : ret)
+                        if (k == i)
+                            b = true;
+                    if (!b)
                         ret.push_back(i);
-                    }
                 }
+            }
         }
     }
+ 
     return ret;
 }
 

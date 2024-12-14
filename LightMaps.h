@@ -6,9 +6,9 @@
 #include "BufferManager.h"
 #include <vector>
 
-class geometry_scene;
+class GeometryStack;
 
-void lightmaps_divideMaterialGroups(geometry_scene* geo_scene, std::vector<TextureMaterial>& material_groups);
+void lightmaps_divideMaterialGroups(GeometryStack* geo_scene, std::vector<TextureMaterial>& material_groups);
 
 
 
@@ -17,7 +17,7 @@ class Lightmap_Manager
 public:
 	Lightmap_Manager();
 
-	void loadLightmapTextures(geometry_scene* geo_scene, const std::vector<TextureMaterial>& material_groups);
+	void loadLightmapTextures(GeometryStack* geo_scene, const std::vector<TextureMaterial>& material_groups);
 
 	std::vector<irr::video::ITexture*> lightmap_textures;
 	MyEventReceiver* event_receiver = NULL;

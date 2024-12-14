@@ -288,8 +288,8 @@ void WaterSurface_SceneNode::render()
 
     for (int f_i : hide_faces)
     {
-        geo_scene->edit_meshnode_interface.get_mesh_buffer_by_face(f_i).buffer->getMaterial().FrontfaceCulling = true;
-        geo_scene->edit_meshnode_interface.get_mesh_buffer_by_face(f_i).buffer->getMaterial().BackfaceCulling = true;
+       // geo_scene->edit_meshnode_interface.get_mesh_buffer_by_face(f_i).buffer->getMaterial().FrontfaceCulling = true;
+       // geo_scene->edit_meshnode_interface.get_mesh_buffer_by_face(f_i).buffer->getMaterial().BackfaceCulling = true;
     }
     // geo_scene->getMeshNode()->copyMaterials();
 
@@ -361,8 +361,8 @@ void WaterSurface_SceneNode::render()
 
     for (int f_i : hide_faces)
     {
-        geo_scene->edit_meshnode_interface.get_mesh_buffer_by_face(f_i).buffer->getMaterial().FrontfaceCulling = false;
-        geo_scene->edit_meshnode_interface.get_mesh_buffer_by_face(f_i).buffer->getMaterial().BackfaceCulling = true;
+       // geo_scene->edit_meshnode_interface.get_mesh_buffer_by_face(f_i).buffer->getMaterial().FrontfaceCulling = false;
+       // geo_scene->edit_meshnode_interface.get_mesh_buffer_by_face(f_i).buffer->getMaterial().BackfaceCulling = true;
     }
     geo_scene->getMeshNode()->copyMaterials();
 }
@@ -425,7 +425,7 @@ void ReflectionTestPanel::Initialize(scene::ISceneManager* smgr, geometry_scene*
     TestPanel::Initialize(smgr, geo_scene);
 
     hide_faces.clear();
-
+    /*
     for (int i = 0; i < geo_scene->get_total_geometry()->faces.size(); i++)
     {
         if (geo_scene->get_total_geometry()->faces[i].material_group == 4)
@@ -435,7 +435,7 @@ void ReflectionTestPanel::Initialize(scene::ISceneManager* smgr, geometry_scene*
                 hide_faces.push_back(i);
             }
         }
-    }
+    }*/
 }
 
 void ReflectionTestPanel::render()
@@ -457,8 +457,8 @@ void ReflectionTestPanel::render()
 
     for (int f_i : hide_faces)
     {
-        geo_scene->edit_meshnode_interface.get_mesh_buffer_by_face(f_i).buffer->getMaterial().FrontfaceCulling = true;
-        geo_scene->edit_meshnode_interface.get_mesh_buffer_by_face(f_i).buffer->getMaterial().BackfaceCulling = true;
+       // geo_scene->edit_meshnode_interface.get_mesh_buffer_by_face(f_i).buffer->getMaterial().FrontfaceCulling = true;
+       // geo_scene->edit_meshnode_interface.get_mesh_buffer_by_face(f_i).buffer->getMaterial().BackfaceCulling = true;
     }
     geo_scene->getMeshNode()->copyMaterials();
     //geo_scene->edit_meshnode_interface.get_mesh_buffer_by_face(5).buffer->getMaterial().FrontfaceCulling = true;
@@ -540,8 +540,8 @@ void ReflectionTestPanel::render()
 
     for (int f_i : hide_faces)
     {
-        geo_scene->edit_meshnode_interface.get_mesh_buffer_by_face(f_i).buffer->getMaterial().FrontfaceCulling = false;
-        geo_scene->edit_meshnode_interface.get_mesh_buffer_by_face(f_i).buffer->getMaterial().BackfaceCulling = true;
+        //geo_scene->edit_meshnode_interface.get_mesh_buffer_by_face(f_i).buffer->getMaterial().FrontfaceCulling = false;
+        //geo_scene->edit_meshnode_interface.get_mesh_buffer_by_face(f_i).buffer->getMaterial().BackfaceCulling = true;
     }
     geo_scene->getMeshNode()->copyMaterials();
 

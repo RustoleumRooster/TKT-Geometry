@@ -698,26 +698,26 @@ bool  geometry_scene::WriteTextures(std::string fname)
     std::vector<video::ITexture*> textures_used;
     std::vector<std::wstring> texture_paths;
 
-    for(int i=1;i<this->elements.size();i++)
+    for(int i=1;i<geometry_stack->elements.size();i++)
 	{
-        for(int f_i =0 ;f_i<this->elements[i].brush.faces.size(); f_i++)
+        for(int f_i =0 ;f_i<geometry_stack->elements[i].brush.faces.size(); f_i++)
         {
-            video::ITexture* tex_j = this->driver->getTexture(this->elements[i].brush.faces[f_i].texture_name.c_str());
+            video::ITexture* tex_j = this->driver->getTexture(geometry_stack->elements[i].brush.faces[f_i].texture_name.c_str());
 
             bool b=false;
             for(int j=0;j<textures_used.size();j++)
             {
                 if(tex_j == textures_used[j])
                 {
-                    this->elements[i].brush.faces[f_i].texture_index = j;
+                    geometry_stack->elements[i].brush.faces[f_i].texture_index = j;
                     b=true;
                 }
             }
             if(!b)
             {
                 textures_used.push_back(tex_j);
-                texture_paths.push_back(this->elements[i].brush.faces[f_i].texture_name.c_str());
-                this->elements[i].brush.faces[f_i].texture_index = texture_paths.size()-1;
+                texture_paths.push_back(geometry_stack->elements[i].brush.faces[f_i].texture_name.c_str());
+                geometry_stack->elements[i].brush.faces[f_i].texture_index = texture_paths.size()-1;
     
             }
         }
@@ -935,16 +935,16 @@ bool geometry_scene::Read2(io::path fname,io::path tex_fname)
     //typeDescriptor->dump(this,0);
 
    // std::cout << "surface groups:\n";
-    for (int j = 1; j < elements.size(); j++)
+    for (int j = 1; j < geometry_stack->elements.size(); j++)
     {
         //std::cout << j << ":\n";
-        //for (int i = 0; i < this->elements[j].brush.surface_groups.size(); i++)
-        //    std::cout << i << " " << this->elements[j].brush.surface_groups[i].type << "\n";
+        //for (int i = 0; i < geometry_stack->elements[j].brush.surface_groups.size(); i++)
+        //    std::cout << i << " " << geometry_stack->elements[j].brush.surface_groups[i].type << "\n";
     }
 
 
-    for(int i=1;i<elements.size();i++)
-        for(poly_face& face : elements[i].brush.faces)
+    for(int i=1;i<geometry_stack->elements.size();i++)
+        for(poly_face& face : geometry_stack->elements[i].brush.faces)
         {
             if(face.texture_index < texture_paths.size())
                     face.texture_name = texture_paths[face.texture_index].c_str();
@@ -959,36 +959,36 @@ bool geometry_scene::Read2(io::path fname,io::path tex_fname)
         return false;
     }
 
-    for(int i=0;i<this->elements.size();i++)
+    for(int i=0;i<geometry_stack->elements.size();i++)
     {
         //Brushes
-        this->elements[i].brush.reduce_edges_vertices();
-        this->elements[i].brush.recalc_bbox();
+        geometry_stack->elements[i].brush.reduce_edges_vertices();
+        geometry_stack->elements[i].brush.recalc_bbox();
 
-        for (int f_i = 0; f_i < this->elements[i].brush.faces.size(); f_i++)
+        for (int f_i = 0; f_i < geometry_stack->elements[i].brush.faces.size(); f_i++)
         {
-            for (int p_i = 0; p_i < this->elements[i].brush.faces[f_i].loops.size(); p_i++)
-                this->elements[i].brush.calc_loop_bbox(f_i, p_i);
+            for (int p_i = 0; p_i < geometry_stack->elements[i].brush.faces[f_i].loops.size(); p_i++)
+                geometry_stack->elements[i].brush.calc_loop_bbox(f_i, p_i);
         }
 
-        for (poly_face& f : this->elements[i].brush.faces)
+        for (poly_face& f : geometry_stack->elements[i].brush.faces)
         {
-            this->elements[i].brush.calc_center(f);
+            geometry_stack->elements[i].brush.calc_center(f);
         }
 
         //Geometry
-        this->elements[i].geometry.reduce_edges_vertices();
-        this->elements[i].geometry.recalc_bbox();
+        geometry_stack->elements[i].geometry.reduce_edges_vertices();
+        geometry_stack->elements[i].geometry.recalc_bbox();
 
-        for (int f_i = 0; f_i < this->elements[i].geometry.faces.size(); f_i++)
+        for (int f_i = 0; f_i < geometry_stack->elements[i].geometry.faces.size(); f_i++)
         {
-            for (int p_i = 0; p_i < this->elements[i].geometry.faces[f_i].loops.size(); p_i++)
-                this->elements[i].geometry.calc_loop_bbox(f_i, p_i);
+            for (int p_i = 0; p_i < geometry_stack->elements[i].geometry.faces[f_i].loops.size(); p_i++)
+                geometry_stack->elements[i].geometry.calc_loop_bbox(f_i, p_i);
         }
 
-        for (poly_face& f : this->elements[i].geometry.faces)
+        for (poly_face& f : geometry_stack->elements[i].geometry.faces)
         {
-            this->elements[i].geometry.calc_center(f);
+            geometry_stack->elements[i].geometry.calc_center(f);
         }
 
     }
@@ -1275,9 +1275,9 @@ bool Open_Geometry_File::OnEvent(const SEvent& event)
             g_scene->Read2("refl_serial.dat", "textures.txt");
             g_scene->ReadSceneNodesFromFile("nodes.dat");
             
-            g_scene->set_originals();
-            g_scene->build_total_geometry();
-            g_scene->generate_meshes();
+            g_scene->geoNode()->set_originals();
+            g_scene->geoNode()->build_total_geometry();
+            g_scene->geoNode()->generate_meshes();
 
             ReadGUIStateFromFile("gui_state.dat");
 
@@ -1312,9 +1312,9 @@ void Open_Geometry_File::LoadProject(geometry_scene* gs, io::path folder)
         gs->Read2("refl_serial.dat", "textures.txt");
         gs->ReadSceneNodesFromFile("nodes.dat");
 
-        gs->set_originals();
-        gs->build_total_geometry();
-        gs->generate_meshes();
+        gs->geoNode()->set_originals();
+        gs->geoNode()->build_total_geometry();
+        gs->geoNode()->generate_meshes();
 
         ReadGUIStateFromFile("gui_state.dat");
 
@@ -1407,7 +1407,7 @@ bool Save_Geometry_File::OnEvent(const SEvent& event)
 
 bool Save_Geometry_File::export_model(io::path fname)
 {
-    SMesh* mesh = g_scene->final_meshnode_interface.getMesh();
+    SMesh* mesh = g_scene->geoNode()->final_meshnode_interface.getMesh();
 
     Model_Struct model{};
 
@@ -1440,7 +1440,7 @@ bool Save_Geometry_File::export_model(io::path fname)
             }
         }
 
-        std::vector<TextureMaterial> materials_used = g_scene->final_meshnode_interface.getMaterialsUsed();
+        std::vector<TextureMaterial> materials_used = g_scene->geoNode()->final_meshnode_interface.getMaterialsUsed();
         
 
         for (int m_i = 0; m_i < materials_used.size(); m_i++)
@@ -1453,7 +1453,7 @@ bool Save_Geometry_File::export_model(io::path fname)
             }
         }
 
-        model.lightmaps_info.resize(g_scene->final_meshnode_interface.getMaterialsUsed().size());
+        model.lightmaps_info.resize(g_scene->geoNode()->final_meshnode_interface.getMaterialsUsed().size());
 
         for (int i = 0; i < materials_used.size(); i++)
         {
@@ -1499,7 +1499,7 @@ bool Save_Geometry_File::export_model(io::path fname)
 
 bool Save_Geometry_File::export_model_2(io::path fname)
 {
-    SMesh* mesh = g_scene->edit_meshnode_interface.getMesh();
+    SMesh* mesh = g_scene->geoNode()->edit_meshnode_interface.getMesh();
 
     Model_Struct model{};
 
@@ -1511,11 +1511,11 @@ bool Save_Geometry_File::export_model_2(io::path fname)
         model.faces_info.resize(n_buffers);
 
         std::vector<int> face_number_ref;
-        face_number_ref.resize(g_scene->get_total_geometry()->faces.size());
+        face_number_ref.resize(g_scene->geoNode()->get_total_geometry()->faces.size());
 
         int c = 0;
 
-        std::vector<TextureMaterial> materials_used = g_scene->final_meshnode_interface.getMaterialsUsed();
+        std::vector<TextureMaterial> materials_used = g_scene->geoNode()->final_meshnode_interface.getMaterialsUsed();
 
         for (int m_i = 0; m_i < materials_used.size(); m_i++)
         {
@@ -1525,11 +1525,11 @@ bool Save_Geometry_File::export_model_2(io::path fname)
                 //int f_i = materials_used[m_i].records[i].face;
                 int f_i = materials_used[m_i].faces[i];
 
-                if (g_scene->get_total_geometry()->faces[f_i].loops.size() > 0)
+                if (g_scene->geoNode()->get_total_geometry()->faces[f_i].loops.size() > 0)
                 {
                     face_number_ref[f_i] = c;
 
-                    int idx = g_scene->edit_meshnode_interface.get_buffer_index_by_face(f_i);
+                    int idx = g_scene->geoNode()->edit_meshnode_interface.get_buffer_index_by_face(f_i);
                     CMeshBuffer<video::S3DVertex2TCoords>* mesh_buffer = (CMeshBuffer<video::S3DVertex2TCoords>*)mesh->getMeshBuffer(idx);
 
                     model.vertex_buffers[c].vertices.resize(mesh_buffer->getVertexCount());
@@ -1553,7 +1553,7 @@ bool Save_Geometry_File::export_model_2(io::path fname)
             }
         }
 
-        model.lightmaps_info.resize(g_scene->final_meshnode_interface.getMaterialsUsed().size());
+        model.lightmaps_info.resize(g_scene->geoNode()->final_meshnode_interface.getMaterialsUsed().size());
 
         for (int i = 0; i < materials_used.size(); i++)
         {
@@ -1605,7 +1605,7 @@ bool Save_Geometry_File::WriteModelTextures(std::string fname)
         return false;
     }
 
-    SMesh* mesh = g_scene->final_meshnode_interface.getMesh();
+    SMesh* mesh = g_scene->geoNode()->final_meshnode_interface.getMesh();
     std::vector<std::string> texture_paths;
 
     if (mesh)
@@ -1614,7 +1614,7 @@ bool Save_Geometry_File::WriteModelTextures(std::string fname)
 
         for (int i = 0; i < n_buffers; i++)
         {
-            std::string tex_name{ g_scene->final_meshnode_interface.getMaterialsUsed()[i].texture->getName().getPath().c_str() };
+            std::string tex_name{ g_scene->geoNode()->final_meshnode_interface.getMaterialsUsed()[i].texture->getName().getPath().c_str() };
 
             texture_paths.push_back(tex_name);
         }

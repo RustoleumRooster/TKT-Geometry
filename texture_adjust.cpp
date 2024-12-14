@@ -55,15 +55,17 @@ void Texture_Adjust_Window::refresh()
 
     bool bShowCombobox = false;
 
+    GeometryStack* geo_node = g_scene->geoNode();
+
     if(editable && this->g_scene->getSelectedFaces().size() > 0 )
     {
         int b_i = this->g_scene->getSelectedFaces()[0];
-        int brush_j = g_scene->get_total_geometry()->faces[b_i].original_brush;
-        int face_j = g_scene->get_total_geometry()->faces[b_i].original_face;
+        int brush_j = geo_node->get_total_geometry()->faces[b_i].original_brush;
+        int face_j = geo_node->get_total_geometry()->faces[b_i].original_face;
 
-        poly_face* f = &g_scene->elements[brush_j].brush.faces[face_j];
+        poly_face* f = &geo_node->elements[brush_j].brush.faces[face_j];
 
-        int st = g_scene->elements[brush_j].brush.surface_groups[ f->surface_group ].type;
+        int st = geo_node->elements[brush_j].brush.surface_groups[ f->surface_group ].type;
 
         if(st == SURFACE_GROUP_DOME || st == SURFACE_GROUP_SPHERE)
             bShowCombobox=true;
@@ -172,12 +174,14 @@ void  Texture_Adjust_Window::click_OK()
 
     this->form->write(&tex_struct);
 
+    GeometryStack* geo_node = g_scene->geoNode();
+
     for(int b_i: selection)
     {
-        int brush_j = g_scene->get_total_geometry()->faces[b_i].original_brush;
-        int face_j = g_scene->get_total_geometry()->faces[b_i].original_face;
+        int brush_j = geo_node->get_total_geometry()->faces[b_i].original_brush;
+        int face_j = geo_node->get_total_geometry()->faces[b_i].original_face;
 
-        poly_face* f = &g_scene->elements[brush_j].brush.faces[face_j];
+        poly_face* f = &geo_node->elements[brush_j].brush.faces[face_j];
 
         core::vector3df trans;
         trans.X=tex_struct.offset_x;
@@ -203,22 +207,24 @@ void  Texture_Adjust_Window::click_OK()
         if(box->isEnabled())
         {
             if(tex_struct.style.value==0)
-                g_scene->elements[brush_j].brush.surface_groups[ f->surface_group ].type = SURFACE_GROUP_SPHERE;
+                geo_node->elements[brush_j].brush.surface_groups[ f->surface_group ].type = SURFACE_GROUP_SPHERE;
             else if(tex_struct.style.value==1)
-                g_scene->elements[brush_j].brush.surface_groups[ f->surface_group ].type = SURFACE_GROUP_DOME;
+                geo_node->elements[brush_j].brush.surface_groups[ f->surface_group ].type = SURFACE_GROUP_DOME;
         }
 
-        g_scene->edit_meshnode_interface.recalc_uvs_for_face(g_scene, brush_j, face_j, b_i);
-        g_scene->final_meshnode_interface.recalc_uvs_for_face(g_scene, brush_j, face_j, b_i);
+        geo_node->edit_meshnode_interface.recalc_uvs_for_face(geo_node, brush_j, face_j, b_i);
+        geo_node->final_meshnode_interface.recalc_uvs_for_face(geo_node, brush_j, face_j, b_i);
     }
     refresh();
 }
 
 void Texture_Adjust_Window::click_Align()
 {
+    GeometryStack* geo_node = g_scene->geoNode();
+
     if (g_scene->getSelectedFaces().size() > 1)
     {
-        polyfold* pf = g_scene->get_total_geometry();
+        polyfold* pf = geo_node->get_total_geometry();
 
         int f_0 = g_scene->getSelectedFaces()[0];
 
@@ -229,43 +235,43 @@ void Texture_Adjust_Window::click_Align()
 
         if (sg_type == SURFACE_GROUP_STANDARD)
         {
-            core::vector3df v0 = g_scene->elements[brush_0].brush.faces[face_0].uv_origin;
+            core::vector3df v0 = geo_node->elements[brush_0].brush.faces[face_0].uv_origin;
 
             for (int i = 1; i < g_scene->getSelectedFaces().size(); i++)
             {
                 int f_i = g_scene->getSelectedFaces()[i];
 
-                int brush_i = g_scene->get_total_geometry()->faces[f_i].original_brush;
-                int face_i = g_scene->get_total_geometry()->faces[f_i].original_face;
+                int brush_i = geo_node->get_total_geometry()->faces[f_i].original_brush;
+                int face_i = geo_node->get_total_geometry()->faces[f_i].original_face;
 
-                g_scene->elements[brush_i].brush.faces[face_i].uv_origin = v0;
+                geo_node->elements[brush_i].brush.faces[face_i].uv_origin = v0;
 
-                g_scene->edit_meshnode_interface.recalc_uvs_for_face(g_scene, brush_i, face_i, f_i);
-                g_scene->final_meshnode_interface.recalc_uvs_for_face(g_scene, brush_i, face_i, f_i);
+                geo_node->edit_meshnode_interface.recalc_uvs_for_face(geo_node, brush_i, face_i, f_i);
+                geo_node->final_meshnode_interface.recalc_uvs_for_face(geo_node, brush_i, face_i, f_i);
             }
         }
         else if (sg_type == SURFACE_GROUP_CYLINDER)
         {
-            int sg_0 = g_scene->elements[brush_0].brush.faces[face_0].surface_group;
-            core::vector3df r0 = g_scene->elements[brush_0].brush.surface_groups[sg_0].point;
-            core::vector3df v0 = g_scene->elements[brush_0].brush.surface_groups[sg_0].vec;
-            core::vector3df v1 = g_scene->elements[brush_0].brush.surface_groups[sg_0].vec1;
+            int sg_0 = geo_node->elements[brush_0].brush.faces[face_0].surface_group;
+            core::vector3df r0 = geo_node->elements[brush_0].brush.surface_groups[sg_0].point;
+            core::vector3df v0 = geo_node->elements[brush_0].brush.surface_groups[sg_0].vec;
+            core::vector3df v1 = geo_node->elements[brush_0].brush.surface_groups[sg_0].vec1;
 
             for (int i = 1; i < g_scene->getSelectedFaces().size(); i++)
             {
                 int f_i = g_scene->getSelectedFaces()[i];
 
-                int brush_i = g_scene->get_total_geometry()->faces[f_i].original_brush;
-                int face_i = g_scene->get_total_geometry()->faces[f_i].original_face;
+                int brush_i = geo_node->get_total_geometry()->faces[f_i].original_brush;
+                int face_i = geo_node->get_total_geometry()->faces[f_i].original_face;
 
-                int sg_i = g_scene->elements[brush_i].brush.faces[face_i].surface_group;
+                int sg_i = geo_node->elements[brush_i].brush.faces[face_i].surface_group;
 
-                g_scene->elements[brush_i].brush.surface_groups[sg_i].point = r0;
-                g_scene->elements[brush_i].brush.surface_groups[sg_i].vec = v0;
-                g_scene->elements[brush_i].brush.surface_groups[sg_i].vec1 = v1;
+                geo_node->elements[brush_i].brush.surface_groups[sg_i].point = r0;
+                geo_node->elements[brush_i].brush.surface_groups[sg_i].vec = v0;
+                geo_node->elements[brush_i].brush.surface_groups[sg_i].vec1 = v1;
 
-                g_scene->edit_meshnode_interface.recalc_uvs_for_face(g_scene, brush_i, face_i, f_i);
-                g_scene->final_meshnode_interface.recalc_uvs_for_face(g_scene, brush_i, face_i, f_i);
+                geo_node->edit_meshnode_interface.recalc_uvs_for_face(geo_node, brush_i, face_i, f_i);
+                geo_node->final_meshnode_interface.recalc_uvs_for_face(geo_node, brush_i, face_i, f_i);
             }
         }
     }
@@ -274,6 +280,7 @@ void Texture_Adjust_Window::click_Align()
 bool Texture_Adjust_Window::OnEvent(const SEvent& event)
 {
     MyEventReceiver* receiver = (MyEventReceiver*)device->getEventReceiver();
+    GeometryStack* geo_node = g_scene->geoNode();
 
     if(event.EventType == irr::EET_USER_EVENT)
     {
@@ -292,14 +299,14 @@ bool Texture_Adjust_Window::OnEvent(const SEvent& event)
 
                     int b_i = g_scene->getSelectedFaces()[0];
 
-                    int brush_j = g_scene->get_total_geometry()->faces[b_i].original_brush;
-                    int face_j = g_scene->get_total_geometry()->faces[b_i].original_face;
+                    int brush_j = geo_node->get_total_geometry()->faces[b_i].original_brush;
+                    int face_j = geo_node->get_total_geometry()->faces[b_i].original_face;
 
-                    poly_face* f = &g_scene->elements[brush_j].brush.faces[face_j];
+                    poly_face* f = &geo_node->elements[brush_j].brush.faces[face_j];
 
-                    if((g_scene->elements[brush_j].brush.surface_groups[ f->surface_group ].type == SURFACE_GROUP_CYLINDER ||
-                        g_scene->elements[brush_j].brush.surface_groups[ f->surface_group ].type == SURFACE_GROUP_SPHERE ||
-                        g_scene->elements[brush_j].brush.surface_groups[ f->surface_group ].type == SURFACE_GROUP_DOME
+                    if((geo_node->elements[brush_j].brush.surface_groups[ f->surface_group ].type == SURFACE_GROUP_CYLINDER ||
+                        geo_node->elements[brush_j].brush.surface_groups[ f->surface_group ].type == SURFACE_GROUP_SPHERE ||
+                        geo_node->elements[brush_j].brush.surface_groups[ f->surface_group ].type == SURFACE_GROUP_DOME
                         )
                        && !dont_sg_select)
                     {
@@ -308,9 +315,9 @@ bool Texture_Adjust_Window::OnEvent(const SEvent& event)
                     }
                     dont_sg_select=false;
 
-                    if(g_scene->elements[brush_j].brush.surface_groups[ f->surface_group ].type == SURFACE_GROUP_SPHERE)
+                    if(geo_node->elements[brush_j].brush.surface_groups[ f->surface_group ].type == SURFACE_GROUP_SPHERE)
                         tex_struct.style.value=0;
-                    else if(g_scene->elements[brush_j].brush.surface_groups[ f->surface_group ].type == SURFACE_GROUP_DOME)
+                    else if(geo_node->elements[brush_j].brush.surface_groups[ f->surface_group ].type == SURFACE_GROUP_DOME)
                         tex_struct.style.value=1;
 
                     tex_struct.rotation = f->uv_mat.getRotationDegrees().Z;
@@ -342,9 +349,9 @@ bool Texture_Adjust_Window::OnEvent(const SEvent& event)
                     std::vector<int> selection = this->g_scene->getSelectedFaces();
                     for(int b_i: selection)
                     {
-                        int brush_j = g_scene->get_total_geometry()->faces[b_i].original_brush;
-                        int face_j = g_scene->get_total_geometry()->faces[b_i].original_face;
-                        poly_face* f = &g_scene->elements[brush_j].brush.faces[face_j];
+                        int brush_j = geo_node->get_total_geometry()->faces[b_i].original_brush;
+                        int face_j = geo_node->get_total_geometry()->faces[b_i].original_face;
+                        poly_face* f = &geo_node->elements[brush_j].brush.faces[face_j];
                         f->uv_mat0 = f->uv_mat;
                     }
                 }
@@ -356,18 +363,18 @@ bool Texture_Adjust_Window::OnEvent(const SEvent& event)
                     if(selection.size() > 0)
                     {
                         int b_0 = selection[0];
-                        int brush_0 = g_scene->get_total_geometry()->faces[b_0].original_brush;
-                        int face_0 = g_scene->get_total_geometry()->faces[b_0].original_face;
+                        int brush_0 = geo_node->get_total_geometry()->faces[b_0].original_brush;
+                        int face_0 = geo_node->get_total_geometry()->faces[b_0].original_face;
 
-                        poly_face* f0 = &g_scene->elements[brush_0].brush.faces[face_0];
-                        int sg = g_scene->elements[brush_0].brush.surface_groups[ f0->surface_group ].type;
+                        poly_face* f0 = &geo_node->elements[brush_0].brush.faces[face_0];
+                        int sg = geo_node->elements[brush_0].brush.surface_groups[ f0->surface_group ].type;
 
                         if(sg == SURFACE_GROUP_CYLINDER)
                         {
 
                             core::vector3df iV;
                             core::vector3df jV;
-                            g_scene->elements[brush_0].brush.getSurfaceVectors(face_0,iV,jV);
+                            geo_node->elements[brush_0].brush.getSurfaceVectors(face_0,iV,jV);
 
                             f32 snap_dist = tex_struct.snap_dist;
                             f32 X_ = snap_dist * (int)(drag.dotProduct(iV)/256 / snap_dist);
@@ -378,10 +385,10 @@ bool Texture_Adjust_Window::OnEvent(const SEvent& event)
 
                             for(int b_i: selection)
                             {
-                                int brush_j = g_scene->get_total_geometry()->faces[b_i].original_brush;
-                                int face_j = g_scene->get_total_geometry()->faces[b_i].original_face;
+                                int brush_j = geo_node->get_total_geometry()->faces[b_i].original_brush;
+                                int face_j = geo_node->get_total_geometry()->faces[b_i].original_face;
 
-                                poly_face* f = &g_scene->elements[brush_j].brush.faces[face_j];
+                                poly_face* f = &geo_node->elements[brush_j].brush.faces[face_j];
 
                                 core::vector3df trans = f->uv_mat.getTranslation();
                                 core::vector3df trans0 = f->uv_mat0.getTranslation();
@@ -396,8 +403,8 @@ bool Texture_Adjust_Window::OnEvent(const SEvent& event)
 
                                 f->uv_mat.setTranslation(trans);
 
-                                g_scene->edit_meshnode_interface.recalc_uvs_for_face_cylinder(g_scene, brush_j, face_j, b_i);
-                                g_scene->final_meshnode_interface.recalc_uvs_for_face_cylinder(g_scene, brush_j, face_j, b_i);
+                                geo_node->edit_meshnode_interface.recalc_uvs_for_face_cylinder(geo_node, brush_j, face_j, b_i);
+                                geo_node->final_meshnode_interface.recalc_uvs_for_face_cylinder(geo_node, brush_j, face_j, b_i);
 
                             }
                         }
@@ -407,14 +414,14 @@ bool Texture_Adjust_Window::OnEvent(const SEvent& event)
                             for(int b_i: selection)
                             {
 
-                                int brush_j = g_scene->get_total_geometry()->faces[b_i].original_brush;
-                                int face_j = g_scene->get_total_geometry()->faces[b_i].original_face;
+                                int brush_j = geo_node->get_total_geometry()->faces[b_i].original_brush;
+                                int face_j = geo_node->get_total_geometry()->faces[b_i].original_face;
 
-                                poly_face* f = &g_scene->elements[brush_j].brush.faces[face_j];
+                                poly_face* f = &geo_node->elements[brush_j].brush.faces[face_j];
 
                                 core::vector3df iV;
                                 core::vector3df jV;
-                                g_scene->elements[brush_j].brush.getSurfaceVectors(face_j,iV,jV);
+                                geo_node->elements[brush_j].brush.getSurfaceVectors(face_j,iV,jV);
 
                                 core::vector3df trans = f->uv_mat.getTranslation();
                                 core::vector3df trans0 = f->uv_mat0.getTranslation();
@@ -438,14 +445,14 @@ bool Texture_Adjust_Window::OnEvent(const SEvent& event)
 
                                 if (sg == SURFACE_GROUP_STANDARD)
                                 {
-                                    g_scene->edit_meshnode_interface.recalc_uvs_for_face_cube(g_scene, brush_j, face_j, b_i);
-                                    g_scene->final_meshnode_interface.recalc_uvs_for_face_cube(g_scene, brush_j, face_j, b_i);
+                                    geo_node->edit_meshnode_interface.recalc_uvs_for_face_cube(geo_node, brush_j, face_j, b_i);
+                                    geo_node->final_meshnode_interface.recalc_uvs_for_face_cube(geo_node, brush_j, face_j, b_i);
                                 }
                                 else if (sg == SURFACE_GROUP_CUSTOM_UVS_BRUSH || 
                                          sg == SURFACE_GROUP_CUSTOM_UVS_GEOMETRY)
                                 {
-                                    g_scene->edit_meshnode_interface.recalc_uvs_for_face_custom(g_scene, brush_j, face_j, b_i);
-                                    g_scene->final_meshnode_interface.recalc_uvs_for_face_custom(g_scene, brush_j, face_j, b_i);
+                                    geo_node->edit_meshnode_interface.recalc_uvs_for_face_custom(geo_node, brush_j, face_j, b_i);
+                                    geo_node->final_meshnode_interface.recalc_uvs_for_face_custom(geo_node, brush_j, face_j, b_i);
                                 }
                             }
                         }
@@ -454,10 +461,10 @@ bool Texture_Adjust_Window::OnEvent(const SEvent& event)
                     {
                         int b_i = g_scene->getSelectedFaces()[0];
 
-                        int brush_j = g_scene->get_total_geometry()->faces[b_i].original_brush;
-                        int face_j = g_scene->get_total_geometry()->faces[b_i].original_face;
+                        int brush_j = geo_node->get_total_geometry()->faces[b_i].original_brush;
+                        int face_j = geo_node->get_total_geometry()->faces[b_i].original_face;
 
-                        poly_face* f = &g_scene->elements[brush_j].brush.faces[face_j];
+                        poly_face* f = &geo_node->elements[brush_j].brush.faces[face_j];
 
                         core::vector3df trans = f->uv_mat.getTranslation();
                         trans.rotateXYBy(-tex_struct.rotation);

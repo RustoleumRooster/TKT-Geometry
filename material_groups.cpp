@@ -7,6 +7,7 @@
 #include "edit_classes.h"
 #include "geometry_scene.h"
 #include "utils.h"
+#include "custom_nodes.h"
 
 using namespace irr;
 
@@ -159,26 +160,27 @@ void Material_Groups_Widget::refresh()
     form2->read(&sel_struct);
 
     //FormField* f = form->edit_fields;
+    GeometryStack* geo_node = g_scene->geoNode();
 
     if( g_scene->getSelectedFaces().size() > 1)
     {
         int f_0 = g_scene->getSelectedFaces()[0];
-        int brush_0 = g_scene->get_total_geometry()->faces[f_0].original_brush;
-        int face_0 = g_scene->get_total_geometry()->faces[f_0].original_face;
+        int brush_0 = geo_node->get_total_geometry()->faces[f_0].original_brush;
+        int face_0 = geo_node->get_total_geometry()->faces[f_0].original_face;
 
         for( int f_i : g_scene->getSelectedFaces())
         {
             int b_i = g_scene->getSelectedFaces()[0];
 
-            int brush_j = g_scene->get_total_geometry()->faces[f_i].original_brush;
-            int face_j = g_scene->get_total_geometry()->faces[f_i].original_face;
+            int brush_j = geo_node->get_total_geometry()->faces[f_i].original_brush;
+            int face_j = geo_node->get_total_geometry()->faces[f_i].original_face;
 
-            bool b = (g_scene->elements[brush_j].brush.faces[face_j].material_group ==
-                        g_scene->elements[brush_0].brush.faces[face_0].material_group);
+            bool b = (geo_node->elements[brush_j].brush.faces[face_j].material_group ==
+                        geo_node->elements[brush_0].brush.faces[face_0].material_group);
 
             if(b)
             {
-                //mg_struct.group_no.value = g_scene->elements[brush_0].brush.faces[face_0].material_group;
+                //mg_struct.group_no.value = geo_node->elements[brush_0].brush.faces[face_0].material_group;
                 //form->read(&mg_struct);
                 bWrite=true;
             }
@@ -192,10 +194,10 @@ void Material_Groups_Widget::refresh()
     else if( g_scene->getSelectedFaces().size() == 1)
     {
         int f_0 = g_scene->getSelectedFaces()[0];
-        int brush_0 = g_scene->get_total_geometry()->faces[f_0].original_brush;
-        int face_0 = g_scene->get_total_geometry()->faces[f_0].original_face;
+        int brush_0 = geo_node->get_total_geometry()->faces[f_0].original_brush;
+        int face_0 = geo_node->get_total_geometry()->faces[f_0].original_face;
 
-        //mg_struct.group_no.value = g_scene->elements[brush_0].brush.faces[face_0].material_group;
+        //mg_struct.group_no.value = geo_node->elements[brush_0].brush.faces[face_0].material_group;
         //form->read(&mg_struct);
         bWrite=true;
     }
@@ -208,26 +210,28 @@ void Material_Groups_Widget::click_OK()
         return;
 
     std::vector<int> selection = this->g_scene->getSelectedFaces();
+    GeometryStack* geo_node = g_scene->geoNode();
 
     //this->form->write(&mg_struct);
 
     for(int b_i: selection)
     {
-        int brush_j = g_scene->get_total_geometry()->faces[b_i].original_brush;
-        int face_j = g_scene->get_total_geometry()->faces[b_i].original_face;
+        int brush_j = geo_node->get_total_geometry()->faces[b_i].original_brush;
+        int face_j = geo_node->get_total_geometry()->faces[b_i].original_face;
 
-        poly_face* f = &g_scene->elements[brush_j].brush.faces[face_j];
+        poly_face* f = &geo_node->elements[brush_j].brush.faces[face_j];
 
         //f->material_group = mg_struct.group_no.value;
-        //this->g_scene->get_total_geometry()->faces[b_i].material_group == mg_struct.group_no.value;
+        //this->geo_node->get_total_geometry()->faces[b_i].material_group == mg_struct.group_no.value;
         f->material_group = 1;
-        this->g_scene->get_total_geometry()->faces[b_i].material_group = 1;
+        geo_node->get_total_geometry()->faces[b_i].material_group = 1;
     }
 }
 
 
 bool Material_Groups_Widget::OnEvent(const SEvent& event)
 {
+    GeometryStack* geo_node = g_scene->geoNode();
 
     if(event.EventType == irr::EET_USER_EVENT)
     {
@@ -241,14 +245,14 @@ bool Material_Groups_Widget::OnEvent(const SEvent& event)
                 {
                     int b_i = g_scene->getSelectedFaces()[0];
 
-                    int brush_j = g_scene->get_total_geometry()->faces[b_i].original_brush;
-                    int face_j = g_scene->get_total_geometry()->faces[b_i].original_face;
+                    int brush_j = geo_node->get_total_geometry()->faces[b_i].original_brush;
+                    int face_j = geo_node->get_total_geometry()->faces[b_i].original_face;
 
-                    poly_face* f = &g_scene->elements[brush_j].brush.faces[face_j];
+                    poly_face* f = &geo_node->elements[brush_j].brush.faces[face_j];
 
-                    if ((g_scene->elements[brush_j].brush.surface_groups[f->surface_group].type == SURFACE_GROUP_CYLINDER ||
-                        g_scene->elements[brush_j].brush.surface_groups[f->surface_group].type == SURFACE_GROUP_SPHERE ||
-                        g_scene->elements[brush_j].brush.surface_groups[f->surface_group].type == SURFACE_GROUP_DOME
+                    if ((geo_node->elements[brush_j].brush.surface_groups[f->surface_group].type == SURFACE_GROUP_CYLINDER ||
+                        geo_node->elements[brush_j].brush.surface_groups[f->surface_group].type == SURFACE_GROUP_SPHERE ||
+                        geo_node->elements[brush_j].brush.surface_groups[f->surface_group].type == SURFACE_GROUP_DOME
                         )
                         && !dont_sg_select)
                     {
@@ -257,13 +261,13 @@ bool Material_Groups_Widget::OnEvent(const SEvent& event)
                     }
                     dont_sg_select = false;
 
-                    int mg0 = g_scene->get_total_geometry()->faces[b_i].material_group;
+                    int mg0 = geo_node->get_total_geometry()->faces[b_i].material_group;
 
                     bool b = true;
 
                     for (int f_i : g_scene->getSelectedFaces())
                     {
-                        int mg1 = g_scene->get_total_geometry()->faces[f_i].material_group;
+                        int mg1 = geo_node->get_total_geometry()->faces[f_i].material_group;
                         if (mg0 != mg1)
                             b = false;
                     }
@@ -374,7 +378,7 @@ void Material_Groups_Base::show()
     widget->drop();
 }
 
-void Material_Groups_Base::apply_material_to_buffer(scene::IMeshBuffer* buffer, int material_no, int lighting, bool selected)
+void Material_Groups_Base::apply_material_to_buffer(scene::IMeshBuffer* buffer, int material_no, int lighting, bool selected, bool final_view)
 {
     if (material_no >= material_groups.size())
         return;
@@ -383,6 +387,19 @@ void Material_Groups_Base::apply_material_to_buffer(scene::IMeshBuffer* buffer, 
 
     if (lighting != -1)
         lighting_mode = lighting;
+
+    if (material_no == 4 && final_view)
+    {
+        buffer->getMaterial().MaterialType = SolidMaterial_WaterSurface_Type;
+       // buffer->getMaterial().setTexture(0, Render_Tool::getRender());
+        buffer->getMaterial().setTexture(0, Render_Tool::getRTT());
+        buffer->getMaterial().setTexture(1, Render_Tool::getRTT2());
+        return;
+    }
+    else if (material_no == 4)
+    {
+        buffer->getMaterial().MaterialType = SolidMaterial_Type;
+    }
 
     if (mg.lightmap && lighting_mode == LIGHTING_LIGHTMAP)
     {

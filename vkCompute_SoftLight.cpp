@@ -74,7 +74,7 @@ bool System_Soft_Light::verify_inputs(geometry_scene* geo_scene)
 	if (count == 0)
 		return false;
 
-	MeshNode_Interface_Final* meshnode = &geo_scene->final_meshnode_interface;
+	MeshNode_Interface_Final* meshnode = &geo_scene->geoNode()->final_meshnode_interface;
 
 	if (meshnode->getMesh() == NULL || meshnode->getMesh()->getMeshBufferCount() == 0 ||
 		meshnode->getMesh()->MeshBuffers[0]->getIndexCount() == 0)

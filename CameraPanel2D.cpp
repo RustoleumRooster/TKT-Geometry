@@ -348,11 +348,13 @@ bool TestPanel_2D::OnEvent(const SEvent& event)
                                     iM.setTranslation(vRotateBrushOrigin*(1));
                                     R.setRotationAxisRadians(3.141592653589*delta/180.0,this->vAxis);
                                     RotateBrushInitialAngle=angle;
+
+                                    GeometryStack* geo_node = geo_scene->geoNode();
                                     for(int i : this->geo_scene->getBrushSelection())
                                     {
-                                        this->geo_scene->elements[i].brush.translate(M);
-                                        this->geo_scene->elements[i].brush.rotate(R);
-                                        this->geo_scene->elements[i].brush.translate(iM);
+                                        geo_node->elements[i].brush.translate(M);
+                                        geo_node->elements[i].brush.rotate(R);
+                                        geo_node->elements[i].brush.translate(iM);
                                     }
                                 }
 
@@ -430,7 +432,7 @@ bool TestPanel_2D::OnEvent(const SEvent& event)
                                 {
                                     M.setTranslation(T);
                                     for(int i=0;i<geo_scene->getBrushSelection().size();i++)
-                                        geo_scene->elements[geo_scene->getBrushSelection()[i]].brush.translate(M);
+                                        geo_scene->geoNode()->elements[geo_scene->getBrushSelection()[i]].brush.translate(M);
                                 }
                             }
                         }
@@ -448,9 +450,9 @@ bool TestPanel_2D::OnEvent(const SEvent& event)
                             core::vector3df T = V-this->geo_scene->getSelectedVertex();
                             if(T.getLength()>0.05)
                             {
-                                int v_i = geo_scene->elements[geo_scene->getBrushSelection()[0]].selected_vertex;
-                                geo_scene->elements[geo_scene->getBrushSelection()[0]].brush.vertices[v_i].V = V;
-                                geo_scene->elements[geo_scene->getBrushSelection()[0]].brush.topology=TOP_UNDEF;
+                                int v_i = geo_scene->geoNode()->elements[geo_scene->getBrushSelection()[0]].selected_vertex;
+                                geo_scene->geoNode()->elements[geo_scene->getBrushSelection()[0]].brush.vertices[v_i].V = V;
+                                geo_scene->geoNode()->elements[geo_scene->getBrushSelection()[0]].brush.topology=TOP_UNDEF;
                             }
                         }
                         else if(bDragNode)
@@ -536,40 +538,41 @@ void TestPanel_2D::left_click(core::vector2di pos)
     std::vector<Reflected_SceneNode*> old_sel_nodes = geo_scene->getSelectedNodes();
     std::vector<int> old_sel_brushes = geo_scene->getBrushSelection();
 
-    if(click_hits_poly(&geo_scene->elements[0].brush,core::vector2di(clickx,clicky)))
+    GeometryStack* geo_node = geo_scene->geoNode();
+
+    if (click_hits_poly(&geo_node->elements[0].brush, core::vector2di(clickx, clicky)))
     {
         geo_scene->setBrushSelection(std::vector<int>{0});
     }
-    else if(this->bShowBrushes && !this->bShowGeometry)
+    else 
+    if (this->bShowBrushes && !this->bShowGeometry)
     {
 
         click_brush_info res;
-        get_click_brush(clickx,clicky,res);
+        get_click_brush(clickx, clicky, res);
 
-        //int hit_node_i = GetSceneNodeHit(clickx,clicky,false);
-        Reflected_SceneNode* hit_node = GetSceneNodeHit(clickx,clicky,false);
+        Reflected_SceneNode* hit_node = GetSceneNodeHit(clickx, clicky, false);
 
-        if(bShiftDown && geo_scene->getBrushSelection().size() > 0)
+        if (bShiftDown && geo_scene->getBrushSelection().size() > 0)
         {
-            if(res.hit == true)
+            if (res.hit == true)
             {
                 geo_scene->setBrushSelection_ShiftAdd(res.brush_n);
             }
         }
-        else if(bShiftDown && geo_scene->getSelectedNodes().size() >0)
+        else if (bShiftDown && geo_scene->getSelectedNodes().size() > 0)
         {
-            //if(hit_node_i !=-1)
-            if(hit_node != NULL)
+            if (hit_node != NULL)
             {
                 geo_scene->setSelectedNodes_ShiftAdd(hit_node);
             }
         }
-        else if(hit_node != NULL)
+        else if (hit_node != NULL)
         {
             geo_scene->setSelectedNodes(std::vector<Reflected_SceneNode*>{hit_node});
             geo_scene->setBrushSelection(std::vector<int>{});
         }
-        else if(res.hit == true)
+        else if (res.hit == true)
         {
             geo_scene->setBrushSelection(std::vector<int>{res.brush_n});
             geo_scene->setSelectedNodes(std::vector<Reflected_SceneNode*>{});
@@ -579,7 +582,6 @@ void TestPanel_2D::left_click(core::vector2di pos)
             geo_scene->setBrushSelection(std::vector<int>{});
             geo_scene->setSelectedNodes(std::vector<Reflected_SceneNode*>{});
         }
-
     }
 
     geo_scene->setSelectedFaces(std::vector<int>{});
@@ -599,32 +601,34 @@ void TestPanel_2D::right_click(core::vector2di pos)
     if(geo_scene && geo_scene->getBrushSelection().size()>0)
     {
         bool bVertexClick=false;
+        GeometryStack* geo_node = geo_scene->geoNode();
+
         for(int p_i : geo_scene->getBrushSelection())
         {
-            if(click_hits_poly(&geo_scene->elements[p_i].brush,core::vector2di(clickx,clicky)))
+            if(click_hits_poly(&geo_node->elements[p_i].brush,core::vector2di(clickx,clicky)))
             {
-                for(int v_i=0;v_i<geo_scene->elements[p_i].brush.vertices.size();v_i++)
+                for(int v_i=0;v_i< geo_node->elements[p_i].brush.vertices.size();v_i++)
                 {
                     core::vector2di coords;
-                    GetScreenCoords(geo_scene->elements[p_i].brush.vertices[v_i].V,coords);
+                    GetScreenCoords(geo_node->elements[p_i].brush.vertices[v_i].V,coords);
                     if(core::vector2di(clickx,clicky).getDistanceFrom(coords)<4)
                     {
                         geo_scene->selected_brush_vertex_editing =p_i;
-                        geo_scene->elements[p_i].selected_vertex=v_i;
-                        geo_scene->elements[p_i].control_vertex_selected = false;
+                        geo_node->elements[p_i].selected_vertex=v_i;
+                        geo_node->elements[p_i].control_vertex_selected = false;
                         bVertexClick=true;
                     }
                 }
             }
-            for (int v_i = 0; v_i < geo_scene->elements[p_i].brush.control_vertices.size(); v_i++)
+            for (int v_i = 0; v_i < geo_node->elements[p_i].brush.control_vertices.size(); v_i++)
             {
                 core::vector2di coords;
-                GetScreenCoords(geo_scene->elements[p_i].brush.control_vertices[v_i].V, coords);
+                GetScreenCoords(geo_node->elements[p_i].brush.control_vertices[v_i].V, coords);
                 if (core::vector2di(clickx, clicky).getDistanceFrom(coords) < 4)
                 {
                     geo_scene->selected_brush_vertex_editing = p_i;
-                    geo_scene->elements[p_i].selected_vertex = v_i;
-                    geo_scene->elements[p_i].control_vertex_selected = true;
+                    geo_node->elements[p_i].selected_vertex = v_i;
+                    geo_node->elements[p_i].control_vertex_selected = true;
                     bVertexClick = true;
                 }
             }
@@ -633,7 +637,6 @@ void TestPanel_2D::right_click(core::vector2di pos)
         {
             gui::IGUIContextMenu* menu = environment->addContextMenu(core::rect<s32>(pos,core::vector2di(256,256)),0,-1);
             menu->addItem(L"Delete Brushes",GUI_ID_VIEWPORT_2D_RIGHTCLICK_MENU_ITEM_DELETE_BRUSH,true,false,false,false);
-            //menu->addItem(L"Make Red Brush",GUI_ID_VIEWPORT_2D_RIGHTCLICK_MENU_ITEM_MAKE_RED_BRUSH,true,false,false,false);
 
             ContextMenuOwner = this->m_viewPanel;
         }
@@ -771,94 +774,18 @@ void TestPanel_2D::render()
     if(bShowGrid)
         this->drawGrid(driver,someMaterial);
 
-    if(this->geo_scene)
-    {
-        if(bShowBrushes)
-        {
-            for(int e_i=0;e_i<this->geo_scene->elements.size();e_i++)
-            {
-                this->geo_scene->elements[e_i].draw_brush(driver,someMaterial);
-            }
-
-            for(int e_i=0;e_i<this->geo_scene->elements.size();e_i++)
-            {
-                geo_element* geo = &this->geo_scene->elements[e_i];
-
-                if(geo->bSelected)
-                {
-
-                    core::vector2di coords;
-                    for(int i=0;i<geo->brush.vertices.size();i++)
-                    {
-                    GetScreenCoords(geo->brush.vertices[i].V,coords);
-                    coords.X-=4;
-                    coords.Y-=4;
-                    if(geo_scene->selected_brush_vertex_editing == e_i && geo->control_vertex_selected == false && geo->selected_vertex == i)
-                        {
-                        if(geo->type==GEO_ADD)
-                            driver->draw2DImage(med_circle_tex_add_selected,coords,core::rect<int>(0,0,8,8),0,video::SColor(255,255,255,255),true);
-                        else if(geo->type==GEO_SUBTRACT)
-                            driver->draw2DImage(med_circle_tex_sub_selected,coords,core::rect<int>(0,0,8,8),0,video::SColor(255,255,255,255),true);
-                         else if(geo->type==GEO_RED)
-                            driver->draw2DImage(med_circle_tex_red_selected,coords,core::rect<int>(0,0,8,8),0,video::SColor(255,255,255,255),true);
-                        }
-                    else
-                        {
-                        if(geo->type==GEO_ADD)
-                            driver->draw2DImage(small_circle_tex_add_selected,coords,core::rect<int>(0,0,8,8),0,video::SColor(255,255,255,255),true);
-                        else if(geo->type==GEO_SUBTRACT)
-                            driver->draw2DImage(small_circle_tex_sub_selected,coords,core::rect<int>(0,0,8,8),0,video::SColor(255,255,255,255),true);
-                         else if(geo->type==GEO_RED)
-                            driver->draw2DImage(small_circle_tex_red_selected,coords,core::rect<int>(0,0,8,8),0,video::SColor(255,255,255,255),true);
-                        }
-                    }
-                    for (int i = 0; i < geo->brush.control_vertices.size(); i++)
-                    {
-                        GetScreenCoords(geo->brush.control_vertices[i].V, coords);
-                        coords.X -= 4;
-                        coords.Y -= 4;
-                        if (geo_scene->selected_brush_vertex_editing == e_i && geo->control_vertex_selected == true && geo->selected_vertex == i)
-                        {
-                            if (geo->type == GEO_ADD)
-                                driver->draw2DImage(med_circle_tex_add_selected, coords, core::rect<int>(0, 0, 8, 8), 0, video::SColor(255, 255, 255, 255), true);
-                            else if (geo->type == GEO_SUBTRACT)
-                                driver->draw2DImage(med_circle_tex_sub_selected, coords, core::rect<int>(0, 0, 8, 8), 0, video::SColor(255, 255, 255, 255), true);
-                            else if (geo->type == GEO_RED)
-                                driver->draw2DImage(med_circle_tex_red_selected, coords, core::rect<int>(0, 0, 8, 8), 0, video::SColor(255, 255, 255, 255), true);
-                        }
-                        else
-                        {
-                            if (geo->type == GEO_ADD)
-                                driver->draw2DImage(small_circle_tex_add_selected, coords, core::rect<int>(0, 0, 8, 8), 0, video::SColor(255, 255, 255, 255), true);
-                            else if (geo->type == GEO_SUBTRACT)
-                                driver->draw2DImage(small_circle_tex_sub_selected, coords, core::rect<int>(0, 0, 8, 8), 0, video::SColor(255, 255, 255, 255), true);
-                            else if (geo->type == GEO_RED)
-                                driver->draw2DImage(small_circle_tex_red_selected, coords, core::rect<int>(0, 0, 8, 8), 0, video::SColor(255, 255, 255, 255), true);
-                        }
-                    }
-                }
-            }
-        }
-
-        if(bShowGeometry)
-            for(geo_element geo : this->geo_scene->elements)
-                geo.draw_geometry(driver,someMaterial);
-    }
-
     driver->setRenderTarget(0, true, true, video::SColor(0,0,0,0));
 }
 
 
 void TestPanel_2D::SetMeshNodesVisible()
 {
-    geo_scene->getMeshNode()->setVisible(false);
-    //geo_scene->getFinalMeshNode()->setVisible(false);
+    if(geo_scene->getMeshNode())
+        geo_scene->getMeshNode()->setVisible(false);
 }
 
 void TestPanel_2D::drawGrid(video::IVideoDriver* driver, const video::SMaterial material)
 {
-    //driver->setTransform(video::ETS_WORLD, core::IdentityMatrix);
-    //driver->setMaterial(material);
 
     int far_value=this->getCamera()->getFarValue();
     far_value*=-1;

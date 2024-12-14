@@ -44,6 +44,7 @@ public:
     ~LM_Viewer_Panel();
 
     virtual scene::ICameraSceneNode* getCamera();
+    virtual void Initialize(scene::ISceneManager* smgr, geometry_scene* geo_scene);
     virtual void setAxis(int);
     virtual void render();
     virtual bool OnEvent(const SEvent& event);
@@ -85,7 +86,7 @@ protected:
 
     LM_Viewer_Window* my_window = NULL;
     //LM_Viewer_Base* my_base = NULL;
-    geometry_scene* uv_scene = NULL;
+    GeometryStack* uv_scene = NULL;
     vector<int> faces;
     //CameraQuad* my_camera_quad = NULL;
 };

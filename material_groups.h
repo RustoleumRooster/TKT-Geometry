@@ -86,7 +86,7 @@ public:
         refreshTextures();
     }
 
-    void apply_material_to_buffer(scene::IMeshBuffer*, int material_no, int lighting, bool selected);
+    void apply_material_to_buffer(scene::IMeshBuffer*, int material_no, int lighting, bool selected, bool final_view);
 
     int getSelected() {
         return selected;
@@ -106,6 +106,7 @@ public:
     video::E_MATERIAL_TYPE LightingOnlyMaterial_Selected_Type = video::EMT_SOLID;
     video::E_MATERIAL_TYPE SolidMaterial_Type = video::EMT_SOLID;
     video::E_MATERIAL_TYPE SolidMaterial_Selected_Type = video::EMT_SOLID;
+    video::E_MATERIAL_TYPE SolidMaterial_WaterSurface_Type = video::EMT_SOLID;
 
     friend int main();
 
