@@ -11,6 +11,7 @@
 #include "edit_classes.h"
 #include "coreutil.h"
 
+using namespace gui;
 
 extern IrrlichtDevice* device;
 

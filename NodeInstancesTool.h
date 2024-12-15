@@ -14,7 +14,6 @@ class geometry_scene;
 class Reflected_Widget_EditArea;
 class Flat_Button;
 
-
 struct node_instance
 {
     //ATTRIBUTES:

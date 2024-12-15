@@ -7,6 +7,7 @@
 #include "Reflection.h"
 #include "scrollbar2.h"
 #include "ex_gui_elements.h"
+#include "edit_env.h"
 
 using namespace irr;
 

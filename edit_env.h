@@ -2,17 +2,13 @@
 #define _EDIT_ENV_H_
 
 #include <irrlicht.h>
-#include <iostream>
 #include <list>
-#include "csg_classes.h"
+
 using namespace irr;
-using namespace gui;
 
 bool GetPlaneClickVector(core::dimension2d<u32> screenSize, scene::ICameraSceneNode * camera, int clickx, int clicky, core::vector3df &hit_vec);
 bool GetAnyPlaneClickVector(core::dimension2d<u32> screenSize, scene::ICameraSceneNode * camera, core::plane3df plane, int clickx, int clicky, core::vector3df &hit_vec);
-void OnMenuItemSelected(IGUIContextMenu* menu);
-
-//bool GetScreenCoords(core::dimension2d<u32> screenSize, scene::ICameraSceneNode * camera, core::vector3df V, core::vector2di &out_coords);
+void OnMenuItemSelected(gui::IGUIContextMenu* menu);
 
 #define COLOR_ADD_SELECTED      video::SColor(255,30,60,255)
 #define COLOR_ADD_NOT_SELECTED  video::SColor(255,10,22,140)
@@ -154,20 +150,6 @@ enum
     USER_EVENT_CLEAR_LIGHTMAP_TEXTURES,
 };
 
-/*
-class My_GUIWindow : public gui::CGUIWindow
-{
-public:
-    My_GUIWindow(gui::IGUIEnvironment* env, gui::IGUIElement* parent,ListReflectedNodes_Base*,s32 id,core::rect<s32> rect);
-    ~My_GUIWindow() {}
-    void click_OK();
-    bool OnEvent(const SEvent& event);
-
-    ListReflectedNodes_Base* base=NULL;
-    int OK_BUTTON_ID;
-    int LISTBOX_ID;
-    int my_ID;
-};*/
 
 class ViewResizeObject
 {
@@ -192,21 +174,11 @@ public:
     // This is the one method that we have to implement
     virtual bool OnEvent(const SEvent& event);
 
-    virtual bool IsKeyDown(EKEY_CODE keyCode) const
-	{
-		return KeyIsDown[keyCode];
-	}
+    virtual bool IsKeyDown(EKEY_CODE keyCode) const;
 
-    const SMouseState & GetMouseState(void) const
-    {
-        return MouseState;
-    }
+    const SMouseState & GetMouseState(void) const;
 
-    MyEventReceiver()
-    {
-        for (u32 i=0; i<KEY_KEY_CODES_COUNT; ++i)
-			KeyIsDown[i] = false;
-    }
+    MyEventReceiver();
 
     void Register(IEventReceiver* receiver)
     {
@@ -220,7 +192,6 @@ public:
     {
         safe_remove_receivers.push_back(receiver);
     }
-
 
     virtual void resizeView(core::dimension2du newsize);
 
@@ -245,8 +216,6 @@ private:
     // The dimensions of the main camera windows. Needed for nodes that create render targets.
     core::dimension2du view_size;
 };
-
-bool hasModalDialogue();
 
 class CameraQuad;
 class multi_tool_panel;

@@ -8,6 +8,7 @@
 #include "material_groups.h"
 
 using namespace irr;
+using namespace gui;
 
 extern IrrlichtDevice* device;
 

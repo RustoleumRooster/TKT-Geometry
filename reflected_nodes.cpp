@@ -7,8 +7,10 @@
 #include "geometry_scene.h"
 #include "GUI_tools.h"
 #include "custom_nodes.h"
+#include "USceneNode.h"
 
 using namespace irr;
+using namespace gui;
 
 extern IrrlichtDevice* device;
 
@@ -20,21 +22,21 @@ multi_tool_panel* ListReflectedNodes_Tool::panel = NULL;
 
 std::vector<reflect::TypeDescriptor_Struct*> Reflected_SceneNode_Factory::SceneNode_Types{};
 
-ListReflectedNodesWindow::ListReflectedNodesWindow(gui::IGUIEnvironment* env, gui::IGUIElement* parent,ListReflectedNodes_Base* base_, s32 id,core::rect<s32> rect)
-    : gui::IGUIElement(gui::EGUIET_ELEMENT,env,parent,id,rect), base(base_),my_ID(id)
+ListReflectedNodesWindow::ListReflectedNodesWindow(IGUIEnvironment* env, IGUIElement* parent,ListReflectedNodes_Base* base_, s32 id,core::rect<s32> rect)
+    : IGUIElement(EGUIET_ELEMENT,env,parent,id,rect), base(base_),my_ID(id)
 {
     LISTBOX_ID = my_ID+1;
     OK_BUTTON_ID = my_ID+2;
 
-    gui::IGUISkin* skin = Environment->getSkin();
-    gui::IGUIFont* font = skin->getFont();
+    IGUISkin* skin = Environment->getSkin();
+    IGUIFont* font = skin->getFont();
     int itemheight = font->getDimension(L"A").Height + 4;
 
     core::rect<s32> r(0,0,getRelativePosition().getWidth(),base->typeDescriptors.size()*itemheight+4);
 
     skin->draw3DSunkenPane(this,skin->getColor(EGDC_3D_FACE),true,true,r);
 
-    gui::IGUIListBox* listbox = Environment->addListBox(r,this,LISTBOX_ID);
+    IGUIListBox* listbox = Environment->addListBox(r,this,LISTBOX_ID);
     listbox->setDrawBackground(false);
 
     for(reflect::TypeDescriptor* td : base->typeDescriptors)
@@ -59,7 +61,7 @@ ListReflectedNodesWindow::ListReflectedNodesWindow(gui::IGUIEnvironment* env, gu
 /*
 void ListReflectedNodesWindow::move(core::position2d<s32> new_pos)
 {
-    gui::IGUIWindow::move(new_pos);
+    IGUIWindow::move(new_pos);
     base->win_pos = getRelativePosition().UpperLeftCorner;
 }*/
 
@@ -80,7 +82,7 @@ bool ListReflectedNodesWindow::OnEvent(const SEvent& event)
             {
                 if(id == LISTBOX_ID)
                 {
-                    gui::IGUIListBox* listbox = (gui::IGUIListBox*)event.GUIEvent.Caller;
+                    IGUIListBox* listbox = (IGUIListBox*)event.GUIEvent.Caller;
                     int sel = listbox->getSelected();
 
                     if(sel != -1)
@@ -109,12 +111,12 @@ bool ListReflectedNodesWindow::OnEvent(const SEvent& event)
         }
     }
 
-    return gui::IGUIElement::OnEvent(event);
+    return IGUIElement::OnEvent(event);
 }
 
 void ListReflectedNodesWindow::click_OK()
 {
-    gui::IGUIListBox* listbox = (gui::IGUIListBox*)getElementFromId(LISTBOX_ID);
+    IGUIListBox* listbox = (IGUIListBox*)getElementFromId(LISTBOX_ID);
 
     int sel = listbox->getSelected();
 
@@ -143,7 +145,7 @@ void ListReflectedNodes_Base::show()
     widget->drop();
 }
 
-void ListReflectedNodes_Base::initialize(std::wstring name_, int my_id, gui::IGUIEnvironment* env_, geometry_scene* g_scene_,multi_tool_panel* panel_ )
+void ListReflectedNodes_Base::initialize(std::wstring name_, int my_id, IGUIEnvironment* env_, geometry_scene* g_scene_,multi_tool_panel* panel_ )
 {
     typeDescriptors = Reflected_SceneNode_Factory::getAllTypes();
 

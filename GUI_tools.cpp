@@ -54,7 +54,7 @@ void Reflected_Widget_EditArea::show(bool editable, void* obj)
     if (obj)
     {
         my_base->serialize_flat_obj(temp_object);
-       // m_typeDesc->dump(temp_object, 0);
+        // m_typeDesc->dump(temp_object, 0);
     }
 
     {

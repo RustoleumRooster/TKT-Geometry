@@ -49,9 +49,9 @@ void GeometryFactory::CreatePlane(EditPlaneWindow* win)
     win->write(&plane);
 
     core::matrix4 M;
-    M.setTranslation(g_scene->elements[0].brush.vertices[0].V);
-    g_scene->elements[0].brush = make_poly_plane(plane.length,plane.width);
-    g_scene->elements[0].brush.translate(M);
+    M.setTranslation(g_scene->geoNode()->elements[0].brush.vertices[0].V);
+    g_scene->geoNode()->elements[0].brush = make_poly_plane(plane.length,plane.width);
+    g_scene->geoNode()->elements[0].brush.translate(M);
 }
 
 void GeometryFactory::CreateCube(EditCubeWindow* win)
@@ -59,9 +59,9 @@ void GeometryFactory::CreateCube(EditCubeWindow* win)
     win->write(&cube);
 
     core::matrix4 M;
-    M.setTranslation(g_scene->elements[0].brush.vertices[0].V);
-    g_scene->elements[0].brush = make_poly_cube(cube.height,cube.length,cube.width);
-    g_scene->elements[0].brush.translate(M);
+    M.setTranslation(g_scene->geoNode()->elements[0].brush.vertices[0].V);
+    g_scene->geoNode()->elements[0].brush = make_poly_cube(cube.height,cube.length,cube.width);
+    g_scene->geoNode()->elements[0].brush.translate(M);
 }
 
 void GeometryFactory::CreateCylinder(EditCylinderWindow* win)
@@ -70,14 +70,14 @@ void GeometryFactory::CreateCylinder(EditCylinderWindow* win)
 
     core::matrix4 M;
     
-    g_scene->elements[0].brush = make_cylinder(cylinder.height,cylinder.radius,cylinder.nSides,cylinder.radius_type.value);
+    g_scene->geoNode()->elements[0].brush = make_cylinder(cylinder.height,cylinder.radius,cylinder.nSides,cylinder.radius_type.value);
     if (cylinder.align_to_side)
     {
         M.setRotationRadians(vector3df(0,PI / cylinder.nSides,0));
-        g_scene->elements[0].brush.rotate(M);
+        g_scene->geoNode()->elements[0].brush.rotate(M);
     }
-    M.setTranslation(g_scene->elements[0].brush.vertices[0].V);
-    g_scene->elements[0].brush.translate(M);
+    M.setTranslation(g_scene->geoNode()->elements[0].brush.vertices[0].V);
+    g_scene->geoNode()->elements[0].brush.translate(M);
 }
 
 void GeometryFactory::CreateSphere(EditSphereWindow* win)
@@ -85,9 +85,9 @@ void GeometryFactory::CreateSphere(EditSphereWindow* win)
     win->write(&sphere);
 
     core::matrix4 M;
-    M.setTranslation(g_scene->elements[0].brush.vertices[0].V);
-    g_scene->elements[0].brush = make_sphere(sphere.radius,sphere.nSides,sphere.nZenSides,sphere.simplify);
-    g_scene->elements[0].brush.translate(M);
+    M.setTranslation(g_scene->geoNode()->elements[0].brush.vertices[0].V);
+    g_scene->geoNode()->elements[0].brush = make_sphere(sphere.radius,sphere.nSides,sphere.nZenSides,sphere.simplify);
+    g_scene->geoNode()->elements[0].brush.translate(M);
 }
 
 
@@ -96,9 +96,9 @@ void GeometryFactory::CreateCone(EditConeWindow* win)
     win->write(&cone);
 
     core::matrix4 M;
-    M.setTranslation(g_scene->elements[0].brush.vertices[0].V);
-    g_scene->elements[0].brush = make_cone(cone.height,cone.radius,cone.nSides);
-    g_scene->elements[0].brush.translate(M);
+    M.setTranslation(g_scene->geoNode()->elements[0].brush.vertices[0].V);
+    g_scene->geoNode()->elements[0].brush = make_cone(cone.height,cone.radius,cone.nSides);
+    g_scene->geoNode()->elements[0].brush.translate(M);
 }
 
 

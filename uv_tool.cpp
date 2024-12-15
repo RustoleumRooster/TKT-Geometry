@@ -9,8 +9,11 @@
 #include "ex_gui_elements.h"
 #include <sstream>
 #include <algorithm>
+#include "edit_env.h"
 
 using namespace std;
+using namespace irr;
+using namespace gui;
 
 UV_Editor_Base* UV_Editor_Tool::base = NULL;
 multi_tool_panel* UV_Editor_Tool::panel = NULL;
@@ -1003,7 +1006,7 @@ void TextureImage::render()
     driver->setMaterial(Buffer->Material);
 
     driver->drawVertexPrimitiveList(Buffer->getVertices(), 4,
-        Buffer->getIndices(), 2, video::EVT_STANDARD, EPT_TRIANGLES, Buffer->getIndexType());
+        Buffer->getIndices(), 2, video::EVT_STANDARD, scene::EPT_TRIANGLES, Buffer->getIndexType());
 }
 
 core::dimension2du TextureImage::getDimensions()

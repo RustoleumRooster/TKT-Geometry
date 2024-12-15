@@ -1,9 +1,6 @@
 #ifndef _CSG_CLASSES_H_
 #define _CSG_CLASSES_H_
-#include <vector>
-#include <irrlicht.h>
-#include "CMeshSceneNode.h"
-#include "texture_picker.h"
+
 #include "Reflection.h"
 #include "BVH.h"
 
@@ -302,14 +299,14 @@ public:
 class triangle
 {
 public:
-   int A=-1;
-   int B=-1;
-   int C=-1;
+    int A = -1;
+    int B = -1;
+    int C = -1;
 };
 
 class triangle_holder
 {
-    public:
+public:
     std::vector<core::vector3df> vertices;
     std::vector<triangle> triangles;
     std::vector<int> f_index;

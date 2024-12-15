@@ -8,7 +8,7 @@
 class UV_Editor_Panel : public TestPanel_2D
 {
 public:
-    UV_Editor_Panel(IGUIEnvironment* environment, video::IVideoDriver* driver, IGUIElement* parent, s32 id, core::rect<s32> rectangle);
+    UV_Editor_Panel(gui::IGUIEnvironment* environment, video::IVideoDriver* driver, gui::IGUIElement* parent, s32 id, core::rect<s32> rectangle);
     ~UV_Editor_Panel();
 
     virtual void Initialize(scene::ISceneManager* smgr, geometry_scene* geo_scene);
@@ -36,20 +36,20 @@ protected:
     
     virtual void left_click(core::vector2di);
     virtual void right_click(core::vector2di);
-    virtual void OnMenuItemSelected(IGUIContextMenu* menu);
+    virtual void OnMenuItemSelected(gui::IGUIContextMenu* menu);
 
-    vector<int> original_brushes;
-    vector<int> surface_groups;
+    std::vector<int> original_brushes;
+    std::vector<int> surface_groups;
 
-    vector<vector<int>> brush_vertices_index;
-    vector<vector<int>> brush_faces_index;
-    vector<vector<int>> faces_index;
+    std::vector<std::vector<int>> brush_vertices_index;
+    std::vector<std::vector<int>> brush_faces_index;
+    std::vector<std::vector<int>> faces_index;
     
     TextureImage* my_image = NULL;
 
     geometry_scene* real_g_scene = NULL;
 
-    vector<int> faces;
+    std::vector<int> faces;
 
     vector2df UL_texcoord;
     vector2df BR_texcoord;
@@ -64,6 +64,7 @@ protected:
 
 class UV_Editor_Base;
 class polyfold;
+class Flat_Button;
 
 struct uv_editor_struct
 {

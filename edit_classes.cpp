@@ -13,6 +13,8 @@
 #include "CGUIEditBox2.h"
 #include "edit_env.h"
 //#include "Reflection.h"
+#include "geometry_scene.h"
+#include "texture_picker.h"
 
 extern IrrlichtDevice* device;
 using namespace irr;

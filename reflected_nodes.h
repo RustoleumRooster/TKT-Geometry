@@ -6,6 +6,7 @@
 #include "Reflection.h"
 #include "GUI_tools.h"
 #include "reflect_custom_types.h"
+#include "USceneNode.h"
 
 using namespace irr;
 using namespace scene;
@@ -197,19 +198,6 @@ public:
     static multi_tool_panel* panel;
 };
 
-class USceneNode : public ISceneNode
-{
-public:
-    USceneNode(ISceneNode* parent, irr::scene::ISceneManager* smgr, int id, const core::vector3df& pos);
-
-    virtual void render() { }
-    virtual const core::aabbox3df& getBoundingBox() const { return core::aabbox3df(); }
-
-    u64 UID() const { return my_UID; }
-
-private:
-    u64 my_UID;
-};
 
 //
 //========================================================================================

@@ -10,11 +10,12 @@
 #include "custom_nodes.h"
 
 using namespace irr;
+using namespace gui;
 
 extern IrrlichtDevice* device;
 
 Material_Groups_Base* Material_Groups_Tool::base = NULL;
-gui::IGUIEnvironment* Material_Groups_Tool::env = NULL;
+IGUIEnvironment* Material_Groups_Tool::env = NULL;
 geometry_scene* Material_Groups_Tool::g_scene = NULL;
 multi_tool_panel* Material_Groups_Tool::panel = NULL;
 
@@ -27,8 +28,8 @@ REFLECT_STRUCT_BEGIN(Material_Groups_Widget::nSelected_struct)
 REFLECT_STRUCT_END()
 
 
-Material_Groups_Widget::Material_Groups_Widget(gui::IGUIEnvironment* env, gui::IGUIElement* parent,geometry_scene* g_scene_,Material_Groups_Base* base_, s32 id,core::rect<s32> rect)
-    : gui::IGUIElement(gui::EGUIET_ELEMENT,env,parent,id,rect), g_scene(g_scene_), my_ID(id), base(base_)
+Material_Groups_Widget::Material_Groups_Widget(IGUIEnvironment* env, IGUIElement* parent,geometry_scene* g_scene_,Material_Groups_Base* base_, s32 id,core::rect<s32> rect)
+    : IGUIElement(EGUIET_ELEMENT,env,parent,id,rect), g_scene(g_scene_), my_ID(id), base(base_)
 {
     MyEventReceiver* receiver = (MyEventReceiver*)device->getEventReceiver();
     receiver->Register(this);
@@ -73,8 +74,8 @@ void Material_Groups_Widget::show()
     int next_ID = form2->ShowWidgets(GUI_ID_REFLECTED_BASE + 3);
 
     
-    gui::IGUISkin* skin = Environment->getSkin();
-    gui::IGUIFont* font = skin->getFont();
+    IGUISkin* skin = Environment->getSkin();
+    IGUIFont* font = skin->getFont();
     int itemheight = font->getDimension(L"A").Height + 4;
 
     core::rect<s32> r(core::vector2di(0, form2->getTotalHeight()+8), core::dimension2di(getRelativePosition().getWidth(), base->material_groups.size() * itemheight + 4));
@@ -296,7 +297,7 @@ bool Material_Groups_Widget::OnEvent(const SEvent& event)
     else if(event.EventType == EET_GUI_EVENT)
     {
         s32 id = event.GUIEvent.Caller->getID();
-        gui::IGUIEnvironment* env = device->getGUIEnvironment();
+        IGUIEnvironment* env = device->getGUIEnvironment();
 
         switch(event.GUIEvent.EventType)
         {
@@ -321,7 +322,7 @@ bool Material_Groups_Widget::OnEvent(const SEvent& event)
             {
                 if (id == LISTBOX_ID)
                 {
-                    gui::IGUIListBox* listbox = (gui::IGUIListBox*)event.GUIEvent.Caller;
+                    IGUIListBox* listbox = (IGUIListBox*)event.GUIEvent.Caller;
                     int sel = listbox->getSelected();
 
                     this->base->selected = sel;
@@ -335,7 +336,7 @@ bool Material_Groups_Widget::OnEvent(const SEvent& event)
         }
     }
 
-    return gui::IGUIElement::OnEvent(event);
+    return IGUIElement::OnEvent(event);
 }
 
 void Material_Groups_Base::refreshTextures()

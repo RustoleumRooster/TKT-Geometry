@@ -16,7 +16,6 @@ class Reflected_SceneNode;
 
 #define ALIGN_BYTES 8
 
-
 namespace reflect {
 
 //--------------------------------------------------------
@@ -81,9 +80,6 @@ struct TypeDescriptor {
     //this can fail and cause crash for container classes !!!
     virtual void serialize_flat(void** flat_obj, const void* obj)
     {
-        //void* p = *flat_obj;
-        //std::cout << " "<< obj << " -> " << p << ", +" << size << "\n";
-
         copy(*flat_obj, obj);
         *((char**)flat_obj) += aligned_size();
     }
@@ -92,7 +88,6 @@ struct TypeDescriptor {
     virtual void deserialize_flat(void* obj, void** flat_obj)
     {
         void* p = *flat_obj;
-        //std::cout << obj << " <- " << p << "\n";
 
         copy(obj, *flat_obj);
         *((char**)flat_obj) += aligned_size();
@@ -100,9 +95,6 @@ struct TypeDescriptor {
 
     virtual TypeDescriptor* get_flat_copy(void* obj, int indent)
     {
-        //for (int i = 0; i < indent; i++)
-        //    std::cout << "  ";
-        //std::cout << name << ", size = "<<size<<"\n";
         return this;
     }
 
@@ -110,7 +102,7 @@ struct TypeDescriptor {
     {
         return std::string(alias);
     }
-//private:
+
     //a very dangerous function
     virtual void copy(void* obj, const void* obj2)
     {
@@ -194,12 +186,6 @@ struct Member {
         {
             return type->isEqual((char*)obj+offset,(char*)obj2+offset);
         }
-
-        /*
-        void copy(void* obj, const void* obj2)
-        {
-            type->copy((char*)obj+offset,(char*)obj2+offset);
-        }*/
 
     };
 
@@ -321,20 +307,9 @@ struct TypeDescriptor_Struct : TypeDescriptor {
 
     virtual TypeDescriptor* get_flat_copy(void* obj, int indent)
     {
-        //for (int i = 0; i < indent; i++)
-        //    std::cout << "  ";
-        //std::cout << name << "\n";
-        
-
         //TypeDescriptor_Struct* ret = new TypeDescriptor_Struct(EmptyStruct::initReflection);
         TypeDescriptor_Struct* ret = getNewEmptyStruct();
         
-
-        //for (int i = 0; i < indent; i++)
-        //    std::cout << "  ";
-        //std::cout << " " << ret->name << "\n";
-        //std::cout << "{\n";
-
         ret->size = 0;
         ret->alias = "";
 
@@ -342,11 +317,6 @@ struct TypeDescriptor_Struct : TypeDescriptor {
 
         for (int i = 0; i < members.size(); i++)
         {
-            //std::cout << "member " << i << "\n";
-            //for (int i = 0; i < indent; i++)
-            //    std::cout << "  ";
-            //std::cout << p_inc << " = offset \n";
-
             TypeDescriptor* flat_type = members[i].type->get_flat_copy((char*)obj + members[i].offset, indent + 1);
 
             if (flat_type)
@@ -368,19 +338,11 @@ struct TypeDescriptor_Struct : TypeDescriptor {
         }
         ret->expanded = expanded;
 
-        //for (int i = 0; i < indent; i++)
-        //    std::cout << "  ";
-        //std::cout << "} size = " << ret->size << "\n";
-
-        //std::cout<<"new empty td (struct) @ "<<ret<<"\n";
-
         return ret;
     }
 
     virtual void serialize_flat(void** flat_obj, const void* obj)
     {
-	//void* p = *flat_obj;
-	//std::cout << obj << " -> " << p << "\n";
         for (int i = 0; i < members.size(); i++)
         {
             members[i].type->serialize_flat(flat_obj, (char*)obj + members[i].offset);
@@ -588,16 +550,6 @@ struct TypeDescriptor_StdVector : TypeDescriptor {
 
     virtual TypeDescriptor* get_flat_copy(void* obj, int indent)
     {
-       // for (int i = 0; i < indent; i++)
-       //     std::cout << "  ";
-       // std::cout << name << ", " << getSize(obj) << " " << itemType->getAlias() << " items in container\n";
-       //
-       // for (int i = 0; i < indent; i++)
-       //     std::cout << "  ";
-       // std::cout << "{\n";
-
-        //std::cout << "vector::get_flat_copy, "<< itemType->name<< "\n";
-
         TypeDescriptor_Struct* ret = new TypeDescriptor_Struct(EmptyStruct::initReflection);
         //TypeDescriptor_Struct* ret = getNewEmptyStruct();
         ret->alias = "";
@@ -614,37 +566,15 @@ struct TypeDescriptor_StdVector : TypeDescriptor {
             if (flat_type)
             {
                 Member m{ "item", p_inc, flat_type };
-                //for (int i = 0; i < indent; i++)
-                //    std::cout << "  ";
-                //std::cout << (flat_type->size * i) << " = offset \n";
+
                 m.modified = false;
 
                 ret->members.push_back(m);
                 p_inc += (size_t)flat_type->size;
-                //ret->size += (size_t)flat_type->size;
             }
         }
 
         ret->size = p_inc;
-
-        //for (int i = 0; i < indent; i++)
-        //    std::cout << "  ";
-        
-        if (ret->size == 0)
-        {
-            //std::cout << "} size = 0 (nothing created)\n";
-            //std::cout << "empty vector, not creating type\n";
-            //delete ret;
-            //ret = NULL;
-            
-        }
-        else
-        {
-            //ret->size = (size_t)(flat_type->size * numItems);
-            //std::cout << "} size = " << ret->size << " \n";
-            //std::cout << "new empty td (vector) @ " << ret << "\n";
-            //std::cout << "  " << numItems << " items, type = " << itemType->name << "\n";
-        }
 
         return ret;
     }

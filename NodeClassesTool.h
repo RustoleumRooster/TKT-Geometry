@@ -19,7 +19,6 @@ namespace reflect
     struct TypeDescriptor_SN_Struct;
 }
 
-
 struct node_class_item
 {
     //ATTRIBUTES:

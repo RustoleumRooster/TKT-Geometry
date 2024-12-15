@@ -3,22 +3,24 @@
 
 #include <irrlicht.h>
 #include <vector>
-#include <array>
-
-#include "CMeshSceneNode.h"
-#include "texture_picker.h"
-#include "edit_env.h"
-
 
 using namespace irr;
-using namespace scene;
 
 class polyfold;
 class GeometryStack;
+namespace irr
+{
+    namespace scene
+    {
+        class CMeshSceneNode;
+    }
+}
+class MyEventReceiver;
+class TexturePicker;
 
 struct MeshBuffer_Chunk
 {
-    IMeshBuffer* buffer;
+    scene::IMeshBuffer* buffer;
     unsigned int begin_i;
     unsigned int end_i;
 };
@@ -27,8 +29,8 @@ struct TextureMaterial
 {
     struct lightmap_record
     {
-        rect<u16> block;
-        vector3df bounding_verts[4];
+        core::rect<u16> block;
+        core::vector3df bounding_verts[4];
     };
 
     video::ITexture* texture;
@@ -67,13 +69,13 @@ public:
     void recalc_uvs_for_face_dome(GeometryStack* geo_scene, int e_i, int f_i, int f_j);
     void recalc_uvs_for_face_custom(GeometryStack* geo_scene, int e_i, int f_i, int f_j);
 
-    CMeshSceneNode* addMeshSceneNode(ISceneNode* parent, scene::ISceneManager* smgr,GeometryStack* geo_scene);
+    scene::CMeshSceneNode* addMeshSceneNode(scene::ISceneNode* parent, scene::ISceneManager* smgr,GeometryStack* geo_scene);
 
     std::vector<TextureMaterial> getMaterialsUsed(){return materials_used;}
 
 protected:
     
-    virtual void generate_mesh_buffer(GeometryStack* geo_scene,SMesh*)=0;
+    virtual void generate_mesh_buffer(GeometryStack* geo_scene,scene::SMesh*)=0;
     void generate_uvs(GeometryStack* geo_scene);
 
 
@@ -103,7 +105,7 @@ public:
 
 protected:
 
-    virtual void generate_mesh_buffer(GeometryStack* geo_scene,SMesh*);
+    virtual void generate_mesh_buffer(GeometryStack* geo_scene,scene::SMesh*);
     std::vector<int> face_to_mb_buffer;
 
     friend class GeometryStack;
@@ -122,7 +124,7 @@ public:
 
 protected:
     void refresh_material_groups(GeometryStack* geo_scene);
-    virtual void generate_mesh_buffer(GeometryStack* geo_scene,SMesh*);
+    virtual void generate_mesh_buffer(GeometryStack* geo_scene,scene::SMesh*);
     void copy_lightmap_uvs(GeometryStack* geo_scene);
 
     std::vector<int> face_to_mb_buffer;

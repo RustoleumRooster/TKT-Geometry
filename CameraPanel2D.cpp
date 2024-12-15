@@ -6,6 +6,9 @@
 #include "CMeshBuffer.h"
 #include "utils.h"
 #include "node_properties.h"
+#include "geometry_scene.h"
+#include "CMeshSceneNode.h"
+
 
 extern IrrlichtDevice* device;
 using namespace irr;
@@ -598,6 +601,7 @@ void TestPanel_2D::left_click(core::vector2di pos)
 
 void TestPanel_2D::right_click(core::vector2di pos)
 {
+
     if(geo_scene && geo_scene->getBrushSelection().size()>0)
     {
         bool bVertexClick=false;

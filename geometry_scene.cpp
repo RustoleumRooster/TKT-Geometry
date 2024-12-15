@@ -10,7 +10,10 @@
 #include "BVH.h"
 #include <chrono>
 #include "custom_nodes.h"
-
+#include "GeometryStack.h"
+#include "NodeClassesTool.h"
+#include "LightMaps.h"
+#include "CMeshSceneNode.h"
 
 #define TIME_HEADER() auto startTime = std::chrono::high_resolution_clock::now();\
     auto timeZero = startTime;\
@@ -539,8 +542,15 @@ void geo_element::draw_geometry(video::IVideoDriver* driver, const video::SMater
     }
 }
 
+scene::CMeshSceneNode* geometry_scene::getMeshNode()
+{ 
+    return geometry_stack->getMeshNode(); 
+}
 
-
+bool geometry_scene::IsEditNode() 
+{ 
+    return geometry_stack->b_isEditNode; 
+}
 
 void geometry_scene::MaterialGroupToSelectedFaces()
 {
@@ -617,6 +627,11 @@ void geometry_scene::drawGraph(LineHolder& graph)
 void geometry_scene::setRenderType(bool brushes, bool geo, bool loops, bool triangles)
 {
     geometry_stack->setRenderType(brushes, geo, loops, triangles);
+}
+
+void geometry_scene::loadLightmapTextures()
+{
+    getLightmapManager()->loadLightmapTextures(geometry_stack);
 }
 
 void geometry_scene::rebuildSceneGraph()

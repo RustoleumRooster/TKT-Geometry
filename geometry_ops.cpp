@@ -8,6 +8,7 @@
 #include "BufferManager.h"
 #include "material_groups.h"
 #include "BVH.h"
+#include "CMeshSceneNode.h"
 
 #include <chrono>
 
@@ -78,7 +79,7 @@ GeometryStack::GeometryStack(ISceneNode* parent, scene::ISceneManager* smgr, MyE
 
     this->edit_meshnode_interface.init(smgr, device->getVideoDriver(), event_receiver, base_material_type, special_material_type);
     this->final_meshnode_interface.init(smgr, device->getVideoDriver(), event_receiver, base_material_type, special_material_type);
-    this->setAutomaticCulling(EAC_OFF);
+    this->setAutomaticCulling(scene::EAC_OFF);
 }
 
 GeometryStack::GeometryStack(ISceneNode* parent, scene::ISceneManager* smgr, MyEventReceiver* receiver)
@@ -97,7 +98,7 @@ void GeometryStack::OnRegisterSceneNode()
     {
         SceneManager->registerNodeForRendering(this);
 
-        ISceneNodeList::ConstIterator it = Children.begin();
+        core::list<ISceneNode*>::ConstIterator it = Children.begin();
         for (; it != Children.end(); ++it)
             (*it)->OnRegisterSceneNode();
     }

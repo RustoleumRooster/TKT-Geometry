@@ -1,18 +1,25 @@
 #ifndef _CAMERA_PANEL_H_
 #define _CAMERA_PANEL_H_
 
-#include <irrlicht.h>
-#include <iostream>
+
+#include <vector>
 #include "csg_classes.h"
-#include "geometry_scene.h"
-#include "CMeshSceneNode.h"
 
 using namespace irr;
-using namespace gui;
-using namespace std;
 
 class TestPanel;
 class ViewPanel;
+class geometry_scene;
+class Reflected_SceneNode;
+class polyfold;
+
+namespace irr
+{
+    namespace scene
+    {
+        class CMeshSceneNode;
+    }
+}
 
 class RenderTarget
 {
@@ -32,7 +39,7 @@ public:
     RenderList(video::IVideoDriver* driver) : driver(driver)
     {}
 
-    vector<RenderTarget*> render_targets;
+    std::vector<RenderTarget*> render_targets;
 
     void add(RenderTarget* vp);
     void remove(RenderTarget* vp);
@@ -48,7 +55,7 @@ class ViewPanel : public gui::IGUIElement, public RenderTarget
 {
 public:
 
-    ViewPanel(IGUIEnvironment* environment, video::IVideoDriver* driver, IGUIElement* parent, s32 id, core::rect<s32> rectangle);
+    ViewPanel(gui::IGUIEnvironment* environment, video::IVideoDriver* driver, IGUIElement* parent, s32 id, core::rect<s32> rectangle);
     ~ViewPanel();
 
     void resize(core::dimension2d<u32> new_size);
@@ -74,7 +81,7 @@ public:
         return Special_Texture;
     }
 
-    vector2d<s32> getClickPos() { return vector2d<s32>{clickx, clicky}; }
+    core::vector2d<s32> getClickPos() { return core::vector2d<s32>{clickx, clicky}; }
     void set_fullscreen(bool bFullscreen);
 
     core::dimension2d<u32> getSize() { return panel_size; }
@@ -92,14 +99,14 @@ private:
 
     core::dimension2d<u32> panel_size;
 
-    vector<TestPanel*> panel_stack;
+    std::vector<TestPanel*> panel_stack;
 
 };
 
 class CameraQuad : public gui::IGUIElement
 {
 public:
-    CameraQuad (IGUIEnvironment* environment, IGUIElement* parent, s32 id, core::rect<s32> rectangle,video::IVideoDriver* driver);
+    CameraQuad (gui::IGUIEnvironment* environment, gui::IGUIElement* parent, s32 id, core::rect<s32> rectangle,video::IVideoDriver* driver);
 
     TestPanel* getPanel(int);
     void SetPanel(int,TestPanel*);
@@ -119,9 +126,9 @@ public:
 
     void hookup_aux_panel(TestPanel* pan);
 
-    vector3df get_fp_camera_pos();
-    vector3df get_fp_camera_rot();
-    ICameraSceneNode* get_fp_camera();
+    core::vector3df get_fp_camera_pos();
+    core::vector3df get_fp_camera_rot();
+    scene::ICameraSceneNode* get_fp_camera();
 
 private:
 
@@ -143,7 +150,7 @@ private:
     int grid_snap=4;
     f32 rotate_snap=7.5;
 
-    friend void OnMenuItemSelected(IGUIContextMenu* menu);
+    friend void OnMenuItemSelected(gui::IGUIContextMenu* menu);
 };
 
 
@@ -174,7 +181,7 @@ enum {
 class TestPanel
 {
 public:
-    TestPanel(IGUIEnvironment* environment, video::IVideoDriver* driver,IGUIElement* parent, s32 id, core::rect<s32> rectangle);
+    TestPanel(gui::IGUIEnvironment* environment, video::IVideoDriver* driver, gui::IGUIElement* parent, s32 id, core::rect<s32> rectangle);
     virtual ~TestPanel();
 
     virtual bool OnEvent(const SEvent& event);
@@ -205,8 +212,8 @@ public:
     virtual bool IsShowBrushes();
     virtual bool IsDynamicLight();
 
-    virtual void setTotalGeometry(polyfold* pf) {this->total_geometry=pf;}
-    virtual void overrideMeshNode(scene::CMeshSceneNode* node) {this->override_mesh_node=node;}
+    virtual void setTotalGeometry(polyfold* pf);
+    virtual void overrideMeshNode(scene::CMeshSceneNode* node);
     virtual void setGridSnap(int snap){grid_snap=snap;}
     virtual void setRotateSnap(f32 snap){rotate_snap=snap;}
 
@@ -216,7 +223,7 @@ public:
 
     ViewPanel* getViewPanel() { return m_viewPanel; }
 
-    virtual vector3df getCameraPos() { return (camera != NULL) ? camera->getAbsolutePosition() : vector3df(0, 0, 0); }
+    virtual core::vector3df getCameraPos() { return (camera != NULL) ? camera->getAbsolutePosition() : core::vector3df(0, 0, 0); }
 
 protected:
 
@@ -231,7 +238,7 @@ protected:
     virtual void left_click(core::vector2di) {} ;
     virtual void right_click(core::vector2di) {} ;
 
-    virtual void OnMenuItemSelected(IGUIContextMenu* menu) {};
+    virtual void OnMenuItemSelected(gui::IGUIContextMenu* menu) {};
 
     polyfold* total_geometry=NULL;
     scene::CMeshSceneNode* override_mesh_node=NULL;
@@ -252,7 +259,7 @@ protected:
     bool bShiftDown=false;
     bool bCtrlDown=false;
 
-    IGUIEnvironment* environment = NULL;
+    gui::IGUIEnvironment* environment = NULL;
     video::IVideoDriver* driver=NULL;
     scene::ISceneManager* smgr=NULL;
     scene::ICameraSceneNode* camera=NULL;
@@ -295,25 +302,20 @@ class TestPanel_3D : public TestPanel
 {
 public:
 
-    TestPanel_3D(IGUIEnvironment* environment, video::IVideoDriver* driver, IGUIElement* parent, s32 id, core::rect<s32> rectangle);
+    TestPanel_3D(gui::IGUIEnvironment* environment, video::IVideoDriver* driver, gui::IGUIElement* parent, s32 id, core::rect<s32> rectangle);
     ~TestPanel_3D();
 
     virtual bool OnEvent(const SEvent& event);
     virtual scene::ICameraSceneNode* getCamera();
 
-    virtual void OnMenuItemSelected(IGUIContextMenu* menu);
+    virtual void OnMenuItemSelected(gui::IGUIContextMenu* menu);
     void SetViewStyle(s32);
 
     s32 GetViewStyle() {
         return view_style;
     }
 
-    void SetDynamicLight(bool b) {
-        if (b)
-            lighting_type = LIGHTING_LIGHTMAP;
-        else
-            lighting_type = LIGHTING_UNLIT;
-    }
+    void SetDynamicLight(bool b);
 
     virtual void resize(core::dimension2d<u32> new_size) ;
 
@@ -358,7 +360,7 @@ class TestPanel_2D : public TestPanel
 {
 public:
 
-    TestPanel_2D(IGUIEnvironment* environment, video::IVideoDriver* driver, IGUIElement* parent,  s32 id, core::rect<s32> rectangle);
+    TestPanel_2D(gui::IGUIEnvironment* environment, video::IVideoDriver* driver, gui::IGUIElement* parent,  s32 id, core::rect<s32> rectangle);
     virtual void Initialize(scene::ISceneManager* smgr, geometry_scene* geo_scene); 
     virtual bool OnEvent(const SEvent& event);
     virtual scene::ICameraSceneNode* getCamera();
@@ -384,7 +386,7 @@ protected:
     virtual void left_click(core::vector2di);
     virtual void right_click(core::vector2di);
 
-    virtual void OnMenuItemSelected(IGUIContextMenu* menu);
+    virtual void OnMenuItemSelected(gui::IGUIContextMenu* menu);
 
     core::dimension2du viewSize;
 
@@ -419,7 +421,7 @@ private:
     f32 getViewScaling();
 };
 
-void OnMenuItemSelected(IGUIContextMenu* menu);
+void OnMenuItemSelected(gui::IGUIContextMenu* menu);
 bool GetOrthoClickPoint(core::vector2di viewSize, scene::ICameraSceneNode * camera, int clickx, int clicky, core::vector3df &hit_vec);
 
 #endif

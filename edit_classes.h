@@ -15,8 +15,8 @@ class geometry_scene;
 
 namespace reflect
 {
-class TypeDescriptor;
-class Member;
+    struct TypeDescriptor;
+    struct Member;
 }
 
 

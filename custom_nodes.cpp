@@ -7,8 +7,10 @@
 #include "GUI_tools.h"
 #include "custom_nodes.h"
 #include "myNodes.h"
+#include "CMeshSceneNode.h"
 
 using namespace irr;
+using namespace video;
 
 extern IrrlichtDevice* device;
 extern f32 global_clipping_plane[4];

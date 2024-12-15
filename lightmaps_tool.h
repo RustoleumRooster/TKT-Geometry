@@ -6,6 +6,7 @@
 #include "CGUIWindow.h"
 #include "CameraPanel.h"
 #include "edit_classes.h"
+#include "reflect_custom_types.h"
 
 class LM_Viewer_Window;
 
@@ -37,10 +38,12 @@ struct material_buffers_struct
     REFLECT()
 };
 
+class GeometryStack;
+
 class LM_Viewer_Panel : public TestPanel_2D
 {
 public:
-    LM_Viewer_Panel(IGUIEnvironment* environment, video::IVideoDriver* driver, IGUIElement* parent, LM_Viewer_Window* win, s32 id, core::rect<s32> rectangle);
+    LM_Viewer_Panel(gui::IGUIEnvironment* environment, video::IVideoDriver* driver, gui::IGUIElement* parent, LM_Viewer_Window* win, s32 id, core::rect<s32> rectangle);
     ~LM_Viewer_Panel();
 
     virtual scene::ICameraSceneNode* getCamera();
@@ -66,7 +69,7 @@ protected:
     virtual void right_click(core::vector2di);
     int gridSpace = 128;
 
-    virtual void OnMenuItemSelected(IGUIContextMenu* menu);
+    virtual void OnMenuItemSelected(gui::IGUIContextMenu* menu);
 
     int current_mat_group = -1;
     int my_face_no = -1;
@@ -87,7 +90,7 @@ protected:
     LM_Viewer_Window* my_window = NULL;
     //LM_Viewer_Base* my_base = NULL;
     GeometryStack* uv_scene = NULL;
-    vector<int> faces;
+    std::vector<int> faces;
     //CameraQuad* my_camera_quad = NULL;
 };
 
@@ -98,6 +101,7 @@ class polyfold;
 //
 
 class Material_Buffers_Base;
+class Flat_Button;
 
 class Material_Buffers_Widget : public gui::IGUIElement
 {

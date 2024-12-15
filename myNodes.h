@@ -5,11 +5,6 @@
 
 using namespace irr;
 
-using namespace core;
-using namespace scene;
-using namespace video;
-using namespace io;
-using namespace gui;
 
 class SkySprite : public scene::ISceneNode
 {
@@ -24,7 +19,7 @@ public:
 
 	virtual void OnRegisterSceneNode();
 
-	void SetTexture(ITexture* tex);
+	void SetTexture(video::ITexture* tex);
 
 	virtual void render();
 	virtual const core::aabbox3d<f32>& getBoundingBox() const;
@@ -105,12 +100,12 @@ public:
 	virtual void OnRegisterSceneNode()
 	{
 		if (IsVisible)
-            SceneManager->registerNodeForRendering(this, ESNRP_SOLID );
+            SceneManager->registerNodeForRendering(this, scene::ESNRP_SOLID );
 			//SceneManager->registerNodeForRendering(this,ESNRP_SKY_BOX);
 
 		ISceneNode::OnRegisterSceneNode();
 	}
-	void SetTexture(int n, ITexture* tex)
+	void SetTexture(int n, video::ITexture* tex)
 	{
 	    Material.setTexture( n, tex);
 	}
@@ -149,13 +144,13 @@ public:
 
 };
 
-class MySkyDomeNode : public ISceneNode
+class MySkyDomeNode : public scene::ISceneNode
 {
     private:
 
 	//	void generateMesh();
 
-		SMeshBuffer* Buffer;
+		scene::SMeshBuffer* Buffer;
 		video::SMaterial Material;
 
 	public:
@@ -168,14 +163,14 @@ class MySkyDomeNode : public ISceneNode
 		{
         if (IsVisible)
             {
-               SceneManager->registerNodeForRendering(this, ESNRP_SKY_BOX );
+               SceneManager->registerNodeForRendering(this, scene::ESNRP_SKY_BOX );
 
             }
 
             ISceneNode::OnRegisterSceneNode();
 		}
 		virtual void render();
-		void SetTexture(int n, ITexture* tex)
+		void SetTexture(int n, video::ITexture* tex)
         {
             Buffer->Material.setTexture( n, tex);
         }
@@ -188,7 +183,7 @@ class MySkyDomeNode : public ISceneNode
             return Buffer->Material;
 		}
 		//virtual u32 getMaterialCount() const;
-		virtual ESCENE_NODE_TYPE getType() const { return ESNT_SKY_DOME; }
+		virtual scene::ESCENE_NODE_TYPE getType() const { return scene::ESNT_SKY_DOME; }
 
 	//	virtual void serializeAttributes(io::IAttributes* out, io::SAttributeReadWriteOptions* options) const;
 	//	virtual void deserializeAttributes(io::IAttributes* in, io::SAttributeReadWriteOptions* options);
@@ -256,11 +251,11 @@ public:
 	virtual void OnRegisterSceneNode()
 	{
 		if (IsVisible)
-			SceneManager->registerNodeForRendering(this,ESNRP_SOLID);
+			SceneManager->registerNodeForRendering(this,scene::ESNRP_SOLID);
 
 		ISceneNode::OnRegisterSceneNode();
 	}
-	void SetTexture(int n, ITexture* tex)
+	void SetTexture(int n, video::ITexture* tex)
 	{
 	    Material.setTexture( n, tex);
 	}

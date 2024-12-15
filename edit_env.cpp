@@ -1,7 +1,8 @@
-#include "edit_env.h"
+
 #include <irrlicht.h>
 #include <iostream>
 
+#include "edit_env.h"
 #include "CameraPanel.h"
 #include "CGUIWindow.h"
 #include "csg_classes.h"
@@ -21,14 +22,16 @@
 #include "vtoolbar.h"
 #include "ex_gui_elements.h"
 #include "vulkan_app.h"
-#include "LightMaps.h"
 #include "custom_nodes.h"
-
+#include "geometry_scene.h"
+#include "LightMaps.h"
+#include "material_groups.h"
 
 extern IrrlichtDevice* device;
 using namespace irr;
 using namespace core;
 using namespace gui;
+using namespace std;
 extern geometry_scene* g_scene;
 extern ViewPanel* ContextMenuOwner;
 
@@ -471,7 +474,8 @@ bool MyEventReceiver::OnEvent(const SEvent& event)
                         if (System_Point_Light::verify_inputs(g_scene))
                         {
                             //vk.run_point_light(g_scene);
-                            g_scene->getLightmapManager()->loadLightmapTextures(g_scene->geoNode(), g_scene->geoNode()->final_meshnode_interface.getMaterialsUsed());
+
+                            g_scene->loadLightmapTextures();
                         }
                     }
                         //std::cout<<"Rebuild\n";
@@ -501,7 +505,7 @@ bool MyEventReceiver::OnEvent(const SEvent& event)
                             //vk.run_soft_light(g_scene);
                             //vk.run_multipass_light(g_scene);
                             vk.run_amb_occlusion(g_scene);
-                            g_scene->getLightmapManager()->loadLightmapTextures(g_scene->geoNode(), g_scene->geoNode()->final_meshnode_interface.getMaterialsUsed());
+                            //g_scene->getLightmapManager()->loadLightmapTextures(g_scene->geoNode(), g_scene->geoNode()->final_meshnode_interface.getMaterialsUsed());
                         }
                     }
                         break;
@@ -579,6 +583,23 @@ bool MyEventReceiver::OnEvent(const SEvent& event)
 
     return false;
 }
+
+bool MyEventReceiver::IsKeyDown(EKEY_CODE keyCode) const
+{
+    return KeyIsDown[keyCode];
+}
+
+const MyEventReceiver::SMouseState& MyEventReceiver::GetMouseState(void) const
+{
+    return MouseState;
+}
+
+MyEventReceiver::MyEventReceiver()
+{
+    for (u32 i = 0; i<KEY_KEY_CODES_COUNT; ++i)
+        KeyIsDown[i] = false;
+}
+
 void MyEventReceiver::resizeView(core::dimension2du newsize)
 {
     for (auto it = resize_receivers.begin(); it != resize_receivers.end(); ++it)

@@ -9,6 +9,8 @@
 #include "BufferManager.h"
 #include "uv_mapping.h"
 #include <sstream>
+#include "edit_env.h"
+#include "CMeshSceneNode.h"
 
 using namespace irr;
 using namespace core;
@@ -644,8 +646,10 @@ Lightmap_Manager::Lightmap_Manager()
 	event_receiver = receiver;
 }
 
-void Lightmap_Manager::loadLightmapTextures(GeometryStack* geo_node, const std::vector<TextureMaterial>& material_groups)
+void Lightmap_Manager::loadLightmapTextures(GeometryStack* geo_node)
 {
+	std::vector<TextureMaterial> material_groups = geo_node->final_meshnode_interface.getMaterialsUsed();
+
 	SEvent event;
 	event.EventType = EET_USER_EVENT;
 	event.UserEvent.UserData1 = USER_EVENT_CLEAR_LIGHTMAP_TEXTURES;

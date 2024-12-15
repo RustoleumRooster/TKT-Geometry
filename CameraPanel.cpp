@@ -10,11 +10,14 @@
 #include "material_groups.h"
 #include "BVH.h"
 #include "lightmaps_tool.h"
+#include "geometry_scene.h"
+#include "CMeshSceneNode.h"
 
 extern IrrlichtDevice* device;
 using namespace irr;
 using namespace core;
 using namespace gui;
+using namespace std;
 
 extern ViewPanel* ContextMenuOwner=NULL;
 
@@ -517,6 +520,10 @@ bool TestPanel::IsDynamicLight()
 {
     return lighting_type != LIGHTING_UNLIT;
 }
+
+void TestPanel::setTotalGeometry(polyfold* pf) { this->total_geometry = pf; }
+
+void TestPanel::overrideMeshNode(scene::CMeshSceneNode* node) { this->override_mesh_node = node; }
 
 bool TestPanel::IsShowGeometry()
 {

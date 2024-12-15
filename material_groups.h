@@ -4,7 +4,6 @@
 #include <irrlicht.h>
 #include <iostream>
 #include <vector>
-//#include "CGUIWindow.h"
 #include "Reflection.h"
 #include "GUI_tools.h"
 

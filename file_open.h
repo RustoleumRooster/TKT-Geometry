@@ -18,8 +18,6 @@ namespace reflect
     struct TypeDescriptor_Struct;
 }
 
-
-
 template class simple_reflected_tree_tool_base<folder_tree_item>;
 
 class File_Open_Widget : public gui::IGUIElement

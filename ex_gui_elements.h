@@ -4,24 +4,23 @@
 #include <string>
 
 using namespace irr;
-using namespace gui;
 
-class MySkin : public CGUISkin
+class MySkin : public gui::CGUISkin
 {
 public:
-    MySkin(EGUI_SKIN_TYPE type, video::IVideoDriver* driver_)
-     : CGUISkin(type, driver_), driver(driver_) {
+    MySkin(gui::EGUI_SKIN_TYPE type, video::IVideoDriver* driver_)
+     : gui::CGUISkin(type, driver_), driver(driver_) {
      }
 
-     virtual void draw3DButtonPaneStandard(IGUIElement* element,
+     virtual void draw3DButtonPaneStandard(gui::IGUIElement* element,
 				const core::rect<s32>& rect,
 				const core::rect<s32>* clip=0);
 
-     virtual void draw3DButtonPanePressed(IGUIElement* element,
+     virtual void draw3DButtonPanePressed(gui::IGUIElement* element,
 				const core::rect<s32>& rect,
 				const core::rect<s32>* clip=0);
 
-    virtual void draw3DSunkenPane(IGUIElement* element,
+    virtual void draw3DSunkenPane(gui::IGUIElement* element,
 				video::SColor bgcolor, bool flat,
 				bool fillBackGround,
 				const core::rect<s32>& rect,
@@ -32,7 +31,7 @@ private:
 };
 
 
-class Flat_Button : public IGUIElement
+class Flat_Button : public gui::IGUIElement
 {
 public:
     Flat_Button(gui::IGUIEnvironment* env, gui::IGUIElement* parent,s32 id,core::rect<s32> rect);
@@ -40,8 +39,8 @@ public:
     virtual void draw();
     virtual bool OnEvent(const SEvent& event);
 
-    virtual void setSpriteBank(IGUISpriteBank* bank=0);
-    virtual void setSprite(EGUI_BUTTON_STATE state, s32 index,
+    virtual void setSpriteBank(gui::IGUISpriteBank* bank=0);
+    virtual void setSprite(gui::EGUI_BUTTON_STATE state, s32 index,
 				video::SColor color=video::SColor(255,255,255,255), bool loop=false);
    // virtual void setText(const wchar_t* text) {}
 
@@ -53,9 +52,9 @@ private:
 			bool Loop;
 		};
 
-    ButtonSprite ButtonSprites[EGBS_COUNT];
+    ButtonSprite ButtonSprites[gui::EGBS_COUNT];
 
-    IGUISpriteBank* SpriteBank = NULL;
+    gui::IGUISpriteBank* SpriteBank = NULL;
     bool hovered = false;
     bool pressed = false;
     bool DrawBorder = true;

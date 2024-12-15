@@ -7,6 +7,10 @@
 #include "utils.h"
 #include "node_properties.h"
 #include "texture_adjust.h"
+#include "material_groups.h"
+#include "geometry_scene.h"
+#include "texture_picker.h"
+#include "CMeshSceneNode.h"
 
 extern IrrlichtDevice* device;
 using namespace irr;
@@ -84,6 +88,14 @@ scene::ICameraSceneNode* TestPanel_3D::getCamera()
         }
     }
     return this->camera;
+}
+
+void TestPanel_3D::SetDynamicLight(bool b)
+{
+    if (b)
+        lighting_type = LIGHTING_LIGHTMAP;
+    else
+        lighting_type = LIGHTING_UNLIT;
 }
 
 void TestPanel_3D::resize(core::dimension2d<u32> new_size)

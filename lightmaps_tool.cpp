@@ -10,9 +10,13 @@
 #include "LightMaps.h"
 #include "ex_gui_elements.h"
 #include <sstream>
+#include "reflect_custom_types.h"
+#include "material_groups.h"
+#include "edit_env.h"
 //#include "edit_env.h"
 
 using namespace std;
+using namespace gui;
 
 //LM_Viewer_Base* LM_Viewer_Tool::base = NULL;
 //multi_tool_panel* LM_Viewer_Tool::panel = NULL;

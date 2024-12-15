@@ -12,7 +12,7 @@
 #include "geometry_scene.h"
 
 using namespace irr;
-
+using namespace gui;
 
 Node_Classes_Base* Node_Classes_Tool::base = NULL;
 multi_tool_panel* Node_Classes_Tool::panel = NULL;

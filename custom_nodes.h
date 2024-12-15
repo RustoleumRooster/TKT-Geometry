@@ -6,6 +6,7 @@
 #include "CameraPanel.h"
 #include "myNodes.h"
 #include "edit_env.h"
+#include "reflected_nodes.h"
 
 class Reflected_LightSceneNode : public Reflected_Sprite_SceneNode
 {
@@ -59,7 +60,7 @@ public:
 class ReflectionTestPanel : public TestPanel
 {
 public:
-    ReflectionTestPanel(IGUIEnvironment* environment, video::IVideoDriver* driver, IGUIElement* parent, s32 id, core::rect<s32> rectangle) :
+    ReflectionTestPanel(gui::IGUIEnvironment* environment, video::IVideoDriver* driver, gui::IGUIElement* parent, s32 id, core::rect<s32> rectangle) :
         TestPanel(environment, driver, parent, id, rectangle) {}
     ~ReflectionTestPanel();
 
@@ -73,9 +74,9 @@ public:
     void setCameraQuad(CameraQuad* q) { cameraQuad = q; }
     void set_material(s32 material_type) { render_material = (video::E_MATERIAL_TYPE) material_type; }
     void set_underwater_material(s32 material_type) { underwater_material = (video::E_MATERIAL_TYPE) material_type; }
-    ITexture* getRender();
-    ITexture* getRTT() { return my_rtt; }
-    ITexture* getRTT2() { return my_rtt2; }
+    video::ITexture* getRender();
+    video::ITexture* getRTT() { return my_rtt; }
+    video::ITexture* getRTT2() { return my_rtt2; }
 private:
 
     video::ITexture* get_rtt();
@@ -89,7 +90,7 @@ private:
     video::ITexture* my_rtt2 = NULL;
     TwoTriangleSceneNode* render_node = NULL;
 
-    vector<int> hide_faces;
+    std::vector<int> hide_faces;
 };
 
 class Render_Tool_Base;
@@ -145,9 +146,9 @@ public:
     virtual void write_attributes(reflect::TypeDescriptor_Struct* flat_typeDescriptor);
     void setRenderList(RenderList* renderList_);
     
-    ITexture* getRender();
-    ITexture* getRTT();
-    ITexture* getRTT2();
+    video::ITexture* getRender();
+    video::ITexture* getRTT();
+    video::ITexture* getRTT2();
 private:
 
     int selection = -1;
@@ -183,7 +184,7 @@ public:
         panel = panel_;
     }
 
-    static ITexture* getRender()
+    static video::ITexture* getRender()
     {
         if (base)
         {
@@ -192,7 +193,7 @@ public:
         return NULL;
     }
 
-    static ITexture* getRTT()
+    static video::ITexture* getRTT()
     {
         if (base)
         {
@@ -201,7 +202,7 @@ public:
         return NULL;
     }
 
-    static ITexture* getRTT2()
+    static video::ITexture* getRTT2()
     {
         if (base)
         {
@@ -227,8 +228,8 @@ public:
     void set_material(s32 material_type) { render_material = (video::E_MATERIAL_TYPE)material_type; }
     void set_underwater_material(s32 material_type) { underwater_material = (video::E_MATERIAL_TYPE)material_type; }
 
-    ITexture* getRTT() { return my_rtt; }
-    ITexture* getRTT2() { return my_rtt2; }
+    video::ITexture* getRTT() { return my_rtt; }
+    video::ITexture* getRTT2() { return my_rtt2; }
 
 private:
 
@@ -242,7 +243,7 @@ private:
 
     geometry_scene* geo_scene = NULL;
 
-    vector<int> hide_faces;
+    std::vector<int> hide_faces;
 };
 
 class Reflected_WaterSurfaceNode : public Reflected_Sprite_SceneNode
