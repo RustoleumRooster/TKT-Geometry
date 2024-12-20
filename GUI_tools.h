@@ -124,10 +124,11 @@ class reflected_tool_base : public tool_base
 {
 public:
     virtual void widget_closing(Reflected_Widget_EditArea*) = 0;
-    virtual reflect::TypeDescriptor_Struct* getFlatTypeDescriptor() = 0;
-    virtual void serialize_flat_obj(void* flat_object) = 0;
-    virtual void deserialize_flat_obj(void* flat_object) {}
-    virtual void deserialize_by_field(reflect::TypeDescriptor_Struct* flat_typeDescriptor, std::vector<int> tree_pos, void* flat_object) {}
+    virtual reflect::TypeDescriptor_Struct* getTypeDescriptor() = 0;
+    virtual void read_obj(void* obj) = 0;
+    virtual void write_obj(void* obj) {};
+    virtual void post_edit() {};
+    virtual void write_obj_by_field(reflect::TypeDescriptor_Struct* flat_typeDescriptor, std::vector<int> tree_pos, void* obj) = 0;
     virtual void save_expanded_status(reflect::TypeDescriptor_Struct* flat_typeDescriptor, std::vector<int> tree_pos) = 0;
     virtual void init_member(reflect::TypeDescriptor_Struct* flat_typeDescriptor, std::vector<int> tree_pos) = 0;
     virtual void toggle_expanded_struct(reflect::TypeDescriptor_Struct* flat_typeDescriptor, std::vector<int> tree_pos);
@@ -140,8 +141,14 @@ public:
 class simple_reflected_tool_base : public reflected_tool_base
 {
 public:
-    virtual void widget_closing(Reflected_Widget_EditArea*);
+    virtual void widget_closing(Reflected_Widget_EditArea*) override;
+    virtual reflect::TypeDescriptor_Struct* getTypeDescriptor() override;
+    virtual void read_obj(void* obj) override;
+    virtual void write_obj(void* obj) override;
+    virtual void write_obj_by_field(reflect::TypeDescriptor_Struct* flat_typeDescriptor, std::vector<int> tree_pos, void* obj) override;
+
     virtual reflect::TypeDescriptor_Struct* getFlatTypeDescriptor();
+    virtual void deserialize_by_field(reflect::TypeDescriptor_Struct* flat_typeDescriptor, std::vector<int> tree_pos, void* flat_object) {};
     virtual void serialize_flat_obj(void* flat_object);
     virtual void deserialize_flat_obj(void* flat_object);
     virtual void save_expanded_status(reflect::TypeDescriptor_Struct* flat_typeDescriptor, std::vector<int> tree_pos);

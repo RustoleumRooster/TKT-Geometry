@@ -102,15 +102,17 @@ public:
 
     virtual void show();
 
-    virtual reflect::TypeDescriptor_Struct* getFlatTypeDescriptor();
+    virtual reflect::TypeDescriptor_Struct* getFlatTypeDescriptor() override;
 
     virtual void widget_closing(Reflected_Widget_EditArea* widget);
 
-    virtual void initialize(std::wstring name_, int my_id, gui::IGUIEnvironment* env_, geometry_scene* g_scene_, multi_tool_panel* panel_);
+    virtual void initialize(std::wstring name_, int my_id, gui::IGUIEnvironment* env_, geometry_scene* g_scene_, multi_tool_panel* panel_) override;
 
-    virtual void init_member(reflect::TypeDescriptor_Struct* flat_typeDescriptor, std::vector<int> tree_pos);
+    virtual void init_member(reflect::TypeDescriptor_Struct* flat_typeDescriptor, std::vector<int> tree_pos) override;
 
-    virtual void write_attributes(reflect::TypeDescriptor_Struct* flat_typeDescriptor);
+    virtual void write_attributes(reflect::TypeDescriptor_Struct* flat_typeDescriptor) override;
+
+    virtual void toggle_expanded_struct(reflect::TypeDescriptor_Struct* flat_typeDescriptor, std::vector<int> tree_pos) override;
 
     std::string getTypesString();
 

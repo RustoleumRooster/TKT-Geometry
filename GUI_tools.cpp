@@ -32,7 +32,7 @@ void Reflected_Widget_EditArea::show(bool editable, void* obj)
 
     if (!m_typeDesc)
     {
-        m_typeDesc = my_base->getFlatTypeDescriptor();
+        m_typeDesc = my_base->getTypeDescriptor();
     }
 
     my_base->write_attributes(m_typeDesc);
@@ -47,13 +47,11 @@ void Reflected_Widget_EditArea::show(bool editable, void* obj)
     {
        // std::cout << "reflected widget allocating " << m_typeDesc->size << " bytes\n";
         temp_object = malloc(m_typeDesc->size);
-        //std::cout << " @ " << temp_object << "\n";
-       
     }
 
     if (obj)
     {
-        my_base->serialize_flat_obj(temp_object);
+        my_base->read_obj(temp_object);
         // m_typeDesc->dump(temp_object, 0);
     }
 
@@ -289,7 +287,7 @@ void Reflected_Widget_EditArea::write()
     {
         form->write(temp_object);
 
-        my_base->deserialize_flat_obj(temp_object);
+        my_base->write_obj(temp_object);
     }
 }
 
@@ -298,9 +296,12 @@ void Reflected_Widget_EditArea::write_by_field()
     FormField* f = form->edit_fields;
     while (f)
     {
-        my_base->deserialize_by_field(m_typeDesc, f->tree_pos, temp_object);
+        my_base->write_obj_by_field(m_typeDesc, f->tree_pos, temp_object);
         f = f->next;
     }
+
+    my_base->post_edit();
+
     refresh();
 }
 
@@ -334,9 +335,6 @@ Reflected_Widget_EditArea::~Reflected_Widget_EditArea()
 
     my_base->widget_closing(this);
 
-    if (m_typeDesc)
-        m_typeDesc->suicide(temp_object);
-
     if (form)
         form->drop();
 
@@ -344,6 +342,9 @@ Reflected_Widget_EditArea::~Reflected_Widget_EditArea()
     {
         free(temp_object);
     }
+
+    if (m_typeDesc)
+        delete m_typeDesc;
 }
 
 
@@ -709,6 +710,27 @@ reflect::TypeDescriptor_Struct* simple_reflected_tool_base::getFlatTypeDescripto
     return (reflect::TypeDescriptor_Struct*)m_typeDescriptor->get_flat_copy(getObj(),0);
 }
 
+reflect::TypeDescriptor_Struct* simple_reflected_tool_base::getTypeDescriptor()
+{
+   // return (reflect::TypeDescriptor_Struct*)m_typeDescriptor;
+    return getFlatTypeDescriptor();
+}
+
+void simple_reflected_tool_base::read_obj(void* obj)
+{
+    serialize_flat_obj(obj);
+}
+
+void simple_reflected_tool_base::write_obj(void* obj)
+{
+    deserialize_flat_obj(obj);
+}
+
+void simple_reflected_tool_base::write_obj_by_field(reflect::TypeDescriptor_Struct* flat_typeDescriptor, std::vector<int> tree_pos, void* obj)
+{
+    deserialize_by_field(flat_typeDescriptor, tree_pos, obj);
+}
+
 void simple_reflected_tool_base::widget_closing(Reflected_Widget_EditArea* widget)
 {
     widget->save_expanded_status();
@@ -723,7 +745,7 @@ void simple_reflected_tool_base::serialize_flat_obj(void* flat_object)
 void simple_reflected_tool_base::deserialize_flat_obj(void* flat_object)
 {
     void* ss = flat_object;
-    m_typeDescriptor->deserialize_flat(getObj(), &ss);
+    m_typeDescriptor->deserialize_flat(getObj(), &ss, 1);
 }
 
 void simple_reflected_tool_base::init_member(reflect::TypeDescriptor_Struct* flat_typeDescriptor, std::vector<int> tree_pos)

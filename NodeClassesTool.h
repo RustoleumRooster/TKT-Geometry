@@ -82,15 +82,15 @@ public:
 
     virtual reflect::TypeDescriptor_Struct* getFlatTypeDescriptor();
 
-    virtual void widget_closing(Reflected_Widget_EditArea* widget);
+    virtual void widget_closing(Reflected_Widget_EditArea* widget) override;
 
-    virtual void initialize(std::wstring name_, int my_id, gui::IGUIEnvironment* env_, geometry_scene* g_scene_, multi_tool_panel* panel_);
+    virtual void initialize(std::wstring name_, int my_id, gui::IGUIEnvironment* env_, geometry_scene* g_scene_, multi_tool_panel* panel_) override;
 
-    virtual void init_member(reflect::TypeDescriptor_Struct* flat_typeDescriptor, std::vector<int> tree_pos);
+    virtual void init_member(reflect::TypeDescriptor_Struct* flat_typeDescriptor, std::vector<int> tree_pos) override;
 
-    virtual void write_attributes(reflect::TypeDescriptor_Struct* flat_typeDescriptor);
+    virtual void write_attributes(reflect::TypeDescriptor_Struct* flat_typeDescriptor) override;
 
-    void toggle_expanded_struct(reflect::TypeDescriptor_Struct* flat_typeDescriptor, std::vector<int> tree_pos);
+    virtual void toggle_expanded_struct(reflect::TypeDescriptor_Struct* flat_typeDescriptor, std::vector<int> tree_pos) override;
 
     void set_selected(node_class_item* item);
 

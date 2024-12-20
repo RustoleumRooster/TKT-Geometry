@@ -314,6 +314,12 @@ void Node_Instances_Base::init_member(reflect::TypeDescriptor_Struct* flat_typeD
 	m->readwrite = true;
 }
 
+void Node_Instances_Base::toggle_expanded_struct(reflect::TypeDescriptor_Struct* flat_typeDescriptor, std::vector<int> tree_pos)
+{
+	reflected_tool_base::toggle_expanded_struct(flat_typeDescriptor, tree_pos);
+	m_struct.read_expanded(flat_typeDescriptor, std::vector<int>{});
+}
+
 std::string Node_Instances_Base::getTypesString()
 {
 	if (g_scene->getSelectedNodes().size() == 0)
@@ -381,7 +387,7 @@ void Node_Instances_Base::write_attributes(reflect::TypeDescriptor_Struct* flat_
 
 void Node_Instances_Base::widget_closing(Reflected_Widget_EditArea* widget)
 {
-	//m_initial_struct.read_expanded(widget->m_typeDesc, std::vector<int>{});
+	m_initial_struct.read_expanded(widget->m_typeDesc, std::vector<int>{});
 }
 
 void Node_Instances_Base::show()

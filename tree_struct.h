@@ -77,15 +77,11 @@ using namespace irr;
 		} \
 	} \
 	void tree_type::read_expanded(reflect::TypeDescriptor_Struct* tD, std::vector<int> tree_0, int tab = 0) { \
-		std::vector<int> tree_b = tree_0; \
 		/*std::cout << std::string(3 * (tab + 1), ' ')<<" ";*/\
 		/*for(int i=0; i<tree_b.size(); i++) std::cout << tree_b[i] <<" "; std::cout<<", subs = ";*/\
-		tree_b.push_back(tree_type::bool_pos); \
 		reflect::Member* m_struct = tD->getTreeNode(tree_0); \
-		reflect::Member* m_bool = tD->getTreeNode(tree_b); \
-		if (m_struct && m_bool){ \
-			bool bExpanded = m_struct->expanded; \
-			*(bool*)m_bool->get(this) = bExpanded; \
+		if (m_struct){ \
+			this->expanded =  m_struct->expanded; \
 		} \
 		/*std::cout<<sub_classes.size()<<":\n";*/\
 		for (int i = 0; i < sub_classes.size(); i++) { \
