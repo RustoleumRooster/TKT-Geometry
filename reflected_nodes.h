@@ -23,7 +23,7 @@ namespace reflect
     struct TypeDescriptor_SN_Struct : TypeDescriptor_Struct
     {
         bool placeable;
-        Reflected_SceneNode* (*create_func)(USceneNode* parent, irr::scene::ISceneManager* smgr, int id, const irr::core::vector3df& pos);
+        Reflected_SceneNode* (*create_func)(USceneNode* parent, geometry_scene*, irr::scene::ISceneManager* smgr, int id, const irr::core::vector3df& pos);
         TypeDescriptor_SN_Struct(void (*init)(TypeDescriptor_Struct*));
     };
 
@@ -32,12 +32,12 @@ namespace reflect
         friend struct reflect::DefaultResolver; \
         static reflect::TypeDescriptor_SN_Struct Reflection; \
         static void initReflection(reflect::TypeDescriptor_Struct*); \
-        static Reflected_SceneNode* create_self(USceneNode* parent, irr::scene::ISceneManager* smgr, int id, const core::vector3df& pos); \
+        static Reflected_SceneNode* create_self(USceneNode* parent, geometry_scene* geo_scene, irr::scene::ISceneManager* smgr, int id, const core::vector3df& pos); \
 
     #define REFLECT_STRUCT2_BEGIN(type) \
         reflect::TypeDescriptor_SN_Struct type::Reflection{type::initReflection}; \
-        Reflected_SceneNode* type::create_self(USceneNode* parent, irr::scene::ISceneManager* smgr, int id, const core::vector3df& pos){ \
-            return new type(parent, smgr,id,pos);\
+        Reflected_SceneNode* type::create_self(USceneNode* parent, geometry_scene* geo_scene, irr::scene::ISceneManager* smgr, int id, const core::vector3df& pos){ \
+            return new type(parent, geo_scene, smgr, id, pos);\
             }\
         reflect::TypeDescriptor_Struct* type::GetDynamicReflection() {\
             return &type::Reflection;\
@@ -147,6 +147,31 @@ namespace reflect
 
         REFLECT_CUSTOM_STRUCT()
 	};
+
+    struct uid_reference
+    {
+        struct attributes
+        {
+        };
+
+        std::vector<u64> uids;
+        std::vector<u64> old_uids; //not reflected
+
+       // REFLECT()
+        REFLECT_CUSTOM_STRUCT()
+    };
+
+    /*
+    struct TypeDescriptor_UID_Reference : TypeDescriptor {
+        TypeDescriptor_UID_Reference() : TypeDescriptor{ "uid reference", sizeof(uid_reference) } {
+        }
+        virtual void dump(const void* obj, int ) const override {
+            std::cout << "uid{" << *(const unsigned long long*)obj << "}";
+        }
+
+        virtual void addFormWidget(Reflected_GUI_Edit_Form*, TypeDescriptor_Struct*, std::vector<int> tree, size_t offset, bool bVisible, bool bEditable, int tab) override;
+
+    };*/
 }
 
 
@@ -208,11 +233,12 @@ public:
 class Reflected_SceneNode : public USceneNode
 {
 public:
-    Reflected_SceneNode(USceneNode* parent, irr::scene::ISceneManager* smgr, int id, const core::vector3df& pos);
+    Reflected_SceneNode(USceneNode* parent, geometry_scene*, irr::scene::ISceneManager* smgr, int id, const core::vector3df& pos);
 
     virtual void render(){}
     void draw_arrow(video::IVideoDriver* driver, core::vector3df v, core::vector3df rot);
     void draw_box(video::IVideoDriver* driver, core::aabbox3df b);
+    void draw_inputs(video::IVideoDriver* driver);
 
     //Render to the node selection RTT
     virtual void render_special(video::SMaterial& material) {}
@@ -231,15 +257,27 @@ public:
     virtual bool bShowEditorArrow() {return false;}
     virtual void setUnlit(bool){}
 
-    virtual void onClear() {}
-    virtual void addSelfToScene(USceneNode* parent, irr::scene::ISceneManager* smgr, geometry_scene* geo_scene) {}
+    virtual void endScene() {}
+    virtual bool addSelfToScene(USceneNode* parent, irr::scene::ISceneManager* smgr, geometry_scene* geo_scene) { return false; }
 
     static void SetBaseMaterialType(video::E_MATERIAL_TYPE m) {base_material_type=m;}
     static void SetSpecialMaterialType(video::E_MATERIAL_TYPE m) {special_material_type=m;}
 
+    template<typename T>
+    void resolve_uid_references(const reflect::uid_reference&, std::vector<T*>&);
+
     int get_node_instance_id() { return node_instance_id; }
 
+    void connect_input(Reflected_SceneNode*);
+    virtual void disconnect(Reflected_SceneNode*);
+
     f32 getDistanceFromCamera(TestPanel* viewPanel);
+
+//protected:
+
+    void rebuild_input_ptrs_list();
+
+    geometry_scene* geo_scene = NULL;
 
     const static int icon_size=32;
 
@@ -257,6 +295,9 @@ public:
 
     int node_instance_id=0;
 
+    std::vector<u64> input_nodes;
+    std::vector<Reflected_SceneNode*> input_node_ptrs;
+
     REFLECT2()
 };
 
@@ -264,7 +305,7 @@ public:
 class Reflected_Sprite_SceneNode : public Reflected_SceneNode
 {
 public:
-    Reflected_Sprite_SceneNode(USceneNode* parent, irr::scene::ISceneManager* smgr, int id, const core::vector3df& pos);
+    Reflected_Sprite_SceneNode(USceneNode* parent, geometry_scene* geo_scene, irr::scene::ISceneManager* smgr, int id, const core::vector3df& pos);
 
     virtual const core::aabbox3df& getBoundingBox() const;
     virtual void OnRegisterSceneNode();
@@ -287,7 +328,7 @@ public:
 class Reflected_Model_SceneNode : public Reflected_SceneNode
 {
 public:
-    Reflected_Model_SceneNode(USceneNode* parent, irr::scene::ISceneManager* smgr, int id, const core::vector3df& pos);
+    Reflected_Model_SceneNode(USceneNode* parent, geometry_scene* geo_scene, irr::scene::ISceneManager* smgr, int id, const core::vector3df& pos);
 
     virtual const core::aabbox3df& getBoundingBox() const;
     virtual void OnRegisterSceneNode();
@@ -311,6 +352,47 @@ public:
     REFLECT2()
 };
 
+class Reflected_MeshBuffer_SceneNode : public Reflected_Sprite_SceneNode
+{
+public:
+    Reflected_MeshBuffer_SceneNode(USceneNode* parent, geometry_scene* geo_scene, irr::scene::ISceneManager* smgr, int id, const core::vector3df& pos);
+
+    virtual bool addSelfToScene(USceneNode* parent, irr::scene::ISceneManager* smgr, geometry_scene* geo_scene) override;
+
+    IMeshBuffer* get_mesh_buffer();
+    void restore_original_texture();
+
+    void set_uid(u64);
+    u64 get_uid();
+private:
+    u64 face_uid;
+
+    REFLECT2()
+};
+
+template<typename T>
+void Reflected_SceneNode::resolve_uid_references(const reflect::uid_reference& uid_ref, std::vector<T*>& ptr_ref)
+{
+    ptr_ref.clear();
+
+    core::list<scene::ISceneNode*> child_list = geo_scene->EditorNodes()->getChildren();
+
+    for (scene::ISceneNode* inode : child_list)
+    {
+        Reflected_SceneNode* node = (Reflected_SceneNode*)inode;
+        for (u64 uid : uid_ref.uids)
+        {
+            if (node->UID() == uid)
+            {
+                T* t_node = dynamic_cast<T*>(node);
+
+                if (t_node != NULL)
+                    ptr_ref.push_back(t_node);
+            }
+        }
+    }
+}
+
 //========================================================================================
 //  FACTORY CLASS
 //
@@ -323,7 +405,7 @@ public:
     static void addType(reflect::TypeDescriptor_SN_Struct*);
     static int getNumTypes();
     static reflect::TypeDescriptor_Struct* getNodeTypeDescriptorByName(std::string name);
-    static Reflected_SceneNode* CreateNodeByTypeName(std::string name, USceneNode* parent, irr::scene::ISceneManager* smgr);
+    static Reflected_SceneNode* CreateNodeByTypeName(std::string name, USceneNode* parent, geometry_scene* geo_scene, irr::scene::ISceneManager* smgr);
     static int getTypeNum(reflect::TypeDescriptor_Struct*);
     static std::vector<reflect::TypeDescriptor_Struct*> getAllTypes() {
         return SceneNode_Types;

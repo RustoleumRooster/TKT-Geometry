@@ -26,6 +26,7 @@
 #include "geometry_scene.h"
 #include "LightMaps.h"
 #include "material_groups.h"
+#include "RenderTargetsTool.h"
 
 extern IrrlichtDevice* device;
 using namespace irr;
@@ -301,6 +302,7 @@ void OnMenuItemSelected(IGUIContextMenu* menu)
     case GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_CHOOSE_TEXTURE:
     case GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_ADD_LIGHT:
     case GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_ADD_NODE:
+    case GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_ADD_MESHBUFFER_SCENENODE:
     case GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_NODE_PROPERTIES:
     case GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_DELETE_NODE:
     case GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_MATERIAL_GROUP:
@@ -481,8 +483,9 @@ bool MyEventReceiver::OnEvent(const SEvent& event)
                         //std::cout<<"Rebuild\n";
                         break;
                     case GUI_ID_BUTTON_SAVE:
-                        do_save();
+                        //do_save();
                         //std::cout<<"Save\n";
+                        g_scene->save_selection();
                         break;
                     case GUI_ID_BUTTON_TEXTURES:
                         //TexturePicker_Tool::show();
@@ -505,7 +508,7 @@ bool MyEventReceiver::OnEvent(const SEvent& event)
                             //vk.run_soft_light(g_scene);
                             //vk.run_multipass_light(g_scene);
                             vk.run_amb_occlusion(g_scene);
-                            //g_scene->getLightmapManager()->loadLightmapTextures(g_scene->geoNode(), g_scene->geoNode()->final_meshnode_interface.getMaterialsUsed());
+                            g_scene->getLightmapManager()->loadLightmapTextures(g_scene->geoNode());
                         }
                     }
                         break;
@@ -604,6 +607,8 @@ void MyEventReceiver::resizeView(core::dimension2du newsize)
 {
     for (auto it = resize_receivers.begin(); it != resize_receivers.end(); ++it)
         (*it)->resizeView(newsize);
+
+    view_size = newsize;
 }
 /*
 bool hasModalDialogue()

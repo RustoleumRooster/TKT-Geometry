@@ -17,7 +17,7 @@ public:
 
     u64 UID() const { return my_UID; }
 
-private:
+protected:
     u64 my_UID;
 };
 

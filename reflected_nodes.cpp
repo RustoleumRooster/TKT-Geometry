@@ -172,13 +172,14 @@ USceneNode::USceneNode(ISceneNode* parent, irr::scene::ISceneManager* smgr, int 
 REFLECT_STRUCT2_BEGIN(Reflected_SceneNode)
     ALIAS("Node")
     PLACEABLE(false)
+    REFLECT_STRUCT2_MEMBER(my_UID)
     REFLECT_STRUCT2_MEMBER(ID)
     REFLECT_STRUCT2_MEMBER(Location)
     REFLECT_STRUCT2_MEMBER(Rotation)
 REFLECT_STRUCT2_END()
 
-Reflected_SceneNode::Reflected_SceneNode(USceneNode* parent, irr::scene::ISceneManager* smgr, int id, const core::vector3df& pos)
-    : USceneNode(parent,smgr, id, pos)
+Reflected_SceneNode::Reflected_SceneNode(USceneNode* parent, geometry_scene* geo_scene, irr::scene::ISceneManager* smgr, int id, const core::vector3df& pos)
+    : USceneNode(parent,smgr, id, pos), geo_scene(geo_scene)
 {
     m_unique_color = makeUniqueColor();
 
@@ -202,6 +203,49 @@ void Reflected_SceneNode::postEdit()
 {
     this->setPosition(this->Location);
     this->setRotation(this->Rotation);
+}
+
+void Reflected_SceneNode::connect_input(Reflected_SceneNode* node)
+{
+    bool b = false;
+
+    for (u64 uid : input_nodes)
+    {
+        if (uid == node->UID())
+            b = true;
+    }
+
+    if (b == false)
+    {
+        input_nodes.push_back(node->UID());
+        rebuild_input_ptrs_list();
+    }
+}
+
+void Reflected_SceneNode::disconnect(Reflected_SceneNode* node) 
+{
+    std::vector<u64> new_inputs;
+
+    for (u64 uid : input_nodes)
+    {
+        if (uid != node->UID())
+            new_inputs.push_back(uid);
+    }
+
+    input_nodes = new_inputs;
+
+    rebuild_input_ptrs_list();
+}
+
+void Reflected_SceneNode::rebuild_input_ptrs_list()
+{
+    input_node_ptrs.clear();
+    for (u64 uid : input_nodes)
+    {
+        Reflected_SceneNode* node = geo_scene->get_reflected_node_by_uid(uid);
+        if (node)
+            input_node_ptrs.push_back(node);
+    }
 }
 
 const core::aabbox3df& Reflected_SceneNode::getBoundingBox() const
@@ -237,6 +281,26 @@ void Reflected_SceneNode::draw_box(video::IVideoDriver* driver, core::aabbox3df 
     driver->draw3DLine(edges[3],edges[7],video::SColor(128,255,255,255));
 
     delete[] edges;
+
+}
+
+void Reflected_SceneNode::draw_inputs(video::IVideoDriver* driver)
+{
+    if (input_nodes.size() == 0)
+        return;
+
+    video::SMaterial someMaterial;
+    someMaterial.Lighting = false;
+    someMaterial.Thickness = 1.0;
+    someMaterial.MaterialType = video::EMT_SOLID;
+
+    driver->setTransform(video::ETS_WORLD, core::IdentityMatrix);
+    driver->setMaterial(someMaterial);
+
+    for (Reflected_SceneNode* node : input_node_ptrs)
+    {
+        driver->draw3DLine(this->Location, node->Location, video::SColor(128, 40, 150, 255));
+    }
 
 }
 
@@ -312,8 +376,8 @@ f32 Reflected_SceneNode::getDistanceFromCamera(TestPanel* viewPanel)
     return cam_pos.getDistanceFrom(getPosition());
 }
 
-Reflected_Sprite_SceneNode::Reflected_Sprite_SceneNode(USceneNode* parent, irr::scene::ISceneManager* smgr, int id, const core::vector3df& pos)
-    : Reflected_SceneNode(parent, smgr, id, pos)
+Reflected_Sprite_SceneNode::Reflected_Sprite_SceneNode(USceneNode* parent, geometry_scene* geo_scene, irr::scene::ISceneManager* smgr, int id, const core::vector3df& pos)
+    : Reflected_SceneNode(parent, geo_scene, smgr, id, pos)
 {
     m_texture = device->getVideoDriver()->getTexture("sun.jpg");
 
@@ -439,6 +503,8 @@ void Reflected_Sprite_SceneNode::render()
     if(bSelected)
         draw_arrow(driver,getPosition(),getRotation());
 
+    draw_inputs(driver);
+
 }
 
 void Reflected_Sprite_SceneNode::render_special(video::SMaterial& material)
@@ -478,8 +544,8 @@ REFLECT_STRUCT2_BEGIN(Reflected_Model_SceneNode)
     INHERIT_FROM(Reflected_SceneNode)
 REFLECT_STRUCT2_END()
 
-Reflected_Model_SceneNode::Reflected_Model_SceneNode(USceneNode* parent, irr::scene::ISceneManager* smgr, int id, const core::vector3df& pos)
-: Reflected_SceneNode(parent, smgr, id, pos)
+Reflected_Model_SceneNode::Reflected_Model_SceneNode(USceneNode* parent, geometry_scene* geo_scene, irr::scene::ISceneManager* smgr, int id, const core::vector3df& pos)
+: Reflected_SceneNode(parent, geo_scene, smgr, id, pos)
 {
 
     Mesh = SceneManager->getMesh("baby_shark.3ds");
@@ -529,25 +595,27 @@ void Reflected_Model_SceneNode::render()
     driver->setTransform(video::ETS_WORLD, AbsoluteTransformation);
 
     for (u32 i=0; i<Mesh->getMeshBufferCount(); ++i)
+	{
+		scene::IMeshBuffer* mb = Mesh->getMeshBuffer(i);
+		if (mb)
 		{
-			scene::IMeshBuffer* mb = Mesh->getMeshBuffer(i);
-			if (mb)
-			{
-				//const video::SMaterial& material = ReadOnlyMaterials ? mb->getMaterial() : Materials[i];
+			//const video::SMaterial& material = ReadOnlyMaterials ? mb->getMaterial() : Materials[i];
 
-                video::SMaterial& material = mb->getMaterial();
+            video::SMaterial& material = mb->getMaterial();
 
-                if(bSelected)
-                    material.MaterialType = Reflected_SceneNode::special_material_type;
-                else
-                    material.MaterialType = video::EMT_SOLID;
+            if(bSelected)
+                material.MaterialType = Reflected_SceneNode::special_material_type;
+            else
+                material.MaterialType = video::EMT_SOLID;
 
-                material.setTexture(0,m_texture);
+            material.setTexture(0,m_texture);
 
-                driver->setMaterial(material);
-                driver->drawMeshBuffer(mb);
-			}
+            driver->setMaterial(material);
+            driver->drawMeshBuffer(mb);
 		}
+	}
+
+    draw_inputs(driver);
 }
 
 void Reflected_Model_SceneNode::render_special(video::SMaterial& material)
@@ -589,7 +657,81 @@ void Reflected_Model_SceneNode::setUnlit(bool unlit)
     //this->Mesh->setMaterialFlag(video::EMF_LIGHTING,!unlit);
 }
 
+Reflected_MeshBuffer_SceneNode::Reflected_MeshBuffer_SceneNode(USceneNode* parent, geometry_scene* geo_scene, irr::scene::ISceneManager* smgr, int id, const core::vector3df& pos) :
+    Reflected_Sprite_SceneNode(parent,geo_scene,smgr,id,pos)
+{
+    m_texture = device->getVideoDriver()->getTexture("color_square_icon.png");
+    Buffer->Material.setTexture(0, m_texture);
+}
 
+bool Reflected_MeshBuffer_SceneNode::addSelfToScene(USceneNode* parent, irr::scene::ISceneManager* smgr, geometry_scene* geo_scene)
+{
+    /*
+    polyfold* pf = geo_scene->geoNode()->get_total_geometry();
+
+    for (int f_i = 0; f_i < pf->faces.size(); f_i++)
+    {
+        if (pf->faces[f_i].uid == this->face_uid)
+        {
+            std::cout << "found it: "<<f_i<<"\n";
+        }
+    }*/
+    return false;
+}
+
+void Reflected_MeshBuffer_SceneNode::restore_original_texture()
+{
+    polyfold* pf = geo_scene->geoNode()->get_total_geometry();
+
+    for (int f_i = 0; f_i < pf->faces.size(); f_i++)
+    {
+        if (pf->faces[f_i].uid == this->face_uid)
+        {
+            int brush_i = pf->faces[f_i].original_brush;
+            int face_i = pf->faces[f_i].original_face;
+
+            const core::stringw& texture_name = geo_scene->geoNode()->elements[brush_i].brush.faces[face_i].texture_name;
+
+            video::ITexture* texture = device->getVideoDriver()->getTexture(texture_name);
+            
+            MeshBuffer_Chunk chunk = geo_scene->geoNode()->final_meshnode_interface.get_mesh_buffer_by_face(f_i);
+
+            IMeshBuffer* buffer = chunk.buffer;
+
+            if (buffer)
+                buffer->getMaterial().setTexture(0, texture);
+        }
+    }
+}
+
+IMeshBuffer* Reflected_MeshBuffer_SceneNode::get_mesh_buffer()
+{
+    polyfold* pf = geo_scene->geoNode()->get_total_geometry();
+
+    for (int f_i = 0; f_i < pf->faces.size(); f_i++)
+    {
+        if (pf->faces[f_i].uid == get_uid())
+        {
+            MeshBuffer_Chunk chunk = geo_scene->geoNode()->final_meshnode_interface.get_mesh_buffer_by_face(f_i);
+
+            IMeshBuffer* buffer = chunk.buffer;
+
+            return buffer;
+        }
+    }
+
+    return NULL;
+}
+
+void Reflected_MeshBuffer_SceneNode::set_uid(u64 uid)
+{
+    face_uid = uid;
+}
+
+u64 Reflected_MeshBuffer_SceneNode::get_uid()
+{
+    return face_uid;
+}
 
 //
 //============================================================================
@@ -625,12 +767,12 @@ reflect::TypeDescriptor_Struct* Reflected_SceneNode_Factory::getNodeTypeDescript
     return NULL;
 }
 
-Reflected_SceneNode* Reflected_SceneNode_Factory::CreateNodeByTypeName(std::string name, USceneNode* parent, ISceneManager* smgr)
+Reflected_SceneNode* Reflected_SceneNode_Factory::CreateNodeByTypeName(std::string name, USceneNode* parent, geometry_scene* geo_scene, ISceneManager* smgr)
 {
     for (reflect::TypeDescriptor_Struct* typeDesc : SceneNode_Types)
     {
         if (typeDesc->name == name)
-            return ((reflect::TypeDescriptor_SN_Struct*)typeDesc)->create_func(parent, smgr, -1, core::vector3df(0, 0, 0));
+            return ((reflect::TypeDescriptor_SN_Struct*)typeDesc)->create_func(parent, geo_scene, smgr, -1, core::vector3df(0, 0, 0));
     }
     return NULL;
 }
@@ -679,9 +821,19 @@ REFLECT_CUSTOM_STRUCT_BEGIN(reflect::color3)
     REFLECT_STRUCT_MEMBER(Red)
 REFLECT_STRUCT_END()
 
+REFLECT_CUSTOM_STRUCT_BEGIN(reflect::uid_reference)
+    REFLECT_STRUCT_MEMBER(uids)
+REFLECT_STRUCT_END()
+
 //=======================================================
 // CUSTOM NODE REFLECT DECLARATIONS
 //
+
+REFLECT_STRUCT2_BEGIN(Reflected_MeshBuffer_SceneNode)
+    ALIAS("Mesh Buffer")
+    INHERIT_FROM(Reflected_Sprite_SceneNode)
+    REFLECT_STRUCT2_MEMBER(face_uid)
+REFLECT_STRUCT2_END()
 
 REFLECT_STRUCT2_BEGIN(Reflected_LightSceneNode)
     ALIAS("Light")
@@ -690,9 +842,16 @@ REFLECT_STRUCT2_BEGIN(Reflected_LightSceneNode)
     REFLECT_STRUCT2_MEMBER(light_radius)
 REFLECT_STRUCT2_END()
 
+REFLECT_STRUCT2_BEGIN(Reflected_SkyNode)
+    ALIAS("Sky Node")
+    INHERIT_FROM(Reflected_Sprite_SceneNode)
+    REFLECT_STRUCT2_MEMBER(target)
+REFLECT_STRUCT2_END()
+
 REFLECT_STRUCT2_BEGIN(Reflected_WaterSurfaceNode)
     ALIAS("Water Surface")
     INHERIT_FROM(Reflected_Sprite_SceneNode)
+    REFLECT_STRUCT2_MEMBER(target)
 REFLECT_STRUCT2_END()
 
 REFLECT_STRUCT2_BEGIN(Reflected_PointNode)

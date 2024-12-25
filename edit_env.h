@@ -78,6 +78,7 @@ enum
 	GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_MATERIAL_GROUP,
 	GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_ADD_LIGHT,
 	GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_ADD_NODE,
+    GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_ADD_MESHBUFFER_SCENENODE,
 	GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_NODE_PROPERTIES,
 	GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_DELETE_NODE,
 
@@ -155,6 +156,8 @@ class ViewResizeObject
 {
 public:
     virtual void resizeView(core::dimension2du newsize) = 0;
+    virtual int get_image_count() = 0;
+    virtual video::ITexture* get_image(int) = 0;
 };
 
 class MyEventReceiver : public IEventReceiver, public ViewResizeObject
@@ -177,6 +180,9 @@ public:
     virtual bool IsKeyDown(EKEY_CODE keyCode) const;
 
     const SMouseState & GetMouseState(void) const;
+
+    virtual int get_image_count() override { return 0; }
+    virtual video::ITexture* get_image(int n) { return NULL; };
 
     MyEventReceiver();
 
