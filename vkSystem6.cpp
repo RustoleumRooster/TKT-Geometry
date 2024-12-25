@@ -60,7 +60,7 @@ void System_Amb_Occlusion::loadModel(MeshNode_Interface_Final* meshnode)
 
 	for (int i = 0; i < lightmaps_info.size(); i++)
 	{
-		include_materials[i] = lightmaps_info[i].type != 2 && lightmaps_info[i].type != 4;
+		include_materials[i] = lightmaps_info[i].has_lightmap_coords;
 	}
 	
 	fill_vertex_struct(meshnode->getMesh(), vertices_soa, include_materials);
@@ -158,7 +158,7 @@ void System_Amb_Occlusion::loadModel(MeshNode_Interface_Final* meshnode)
 
 			if (!ok)
 			{
-				triangle_edges[i].x = 0xFFFF;
+				triangle_edges[i * 3 + j].x = 0xFFFF;
 				std::cout << "warning: triangle missing adjacent \n";
 			}
 		}
@@ -536,7 +536,8 @@ void System_Amb_Occlusion::executeComputeShader()
 	for (int i = 0; i < lightmaps_info.size(); i++)
 	{
 		//if(i==1)
-		buildLightmap(i);
+		if(lightmaps_info[i].has_lightmap_coords)
+			buildLightmap(i);
 	}
 
 	System4* edges_compute_shader = new System4(device);
@@ -545,8 +546,13 @@ void System_Amb_Occlusion::executeComputeShader()
 	edges_compute_shader->createDescriptorSetLayout();
 	edges_compute_shader->createComputePipeline();
 
+	int image_count = 0;
+
 	for (int i = 0; i < lightmapImages.size(); i++)
 	{
+		if (lightmaps_info[i].has_lightmap_coords == false)
+			continue;
+
 		uint16_t width = lightmaps_info[i].size;
 		VkDeviceSize imgSize = width * width * 4;
 		/*
@@ -652,7 +658,8 @@ void System_Amb_Occlusion::executeComputeShader()
 		stagingBuffer.readFromBuffer(pixels);
 
 		std::stringstream ss;
-		ss << "../projects/export/lightmap_" << i << ".bmp";
+		ss << "../projects/export/lightmap_" << image_count << ".bmp";
+		image_count++;
 
 		generateBitmapImage(pixels, width, width, ss.str().c_str());
 

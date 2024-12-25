@@ -81,6 +81,21 @@ void MeshNode_Interface_Final::refresh_material_groups(GeometryStack* geo_scene)
         }
     }
 
+    Material_Groups_Base* materials_base = Material_Groups_Tool::get_base();
+
+    for (TextureMaterial& mat : materials_used)
+    {
+        int mat_no = mat.materialGroup;
+        if (mat_no < materials_base->material_groups.size() && materials_base->material_groups[mat_no].lightmap)
+        {
+            mat.has_lightmap = true;
+        }
+        else
+        {
+            mat.has_lightmap = false;
+        }
+    }
+
     lightmaps_divideMaterialGroups(geo_scene, materials_used);
 
     for (int i = 0; i < materials_used.size(); i++)

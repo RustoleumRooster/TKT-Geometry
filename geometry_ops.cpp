@@ -9,6 +9,7 @@
 #include "material_groups.h"
 #include "BVH.h"
 #include "CMeshSceneNode.h"
+#include "reflected_nodes.h"
 
 #include <chrono>
 
@@ -65,7 +66,7 @@ GeometryStack::GeometryStack(ISceneNode* parent, scene::ISceneManager* smgr, MyE
     video::E_MATERIAL_TYPE special_material_type, 
     TexturePicker_Base* texture_picker_base, 
     Material_Groups_Base* material_groups_base)
-    : USceneNode(parent,smgr,-1,vector3df(0,0,0)), 
+    : USceneNode(parent, smgr,-1,vector3df(0,0,0)),
     base_material_type(base_material_type),
     special_material_type(special_material_type),
     event_receiver(receiver), 
@@ -87,6 +88,7 @@ GeometryStack::GeometryStack(ISceneNode* parent, scene::ISceneManager* smgr, MyE
 {
 
 }
+
 
 GeometryStack::~GeometryStack()
 {
@@ -884,6 +886,7 @@ void GeometryStack::buildSceneNode(bool finalMesh, int light_mode)
 
     if (final_mesh_dirty)
     {
+        std::cout << "recalculating meshbuffers\n";
         final_meshnode_interface.refresh_material_groups(this);
         final_meshnode_interface.generate_mesh_node(this);
     }
@@ -962,3 +965,19 @@ polyfold* GeometryStack::get_original_brush(int f_i)
 
     return pf;
 }
+
+#include "GeometryStack.h"
+
+
+
+
+REFLECT_STRUCT_BEGIN(geo_element)
+    REFLECT_STRUCT_MEMBER(type)
+    REFLECT_STRUCT_MEMBER(brush)
+    REFLECT_STRUCT_MEMBER(geometry)
+REFLECT_STRUCT_END()
+
+REFLECT_STRUCT_BEGIN(GeometryStack)
+    REFLECT_STRUCT_MEMBER(base_type)
+    REFLECT_STRUCT_MEMBER(elements)
+REFLECT_STRUCT_END()

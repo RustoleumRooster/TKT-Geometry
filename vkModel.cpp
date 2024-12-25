@@ -29,6 +29,7 @@ void writeLightmapsInfo(const vector<TextureMaterial>& materials_used, std::vect
         dest[i].n_triangles.resize(n_faces);
         dest[i].quads.resize(n_faces);
         dest[i].type = (u16)materials_used[i].materialGroup;
+        dest[i].has_lightmap_coords = materials_used[i].has_lightmap;
 
         dest[i].size = materials_used[i].lightmap_size;
 

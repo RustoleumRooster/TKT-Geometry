@@ -230,6 +230,7 @@ bool lightmaps_fill(MeshNode_Interface* mesh_node, std::vector<lm_block>::iterat
 		}
 		
 		ret.lightmap_size = new_block.dimension.Width;
+		ret.has_lightmap = true;
 		//ret.
 	}
 
@@ -602,6 +603,13 @@ void lightmaps_divideMaterialGroups(GeometryStack* geo_scene, std::vector<Textur
 
 	for (; in_it != in_end; ++in_it)
 	{
+		if (in_it->has_lightmap == false)
+		{
+			*ret_back = *in_it;
+			++ret_back;
+			continue;
+		}
+		
 		std::vector<lm_block> mg_blocks;
 		auto mg_blocks_back = std::back_inserter(mg_blocks);
 
@@ -662,10 +670,14 @@ void Lightmap_Manager::loadLightmapTextures(GeometryStack* geo_node)
 
 	lightmap_textures.clear();
 
+	int inc = 0;
 	for (int i = 0; i < material_groups.size(); i++)
 	{
+		if (material_groups[i].has_lightmap == false)
+			continue;
+
 		std::stringstream ss;
-		ss << "../projects/export/lightmap_" << i << ".bmp";
+		ss << "../projects/export/lightmap_" << inc << ".bmp";
 		video::ITexture* tex = device->getVideoDriver()->getTexture(ss.str().c_str());
 
 		lightmap_textures.push_back(tex);
@@ -679,6 +691,7 @@ void Lightmap_Manager::loadLightmapTextures(GeometryStack* geo_node)
 			chunk = geo_node->edit_meshnode_interface.get_mesh_buffer_by_face(f_i);
 			chunk.buffer->getMaterial().setTexture(1, tex);
 		}
+		inc++;
 	}
 
 	geo_node->getMeshNode()->copyMaterials();

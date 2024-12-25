@@ -103,6 +103,8 @@ struct LightMaps_Info_Struct
     std::vector<u16> n_triangles;
     std::vector<bounding_quad> quads;
 
+    bool has_lightmap_coords;
+
     REFLECT()
 };
 

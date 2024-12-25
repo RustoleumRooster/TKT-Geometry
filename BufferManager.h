@@ -38,7 +38,7 @@ struct TextureMaterial
     int n_faces;
     int n_triangles;
 
-    bool has_lightmap = true;
+    bool has_lightmap = false;
     int lightmap_size;
 
     std::vector<int> faces;

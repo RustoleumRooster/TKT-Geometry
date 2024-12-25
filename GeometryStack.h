@@ -7,6 +7,7 @@
 #include "csg_classes.h"
 #include "USceneNode.h"
 #include "BufferManager.h"
+#include "reflected_nodes.h"
 
 using namespace irr;
 
@@ -56,6 +57,7 @@ class Node_Classes_Base;
 class Material_Groups_Base;
 class TexturePicker_Base;
 
+
 class GeometryStack : public USceneNode
 {
 public:
@@ -67,9 +69,11 @@ public:
 
     GeometryStack(ISceneNode* parent, scene::ISceneManager* smgr_, MyEventReceiver* receiver);
 
+  //  GeometryStack(USceneNode* parent, geometry_scene*, irr::scene::ISceneManager* smgr, int id, const core::vector3df& pos);
+
     ~GeometryStack();
 
-    virtual void GeometryStack::OnRegisterSceneNode() override;
+    virtual void OnRegisterSceneNode() override;
     virtual void render() override;
 
     void set_type(int);
@@ -107,6 +111,8 @@ public:
     MeshNode_Interface_Final final_meshnode_interface;
 
     std::vector<geo_element> elements;
+
+    REFLECT()
 
 private:
 
@@ -147,8 +153,8 @@ private:
 
     friend class Open_Geometry_File;
     friend class geometry_scene;
+
+   
 };
-
-
 
 #endif
