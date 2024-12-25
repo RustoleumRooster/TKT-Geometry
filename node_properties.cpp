@@ -251,12 +251,89 @@ reflect::TypeDescriptor_Struct* Node_Properties_Base::new_node_properties_flat_t
     
     return ret;
 }
-
+/*
 reflect::TypeDescriptor_Struct* Node_Properties_Base::getFlatTypeDescriptor()
 {
     return new_node_properties_flat_typedescriptor(my_typeDescriptors);
 }
+*/
+reflect::TypeDescriptor_Struct* Node_Properties_Base::getTypeDescriptor()
+{
+    reflect::TypeDescriptor_Struct* ret = new reflect::TypeDescriptor_Struct(reflect::EmptyStruct::initReflection);
 
+    for (reflect::TypeDescriptor_Struct* typeDesc : my_typeDescriptors)
+    {
+        reflect::Member m{ typeDesc->alias,0,typeDesc };
+        m.expanded = typeDesc->expanded;
+        ret->members.push_back(m);
+
+        ret->size = typeDesc->size;
+    }
+
+    return ret;
+}
+
+void Node_Properties_Base::read_obj(void* obj)
+{
+    if (g_scene->getSelectedNodes().size() > 0)
+    {
+        Reflected_SceneNode* node = g_scene->getSelectedNodes()[0];
+
+        for (reflect::TypeDescriptor_Struct* typeDesc : my_typeDescriptors)
+        {
+            typeDesc->copy((char*)obj, node);
+        }
+    }
+}
+/*
+void Node_Properties_Base::write_obj(void* obj)
+{
+    if (g_scene->getSelectedNodes().size() > 0)
+    {
+        Reflected_SceneNode* node = g_scene->getSelectedNodes()[0];
+
+        for (reflect::TypeDescriptor_Struct* typeDesc : my_typeDescriptors)
+        {
+            typeDesc->copy(node, (char*)obj);
+        }
+    }
+}*/
+
+void Node_Properties_Base::post_edit()
+{
+    for (Reflected_SceneNode* node : g_scene->getSelectedNodes())
+    {
+        node->postEdit();
+    }
+}
+
+void Node_Properties_Base::write_obj_by_field(reflect::TypeDescriptor_Struct* flat_typeDescriptor /*unused*/, std::vector<int> tree_pos, void* obj)
+{
+    std::vector<int> branch;
+    for (int i = 1; i < tree_pos.size(); i++)
+        branch.push_back(tree_pos[i]);
+    
+    if (branch.size() > 0)
+    {
+        reflect::TypeDescriptor_Struct* typeDesc = my_typeDescriptors[tree_pos[0]];
+
+        reflect::Member* m = typeDesc->getTreeNode(branch);
+        
+        if (m->modified)
+        {
+            size_t offset = typeDesc->getTreeNodeOffset(branch);
+
+            for (Reflected_SceneNode* node : g_scene->getSelectedNodes())
+            {
+                m->type->copy((char*)node + offset, (char*)obj + offset);
+                int a = 0;
+            }
+
+            m->modified = false;
+        }
+    }
+}
+/*
 void Node_Properties_Base::serialize_flat_obj(void* flat_object)
 {
     void* ss = flat_object;
@@ -279,21 +356,27 @@ void Node_Properties_Base::deserialize_by_field(reflect::TypeDescriptor_Struct* 
 
         if (m->modified)
         {
-            //std::cout << "deserializing field ";
-            //for (int i = 0; i < tree_pos.size(); i++)
-            //    std::cout << tree_pos[i] << " ";
-            //std::cout << "\n";
+            std::cout << "deserializing field ";
+            for (int i = 0; i < tree_pos.size(); i++)
+                std::cout << tree_pos[i] << " ";
+            std::cout << "\n";
 
             reflect::TypeDescriptor_Struct* typeDesc = my_typeDescriptors[tree_pos[0]];
 
             size_t offset1 = flat_typeDescriptor->getTreeNodeOffset(tree_pos);
             size_t offset2 = typeDesc->getTreeNodeOffset(branch);
 
-            //for (int i : g_scene->getSelectedNodes())
+            reflect::TypeDescriptor* member_typeDesc = typeDesc->getTreeNode(branch)->type;
+
+            reflect::TypeDescriptor_Struct* struct_type = dynamic_cast<reflect::TypeDescriptor_Struct*>(m->type);
+
+            int n_items = struct_type != NULL ? struct_type->members.size() : 1;
+
             for (Reflected_SceneNode* node: g_scene->getSelectedNodes())
             {
-               // Reflected_SceneNode* node = g_scene->getSceneNodes()[i];
-                m->type->copy((char*)node + offset2, (char*)flat_object + offset1);
+               // m->type->copy((char*)node + offset2, (char*)flat_object + offset1);
+                void* ptr = (char*)flat_object + offset1;
+                member_typeDesc->deserialize_flat((char*)node + offset2, &ptr, n_items);
             }
 
             m->modified = false;
@@ -307,7 +390,7 @@ void Node_Properties_Base::deserialize_by_field(reflect::TypeDescriptor_Struct* 
         node->postEdit();
     }
 }
-
+*/
 
 void Node_Properties_Base::init_member(reflect::TypeDescriptor_Struct* flat_typeDescriptor, std::vector<int> tree_pos)
 {
@@ -315,7 +398,7 @@ void Node_Properties_Base::init_member(reflect::TypeDescriptor_Struct* flat_type
     std::vector<int> branch;
     for (int i = 1; i < tree_pos.size(); i++)
         branch.push_back(tree_pos[i]);
-
+    
     if (branch.size() > 0)
     {
         reflect::Member* m = flat_typeDescriptor->getTreeNode(tree_pos);
@@ -328,7 +411,6 @@ void Node_Properties_Base::init_member(reflect::TypeDescriptor_Struct* flat_type
 
         if (g_scene->getSelectedNodes().size() > 1)
         {
-           // Reflected_SceneNode* node_0 = g_scene->getSelectedSceneNode(0);
             Reflected_SceneNode* node_0 = g_scene->getSelectedNodes()[0];
             bool b = true;
 
@@ -336,11 +418,8 @@ void Node_Properties_Base::init_member(reflect::TypeDescriptor_Struct* flat_type
                 m->readwrite = true;
             else
             {
-                //for (int n_i : g_scene->getSelectedNodes())
                 for (Reflected_SceneNode* node : g_scene->getSelectedNodes())
                 {
-                    //Reflected_SceneNode* node = g_scene->getSceneNodes()[n_i];
-
                     if (m2->type->isEqual((char*)node + offset, (char*)node_0 + offset) == false)
                     {
                         b = false;

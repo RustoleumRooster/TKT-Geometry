@@ -2,6 +2,7 @@
 #include <irrlicht.h>
 //#include "edit_classes.h"
 #include "Reflection.h"
+#include "GeometryStack.h"
 
 namespace reflect {
 
@@ -101,12 +102,6 @@ TypeDescriptor* getPrimitiveDescriptor<irr::video::ITexture*>() {
 template <>
 TypeDescriptor* getPrimitiveDescriptor<unsigned short>() {
     static TypeDescriptor_U16 typeDesc;
-    return &typeDesc;
-}
-
-template <>
-TypeDescriptor* getPrimitiveDescriptor<char*>() {
-    static TypeDescriptor_Pointer typeDesc;
     return &typeDesc;
 }
 

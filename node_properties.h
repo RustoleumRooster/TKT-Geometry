@@ -57,9 +57,10 @@ public:
     virtual void initialize(std::wstring name_, int my_id, gui::IGUIEnvironment* env_, geometry_scene* g_scene_, multi_tool_panel*);
     virtual void show();
     virtual void widget_closing(Reflected_Widget_EditArea*) override;
-    virtual reflect::TypeDescriptor_Struct* getFlatTypeDescriptor() override;
-    virtual void serialize_flat_obj(void* flat_object) override;
-    virtual void deserialize_by_field(reflect::TypeDescriptor_Struct* flat_typeDescriptor, std::vector<int> tree_pos, void* flat_object) override;
+    virtual reflect::TypeDescriptor_Struct* getTypeDescriptor() override;
+    virtual void read_obj(void* obj) override;
+    virtual void post_edit() override;
+    virtual void write_obj_by_field(reflect::TypeDescriptor_Struct* flat_typeDescriptor, std::vector<int> tree_pos, void* obj) override;
     virtual void save_expanded_status(reflect::TypeDescriptor_Struct* flat_typeDescriptor, std::vector<int> tree_pos) override;
     virtual void init_member(reflect::TypeDescriptor_Struct* flat_typeDescriptor, std::vector<int> tree_pos) override;
     virtual void write_attributes(reflect::TypeDescriptor_Struct* flat_typeDescriptor) {}

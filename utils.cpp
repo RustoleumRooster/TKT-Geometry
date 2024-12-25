@@ -698,26 +698,26 @@ bool  geometry_scene::WriteTextures(std::string fname)
     std::vector<video::ITexture*> textures_used;
     std::vector<std::wstring> texture_paths;
 
-    for(int i=1;i<geometry_stack->elements.size();i++)
+    for(int i=1;i<geometry_stack.elements.size();i++)
 	{
-        for(int f_i =0 ;f_i<geometry_stack->elements[i].brush.faces.size(); f_i++)
+        for(int f_i =0 ;f_i<geometry_stack.elements[i].brush.faces.size(); f_i++)
         {
-            video::ITexture* tex_j = this->driver->getTexture(geometry_stack->elements[i].brush.faces[f_i].texture_name.c_str());
+            video::ITexture* tex_j = this->driver->getTexture(geometry_stack.elements[i].brush.faces[f_i].texture_name.c_str());
 
             bool b=false;
             for(int j=0;j<textures_used.size();j++)
             {
                 if(tex_j == textures_used[j])
                 {
-                    geometry_stack->elements[i].brush.faces[f_i].texture_index = j;
+                    geometry_stack.elements[i].brush.faces[f_i].texture_index = j;
                     b=true;
                 }
             }
             if(!b)
             {
                 textures_used.push_back(tex_j);
-                texture_paths.push_back(geometry_stack->elements[i].brush.faces[f_i].texture_name.c_str());
-                geometry_stack->elements[i].brush.faces[f_i].texture_index = texture_paths.size()-1;
+                texture_paths.push_back(geometry_stack.elements[i].brush.faces[f_i].texture_name.c_str());
+                geometry_stack.elements[i].brush.faces[f_i].texture_index = texture_paths.size()-1;
     
             }
         }
@@ -788,6 +788,7 @@ bool geometry_scene::WriteSceneNodesToFile(std::string fname)
         node->preEdit();
         reflect::TypeDescriptor_Struct* td = node->GetDynamicReflection();
         wf<<node->GetDynamicReflection()->name<<'\0';
+
         while(td)
         {
             //td->dump(node,0);
@@ -854,7 +855,7 @@ bool geometry_scene::ReadSceneNodesFromFile(io::path fname)
         if(typeDescriptor)
         {
             //Reflected_SceneNode* new_node = ((reflect::TypeDescriptor_SN_Struct*)typeDescriptor)->create_func(smgr, -1, core::vector3df(0, 0, 0));
-            Reflected_SceneNode* new_node = Reflected_SceneNode_Factory::CreateNodeByTypeName(typeDescriptor->name, this->editor_nodes, this->smgr);
+            Reflected_SceneNode* new_node = Reflected_SceneNode_Factory::CreateNodeByTypeName(typeDescriptor->name, this->editor_nodes, this, this->smgr);
             if(new_node)
             {
                 reflect::TypeDescriptor_Struct* td = typeDescriptor;
@@ -863,7 +864,9 @@ bool geometry_scene::ReadSceneNodesFromFile(io::path fname)
                     td->deserialize(rf,new_node);
                     //td->dump(new_node,0);
                     td = td->inherited_type;
+                    
                 }
+                //cout << new_node->UID() << "\n";
                 new_node->postEdit();
                 //this->scene_nodes.push_back(new_node);
             }
@@ -935,16 +938,16 @@ bool geometry_scene::Read2(io::path fname,io::path tex_fname)
     //typeDescriptor->dump(this,0);
 
    // std::cout << "surface groups:\n";
-    for (int j = 1; j < geometry_stack->elements.size(); j++)
+    for (int j = 1; j < geometry_stack.elements.size(); j++)
     {
         //std::cout << j << ":\n";
-        //for (int i = 0; i < geometry_stack->elements[j].brush.surface_groups.size(); i++)
-        //    std::cout << i << " " << geometry_stack->elements[j].brush.surface_groups[i].type << "\n";
+        //for (int i = 0; i < geometry_stack.elements[j].brush.surface_groups.size(); i++)
+        //    std::cout << i << " " << geometry_stack.elements[j].brush.surface_groups[i].type << "\n";
     }
 
 
-    for(int i=1;i<geometry_stack->elements.size();i++)
-        for(poly_face& face : geometry_stack->elements[i].brush.faces)
+    for(int i=1;i<geometry_stack.elements.size();i++)
+        for(poly_face& face : geometry_stack.elements[i].brush.faces)
         {
             if(face.texture_index < texture_paths.size())
                     face.texture_name = texture_paths[face.texture_index].c_str();
@@ -959,36 +962,39 @@ bool geometry_scene::Read2(io::path fname,io::path tex_fname)
         return false;
     }
 
-    for(int i=0;i<geometry_stack->elements.size();i++)
+    for(int i=0;i<geometry_stack.elements.size();i++)
     {
+        
         //Brushes
-        geometry_stack->elements[i].brush.reduce_edges_vertices();
-        geometry_stack->elements[i].brush.recalc_bbox();
+        geometry_stack.elements[i].brush.reduce_edges_vertices();
+        geometry_stack.elements[i].brush.recalc_bbox();
 
-        for (int f_i = 0; f_i < geometry_stack->elements[i].brush.faces.size(); f_i++)
+        for (int f_i = 0; f_i < geometry_stack.elements[i].brush.faces.size(); f_i++)
         {
-            for (int p_i = 0; p_i < geometry_stack->elements[i].brush.faces[f_i].loops.size(); p_i++)
-                geometry_stack->elements[i].brush.calc_loop_bbox(f_i, p_i);
+            for (int p_i = 0; p_i < geometry_stack.elements[i].brush.faces[f_i].loops.size(); p_i++)
+                geometry_stack.elements[i].brush.calc_loop_bbox(f_i, p_i);
         }
 
-        for (poly_face& f : geometry_stack->elements[i].brush.faces)
+        for (poly_face& f : geometry_stack.elements[i].brush.faces)
         {
-            geometry_stack->elements[i].brush.calc_center(f);
+            geometry_stack.elements[i].brush.calc_center(f);
         }
+
+        //cout << geometry_stack.elements[i].brush.uid << "\n";
 
         //Geometry
-        geometry_stack->elements[i].geometry.reduce_edges_vertices();
-        geometry_stack->elements[i].geometry.recalc_bbox();
+        geometry_stack.elements[i].geometry.reduce_edges_vertices();
+        geometry_stack.elements[i].geometry.recalc_bbox();
 
-        for (int f_i = 0; f_i < geometry_stack->elements[i].geometry.faces.size(); f_i++)
+        for (int f_i = 0; f_i < geometry_stack.elements[i].geometry.faces.size(); f_i++)
         {
-            for (int p_i = 0; p_i < geometry_stack->elements[i].geometry.faces[f_i].loops.size(); p_i++)
-                geometry_stack->elements[i].geometry.calc_loop_bbox(f_i, p_i);
+            for (int p_i = 0; p_i < geometry_stack.elements[i].geometry.faces[f_i].loops.size(); p_i++)
+                geometry_stack.elements[i].geometry.calc_loop_bbox(f_i, p_i);
         }
 
-        for (poly_face& f : geometry_stack->elements[i].geometry.faces)
+        for (poly_face& f : geometry_stack.elements[i].geometry.faces)
         {
-            geometry_stack->elements[i].geometry.calc_center(f);
+            geometry_stack.elements[i].geometry.calc_center(f);
         }
 
     }

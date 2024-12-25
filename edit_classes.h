@@ -17,6 +17,7 @@ namespace reflect
 {
     struct TypeDescriptor;
     struct Member;
+    struct TypeDescriptor_Struct;
 }
 
 
@@ -124,6 +125,9 @@ public:
 
     gui::IGUIEnvironment* getEnvironment(){return this->Environment;}
 
+    void set_typeDescriptor(reflect::TypeDescriptor_Struct* td) { m_flat_td = td; }
+    reflect::TypeDescriptor_Struct* get_typeDescriptor() { return m_flat_td; }
+
     FormField* edit_fields = NULL;
     geometry_scene* g_scene = NULL;
 
@@ -137,6 +141,8 @@ private:
     
     //FormField** field_by_rc = NULL;
     cell_background** cell_by_rc = NULL;
+
+    reflect::TypeDescriptor_Struct* m_flat_td = NULL;
 };
 
 //
@@ -306,6 +312,9 @@ public:
     virtual void writeValue(void* obj){}
 };
 
+//
+// Color
+//
 
 class Color_FormField : public FormField
 {
@@ -329,6 +338,48 @@ class Color_StaticField : public Color_FormField
 public:
     virtual int addWidget(Reflected_GUI_Edit_Form* win, int ID, int ypos);
     virtual void readValue(void* obj);
+};
+
+//
+// UID_Reference
+//
+
+class UID_Reference_FormField : public FormField
+{
+public:
+    virtual int addWidget(Reflected_GUI_Edit_Form* win, int ID, int ypos) = 0;
+    virtual void readValue(void* obj);
+    virtual void writeValue(void* obj) {}
+    virtual int getHeight();
+    virtual int getButtonType() { return FORM_FIELD_BUTTON; }
+    virtual void clickButton();
+    //virtual int getNumIds(){return 1;}
+
+    //video::ITexture* texture = NULL;
+    int ypos_ = 0;
+    virtual bool is_equal(void* a, void* b) {
+        return *get(a) == *get(b);
+    }
+
+    std::vector<u64>* get(void* obj_) { return (std::vector<u64>*)((char*)obj_ + offset); }
+
+    std::vector<u64> target_uid;
+    //char* my_pointer = NULL;
+};
+
+class UID_Reference_EditField : public UID_Reference_FormField
+{
+public:
+    virtual void setActive(int);
+    virtual int addWidget(Reflected_GUI_Edit_Form* win, int ID, int ypos);
+    virtual void writeValue(void* obj);
+};
+
+class UID_Reference_StaticField : public UID_Reference_FormField
+{
+public:
+    virtual int addWidget(Reflected_GUI_Edit_Form* win, int ID, int ypos);
+  //  virtual void readValue(void* obj);
 };
 
 

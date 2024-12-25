@@ -72,6 +72,11 @@ struct TypeDescriptor {
         return NULL;
     }
 
+    virtual void construct(void* obj)
+    {
+
+    }
+
     virtual void suicide(void* obj)
     {
 
@@ -85,7 +90,7 @@ struct TypeDescriptor {
     }
 
     //this can fail and cause crash for container classes !!!
-    virtual void deserialize_flat(void* obj, void** flat_obj)
+    virtual void deserialize_flat(void* obj, void** flat_obj, int item_count = 1)
     {
         void* p = *flat_obj;
 
@@ -273,6 +278,23 @@ struct TypeDescriptor_Struct : TypeDescriptor {
 
     virtual void addFormWidget(Reflected_GUI_Edit_Form* win, TypeDescriptor_Struct* type_struct, std::vector<int> tree, size_t offset, bool bVisible, bool bEditable, int tab);
 
+    // Copy each member
+    virtual void copy(void* obj, const void* obj2) override
+    {
+        for (const Member& member : members)
+        {
+            member.type->copy((char*)obj + member.offset, (char*)obj2 + member.offset);
+        }
+    }
+
+    virtual void construct(void* obj) override
+    {
+        for (const Member& member : members)
+        {
+            member.type->construct((char*)obj + member.offset);
+        }
+    }
+
     virtual void serialize(std::ofstream& f, const void* obj)
     {
         for (const Member& member : members)
@@ -349,11 +371,11 @@ struct TypeDescriptor_Struct : TypeDescriptor {
         }
     }
 
-    virtual void deserialize_flat(void* obj, void** flat_obj)
+    virtual void deserialize_flat(void* obj, void** flat_obj, int item_count /*only for vectors*/)
     {
         for (int i = 0; i < members.size(); i++)
         {
-            members[i].type->deserialize_flat((char*)obj + members[i].offset, flat_obj );
+            members[i].type->deserialize_flat((char*)obj + members[i].offset, flat_obj, item_count);
         }
 
     }
@@ -449,6 +471,8 @@ struct TypeDescriptor_StdVector : TypeDescriptor {
     const void* (*getItem)(const void*, size_t);
     void* (*getItem_nc)(void*, size_t);
     void (*allocate)(void*, size_t);
+    void (*my_constructor)(void*);
+    void (*my_suicide)(void*);
 
     template <typename ItemType>
     TypeDescriptor_StdVector(ItemType*)
@@ -470,7 +494,26 @@ struct TypeDescriptor_StdVector : TypeDescriptor {
             auto& vec = *(std::vector<ItemType>*) vecPtr;
             vec.resize(new_size);
         };
+        my_constructor = [](void* obj) {
+            std::vector<ItemType>* vecPtr = (std::vector<ItemType>*)obj;
+            vecPtr->std::vector<ItemType>::vector();
+        };
+        my_suicide = [](void* obj) {
+            std::vector<ItemType>* vecPtr = (std::vector<ItemType>*)obj;
+            vecPtr->std::vector<ItemType>::~vector();
+        };
     }
+
+    virtual void construct(void* obj) override
+    {
+        my_constructor(obj);
+    }
+
+    virtual void suicide(void* obj) override
+    {
+        my_suicide(obj);
+    }
+
     virtual std::string getFullName() const override {
         return std::string("std::vector<") + itemType->getFullName() + ">";
     }
@@ -527,9 +570,10 @@ struct TypeDescriptor_StdVector : TypeDescriptor {
         }
     }
 
-    virtual void deserialize_flat(void* obj, void** flat_obj)
+    virtual void deserialize_flat(void* obj, void** flat_obj, int item_count)
     {
-        size_t numItems = getSize(obj);
+        size_t numItems = item_count;
+        allocate(obj, numItems);
 
         for (size_t index = 0; index < numItems; index++)
         {
@@ -757,18 +801,6 @@ struct TypeDescriptor_Texture : TypeDescriptor {
 
     virtual bool expandable(){return true;}
     virtual void addFormWidget(Reflected_GUI_Edit_Form*, TypeDescriptor_Struct*, std::vector<int> tree, size_t offset, bool bVisible, bool bEditable, int tab) override;
-};
-
-struct TypeDescriptor_Pointer : TypeDescriptor {
-    TypeDescriptor_Pointer() : TypeDescriptor{ "ptr", sizeof(char*) } {
-    }
-    virtual void dump(const void* obj, int /* unused */) const override {
-        std::cout << "ptr{" << *(const unsigned short*)obj << "}";
-    }
-
-    virtual void addFormWidget(Reflected_GUI_Edit_Form*, TypeDescriptor_Struct*, std::vector<int> tree, size_t offset, bool bVisible, bool bEditable, int tab) override
-    {}
-
 };
 
 struct TypeDescriptor_U64 : TypeDescriptor {

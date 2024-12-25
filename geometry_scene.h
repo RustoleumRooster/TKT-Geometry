@@ -14,6 +14,13 @@ class GeometryStack;
 class Node_Classes_Base;
 class Lightmap_Manager;
 
+struct scene_selection
+{
+    std::vector<int> brushes;
+    std::vector<int> faces;
+    std::vector<Reflected_SceneNode*> scene_nodes;
+};
+
 class geometry_scene : public irr::IEventReceiver
 {
 public:
@@ -99,7 +106,7 @@ public:
     bool DynamicLightEnabled() { return b_dynamic_light; }
 
     //===============Reflected Scene Node Stuff
-    void buildSceneGraph(bool finalMesh, bool addObjects, int light_mode, bool finalscene = false);
+    void buildSceneGraph(bool addObjects, int light_mode, bool finalscene = false);
     void rebuildSceneGraph();
 
     void addSceneLight(core::vector3df pos);
@@ -128,9 +135,17 @@ public:
     scene::ISceneNode* EditorNodes() { return editor_nodes; }
     scene::ISceneNode* ActualNodes() { return actual_nodes; }
     //ISceneNode* GeometryNodes() { return geometry_nodes; }
-    GeometryStack* geoNode() { return geometry_stack; }
+    GeometryStack* geoNode() { return &geometry_stack; }
 
     void loadLightmapTextures();
+
+    void save_selection();
+    scene_selection get_saved_selection();
+    std::vector<u64> get_saved_selection_uids();
+    Reflected_SceneNode* get_reflected_node_by_uid(u64);
+    void addFaceNode(int f_i);
+
+    void setFinalMeshDirty() { geometry_stack.final_mesh_dirty = true; }
 
 private:
     
@@ -141,7 +156,8 @@ private:
     std::vector<int> selected_brushes;
     std::vector<int> selected_faces;
     std::vector<Reflected_SceneNode*> selected_scene_nodes;
-    std::vector<int> edit_mesh_buffer_faces;
+
+    scene_selection saved_selection;
 
     scene::ISceneManager* smgr=NULL;
     video::IVideoDriver* driver=NULL;
@@ -160,16 +176,15 @@ private:
 
     USceneNode* editor_nodes = NULL;
     USceneNode* actual_nodes = NULL;
-    GeometryStack* geometry_stack = NULL;
+    GeometryStack geometry_stack;
 
     LineHolder intersections_graph;
 
     bool b_Visualize = false;
-    bool b_isEditNode = false;
+    bool bSceneInProgress = false;
     bool b_dynamic_light = false;
-    bool final_mesh_dirty = false;
 
-    std::vector<triangle_holder> total_geometry_triangles;
+    //std::vector<triangle_holder> total_geometry_triangles;
 
     int selected_material_group = 0;
 

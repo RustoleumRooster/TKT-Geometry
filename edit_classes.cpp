@@ -212,6 +212,30 @@ namespace reflect
 		TypeDescriptor_Struct::addFormWidget(win, type_struct, tree, offset_base, bVisible, bEditable, tab);
 	}
 
+    void uid_reference::my_typeDesc::addFormWidget(Reflected_GUI_Edit_Form* win, TypeDescriptor_Struct* type_struct, std::vector<int> tree, size_t offset_base, bool bVisible, bool bEditable, int tab)
+    {
+        int m_i = tree[tree.size() - 1];
+        std::string name = type_struct->members[m_i].name;
+        size_t offset = type_struct->members[m_i].offset + offset_base;
+
+        UID_Reference_FormField* f;
+
+        {
+            if (bEditable)
+            {
+                f = new UID_Reference_EditField();
+                f->init(name, tree, offset, tab, bVisible);
+                win->addEditField(f);
+            }
+            else
+            {
+                f = new UID_Reference_StaticField();
+                f->init(name, tree, offset, tab, bVisible);
+                win->addEditField(f);
+            }
+        }
+    }
+
 } // namespace reflect
 
 
@@ -1110,6 +1134,123 @@ void Texture_EditField::writeValue(void* obj)
         *get(obj) = my_texture;
     }
 }
+
+//
+// UID_Reference
+//
+
+void UID_Reference_EditField::setActive(int status)
+{
+    //gui::IGUIEditBox* box = (gui::IGUIEditBox*)getEditElement();
+    //box->setDrawBackground(b);
+    if (bVisible)
+    {
+        cell_background* cell = owner->getCellPanel(my_row, 1);
+        if (cell)
+            cell->setStatus(status);
+    }
+}
+
+int UID_Reference_EditField::addWidget(Reflected_GUI_Edit_Form* win, int ID, int row)
+{
+    BEGIN_WIDGET()
+
+    addStaticTextLabel(text, row, tab, ID);
+    env->addButton(win->getCell(row, 1), win, ID + 1, L"Use Selection");
+
+    addStaticTextLabel("no selection", row + 1, tab + 2, ID + 2);
+
+    END_WIDGET()
+}
+
+void UID_Reference_EditField::writeValue(void* obj)
+{
+    if (this->owner && obj && bVisible)
+    {
+        //Write from Vector into Object
+        reflect::TypeDescriptor* td = reflect::TypeResolver<std::vector<u64>>::get();
+
+        td->copy((char*)get(obj), &target_uid);
+    }
+}
+
+void UID_Reference_FormField::readValue(void* obj)
+{
+    if (this->owner && obj && bVisible)
+    {
+        gui::IGUIElement* editbox = (gui::IGUIElement*)(owner->getElementFromId(my_ID + 1, true));
+        if (editbox)
+        {
+            //Read from Object into Vector
+
+            reflect::TypeDescriptor* td = reflect::TypeResolver<std::vector<u64>>::get();
+
+            td->copy(&target_uid,(char*)get(obj));
+
+            std::wstringstream ss;
+            ss << target_uid.size();
+            ss << " selected";
+
+            gui::IGUIElement* editbox = (gui::IGUIElement*)(owner->getElementFromId(my_ID + 2, true));
+            editbox->setText(ss.str().c_str());
+
+            //if (my_UID_Reference != NULL)
+            //{
+              //  io::path path = my_texture->getName();
+              //  core::deletePathFromFilename(path);
+              //  core::cutFilenameExtension(path, path);
+              //  core::stringw str = path;
+              //  editbox->setText(str.c_str());
+            //}
+            //else
+            //    editbox->setText(L"no target");
+        }
+    }
+}
+
+int UID_Reference_FormField::getHeight()
+{
+    return 2;
+}
+
+void UID_Reference_FormField::clickButton()
+{
+    if (this->owner && this->owner->g_scene && bVisible)
+    {
+        target_uid = this->owner->g_scene->get_saved_selection_uids();
+
+        reflect::Member* m = this->owner->get_typeDescriptor()->getTreeNode(this->tree_pos);
+
+        m->modified = true;
+        /*
+        my_texture = this->owner->g_scene->getTexturePickerBase()->getCurrentTexture();
+
+        gui::IGUIElement* editbox = (gui::IGUIElement*)(owner->getElementFromId(my_ID + 1, true));
+        if (editbox)
+        {
+            if (my_texture != NULL)
+            {
+                io::path path = my_texture->getName();
+                core::deletePathFromFilename(path);
+                core::cutFilenameExtension(path, path);
+                core::stringw str = path;
+                editbox->setText(str.c_str());
+            }
+            else
+                editbox->setText(L"no texture");
+        }*/
+    }
+}
+
+int UID_Reference_StaticField::addWidget(Reflected_GUI_Edit_Form* win, int ID, int row)
+{
+    BEGIN_WIDGET()
+
+    addStaticTextLabel(text, row, tab, ID);
+
+    END_WIDGET()
+}
+
 
 //
 //  Color

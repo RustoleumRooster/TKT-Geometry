@@ -35,6 +35,8 @@ void Reflected_Widget_EditArea::show(bool editable, void* obj)
         m_typeDesc = my_base->getTypeDescriptor();
     }
 
+    //form->set_typeDescriptor(m_typeDesc);   //form fields sometimes need to query their own reflected type
+
     my_base->write_attributes(m_typeDesc);
 
     scrollbar_ID = my_ID + 2;
@@ -45,14 +47,15 @@ void Reflected_Widget_EditArea::show(bool editable, void* obj)
  
     if (!temp_object)
     {
-       // std::cout << "reflected widget allocating " << m_typeDesc->size << " bytes\n";
+        // std::cout << "reflected widget allocating " << m_typeDesc->size << " bytes\n";
         temp_object = malloc(m_typeDesc->size);
+        m_typeDesc->construct(temp_object);
     }
 
     if (obj)
     {
         my_base->read_obj(temp_object);
-        // m_typeDesc->dump(temp_object, 0);
+        //m_typeDesc->dump(temp_object, 0);
     }
 
     {
@@ -85,7 +88,7 @@ void Reflected_Widget_EditArea::show(bool editable, void* obj)
     {
         my_scrollbar = NULL;
     }
-
+    
     FormField* f = form->edit_fields;
     while (f)
     {
@@ -107,7 +110,7 @@ void Reflected_Widget_EditArea::show(bool editable, void* obj)
         }
         f = f->next;
     }
-
+    
     b_editable = editable;
 }
 
@@ -203,7 +206,18 @@ bool Reflected_Widget_EditArea::OnEvent(const SEvent& event)
                     }
                     else if (field->getButtonType() == FORM_FIELD_BUTTON)
                     {
+                        
                         field->clickButton();
+                        field->writeValue(temp_object);
+
+                        refresh();
+                        if (Parent)
+                        {
+                            SEvent e;
+                            e.EventType = EET_USER_EVENT;
+                            e.UserEvent.UserData1 = USER_EVENT_REFLECTED_FORM_REFRESHED;
+                            return Parent->OnEvent(e);
+                        }
                         return true;
                     }
                 }
