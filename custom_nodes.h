@@ -11,8 +11,8 @@
 class Reflected_LightSceneNode : public Reflected_Sprite_SceneNode
 {
 public:
-    Reflected_LightSceneNode(USceneNode* parent, irr::scene::ISceneManager* smgr, int id, const core::vector3df& pos) :
-        Reflected_Sprite_SceneNode(parent, smgr, id, pos) {}
+    Reflected_LightSceneNode(USceneNode* parent, geometry_scene* geo_scene, irr::scene::ISceneManager* smgr, int id, const core::vector3df& pos) :
+        Reflected_Sprite_SceneNode(parent, geo_scene, smgr, id, pos) {}
 
     virtual bool bShowEditorArrow() { return true; }
     virtual ESCENE_NODE_TYPE getType() { return ESNT_LIGHT; }
@@ -21,7 +21,7 @@ public:
     virtual void translate(core::matrix4);
     virtual void onClear() { my_light = NULL; }
     virtual void postEdit();
-    virtual void addSelfToScene(USceneNode* parent, irr::scene::ISceneManager* smgr, geometry_scene* geo_scene) override;
+    virtual bool addSelfToScene(USceneNode* parent, irr::scene::ISceneManager* smgr, geometry_scene* geo_scene) override;
 
     scene::ILightSceneNode* my_light = NULL;
     bool enabled = true;
@@ -32,13 +32,13 @@ public:
 class Reflected_SimpleEmitterSceneNode : public Reflected_Sprite_SceneNode
 {
 public:
-    Reflected_SimpleEmitterSceneNode(USceneNode* parent, irr::scene::ISceneManager* smgr, int id, const core::vector3df& pos) :
-        Reflected_Sprite_SceneNode(parent, smgr, id, pos) {}
+    Reflected_SimpleEmitterSceneNode(USceneNode* parent, geometry_scene* geo_scene, irr::scene::ISceneManager* smgr, int id, const core::vector3df& pos) :
+        Reflected_Sprite_SceneNode(parent, geo_scene, smgr, id, pos) {}
 
     virtual bool bShowEditorArrow() { return true; }
 
     virtual void render();
-    virtual void addSelfToScene(USceneNode* parent, irr::scene::ISceneManager* smgr, geometry_scene* geo_scene) override;
+    virtual bool addSelfToScene(USceneNode* parent, irr::scene::ISceneManager* smgr, geometry_scene* geo_scene) override;
 
     core::vector3df EmitBox = core::vector3df(64, 64, 64);
     video::ITexture* texture = NULL;
@@ -57,159 +57,77 @@ public:
     REFLECT2()
 };
 
-class ReflectionTestPanel : public TestPanel
+
+class PlaneShaderCallBack : public video::IShaderConstantSetCallBack
 {
 public:
-    ReflectionTestPanel(gui::IGUIEnvironment* environment, video::IVideoDriver* driver, gui::IGUIElement* parent, s32 id, core::rect<s32> rectangle) :
-        TestPanel(environment, driver, parent, id, rectangle) {}
-    ~ReflectionTestPanel();
 
-    virtual scene::ICameraSceneNode* getCamera();
-    virtual void Initialize(scene::ISceneManager* smgr, geometry_scene* geo_scene);
-    virtual void render();
-    virtual void resize(core::dimension2d<u32> new_size);
-    virtual void SetMeshNodesVisible();
-    virtual bool GetScreenCoords(core::vector3df V, core::vector2di& out_coords);
+    virtual void OnSetConstants(video::IMaterialRendererServices* services,
+        s32 userData);
+};
 
-    void setCameraQuad(CameraQuad* q) { cameraQuad = q; }
-    void set_material(s32 material_type) { render_material = (video::E_MATERIAL_TYPE) material_type; }
-    void set_underwater_material(s32 material_type) { underwater_material = (video::E_MATERIAL_TYPE) material_type; }
-    video::ITexture* getRender();
-    video::ITexture* getRTT() { return my_rtt; }
-    video::ITexture* getRTT2() { return my_rtt2; }
-private:
+class SkyShaderCallBack : public video::IShaderConstantSetCallBack
+{
+public:
 
-    video::ITexture* get_rtt();
-    video::ITexture* get_rtt2();
+    virtual void OnSetConstants(video::IMaterialRendererServices* services,
+        s32 userData);
+};
 
-    CameraQuad* cameraQuad = NULL;
-    //ISceneManager* smgr2 = NULL;
-    video::E_MATERIAL_TYPE render_material = video::EMT_SOLID;
-    video::E_MATERIAL_TYPE underwater_material = video::EMT_SOLID;
+
+class VanillaShaderCallBack : public video::IShaderConstantSetCallBack
+{
+public:
+
+    virtual void OnSetConstants(video::IMaterialRendererServices* services,
+        s32 userData);
+};
+
+class MySkybox_SceneNode : public ISceneNode, public ViewResizeObject
+{
+public:
+    MySkybox_SceneNode(USceneNode* parent, irr::scene::ISceneManager* smgr, int id, const core::vector3df& pos, const core::vector3df rotation, geometry_scene*);
+    ~MySkybox_SceneNode();
+
+    virtual void resizeView(core::dimension2du newsize) override;
+
+    virtual void render() override;
+    virtual void OnRegisterSceneNode() override;
+    virtual const core::aabbox3d<f32>& getBoundingBox() const override { return my_box; }
+
+    virtual int get_image_count() override {return 1;}
+    virtual video::ITexture* get_image(int n) { return my_rtt2; };
+
+    void attach_to_buffer(IMeshBuffer*);
+    //void detach_all();
+
+    static void load_shaders();
+
+    video::ITexture* getRTT() { return my_rtt2; }
+
+    core::aabbox3d<f32> my_box;
+
+    static s32 skyShaderType;
+    static s32 xblurShaderType;
+    static s32 yblurShaderType;
+    static s32 skyPPShaderType;
+    static s32 planeMaterialType;
+
+    geometry_scene* geo_scene = NULL;
+
+    //final texture
     video::ITexture* my_rtt = NULL;
-    video::ITexture* my_rtt2 = NULL;
-    TwoTriangleSceneNode* render_node = NULL;
 
-    std::vector<int> hide_faces;
-};
+    //two blur textures
+    video::ITexture* my_rtt2 = 0;
+    video::ITexture* my_rtt3 = 0;
 
-class Render_Tool_Base;
+    //scene::ICameraSceneNode* my_camera = NULL;
 
-class Render_Tool_Widget : public gui::IGUIElement
-{
+    TwoTriangleSceneNode* cloudLayerNode = NULL;
+    TwoTriangleSceneNode* blurNode = NULL;
 
-public:
-    Render_Tool_Widget(gui::IGUIEnvironment* env, gui::IGUIElement* parent, geometry_scene*, Render_Tool_Base*, s32 id, core::rect<s32> rect);
-    ~Render_Tool_Widget();
-
-    void show();
-
-private:
-    int my_ID;
-
-    geometry_scene* g_scene = NULL;
-    Render_Tool_Base* my_base = NULL;
-};
-
-class Render_Tool_Base : public simple_reflected_tool_base
-{
-    struct render_options_struct
-    {
-        int some_int;
-        REFLECT()
-    };
-
-public:
-
-    ~Render_Tool_Base() {
-
-        if (view_panel)
-            delete view_panel;
-    }
-
-    virtual void show();
-
-    virtual void initialize(std::wstring name_, int my_id, gui::IGUIEnvironment* env_, geometry_scene* g_scene_, multi_tool_panel* panel_) {}
-    virtual void initialize(std::wstring name_, int my_id, gui::IGUIEnvironment* env_, geometry_scene* g_scene_, multi_tool_panel* panel_, scene::ISceneManager* smgr);
-
-    void setCameraQuad(CameraQuad* cameraQuad_);
-    void close_panel();
-    void refresh_panel_view();
-    void set_material(s32 material_type);
-    void set_underwater_material(s32 material_type);
-
-    virtual void* getObj() {
-        return &m_struct;
-    }
-
-    virtual void init_member(reflect::TypeDescriptor_Struct* flat_typeDescriptor, std::vector<int> tree_pos);
-    virtual void write_attributes(reflect::TypeDescriptor_Struct* flat_typeDescriptor);
-    void setRenderList(RenderList* renderList_);
-    
-    video::ITexture* getRender();
-    video::ITexture* getRTT();
-    video::ITexture* getRTT2();
-private:
-
-    int selection = -1;
-    video::E_MATERIAL_TYPE render_material = video::EMT_SOLID;
-    video::E_MATERIAL_TYPE underwater_material = video::EMT_SOLID;
-
-    scene::ISceneManager* smgr = NULL;
-    ReflectionTestPanel* view_panel = NULL;
-    CameraQuad* cameraQuad = NULL;
-    RenderList* renderList = NULL;
-
-    //uv_editor_struct m_struct{ 0,true,true,true,true,16 };
-    render_options_struct m_struct;
-
-    friend class UV_Editor_Widget;
-};
-
-class Render_Tool
-{
-    static Render_Tool_Base* base;
-    static multi_tool_panel* panel;
-
-public:
-
-    static void show()
-    {
-        panel->add_tool(base);
-    }
-
-    static void initialize(Render_Tool_Base* base_, multi_tool_panel* panel_)
-    {
-        base = base_;
-        panel = panel_;
-    }
-
-    static video::ITexture* getRender()
-    {
-        if (base)
-        {
-            return base->getRender();
-        }
-        return NULL;
-    }
-
-    static video::ITexture* getRTT()
-    {
-        if (base)
-        {
-            return base->getRTT();
-        }
-        return NULL;
-    }
-
-    static video::ITexture* getRTT2()
-    {
-        if (base)
-        {
-            return base->getRTT2();
-        }
-        return NULL;
-    }
+    std::vector<IMeshBuffer*> buffers;
 };
 
 class WaterSurface_SceneNode : public ISceneNode, public ViewResizeObject
@@ -219,11 +137,14 @@ public:
     ~WaterSurface_SceneNode();
 
     //virtual scene::ICameraSceneNode* getCamera();
-    void resizeView(core::dimension2du newsize);
+    virtual void resizeView(core::dimension2du newsize) override;
 
     virtual void render() override;
     virtual void OnRegisterSceneNode() override;
-    virtual const core::aabbox3d<f32>& getBoundingBox() const override { return core::aabbox3d<f32>{}; }
+    virtual const core::aabbox3d<f32>& getBoundingBox() const override { return my_box; }
+
+    virtual int get_image_count() override { return 1; }
+    virtual video::ITexture* get_image(int n) { return my_rtt; };
 
     void set_material(s32 material_type) { render_material = (video::E_MATERIAL_TYPE)material_type; }
     void set_underwater_material(s32 material_type) { underwater_material = (video::E_MATERIAL_TYPE)material_type; }
@@ -231,7 +152,11 @@ public:
     video::ITexture* getRTT() { return my_rtt; }
     video::ITexture* getRTT2() { return my_rtt2; }
 
+    void attach_to_buffer(IMeshBuffer*);
+    //void detach_all();
+
 private:
+    core::aabbox3d<f32> my_box;
 
     video::E_MATERIAL_TYPE render_material = video::EMT_SOLID;
     video::E_MATERIAL_TYPE underwater_material = video::EMT_SOLID;
@@ -244,16 +169,47 @@ private:
     geometry_scene* geo_scene = NULL;
 
     std::vector<int> hide_faces;
+    std::vector<IMeshBuffer*> buffers;
+};
+
+
+class Reflected_SkyNode : public Reflected_Sprite_SceneNode
+{
+public:
+    Reflected_SkyNode(USceneNode* parent, geometry_scene* geo_scene, irr::scene::ISceneManager* smgr, int id, const core::vector3df& pos);
+
+    virtual bool bShowEditorArrow() { return true; }
+
+    virtual bool addSelfToScene(USceneNode* parent, irr::scene::ISceneManager* smgr, geometry_scene* geo_scene) override;
+
+    virtual void preEdit() override;
+    virtual void postEdit() override;
+    virtual void endScene() override;
+
+    int my_material_group = 44;
+
+    reflect::uid_reference target;
+
+    REFLECT2()
 };
 
 class Reflected_WaterSurfaceNode : public Reflected_Sprite_SceneNode
 {
 public:
-    Reflected_WaterSurfaceNode(USceneNode* parent, irr::scene::ISceneManager* smgr, int id, const core::vector3df& pos);
+    Reflected_WaterSurfaceNode(USceneNode* parent, geometry_scene* geo_scene, irr::scene::ISceneManager* smgr, int id, const core::vector3df& pos);
 
     virtual bool bShowEditorArrow() { return true; }
 
-    virtual void addSelfToScene(USceneNode* parent, irr::scene::ISceneManager* smgr, geometry_scene* geo_scene) override;
+    virtual bool addSelfToScene(USceneNode* parent, irr::scene::ISceneManager* smgr, geometry_scene* geo_scene) override;
+
+    virtual void preEdit() override;
+    virtual void postEdit() override;
+    virtual void endScene() override;
+
+    int my_material_group = 55;
+
+
+    reflect::uid_reference target;
 
     REFLECT2()
 };
@@ -261,9 +217,9 @@ public:
 class Reflected_PointNode : public Reflected_Sprite_SceneNode
 {
 public:
-    Reflected_PointNode(USceneNode* parent, irr::scene::ISceneManager* smgr, int id, const core::vector3df& pos);
+    Reflected_PointNode(USceneNode* parent, geometry_scene* geo_scene, irr::scene::ISceneManager* smgr, int id, const core::vector3df& pos);
 
-    virtual void addSelfToScene(USceneNode* parent, irr::scene::ISceneManager* smgr, geometry_scene* geo_scene) override {}
+    //virtual bool addSelfToScene(USceneNode* parent, irr::scene::ISceneManager* smgr, geometry_scene* geo_scene) override {}
 
     REFLECT2()
 };
@@ -272,10 +228,10 @@ public:
 class Reflected_TestNode : public Reflected_Sprite_SceneNode
 {
 public:
-    Reflected_TestNode(USceneNode* parent, irr::scene::ISceneManager* smgr, int id, const core::vector3df& pos) :
-        Reflected_Sprite_SceneNode(parent, smgr, id, pos) {}
+    Reflected_TestNode(USceneNode* parent, geometry_scene* geo_scene, irr::scene::ISceneManager* smgr, int id, const core::vector3df& pos) :
+        Reflected_Sprite_SceneNode(parent, geo_scene, smgr, id, pos) {}
 
-    virtual void addSelfToScene(irr::scene::ISceneManager* smgr, geometry_scene* geo_scene) {}
+    //virtual bool addSelfToScene(irr::scene::ISceneManager* smgr, geometry_scene* geo_scene) {}
     bool bEnabled;
     int nParticles = 10;
     float velocity = 3.5;

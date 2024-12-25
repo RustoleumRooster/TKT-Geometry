@@ -1,0 +1,17 @@
+uniform sampler2D myTexture;
+
+
+void main (void)
+{
+	vec2 uv = vec2(-gl_TexCoord[0].y,gl_TexCoord[0].x);
+	float x_step =1.0/160.0;
+	float y_step = 1.0/120.0;
+    	vec4 col = texture2D(myTexture, uv)*0.5+
+		texture2D(myTexture, vec2(uv.x,uv.y+y_step))*0.35+
+		texture2D(myTexture, vec2(uv.x,uv.y-y_step))*0.35+
+		texture2D(myTexture, vec2(uv.x,uv.y+y_step*2))*0.20+
+		texture2D(myTexture, vec2(uv.x,uv.y-y_step*2))*0.20;
+	col/=1.6;
+	//vec4 col = vec4(1)*(-uv.x);
+	gl_FragColor = col;
+}

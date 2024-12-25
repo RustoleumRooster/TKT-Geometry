@@ -205,6 +205,7 @@ class poly_face
         uv_mat = other.uv_mat;
         column = other.column;
         row = other.row;
+        uid = other.uid;
     }
 
     core::matrix4 get2Dmat() const;
@@ -505,6 +506,7 @@ class polyfold
         topology = other.topology;
         bbox = other.bbox;
         faces_BVH = other.faces_BVH;
+        uid = other.uid;
     }
 
     REFLECT()

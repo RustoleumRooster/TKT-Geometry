@@ -271,7 +271,7 @@ protected:
     bool bShowGeometry=false;
     bool bFullscreen=false;
     //bool bDynamicLight=false;
-    int lighting_type;
+    int lighting_type = 0;
 
     core::vector3df vDragCameraInitialPosition;
     core::vector3df vDragCameraInitialTarget;
@@ -341,6 +341,7 @@ private:
     bool Get3DScreenCoords(core::vector3df V, core::vector2di &out_coords);
     void ClickAddLight();
     void ClickAddNode();
+    void ClickAddMeshBufferNode();
 
     bool bPlaneDrag=false;
     core::vector3df plane_drag_vec;

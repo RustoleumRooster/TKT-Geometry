@@ -811,7 +811,11 @@ void TestPanel_3D::ClickAddLight()
         }
     }
 }
-
+void TestPanel_3D::ClickAddMeshBufferNode()
+{
+    if (geo_scene->getSelectedFaces().size() == 1)
+        geo_scene->addFaceNode(geo_scene->getSelectedFaces()[0]);
+}
 
 void TestPanel_3D::ClickAddNode()
 {
@@ -860,6 +864,12 @@ void TestPanel_3D::right_click(core::vector2di pos)
         else
         {
             menu->addItem(L"(No node type selected)", -1, true, false, false, false);
+        }
+
+        if (geo_scene->getSelectedFaces().size() == 1)
+        {
+            menu->addSeparator();
+            menu->addItem(L"Add Face Node", GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_ADD_MESHBUFFER_SCENENODE, true, false, false, false);
         }
 
         ContextMenuOwner = this->m_viewPanel;
@@ -1045,6 +1055,9 @@ void TestPanel_3D::OnMenuItemSelected(IGUIContextMenu* menu)
     case GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_ADD_NODE:
         ClickAddNode();
         break;
+    case GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_ADD_MESHBUFFER_SCENENODE:
+        ClickAddMeshBufferNode();
+        break;
     case GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_NODE_PROPERTIES:
         NodeProperties_Tool::show();
         break;
@@ -1070,19 +1083,23 @@ void TestPanel_3D::SetMeshNodesVisible()
         switch (this->view_style)
         {
         case PANEL3D_VIEW_RENDER:
-            geo_scene->getMeshNode()->setWireFrame(false);
+            //geo_scene->getMeshNode()->setWireFrame(false);
             geo_scene->getMeshNode()->setVisible(true);
+            geo_scene->setRenderType(false, true, false, false);
             break;
         case PANEL3D_VIEW_RENDER_FINAL:
-            geo_scene->getMeshNode()->setWireFrame(false);
+            //geo_scene->getMeshNode()->setWireFrame(false);
             geo_scene->getMeshNode()->setVisible(true);
+            geo_scene->setRenderType(false, true, false, false);
             break;
         case PANEL3D_VIEW_TRIANGLES:
-            geo_scene->getMeshNode()->setWireFrame(true);
+            //geo_scene->getMeshNode()->setWireFrame(true);
             geo_scene->getMeshNode()->setVisible(true);
+            geo_scene->setRenderType(false, true, false, true);
             break;
         case PANEL3D_VIEW_LOOPS:
             geo_scene->getMeshNode()->setVisible(false);
+            geo_scene->setRenderType(false, true, true, false);
             break;
         }
 
@@ -1122,7 +1139,7 @@ void TestPanel_3D::SetViewStyle(s32 vtype)
     case PANEL3D_VIEW_TRIANGLES:
         bShowGeometry = true;
 
-        geo_scene->buildSceneGraph(false, false, LIGHTING_UNLIT);
+        geo_scene->buildSceneGraph(false, this->lighting_type, false);
        
         geo_scene->setRenderType(false, true, false, true);
 
@@ -1135,7 +1152,7 @@ void TestPanel_3D::SetViewStyle(s32 vtype)
     case PANEL3D_VIEW_RENDER:
         bShowGeometry = true;
 
-        geo_scene->buildSceneGraph(false, true, LIGHTING_UNLIT, false);
+        geo_scene->buildSceneGraph(true, this->lighting_type, false);
 
         geo_scene->setRenderType(false, true, false, false);
 
@@ -1148,7 +1165,7 @@ void TestPanel_3D::SetViewStyle(s32 vtype)
             geo_scene->setSelectedFaces(std::vector<int>{});
         }
 
-        geo_scene->buildSceneGraph(true, false, LIGHTING_UNLIT, true);
+        geo_scene->buildSceneGraph(false, this->lighting_type, true);
        
         geo_scene->setRenderType(false, true, false, false);
 

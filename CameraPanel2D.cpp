@@ -786,6 +786,8 @@ void TestPanel_2D::SetMeshNodesVisible()
 {
     if(geo_scene->getMeshNode())
         geo_scene->getMeshNode()->setVisible(false);
+
+    geo_scene->setRenderType(bShowBrushes, false, false, false);
 }
 
 void TestPanel_2D::drawGrid(video::IVideoDriver* driver, const video::SMaterial material)

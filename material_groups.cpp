@@ -381,26 +381,25 @@ void Material_Groups_Base::show()
 
 void Material_Groups_Base::apply_material_to_buffer(scene::IMeshBuffer* buffer, int material_no, int lighting, bool selected, bool final_view)
 {
-    if (material_no >= material_groups.size())
-        return;
+    //if (material_no >= material_groups.size())
+    if (material_no > 2)
+    {
+        if(final_view)
+            return;
+        else
+        {
+            if (selected)
+                buffer->getMaterial().MaterialType = SolidMaterial_Selected_Type;
+            else
+                buffer->getMaterial().MaterialType = SolidMaterial_Type;
+            return;
+        }
+    }
 
     Material_Group mg = material_groups[material_no];
 
     if (lighting != -1)
         lighting_mode = lighting;
-
-    if (material_no == 4 && final_view)
-    {
-        buffer->getMaterial().MaterialType = SolidMaterial_WaterSurface_Type;
-       // buffer->getMaterial().setTexture(0, Render_Tool::getRender());
-        buffer->getMaterial().setTexture(0, Render_Tool::getRTT());
-        buffer->getMaterial().setTexture(1, Render_Tool::getRTT2());
-        return;
-    }
-    else if (material_no == 4)
-    {
-        buffer->getMaterial().MaterialType = SolidMaterial_Type;
-    }
 
     if (mg.lightmap && lighting_mode == LIGHTING_LIGHTMAP)
     {
