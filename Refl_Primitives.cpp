@@ -106,6 +106,12 @@ TypeDescriptor* getPrimitiveDescriptor<unsigned short>() {
 }
 
 template <>
+TypeDescriptor* getPrimitiveDescriptor<char*>() {
+    static TypeDescriptor_Pointer typeDesc;
+    return &typeDesc;
+}
+
+template <>
 TypeDescriptor* getPrimitiveDescriptor<unsigned long long>() {
     static TypeDescriptor_U64 typeDesc;
     return &typeDesc;

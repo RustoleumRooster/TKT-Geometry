@@ -207,6 +207,12 @@ ITexture* Render_Tool_Base::getRTT()
 
 
 
+Render_Tool_Base::Render_Tool_Base(std::wstring name, int my_id, gui::IGUIEnvironment* env, multi_tool_panel* panel)
+    :simple_reflected_tool_base(name,my_id,env,panel)
+{
+    m_typeDescriptor = (reflect::TypeDescriptor_Struct*)reflect::TypeResolver<render_options_struct>::get();
+}
+
 void Render_Tool_Base::show()
 {
     core::rect<s32> client_rect(core::vector2di(0, 0),
@@ -227,10 +233,9 @@ void Render_Tool_Base::show()
     refresh_panel_view();
 }
 
-void Render_Tool_Base::initialize(std::wstring name_, int my_id, gui::IGUIEnvironment* env_, geometry_scene* g_scene_, multi_tool_panel* panel_, scene::ISceneManager* smgr_)
+void Render_Tool_Base::set_scene(geometry_scene* g_scene_, scene::ISceneManager* smgr_)
 {
-    tool_base::initialize(name_, my_id, env_, g_scene_, panel_);
-    m_typeDescriptor = (reflect::TypeDescriptor_Struct*)reflect::TypeResolver<render_options_struct>::get();
+    tool_base::set_scene(g_scene_);
     smgr = smgr_;
 }
 

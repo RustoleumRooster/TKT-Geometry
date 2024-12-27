@@ -61,7 +61,13 @@ void print_geometry_ops_timers()
 
 #define printvec(v) v.X<<","<<v.Y<<","<<v.Z
 
-GeometryStack::GeometryStack(ISceneNode* parent, scene::ISceneManager* smgr, MyEventReceiver* receiver, 
+GeometryStack::GeometryStack()
+    : USceneNode(NULL, NULL, -1, vector3df(0, 0, 0))
+{
+}
+
+/*
+GeometryStack::GeometryStack(ISceneNode* parent, scene::ISceneManager* smgr, MyEventReceiver* receiver,
     video::E_MATERIAL_TYPE base_material_type, 
     video::E_MATERIAL_TYPE special_material_type, 
     TexturePicker_Base* texture_picker_base, 
@@ -86,9 +92,41 @@ GeometryStack::GeometryStack(ISceneNode* parent, scene::ISceneManager* smgr, MyE
 GeometryStack::GeometryStack(ISceneNode* parent, scene::ISceneManager* smgr, MyEventReceiver* receiver)
     : USceneNode(parent, smgr, -1, vector3df(0, 0, 0)), event_receiver(receiver)
 {
+}
+*/
 
+void GeometryStack::initialize(ISceneNode* parent, scene::ISceneManager* smgr, MyEventReceiver* receiver,
+    video::E_MATERIAL_TYPE base_material_type_,
+    video::E_MATERIAL_TYPE special_material_type_,
+    TexturePicker_Base* material_groups_base_,
+    Material_Groups_Base* texture_picker_base_)
+{
+    SceneManager = smgr;
+
+    if (parent)
+        parent->addChild(this);
+
+    base_material_type = base_material_type_;
+    special_material_type = special_material_type_;
+    event_receiver = receiver;
+    material_groups_base = texture_picker_base_;
+    texture_picker_base = material_groups_base_;
+
+    geo_element red;
+    red.brush = make_poly_cube(256, 256, 256);
+    red.type = GEO_RED;
+    elements.push_back(red);
+
+    this->edit_meshnode_interface.init(smgr, device->getVideoDriver(), event_receiver, base_material_type, special_material_type);
+    this->final_meshnode_interface.init(smgr, device->getVideoDriver(), event_receiver, base_material_type, special_material_type);
+    this->setAutomaticCulling(scene::EAC_OFF);
 }
 
+void GeometryStack::initialize(scene::ISceneManager* smgr, MyEventReceiver* receiver)
+{
+    SceneManager = smgr;
+    event_receiver = receiver;
+}
 
 GeometryStack::~GeometryStack()
 {

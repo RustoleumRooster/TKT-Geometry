@@ -61,6 +61,9 @@ class TexturePicker_Base;
 class GeometryStack : public USceneNode
 {
 public:
+    GeometryStack();
+
+    /*
     GeometryStack(ISceneNode* parent, scene::ISceneManager* smgr_, MyEventReceiver* receiver,
         video::E_MATERIAL_TYPE base_material_type_,
         video::E_MATERIAL_TYPE special_material_type_,
@@ -68,6 +71,14 @@ public:
         Material_Groups_Base*);
 
     GeometryStack(ISceneNode* parent, scene::ISceneManager* smgr_, MyEventReceiver* receiver);
+    */
+    void initialize(ISceneNode* parent, scene::ISceneManager* smgr_, MyEventReceiver* receiver,
+        video::E_MATERIAL_TYPE base_material_type_,
+        video::E_MATERIAL_TYPE special_material_type_,
+        TexturePicker_Base*,
+        Material_Groups_Base*);
+
+    void initialize(scene::ISceneManager* smgr_, MyEventReceiver* receiver);
 
   //  GeometryStack(USceneNode* parent, geometry_scene*, irr::scene::ISceneManager* smgr, int id, const core::vector3df& pos);
 

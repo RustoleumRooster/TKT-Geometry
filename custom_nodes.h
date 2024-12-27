@@ -62,16 +62,14 @@ class PlaneShaderCallBack : public video::IShaderConstantSetCallBack
 {
 public:
 
-    virtual void OnSetConstants(video::IMaterialRendererServices* services,
-        s32 userData);
+    virtual void OnSetConstants(video::IMaterialRendererServices* services, s32 userData) override;
 };
 
 class SkyShaderCallBack : public video::IShaderConstantSetCallBack
 {
 public:
 
-    virtual void OnSetConstants(video::IMaterialRendererServices* services,
-        s32 userData);
+    virtual void OnSetConstants(video::IMaterialRendererServices* services, s32 userData) override;
 };
 
 
@@ -79,8 +77,15 @@ class VanillaShaderCallBack : public video::IShaderConstantSetCallBack
 {
 public:
 
-    virtual void OnSetConstants(video::IMaterialRendererServices* services,
-        s32 userData);
+    virtual void OnSetConstants(video::IMaterialRendererServices* services, s32 userData) override;
+};
+
+class myProjectionShaderCallback : public video::IShaderConstantSetCallBack
+{
+public:
+
+    virtual void OnSetConstants(video::IMaterialRendererServices* services, s32 userData) override;
+
 };
 
 class MySkybox_SceneNode : public ISceneNode, public ViewResizeObject
@@ -112,6 +117,7 @@ public:
     static s32 yblurShaderType;
     static s32 skyPPShaderType;
     static s32 planeMaterialType;
+    static s32 projectionShaderType;
 
     geometry_scene* geo_scene = NULL;
 
@@ -124,8 +130,12 @@ public:
 
     //scene::ICameraSceneNode* my_camera = NULL;
 
+    bool WaterReflectionPass = false;
+
     TwoTriangleSceneNode* cloudLayerNode = NULL;
     TwoTriangleSceneNode* blurNode = NULL;
+
+    scene::ICameraSceneNode* my_camera = NULL;
 
     std::vector<IMeshBuffer*> buffers;
 };
@@ -188,7 +198,9 @@ public:
 
     int my_material_group = 44;
 
+    bool enabled;
     reflect::uid_reference target;
+  
 
     REFLECT2()
 };
@@ -208,8 +220,9 @@ public:
 
     int my_material_group = 55;
 
-
+    bool enabled = true;
     reflect::uid_reference target;
+    
 
     REFLECT2()
 };

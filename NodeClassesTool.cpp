@@ -241,6 +241,13 @@ void Node_Classes_Base::init_member(reflect::TypeDescriptor_Struct* flat_typeDes
 	m->readwrite = true;
 }
 
+Node_Classes_Base::Node_Classes_Base(std::wstring name, int my_id, gui::IGUIEnvironment* env, multi_tool_panel* panel) :
+	simple_reflected_tool_base(name, my_id, env, panel) 
+{
+	m_typeDescriptor = (reflect::TypeDescriptor_Struct*)reflect::TypeResolver<node_class_item>::get();
+
+	build_struct();
+}
 
 std::string Node_Classes_Base::getStaticString()
 {
@@ -262,10 +269,9 @@ void Node_Classes_Base::select(int sel)
 	m_struct.set_selected_recursive(this);
 }
 
-void Node_Classes_Base::initialize(std::wstring name_, int my_id, gui::IGUIEnvironment* env_, geometry_scene* g_scene_, multi_tool_panel* panel_)
+void Node_Classes_Base::set_scene(geometry_scene* g_scene_)
 {
-	tool_base::initialize(name_, my_id, env_, g_scene_, panel_);
-	m_typeDescriptor = (reflect::TypeDescriptor_Struct*)reflect::TypeResolver<node_class_item>::get();
+	tool_base::set_scene(g_scene_);
 
 	g_scene->set_node_classes_base(this);
 

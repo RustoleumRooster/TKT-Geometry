@@ -33,7 +33,7 @@ class Material_Groups_Widget : public gui::IGUIElement
 
 
 public:
-    Material_Groups_Widget(gui::IGUIEnvironment* env, gui::IGUIElement* parent,geometry_scene*, Material_Groups_Base*,s32 id,core::rect<s32> rect);
+    Material_Groups_Widget(gui::IGUIEnvironment* env, gui::IGUIElement* parent, geometry_scene* scene,Material_Groups_Base*,s32 id,core::rect<s32> rect);
     ~Material_Groups_Widget();
 
     void show();
@@ -69,29 +69,24 @@ enum {
 class Material_Groups_Base : public tool_base
 {
 public:
-
+    Material_Groups_Base(std::wstring name_, int my_id, gui::IGUIEnvironment* env_, multi_tool_panel*);
     ~Material_Groups_Base();
 
     void show();
+
+    /*
     void preinitialize(gui::IGUIEnvironment* env_, geometry_scene* g_scene_)
     {
         env=env_;
         g_scene= g_scene_;
     }
-
-    void initialize(std::wstring name,int my_id, multi_tool_panel* panel)
-    {
-        tool_base::initialize(name,my_id,env,g_scene,panel);
-        refreshTextures();
-    }
+    */
 
     void apply_material_to_buffer(scene::IMeshBuffer*, int material_no, int lighting, bool selected, bool final_view);
 
     int getSelected() {
         return selected;
     }
-
-    void refreshTextures();
 
     Material_Group getMaterialGroup(int i) {
         return material_groups[i];
@@ -118,7 +113,6 @@ class Material_Groups_Tool
 {
     static Material_Groups_Base* base;
     static gui::IGUIEnvironment* env;
-    static geometry_scene* g_scene;
     static multi_tool_panel* panel;
 
 public:
@@ -128,11 +122,10 @@ public:
         panel->add_tool(base);
     }
 
-    static void initialize(gui::IGUIEnvironment* env_, geometry_scene* g_scene_,Material_Groups_Base* base_ , multi_tool_panel* panel_)
+    static void initialize(gui::IGUIEnvironment* env_, Material_Groups_Base* base_ , multi_tool_panel* panel_)
     {
         base = base_;
         env=env_;
-        g_scene= g_scene_;
         panel = panel_;
     }
 

@@ -101,8 +101,9 @@ public:
 class tool_base
 {
 public:
+    tool_base(std::wstring name_, int my_id, gui::IGUIEnvironment* env_, multi_tool_panel*);
+    virtual void set_scene(geometry_scene* g_scene_);
 
-    virtual void initialize(std::wstring name_,int my_id,gui::IGUIEnvironment* env_, geometry_scene* g_scene_,multi_tool_panel*);
     virtual void show() = 0;
     virtual std::wstring getName(){return name;}
     virtual void setName(std::wstring txt);
@@ -123,6 +124,9 @@ protected:
 class reflected_tool_base : public tool_base
 {
 public:
+    reflected_tool_base(std::wstring name, int my_id, gui::IGUIEnvironment* env, multi_tool_panel* panel)
+        : tool_base(name, my_id, env, panel) {}
+
     virtual void widget_closing(Reflected_Widget_EditArea*) = 0;
     virtual reflect::TypeDescriptor_Struct* getTypeDescriptor() = 0;
     virtual void read_obj(void* obj) = 0;
@@ -135,12 +139,15 @@ public:
     virtual void write_attributes(reflect::TypeDescriptor_Struct* flat_typeDescriptor) = 0;
     virtual void* getObj() = 0;
 
-    virtual void initialize(std::wstring name_, int my_id, gui::IGUIEnvironment* env_, geometry_scene* g_scene_, multi_tool_panel*) = 0;
+    //virtual void initialize(std::wstring name_, int my_id, gui::IGUIEnvironment* env_, geometry_scene* g_scene_, multi_tool_panel*) = 0;
 };
 
 class simple_reflected_tool_base : public reflected_tool_base
 {
 public:
+    simple_reflected_tool_base(std::wstring name, int my_id, gui::IGUIEnvironment* env, multi_tool_panel* panel) 
+        : reflected_tool_base(name, my_id, env, panel) {}
+
     virtual void widget_closing(Reflected_Widget_EditArea*) override;
     virtual reflect::TypeDescriptor_Struct* getTypeDescriptor() override;
     virtual void read_obj(void* obj) override;
@@ -156,7 +163,7 @@ public:
     virtual void init_member(reflect::TypeDescriptor_Struct* flat_typeDescriptor, std::vector<int> tree_pos);
     virtual void write_attributes(reflect::TypeDescriptor_Struct* flat_typeDescriptor) {}
 
-    virtual void initialize(std::wstring name_, int my_id, gui::IGUIEnvironment* env_, geometry_scene* g_scene_, multi_tool_panel*) = 0;
+    //virtual void initialize(std::wstring name_, int my_id, gui::IGUIEnvironment* env_, geometry_scene* g_scene_, multi_tool_panel*) = 0;
     virtual void* getObj() = 0;
 
 protected:
@@ -168,11 +175,13 @@ template<typename T>
 class simple_reflected_tree_tool_base : public simple_reflected_tool_base
 {
 public:
+    simple_reflected_tree_tool_base(std::wstring name, int my_id, gui::IGUIEnvironment* env, multi_tool_panel* panel);
+
     virtual void widget_closing(Reflected_Widget_EditArea*);
     virtual void toggle_expanded_struct(reflect::TypeDescriptor_Struct* flat_typeDescriptor, std::vector<int> tree_pos);
     virtual void write_attributes(reflect::TypeDescriptor_Struct* flat_typeDescriptor);
 
-    virtual void initialize(std::wstring name_, int my_id, gui::IGUIEnvironment* env_, geometry_scene* g_scene_, multi_tool_panel*);
+    //virtual void initialize(std::wstring name_, int my_id, gui::IGUIEnvironment* env_, geometry_scene* g_scene_, multi_tool_panel*);
     virtual void* getObj() {
         return &m_struct;
     }

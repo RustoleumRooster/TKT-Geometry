@@ -69,9 +69,11 @@ class File_Open_Base: public simple_reflected_tree_tool_base<folder_tree_item>
 {
 public:
 
+    File_Open_Base(std::wstring name, int my_id, gui::IGUIEnvironment* env, multi_tool_panel* panel);
+
     virtual void show();
 
-    virtual void initialize(std::wstring name_, int my_id, gui::IGUIEnvironment* env_, geometry_scene* g_scene_, multi_tool_panel* panel_);
+    //virtual void initialize(std::wstring name_, int my_id, gui::IGUIEnvironment* env_, geometry_scene* g_scene_, multi_tool_panel* panel_);
 
     void pathToStringW(irr::core::stringw& result, const irr::io::path& p);
 

@@ -35,7 +35,7 @@ void Reflected_Widget_EditArea::show(bool editable, void* obj)
         m_typeDesc = my_base->getTypeDescriptor();
     }
 
-    //form->set_typeDescriptor(m_typeDesc);   //form fields sometimes need to query their own reflected type
+    form->set_typeDescriptor(m_typeDesc);   //form fields sometimes need to query their own reflected type
 
     my_base->write_attributes(m_typeDesc);
 
@@ -603,13 +603,14 @@ void tool_base::setName(std::wstring txt)
     panel->nameChange(this);
 }
 
-void tool_base::initialize(std::wstring name_, int my_id, gui::IGUIEnvironment* env_, geometry_scene* g_scene_,multi_tool_panel* panel_ )
+tool_base::tool_base(std::wstring name_, int my_id, gui::IGUIEnvironment* env_, multi_tool_panel* panel_) 
+    : name(name_), my_ID(my_id), env(env_), panel(panel_)
 {
-    name = name_;
-    env=env_;
-    g_scene= g_scene_;
-    panel = panel_;
-    my_ID = my_id;
+}
+
+void tool_base::set_scene(geometry_scene* g_scene_)
+{
+    g_scene = g_scene_;
 }
 
 
@@ -787,6 +788,12 @@ void simple_reflected_tool_base::toggle_expanded_struct(reflect::TypeDescriptor_
 // Simple Reflected Tree Tool Base
 //
 
+template<typename T>
+simple_reflected_tree_tool_base<T>::simple_reflected_tree_tool_base(std::wstring name, int my_id, gui::IGUIEnvironment* env, multi_tool_panel* panel)
+    : simple_reflected_tool_base(name, my_id, env, panel)
+{
+    m_typeDescriptor = (reflect::TypeDescriptor_Struct*)reflect::TypeResolver<T>::get();
+}
 
 template<typename T>
 void simple_reflected_tree_tool_base<T>::widget_closing(Reflected_Widget_EditArea* widget)
@@ -806,16 +813,6 @@ template<typename T>
 void simple_reflected_tree_tool_base<T>::write_attributes(reflect::TypeDescriptor_Struct* flat_typeDescriptor)
 {
     m_struct.write_attributes_recursive(flat_typeDescriptor, std::vector<int>{});
-}
-
-template<typename T>
-void simple_reflected_tree_tool_base<T>::initialize(std::wstring name_, int my_id, gui::IGUIEnvironment* env_, geometry_scene* g_scene_, multi_tool_panel* panel_)
-{
-    //std::cout << "initializing tree base\n";
-    tool_base::initialize(name_, my_id, env_, g_scene_, panel_);
-    m_typeDescriptor = (reflect::TypeDescriptor_Struct*)reflect::TypeResolver<T>::get();
-
-   // std::cout << m_typeDescriptor << "\n";
 }
 
 //====================================================================

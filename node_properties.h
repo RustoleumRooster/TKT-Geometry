@@ -46,6 +46,7 @@ private:
 class Node_Properties_Base : public reflected_tool_base
 {
 public:
+    Node_Properties_Base(std::wstring name, int my_id, gui::IGUIEnvironment* env, multi_tool_panel* panel);
 
     static std::vector<reflect::TypeDescriptor_Struct*> GetTypeDescriptors(geometry_scene* geo_scene);
 
@@ -54,7 +55,7 @@ public:
     reflect::TypeDescriptor_Struct* new_node_properties_flat_typedescriptor(std::vector<reflect::TypeDescriptor_Struct*>);
 
     // Inherited via reflected_tool_base
-    virtual void initialize(std::wstring name_, int my_id, gui::IGUIEnvironment* env_, geometry_scene* g_scene_, multi_tool_panel*);
+    //virtual void initialize(std::wstring name_, int my_id, gui::IGUIEnvironment* env_, geometry_scene* g_scene_, multi_tool_panel*);
     virtual void show();
     virtual void widget_closing(Reflected_Widget_EditArea*) override;
     virtual reflect::TypeDescriptor_Struct* getTypeDescriptor() override;

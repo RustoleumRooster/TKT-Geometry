@@ -25,9 +25,12 @@ class geometry_scene : public irr::IEventReceiver
 {
 public:
 
+    geometry_scene();
     geometry_scene(video::IVideoDriver* driver_, MyEventReceiver* receiver);
     geometry_scene(scene::ISceneManager* smgr_,video::IVideoDriver* driver_,MyEventReceiver* receiver,video::E_MATERIAL_TYPE base_material_type_, video::E_MATERIAL_TYPE special_material_type_);
     ~geometry_scene();
+
+    void initialize(scene::ISceneManager* smgr_, video::IVideoDriver* driver_, MyEventReceiver* receiver, video::E_MATERIAL_TYPE base_material_type_, video::E_MATERIAL_TYPE special_material_type_);
 
     int base_type=GEO_SOLID;
 
@@ -135,7 +138,8 @@ public:
     scene::ISceneNode* EditorNodes() { return editor_nodes; }
     scene::ISceneNode* ActualNodes() { return actual_nodes; }
     //ISceneNode* GeometryNodes() { return geometry_nodes; }
-    GeometryStack* geoNode() { return &geometry_stack; }
+    GeometryStack* geoNode() { return geometry_stack.value; }
+    //int nGeoNodes() { return geometry_stack.size(); }
 
     void loadLightmapTextures();
 
@@ -145,14 +149,14 @@ public:
     Reflected_SceneNode* get_reflected_node_by_uid(u64);
     void addFaceNode(int f_i);
 
-    void setFinalMeshDirty() { geometry_stack.final_mesh_dirty = true; }
+    void setFinalMeshDirty() { geometry_stack->final_mesh_dirty = true; }
 
 private:
     
     int build_progress=0;
     bool progressive_build=true;
 
-    polyfold total_geometry;
+    //polyfold total_geometry;
     std::vector<int> selected_brushes;
     std::vector<int> selected_faces;
     std::vector<Reflected_SceneNode*> selected_scene_nodes;
@@ -176,7 +180,7 @@ private:
 
     USceneNode* editor_nodes = NULL;
     USceneNode* actual_nodes = NULL;
-    GeometryStack geometry_stack;
+    reflect::pointer<GeometryStack> geometry_stack;
 
     LineHolder intersections_graph;
 
@@ -191,6 +195,15 @@ private:
     REFLECT()
 
     friend class Open_Geometry_File;
+};
+
+class Geometry_Scene_Manager
+{
+public:
+
+    std::vector<geometry_scene> geo_scenes;
+
+    REFLECT()
 };
 
 struct clip_results

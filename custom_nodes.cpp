@@ -18,11 +18,12 @@ extern f32 global_clipping_plane[4];
 
 extern float g_time;
 
+bool IsWaterReflectionPass = false;
+//bool IsUnderwaterPass = false;
 
 //============================================================================
 //  Reflected_LightSceneNode
 //
-
 
 
 void Reflected_LightSceneNode::postEdit()
@@ -177,6 +178,8 @@ Reflected_WaterSurfaceNode::Reflected_WaterSurfaceNode(USceneNode* parent, geome
 
 bool Reflected_WaterSurfaceNode::addSelfToScene(USceneNode* parent, irr::scene::ISceneManager* smgr, geometry_scene* geo_scene)
 {
+    if (!enabled)
+        return false;
 
     WaterSurface_SceneNode* node = new WaterSurface_SceneNode(parent, smgr, 77, Location, Rotation, geo_scene);
     node->drop();
@@ -289,8 +292,17 @@ Reflected_SkyNode::Reflected_SkyNode(USceneNode* parent, geometry_scene* geo_sce
 
 bool Reflected_SkyNode::addSelfToScene(USceneNode* parent, irr::scene::ISceneManager* smgr, geometry_scene* geo_scene)
 {
+    if (!enabled)
+        return false;
+
     MySkybox_SceneNode* node = new MySkybox_SceneNode(parent, smgr, -1, Location, Rotation, geo_scene);
+    node->WaterReflectionPass = false;
     node->drop();
+
+
+    MySkybox_SceneNode* node1 = new MySkybox_SceneNode(parent, smgr, -1, Location, Rotation, geo_scene);
+    node1->WaterReflectionPass = true;
+    node1->drop();
 
     node_instance_id = node->getID();
 
@@ -321,6 +333,7 @@ bool Reflected_SkyNode::addSelfToScene(USceneNode* parent, irr::scene::ISceneMan
                 IMeshBuffer* buffer = chunk.buffer;
 
                 node->attach_to_buffer(buffer);
+                node1->attach_to_buffer(buffer);
             }
         }
     }
@@ -442,6 +455,19 @@ void WaterSurface_SceneNode::resizeView(core::dimension2du new_size)
     geo_scene->getMeshNode()->copyMaterials();
 }
 
+void getReflectedCamera(ICameraSceneNode* camera, f32 z, const ICameraSceneNode* src)
+{
+    vector3df cam_pos = src->getAbsolutePosition();
+    vector3df cam_target = src->getTarget();
+
+    if (cam_pos.Y > 0)
+    {
+        f32 y_pos = -cam_pos.Y;
+        camera->setPosition(vector3df(cam_pos.X, y_pos, cam_pos.Z));
+        camera->setTarget(vector3df(cam_target.X, -cam_target.Y, cam_target.Z));
+    }
+}
+
 void WaterSurface_SceneNode::render()
 {
     if (this->isVisible() == false || geo_scene->getMeshNode()->isVisible() == false)
@@ -452,25 +478,17 @@ void WaterSurface_SceneNode::render()
 
     IVideoDriver* driver = SceneManager->getVideoDriver();
 
-    vector3df cam_pos = fp_camera->getAbsolutePosition();
-    vector3df cam_target = fp_camera->getTarget();
-
-    if (cam_pos.Y > 0)
-    {
-        f32 y_pos = -cam_pos.Y;
-        my_camera->setPosition(vector3df(cam_pos.X, y_pos, cam_pos.Z));
-        my_camera->setTarget(vector3df(cam_target.X, -cam_target.Y, cam_target.Z));
-    }
+    getReflectedCamera(my_camera, 0, fp_camera);
 
     for (IMeshBuffer* buffer : buffers)
     {
         buffer->getMaterial().FrontfaceCulling = true;
         buffer->getMaterial().BackfaceCulling = true;
     }
-     geo_scene->getMeshNode()->copyMaterials();
+    geo_scene->getMeshNode()->copyMaterials();
 
     //=================
-    //Render from the reflection camera (above water)
+    //Render from the reflection camera (scene above water)
 
     ITexture* rtt = my_rtt; // get_rtt();
 
@@ -488,14 +506,20 @@ void WaterSurface_SceneNode::render()
 
     my_camera->render();
     
+    //std::cout << "reflection pass\n";
     this->setVisible(false);
+    IsWaterReflectionPass = true;
+
+    SceneManager->clearAllRegisteredNodesForRendering();
     SceneManager->drawAll();
+
     this->setVisible(true);
+    IsWaterReflectionPass = false;
     //geo_scene->getMeshNode()->render();
 
 
     //=================
-    //Render from the normal camera (underwater)
+    //Render from the normal camera (scene underwater)
 
     ITexture* rtt2 = my_rtt2;// get_rtt2();
 
@@ -513,7 +537,11 @@ void WaterSurface_SceneNode::render()
     global_clipping_plane[2] = 0.0;
     global_clipping_plane[3] = 0.0;
 
+   // std::cout << "underwatere pass\n";
+
     geo_scene->getMeshNode()->render();
+
+   // std::cout << "------\n";
 
     video::SMaterial some_material;
     some_material.MaterialType = underwater_material;
@@ -552,6 +580,7 @@ void WaterSurface_SceneNode::OnRegisterSceneNode()
 
     if (IsVisible)
         SceneManager->registerNodeForRendering(this, ESNRP_TRANSPARENT_EFFECT);
+        //SceneManager->registerNodeForRendering(this, ESNRP_SKY_BOX);
 
     ISceneNode::OnRegisterSceneNode();
 }
@@ -580,9 +609,9 @@ s32 MySkybox_SceneNode::xblurShaderType = 0;
 s32 MySkybox_SceneNode::yblurShaderType = 0;
 s32 MySkybox_SceneNode::skyPPShaderType = 0;
 s32 MySkybox_SceneNode::planeMaterialType = 0;
+s32 MySkybox_SceneNode::projectionShaderType = 0;
 
 extern float g_time;
-
 
 void PlaneShaderCallBack::OnSetConstants(video::IMaterialRendererServices* services,
     s32 userData)
@@ -631,15 +660,17 @@ void PlaneShaderCallBack::OnSetConstants(video::IMaterialRendererServices* servi
 
     services->setPixelShaderConstant("Time", reinterpret_cast<f32*>(&g_time), 1);
 
-    s32 TextureLayerID = 0;
+    s32 TextureLayerID;
+
+    TextureLayerID = 0;
 
     services->setPixelShaderConstant("myTexture", &TextureLayerID, 1);
 
-    TextureLayerID = 1;
+    TextureLayerID = 2;
 
     services->setPixelShaderConstant("myTexture2", &TextureLayerID, 1);
 
-    TextureLayerID = 2;
+    TextureLayerID = 3;
 
     services->setPixelShaderConstant("myTexture3", &TextureLayerID, 1);
 
@@ -686,6 +717,28 @@ void VanillaShaderCallBack::OnSetConstants(video::IMaterialRendererServices* ser
     services->setPixelShaderConstant("Time", reinterpret_cast<f32*>(&g_time), 1);
 }
 
+void myProjectionShaderCallback::OnSetConstants(video::IMaterialRendererServices* services,
+    s32 userData)
+{
+    video::IVideoDriver* driver = services->getVideoDriver();
+
+    core::matrix4 worldView = driver->getTransform(video::ETS_VIEW);
+    worldView *= driver->getTransform(video::ETS_WORLD);
+    services->setVertexShaderConstant("mWorldView", worldView.pointer(), 16);
+
+    core::matrix4 Proj = driver->getTransform(video::ETS_PROJECTION);
+    services->setVertexShaderConstant("mProj", Proj.pointer(), 16);
+
+    s32 TextureLayerID;
+    
+    if(IsWaterReflectionPass)
+        TextureLayerID = 1;
+    else
+        TextureLayerID = 0;
+
+    services->setPixelShaderConstant("myTexture2", &TextureLayerID, 1);
+
+}
 
 void SkyShaderCallBack::OnSetConstants(video::IMaterialRendererServices* services,
     s32 userData)
@@ -722,6 +775,9 @@ MySkybox_SceneNode::MySkybox_SceneNode(USceneNode* parent, irr::scene::ISceneMan
 {
     cloudLayerNode = new TwoTriangleSceneNode(NULL, smgr, 23456);
 
+    my_camera = smgr->addCameraSceneNode(NULL, pos, vector3df(0, 0, 0), -1, false);
+    //reflection_camera = smgr->addCameraSceneNode(NULL, pos, vector3df(0, 0, 0), -1, false);
+
     IVideoDriver* driver = device->getVideoDriver();
 
     cloudLayerNode->getMaterial(0).MaterialType = (video::E_MATERIAL_TYPE)planeMaterialType;
@@ -754,10 +810,22 @@ MySkybox_SceneNode::~MySkybox_SceneNode()
     if (blurNode)
         delete blurNode;
 
+    my_camera->remove();
+    my_camera = NULL;
+
+    //reflection_camera->remove();
+    //my_camera = NULL;
+
 }
 
 void MySkybox_SceneNode::resizeView(core::dimension2du new_size) 
 {
+    my_camera->setAspectRatio((f32)new_size.Width / (f32)new_size.Height);
+    my_camera->updateAbsolutePosition();
+
+   // reflection_camera->setAspectRatio((f32)new_size.Width / (f32)new_size.Height);
+   // reflection_camera->updateAbsolutePosition();
+
     IVideoDriver* driver = SceneManager->getVideoDriver();
 
     if (my_rtt)
@@ -782,26 +850,69 @@ void MySkybox_SceneNode::resizeView(core::dimension2du new_size)
         my_rtt3 = NULL;
     }
 
-    my_rtt2 = driver->addRenderTargetTexture(half_size, "RTT_02", irr::video::ECF_A8R8G8B8);
-    my_rtt3 = driver->addRenderTargetTexture(half_size, "RTT_03", irr::video::ECF_A8R8G8B8);
+    my_rtt2 = driver->addRenderTargetTexture(new_size, "RTT_02", irr::video::ECF_A8R8G8B8);
+   // my_rtt3 = driver->addRenderTargetTexture(half_size, "RTT_03", irr::video::ECF_A8R8G8B8);
 
     //Render_Tool::connect_image(this);
 
     for (IMeshBuffer* buffer : buffers)
     {
-        buffer->getMaterial().setTexture(0, my_rtt2);
+        if(this->WaterReflectionPass)
+            buffer->getMaterial().setTexture(1, my_rtt2);
+        else
+            buffer->getMaterial().setTexture(0, my_rtt2);
     }
 
     geo_scene->getMeshNode()->copyMaterials();
 }
 
+void getReflectedCameraAngleOnly(ICameraSceneNode* camera, f32 z, const ICameraSceneNode* src)
+{
+    vector3df cam_pos = src->getAbsolutePosition();
+    vector3df cam_target = src->getTarget();
+
+    if (cam_pos.Y > 0)
+    {
+        f32 y_pos = -cam_pos.Y;
+        camera->setPosition(vector3df(cam_pos.X, y_pos, cam_pos.Z));
+        camera->setTarget(vector3df(cam_target.X, -cam_target.Y, cam_target.Z));
+    }
+}
+
 void MySkybox_SceneNode::render()
 {
-    if (geo_scene->getMeshNode()->isVisible() == false)
+    if (geo_scene->getMeshNode()->isVisible() == false || this->WaterReflectionPass != IsWaterReflectionPass)
         return;
     
-    IVideoDriver* driver = SceneManager->getVideoDriver();
+    int a;
     
+    if (this->WaterReflectionPass)
+    {
+        a = 0;
+       // std::cout << "water reflection sky\n";
+    }
+    else
+    {
+        a = 1;
+        //std::cout << "sky\n";
+    }
+    
+
+    ICameraSceneNode* fp_camera = SceneManager->getActiveCamera();
+    vector3df t_pos = my_camera->getAbsolutePosition() + fp_camera->getTarget() - fp_camera->getAbsolutePosition();
+
+
+    //my_camera->setRotation(fp_camera->getRotation());
+    my_camera->setTarget(t_pos);
+    my_camera->render();
+    
+    IVideoDriver* driver = SceneManager->getVideoDriver();
+
+    driver->setRenderTarget(my_rtt2, true, true, video::SColor(255, 0, 0, 0));
+
+    geo_scene->getMeshNode()->render();
+
+    /*
     //1) down sample to my_rtt2s
     driver->setRenderTarget(my_rtt2, true, true, video::SColor(255, 0, 0, 0));
     cloudLayerNode->render();
@@ -819,7 +930,8 @@ void MySkybox_SceneNode::render()
 
     driver->setRenderTarget(my_rtt2, true, true, video::SColor(255, 0, 0, 0));
     blurNode->render();
-    
+    */
+
     driver->setRenderTarget(NULL, true, true, video::SColor(0, 0, 0, 0));
 }
 
@@ -827,6 +939,7 @@ void MySkybox_SceneNode::OnRegisterSceneNode()
 {
     if (IsVisible)
         SceneManager->registerNodeForRendering(this, ESNRP_TRANSPARENT_EFFECT);
+        //SceneManager->registerNodeForRendering(this, ESNRP_SKY_BOX);
 
     ISceneNode::OnRegisterSceneNode();
 }
@@ -835,11 +948,15 @@ void MySkybox_SceneNode::attach_to_buffer(IMeshBuffer* buffer)
 {
     buffers.push_back(buffer);
 
-    E_MATERIAL_TYPE projection_material = Material_Groups_Tool::get_base()->Material_Projection_Type;
+    //E_MATERIAL_TYPE projection_material = Material_Groups_Tool::get_base()->Material_Projection_Type;
+    E_MATERIAL_TYPE projection_material = (E_MATERIAL_TYPE)projectionShaderType;
 
     buffer->getMaterial().MaterialType = projection_material;
 
-    buffer->getMaterial().setTexture(0, my_rtt2);
+    if (this->WaterReflectionPass)
+        buffer->getMaterial().setTexture(1, my_rtt2);
+    else
+        buffer->getMaterial().setTexture(0, my_rtt2);
 
     my_box.addInternalBox(buffer->getBoundingBox());
 
@@ -853,13 +970,13 @@ void MySkybox_SceneNode::load_shaders()
     SkyShaderCallBack* mc5;
     VanillaShaderCallBack* mc6;
     VanillaShaderCallBack* mc7;
-    VanillaShaderCallBack* mc8;
+    myProjectionShaderCallback* mc8;
 
     PlaneShaderCallBack* mc2 = new PlaneShaderCallBack();
     mc5 = new SkyShaderCallBack();
     mc6 = new VanillaShaderCallBack();
     mc7 = new VanillaShaderCallBack();
-    mc8 = new VanillaShaderCallBack();
+    mc8 = new myProjectionShaderCallback();
 
     IVideoDriver* driver = device->getVideoDriver();
     video::IGPUProgrammingServices* gpu = driver->getGPUProgrammingServices();
@@ -883,6 +1000,11 @@ void MySkybox_SceneNode::load_shaders()
         "shaders/blur_vertshader.txt", "vertexMain", video::EVST_VS_1_1,
         "shaders/yblur_fragshader.txt", "pixelMain", video::EPST_PS_1_1,
         mc7, video::EMT_SOLID, 0);
+
+    projectionShaderType = gpu->addHighLevelShaderMaterialFromFiles(
+        "vert_shader_pj.txt", "vertexMain", video::EVST_VS_1_1,
+        "frag_shader_pj.txt", "pixelMain", video::EPST_PS_1_1,
+        mc8, video::EMT_SOLID, 0);
 
     /*
     skyPPShaderType = gpu->addHighLevelShaderMaterialFromFiles(

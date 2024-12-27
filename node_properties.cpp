@@ -137,6 +137,11 @@ void Node_Properties_Widget::click_OK()
 //
 //
 
+Node_Properties_Base::Node_Properties_Base(std::wstring name, int my_id, gui::IGUIEnvironment* env, multi_tool_panel* panel)
+    : reflected_tool_base(name,my_id,env,panel)
+{
+}
+
 std::vector<reflect::TypeDescriptor_Struct*> Node_Properties_Base::GetTypeDescriptors(geometry_scene* geo_scene)
 {
     if(geo_scene->getSelectedNodes().size() == 0)
@@ -187,11 +192,6 @@ std::vector<reflect::TypeDescriptor_Struct*> Node_Properties_Base::GetTypeDescri
     }
 
    return ret;
-}
-
-void Node_Properties_Base::initialize(std::wstring name_, int my_id, gui::IGUIEnvironment* env_, geometry_scene* g_scene_, multi_tool_panel* panel_)
-{
-    tool_base::initialize(name_, my_id, env_, g_scene_, panel_);
 }
 
 void Node_Properties_Base::show()

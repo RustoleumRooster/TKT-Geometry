@@ -149,7 +149,7 @@ void ListReflectedNodes_Base::initialize(std::wstring name_, int my_id, IGUIEnvi
 {
     typeDescriptors = Reflected_SceneNode_Factory::getAllTypes();
 
-    tool_base::initialize(name_,my_id,env_,g_scene_,panel_);
+    //tool_base::initialize(name_,my_id,env_,g_scene_,panel_);
 }
 
 //============================================================================
@@ -845,13 +845,15 @@ REFLECT_STRUCT2_END()
 REFLECT_STRUCT2_BEGIN(Reflected_SkyNode)
     ALIAS("Sky Node")
     INHERIT_FROM(Reflected_Sprite_SceneNode)
+    REFLECT_STRUCT2_MEMBER(enabled)
     REFLECT_STRUCT2_MEMBER(target)
 REFLECT_STRUCT2_END()
 
 REFLECT_STRUCT2_BEGIN(Reflected_WaterSurfaceNode)
     ALIAS("Water Surface")
-    INHERIT_FROM(Reflected_Sprite_SceneNode)
+    REFLECT_STRUCT2_MEMBER(enabled)
     REFLECT_STRUCT2_MEMBER(target)
+    INHERIT_FROM(Reflected_Sprite_SceneNode)
 REFLECT_STRUCT2_END()
 
 REFLECT_STRUCT2_BEGIN(Reflected_PointNode)

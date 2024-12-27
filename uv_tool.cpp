@@ -822,10 +822,24 @@ void UV_Editor_Widget::click_OK()
 // UV Editor Base
 //
 
-void UV_Editor_Base::initialize(std::wstring name_, int my_id, gui::IGUIEnvironment* env_, geometry_scene* g_scene_, multi_tool_panel* panel_, scene::ISceneManager* smgr)
+UV_Editor_Base::UV_Editor_Base(std::wstring name, int my_id, gui::IGUIEnvironment* env, multi_tool_panel* panel)
+    :simple_reflected_tool_base(name,my_id,env,panel)
 {
-    tool_base::initialize(name_, my_id, env_, g_scene_, panel_);
     m_typeDescriptor = (reflect::TypeDescriptor_Struct*)reflect::TypeResolver<uv_editor_struct>::get();
+}
+
+UV_Editor_Base::~UV_Editor_Base()
+{
+    if (uv_edit)
+        delete uv_edit;
+}
+
+void UV_Editor_Base::set_scene(geometry_scene* g_scene_, scene::ISceneManager* smgr)
+{
+    tool_base::set_scene(g_scene_);
+
+    if (uv_edit)
+        delete uv_edit;
 
     uv_edit = new UV_Editor_Panel(env, device->getVideoDriver(), NULL, 0, core::recti());
     uv_edit->Initialize(smgr, g_scene);

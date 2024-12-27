@@ -77,6 +77,7 @@ public:
 class Node_Classes_Base : public simple_reflected_tool_base
 {
 public:
+    Node_Classes_Base(std::wstring name, int my_id, gui::IGUIEnvironment* env, multi_tool_panel* panel);
 
     virtual void show();
 
@@ -84,7 +85,9 @@ public:
 
     virtual void widget_closing(Reflected_Widget_EditArea* widget) override;
 
-    virtual void initialize(std::wstring name_, int my_id, gui::IGUIEnvironment* env_, geometry_scene* g_scene_, multi_tool_panel* panel_) override;
+    virtual void set_scene(geometry_scene* g_scene_) override;
+
+    //virtual void initialize(std::wstring name_, int my_id, gui::IGUIEnvironment* env_, geometry_scene* g_scene_, multi_tool_panel* panel_) override;
 
     virtual void init_member(reflect::TypeDescriptor_Struct* flat_typeDescriptor, std::vector<int> tree_pos) override;
 

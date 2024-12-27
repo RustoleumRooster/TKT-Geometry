@@ -92,11 +92,7 @@ private:
 class TexturePicker_Base : public tool_base
 {
 public:
-    void initialize(std::wstring name_,int my_id,gui::IGUIEnvironment* env_, geometry_scene* g_scene_,multi_tool_panel* panel_)
-    {
-        tool_base::initialize(name_,my_id,env_,g_scene_,panel_);
-        categories.push_back("All Textures");
-    }
+    TexturePicker_Base(std::wstring name_, int my_id, gui::IGUIEnvironment* env_, multi_tool_panel* panel_);
 
     void show();
 

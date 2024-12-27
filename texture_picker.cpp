@@ -319,6 +319,12 @@ Texture_Picker_Window::~Texture_Picker_Window()
         texturePicker->drop();
 }
 
+TexturePicker_Base::TexturePicker_Base(std::wstring name, int my_id, gui::IGUIEnvironment* env, multi_tool_panel* panel)
+    : tool_base(name,my_id,env,panel)
+{
+    categories.push_back("All Textures");
+}
+
 void TexturePicker_Base::show()
 {
 

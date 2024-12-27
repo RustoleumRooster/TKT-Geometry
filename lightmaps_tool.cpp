@@ -59,7 +59,8 @@ LM_Viewer_Panel::LM_Viewer_Panel(IGUIEnvironment* environment, video::IVideoDriv
 
 void LM_Viewer_Panel::Initialize(scene::ISceneManager* smgr, geometry_scene* geo_scene)
 {
-    uv_scene = new GeometryStack(NULL, smgr, (MyEventReceiver*)device->getEventReceiver());
+    uv_scene = new GeometryStack();// (NULL, smgr, (MyEventReceiver*)device->getEventReceiver());
+    uv_scene->initialize(smgr, (MyEventReceiver*)device->getEventReceiver());
     TestPanel::Initialize(smgr, geo_scene);
 }
 
@@ -880,13 +881,21 @@ void Material_Buffers_Widget::click_OK()
 //
 //
 
-void Material_Buffers_Base::initialize(std::wstring name_, int my_id, gui::IGUIEnvironment* env_, geometry_scene* g_scene_, multi_tool_panel* panel_, scene::ISceneManager* smgr)
+void Material_Buffers_Base::initialize(scene::ISceneManager* smgr)
 {
-    tool_base::initialize(name_, my_id, env_, g_scene_, panel_);
     m_typeDescriptor = (reflect::TypeDescriptor_Struct*)reflect::TypeResolver<material_buffers_struct>::get();
+
+    if (uv_edit)
+        delete uv_edit;
 
     uv_edit = new LM_Viewer_Panel(env, device->getVideoDriver(), NULL, NULL, 0, core::recti());
     uv_edit->Initialize(smgr, g_scene);
+}
+
+Material_Buffers_Base::~Material_Buffers_Base()
+{
+    if (uv_edit)
+        delete uv_edit;
 }
 
 void Material_Buffers_Base::show()

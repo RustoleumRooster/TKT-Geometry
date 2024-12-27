@@ -144,11 +144,10 @@ struct mb_tool_options_struct
 class Material_Buffers_Base : public simple_reflected_tool_base
 {
 public:
+    Material_Buffers_Base(std::wstring name, int my_id, gui::IGUIEnvironment* env, multi_tool_panel* panel) :
+        simple_reflected_tool_base(name, my_id, env, panel) , mb_options{ true,true,true } {}
 
-    ~Material_Buffers_Base() {
-        if (uv_edit)
-            delete uv_edit;
-    }
+    ~Material_Buffers_Base();
 
     virtual void show();
     void select(int sel);
@@ -156,7 +155,7 @@ public:
     virtual void initialize(std::wstring name_, int my_id, gui::IGUIEnvironment* env_, geometry_scene* g_scene_, multi_tool_panel* panel_)
     {}
 
-    void initialize(std::wstring name_, int my_id, gui::IGUIEnvironment* env_, geometry_scene* g_scene_, multi_tool_panel* panel_, scene::ISceneManager* smgr);
+    void initialize(scene::ISceneManager* smgr);
 
     void setCameraQuad(CameraQuad* cameraQuad_) { cameraQuad = cameraQuad_; }
     void close_uv_panel();

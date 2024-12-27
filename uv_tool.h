@@ -111,16 +111,15 @@ class UV_Editor_Base : public simple_reflected_tool_base
 {
 public:
 
-    ~UV_Editor_Base() {
-        if (uv_edit)
-            delete uv_edit;
-    }
+    UV_Editor_Base(std::wstring name, int my_id, gui::IGUIEnvironment* env, multi_tool_panel* panel);
+    ~UV_Editor_Base();
 
     virtual void show();
     void select(int sel);
 
-    virtual void initialize(std::wstring name_, int my_id, gui::IGUIEnvironment* env_, geometry_scene* g_scene_, multi_tool_panel* panel_) {}
-    void initialize(std::wstring name_, int my_id, gui::IGUIEnvironment* env_, geometry_scene* g_scene_, multi_tool_panel* panel_, scene::ISceneManager* smgr);
+    void set_scene(geometry_scene* g_scene_, scene::ISceneManager* smgr);
+    //virtual void initialize(std::wstring name_, int my_id, gui::IGUIEnvironment* env_, geometry_scene* g_scene_, multi_tool_panel* panel_) {}
+    //void initialize(std::wstring name_, int my_id, gui::IGUIEnvironment* env_, geometry_scene* g_scene_, multi_tool_panel* panel_, scene::ISceneManager* smgr);
 
     void setCameraQuad(CameraQuad* cameraQuad_) { cameraQuad = cameraQuad_; }
     void close_uv_panel();

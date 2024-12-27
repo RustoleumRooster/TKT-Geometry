@@ -362,15 +362,6 @@ void Node_Instances_Base::select(Reflected_SceneNode* sel, bool shift)
 	g_scene->selectionChanged();
 }
 
-void Node_Instances_Base::initialize(std::wstring name_, int my_id, gui::IGUIEnvironment* env_, geometry_scene* g_scene_, multi_tool_panel* panel_)
-{
-	tool_base::initialize(name_, my_id, env_, g_scene_, panel_);
-	m_typeDescriptor = (reflect::TypeDescriptor_Struct*)reflect::TypeResolver<node_tree_item>::get();
-
-	build_initial_struct();
-
-}
-
 reflect::TypeDescriptor_Struct* Node_Instances_Base::getFlatTypeDescriptor()
 {
 	reflect::TypeDescriptor_Struct* tD = (reflect::TypeDescriptor_Struct*)m_typeDescriptor->get_flat_copy(getObj(), 0);
@@ -388,6 +379,14 @@ void Node_Instances_Base::write_attributes(reflect::TypeDescriptor_Struct* flat_
 void Node_Instances_Base::widget_closing(Reflected_Widget_EditArea* widget)
 {
 	m_initial_struct.read_expanded(widget->m_typeDesc, std::vector<int>{});
+}
+
+Node_Instances_Base::Node_Instances_Base(std::wstring name, int my_id, gui::IGUIEnvironment* env, multi_tool_panel* panel)
+	: simple_reflected_tool_base(name,my_id,env,panel)
+{
+	m_typeDescriptor = (reflect::TypeDescriptor_Struct*)reflect::TypeResolver<node_tree_item>::get();
+
+	build_initial_struct();
 }
 
 void Node_Instances_Base::show()

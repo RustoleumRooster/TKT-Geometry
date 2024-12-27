@@ -319,6 +319,12 @@ bool File_Open_Window::OnEvent(const SEvent& event)
 //
 
 
+File_Open_Base::File_Open_Base(std::wstring name, int my_id, gui::IGUIEnvironment* env, multi_tool_panel* panel)
+    : simple_reflected_tree_tool_base(name, my_id, env, panel)
+{
+    FileSystem = env ? env->getFileSystem() : 0;
+}
+
 void File_Open_Base::show()
 {
 
@@ -532,6 +538,7 @@ void File_Open_Base::select_file_dbl(int sel)
     }
 }
 
+/*
 void File_Open_Base::initialize(std::wstring name_, int my_id, gui::IGUIEnvironment* env_, geometry_scene* g_scene_, multi_tool_panel*)
 {
     simple_reflected_tree_tool_base::initialize(name_, my_id, env_, g_scene_, NULL);
@@ -539,7 +546,7 @@ void File_Open_Base::initialize(std::wstring name_, int my_id, gui::IGUIEnvironm
     FileSystem = env ? env->getFileSystem() : 0;
 
     //build_struct();
-}
+}*/
 
 io::path File_Open_Tool::getSelectedFile()
 {

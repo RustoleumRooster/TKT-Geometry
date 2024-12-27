@@ -16,7 +16,7 @@ extern IrrlichtDevice* device;
 
 Material_Groups_Base* Material_Groups_Tool::base = NULL;
 IGUIEnvironment* Material_Groups_Tool::env = NULL;
-geometry_scene* Material_Groups_Tool::g_scene = NULL;
+//geometry_scene* Material_Groups_Tool::g_scene = NULL;
 multi_tool_panel* Material_Groups_Tool::panel = NULL;
 
 //Material_Groups_Widget::mGroups_struct Material_Groups_Widget::mg_struct{0};
@@ -28,12 +28,11 @@ REFLECT_STRUCT_BEGIN(Material_Groups_Widget::nSelected_struct)
 REFLECT_STRUCT_END()
 
 
-Material_Groups_Widget::Material_Groups_Widget(IGUIEnvironment* env, IGUIElement* parent,geometry_scene* g_scene_,Material_Groups_Base* base_, s32 id,core::rect<s32> rect)
-    : IGUIElement(EGUIET_ELEMENT,env,parent,id,rect), g_scene(g_scene_), my_ID(id), base(base_)
+Material_Groups_Widget::Material_Groups_Widget(gui::IGUIEnvironment* env, gui::IGUIElement* parent, geometry_scene* scene, Material_Groups_Base* base_, s32 id, core::rect<s32> rect)
+    : IGUIElement(EGUIET_ELEMENT, env, parent, id, rect), my_ID(id), base(base_), g_scene(scene)
 {
     MyEventReceiver* receiver = (MyEventReceiver*)device->getEventReceiver();
     receiver->Register(this);
-
 }
 
 Material_Groups_Widget::~Material_Groups_Widget()
@@ -339,20 +338,10 @@ bool Material_Groups_Widget::OnEvent(const SEvent& event)
     return IGUIElement::OnEvent(event);
 }
 
-void Material_Groups_Base::refreshTextures()
-{
-    /*
-    for (Material_Group &mg: material_groups)
-    {
-        if (mg.texture)
-            env->getVideoDriver()->removeTexture(mg.texture);
 
-        irr::video::IImage* img = makeSolidColorImage(env->getVideoDriver(), mg.color);
-        video::ITexture* tex = env->getVideoDriver()->addTexture("txtr", img);
-        img->drop();
-        mg.texture = tex;
-    }
-    */
+Material_Groups_Base::Material_Groups_Base(std::wstring name, int my_id, gui::IGUIEnvironment* env, multi_tool_panel* panel)
+    :tool_base(name,my_id,env,panel)
+{
 }
 
 Material_Groups_Base::~Material_Groups_Base()
@@ -417,6 +406,8 @@ void Material_Groups_Base::apply_material_to_buffer(scene::IMeshBuffer* buffer, 
     }
     else
     {
+        buffer->getMaterial().Lighting = false;
+
         if (selected)
             buffer->getMaterial().MaterialType = SolidMaterial_Selected_Type;
         else

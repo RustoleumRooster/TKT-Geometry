@@ -67,6 +67,8 @@ class Render_Tool_Base : public simple_reflected_tool_base
 
 public:
 
+    Render_Tool_Base(std::wstring name_, int my_id, gui::IGUIEnvironment* env_, multi_tool_panel* panel_);
+
     ~Render_Tool_Base() {
 
         if (view_panel)
@@ -75,8 +77,9 @@ public:
 
     virtual void show();
 
-    virtual void initialize(std::wstring name_, int my_id, gui::IGUIEnvironment* env_, geometry_scene* g_scene_, multi_tool_panel* panel_) {}
-    virtual void initialize(std::wstring name_, int my_id, gui::IGUIEnvironment* env_, geometry_scene* g_scene_, multi_tool_panel* panel_, scene::ISceneManager* smgr);
+    void set_scene(geometry_scene* g_scene_, scene::ISceneManager* smgr_);
+    //virtual void initialize(std::wstring name_, int my_id, gui::IGUIEnvironment* env_, geometry_scene* g_scene_, multi_tool_panel* panel_) {}
+    //virtual void initialize(std::wstring name_, int my_id, gui::IGUIEnvironment* env_, geometry_scene* g_scene_, multi_tool_panel* panel_, scene::ISceneManager* smgr);
 
     void setCameraQuad(CameraQuad* cameraQuad_);
     void close_panel();

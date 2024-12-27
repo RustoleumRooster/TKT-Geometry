@@ -132,17 +132,19 @@ struct DefaultResolver {
         enum { value = (sizeof(func<T>(nullptr)) == sizeof(char)) };
     };
 
+    // This version is called otherwise:
+    template <typename T, typename std::enable_if<!IsReflected<T>::value, int>::type = 0>
+    static TypeDescriptor* get() {
+        return getPrimitiveDescriptor<T>();
+    }
+
     // This version is called if T has a static member named "Reflection":
     template <typename T, typename std::enable_if<IsReflected<T>::value, int>::type = 0>
     static TypeDescriptor* get() {\
             return &T::Reflection;
     }
 
-    // This version is called otherwise:
-    template <typename T, typename std::enable_if<!IsReflected<T>::value, int>::type = 0>
-    static TypeDescriptor* get() {
-        return getPrimitiveDescriptor<T>();
-    }
+    
 };
 
 // This is the primary class template for finding all TypeDescriptors:
@@ -626,12 +628,136 @@ struct TypeDescriptor_StdVector : TypeDescriptor {
     virtual void addFormWidget(Reflected_GUI_Edit_Form*, TypeDescriptor_Struct*, std::vector<int> tree, size_t offset, bool bVisible, bool bEditable, int tab) override;
 };
 
+
 // Partially specialize TypeResolver<> for std::vectors:
 template <typename T>
 class TypeResolver<std::vector<T>> {
 public:
     static TypeDescriptor* get() {
         static TypeDescriptor_StdVector typeDesc{(T*) nullptr};
+        return &typeDesc;
+    }
+};
+
+struct TypeDescriptor_Reference : TypeDescriptor {
+    TypeDescriptor* itemType;
+    const void* (*getItem)(const void*);
+    void* (*getItem_nc)(void*);
+    void* (*getNew)();
+
+    template<typename T>
+    TypeDescriptor_Reference(T*) : TypeDescriptor{ "Ref", sizeof(char*) },
+        itemType{ TypeResolver<T>::get() }
+    {
+        getItem = [](const void* ptr_to_ptr) -> const void* {
+            const T* ptr = *(const T**) ptr_to_ptr;
+            return (const void*) ptr;
+            };
+
+        getItem_nc = [](void* ptr_to_ptr) -> void* {
+            T* ptr = *(T**)ptr_to_ptr;
+            return (void*)ptr;
+            };
+
+        getNew = []() -> void* {
+            return new T;
+            };
+    }
+
+    bool isNull(const void* obj) const
+    {
+        return (*(char*)obj) == NULL;
+    }
+
+    virtual std::string getFullName() const override {
+        return std::string("pointer<") + itemType->getFullName() + ">";
+    }
+
+    virtual void dump(const void* obj, int indent/* unused */) const override {
+        std::cout << getFullName();
+
+        if (isNull(obj))
+        {
+            std::cout << " = NULL\n";
+        }
+        else
+        {
+            std::cout << "\n";
+            itemType->dump(getItem(obj), indent + 1);
+        }
+    }
+
+    virtual void serialize(std::ofstream& f, const void* obj) override
+    {
+        char first_byte;
+
+        if (isNull(obj))
+        {
+            first_byte = 0;
+            f.write((char*)&first_byte, sizeof(char));
+        }
+        else
+        {
+            first_byte = 1;
+            f.write((char*)&first_byte, sizeof(char));
+            itemType->serialize(f, getItem(obj));
+        }
+    }
+
+    virtual void deserialize(std::ifstream& f, void* obj) override
+    {
+        char first_byte;
+        f.read((char*)&first_byte, sizeof(char));
+
+        if (first_byte == 0)
+        {
+            void** ptr = (void**)obj;
+            *ptr = NULL;
+        }
+        else
+        {
+            void** ptr = (void**)obj;
+            *ptr = getNew();
+            itemType->deserialize(f, getItem_nc(obj));
+        }
+    }
+
+    virtual void addFormWidget(Reflected_GUI_Edit_Form*, TypeDescriptor_Struct*, std::vector<int> tree, size_t offset, bool bVisible, bool bEditable, int tab) override 
+    {}
+};
+
+template<typename T>
+struct pointer
+{
+    T* value = NULL;
+
+    void operator=(T* other)
+    {
+        value = other;
+    }
+
+    T* operator->(void)
+    {
+        return value;
+    }
+
+    bool operator==(const T* other)
+    {
+        return value == other;
+    }
+
+    operator T* ()
+    {
+        return value;
+    }
+};
+
+
+template <typename T>
+class TypeResolver<pointer<T>> {
+public:
+    static TypeDescriptor* get() {
+        static TypeDescriptor_Reference typeDesc{ (T*) nullptr };
         return &typeDesc;
     }
 };
@@ -801,6 +927,18 @@ struct TypeDescriptor_Texture : TypeDescriptor {
 
     virtual bool expandable(){return true;}
     virtual void addFormWidget(Reflected_GUI_Edit_Form*, TypeDescriptor_Struct*, std::vector<int> tree, size_t offset, bool bVisible, bool bEditable, int tab) override;
+};
+
+struct TypeDescriptor_Pointer : TypeDescriptor {
+    TypeDescriptor_Pointer() : TypeDescriptor{ "ptr", sizeof(char*) } {
+    }
+    virtual void dump(const void* obj, int /* unused */) const override {
+        std::cout << "ptr{" << *(const unsigned short*)obj << "}";
+    }
+
+    virtual void addFormWidget(Reflected_GUI_Edit_Form*, TypeDescriptor_Struct*, std::vector<int> tree, size_t offset, bool bVisible, bool bEditable, int tab) override
+    {}
+
 };
 
 struct TypeDescriptor_U64 : TypeDescriptor {
