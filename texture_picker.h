@@ -126,6 +126,11 @@ public:
         panel->add_tool(base);
     }
 
+    static TexturePicker_Base* get_base()
+    {
+        return base;
+    }
+
     static TexturePicker_Base* base;
     static multi_tool_panel* panel;
 };

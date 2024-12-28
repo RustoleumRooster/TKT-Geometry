@@ -199,6 +199,11 @@ public:
         panel->add_tool(base);
     }
 
+    static Material_Buffers_Base* get_base()
+    {
+        return base;
+    }
+
     static void initialize(Material_Buffers_Base* base_, multi_tool_panel* panel_)
     {
         base = base_;

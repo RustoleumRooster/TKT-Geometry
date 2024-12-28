@@ -161,6 +161,11 @@ public:
         panel->add_tool(base);
     }
 
+    static UV_Editor_Base* get_base()
+    {
+        return base;
+    }
+
     static void initialize(UV_Editor_Base* base_, multi_tool_panel* panel_)
     {
         base = base_;

@@ -78,21 +78,28 @@ geometry_scene::~geometry_scene()
         geometry_stack->remove();
 }
 
-void geometry_scene::initialize(scene::ISceneManager* smgr_, video::IVideoDriver* driver_, MyEventReceiver* receiver, video::E_MATERIAL_TYPE base_material_type_, video::E_MATERIAL_TYPE special_material_type_)
+void geometry_scene::initialize(scene::ISceneManager* smgr_, video::IVideoDriver* driver_, MyEventReceiver* receiver)
 {
     geometry_stack = new GeometryStack();
-    geometry_stack->initialize(smgr_->getRootSceneNode(), smgr_, receiver, base_material_type_, special_material_type_, texture_picker_base, material_groups_base);
+    geometry_stack->initialize(smgr_->getRootSceneNode(), smgr_, receiver, texture_picker_base, material_groups_base);
 
     this->smgr = smgr_;
     this->driver = driver_;
-    this->base_material_type = base_material_type_;
-    this->special_material_type = special_material_type_;
+   // this->base_material_type = base_material_type_;
+   // this->special_material_type = special_material_type_;
     this->event_receiver = receiver;
 
     this->editor_nodes = new USceneNode(smgr->getRootSceneNode(), smgr, 0, vector3df(0, 0, 0));
     this->actual_nodes = new USceneNode(smgr->getRootSceneNode(), smgr, 0, vector3df(0, 0, 0));
 
     event_receiver->Register(this);
+}
+
+void geometry_scene::set_default_materials(video::E_MATERIAL_TYPE base_material_type_, video::E_MATERIAL_TYPE special_material_type_)
+{
+    this->base_material_type = base_material_type_;
+    this->special_material_type = special_material_type_;
+    geometry_stack->set_default_materials(base_material_type, special_material_type);
 }
 
 void geometry_scene::setMaterialGroupsBase(Material_Groups_Base* base)

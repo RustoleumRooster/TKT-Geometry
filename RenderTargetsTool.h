@@ -141,6 +141,11 @@ public:
         panel = panel_;
     }
 
+    static Render_Tool_Base* get_base()
+    {
+        return base;
+    }
+
     static void connect_image(ViewResizeObject* view)
     {
         if (base)

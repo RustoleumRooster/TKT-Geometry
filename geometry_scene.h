@@ -30,8 +30,8 @@ public:
     geometry_scene(scene::ISceneManager* smgr_,video::IVideoDriver* driver_,MyEventReceiver* receiver,video::E_MATERIAL_TYPE base_material_type_, video::E_MATERIAL_TYPE special_material_type_);
     ~geometry_scene();
 
-    void initialize(scene::ISceneManager* smgr_, video::IVideoDriver* driver_, MyEventReceiver* receiver, video::E_MATERIAL_TYPE base_material_type_, video::E_MATERIAL_TYPE special_material_type_);
-
+    void initialize(scene::ISceneManager* smgr_, video::IVideoDriver* driver_, MyEventReceiver* receiver);
+    void set_default_materials(video::E_MATERIAL_TYPE base_material_type_, video::E_MATERIAL_TYPE special_material_type_);
     int base_type=GEO_SOLID;
 
     void set_type(int t) { base_type = t; }
@@ -138,7 +138,7 @@ public:
     scene::ISceneNode* EditorNodes() { return editor_nodes; }
     scene::ISceneNode* ActualNodes() { return actual_nodes; }
     //ISceneNode* GeometryNodes() { return geometry_nodes; }
-    GeometryStack* geoNode() { return geometry_stack.value; }
+    GeometryStack* geoNode() { return geometry_stack; }
     //int nGeoNodes() { return geometry_stack.size(); }
 
     void loadLightmapTextures();
@@ -151,6 +151,8 @@ public:
 
     void setFinalMeshDirty() { geometry_stack->final_mesh_dirty = true; }
 
+    ISceneManager* get_smgr() { return smgr; }
+    
 private:
     
     int build_progress=0;

@@ -122,6 +122,33 @@ void GeometryStack::initialize(ISceneNode* parent, scene::ISceneManager* smgr, M
     this->setAutomaticCulling(scene::EAC_OFF);
 }
 
+void GeometryStack::initialize(ISceneNode* parent, scene::ISceneManager* smgr, MyEventReceiver* receiver, TexturePicker_Base* material_groups_base_, Material_Groups_Base* texture_picker_base_)
+{
+    SceneManager = smgr;
+
+    if (parent)
+        parent->addChild(this);
+
+    event_receiver = receiver;
+    material_groups_base = texture_picker_base_;
+    texture_picker_base = material_groups_base_;
+
+    geo_element red;
+    red.brush = make_poly_cube(256, 256, 256);
+    red.type = GEO_RED;
+    elements.push_back(red);
+
+    this->edit_meshnode_interface.init(smgr, device->getVideoDriver(), event_receiver, base_material_type, special_material_type);
+    this->final_meshnode_interface.init(smgr, device->getVideoDriver(), event_receiver, base_material_type, special_material_type);
+    this->setAutomaticCulling(scene::EAC_OFF);
+}
+
+void GeometryStack::set_default_materials(video::E_MATERIAL_TYPE base_material_type_, video::E_MATERIAL_TYPE special_material_type_)
+{
+    base_material_type = base_material_type_;
+    special_material_type = special_material_type_;
+}
+
 void GeometryStack::initialize(scene::ISceneManager* smgr, MyEventReceiver* receiver)
 {
     SceneManager = smgr;
