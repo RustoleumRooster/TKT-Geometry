@@ -11,6 +11,7 @@
 #include "geometry_scene.h"
 #include "texture_picker.h"
 #include "CMeshSceneNode.h"
+#include "NodeClassesTool.h"
 
 extern IrrlichtDevice* device;
 using namespace irr;
@@ -624,7 +625,7 @@ bool TestPanel_3D::get_click_face(int x, int y, click_brush_info& ret)
             f32 d = hitvec.getDistanceFrom(cam_pos);
             if (d<dist && d > near_dist &&
                 (geo_node->get_total_geometry()->faces[j].m_normal.dotProduct(cam_pos - hitvec) > 0 ||
-                    this->geo_scene->getMaterialGroupsBase()->material_groups[geo_node->get_total_geometry()->faces[j].material_group].two_sided == true
+                    Material_Groups_Tool::get_base()->material_groups[geo_node->get_total_geometry()->faces[j].material_group].two_sided == true
                     )
                 &&
                 (hitvec - cam_pos).dotProduct(this->getCamera()->getTarget() - cam_pos) > 0)
@@ -852,7 +853,7 @@ void TestPanel_3D::right_click(core::vector2di pos)
         menu->addSeparator();
         menu->addItem(L"Add Light", GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_ADD_LIGHT, true, false, false, false);
 
-        reflect::TypeDescriptor_Struct* node_type = geo_scene->getSelectedNodeClass();
+        reflect::TypeDescriptor_Struct* node_type = Node_Classes_Tool::get_base()->getSelectedTypeDescriptor();
 
         if (node_type)
         {

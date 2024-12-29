@@ -47,7 +47,7 @@ public:
     ~LM_Viewer_Panel();
 
     virtual scene::ICameraSceneNode* getCamera();
-    virtual void Initialize(scene::ISceneManager* smgr, geometry_scene* geo_scene);
+    virtual void Initialize(geometry_scene* geo_scene);
     virtual void setAxis(int);
     virtual void render();
     virtual bool OnEvent(const SEvent& event);
@@ -151,11 +151,12 @@ public:
 
     virtual void show();
     void select(int sel);
+    virtual void set_scene(geometry_scene* gs) override;
 
     virtual void initialize(std::wstring name_, int my_id, gui::IGUIEnvironment* env_, geometry_scene* g_scene_, multi_tool_panel* panel_)
     {}
 
-    void initialize(scene::ISceneManager* smgr);
+    void initialize();
 
     void setCameraQuad(CameraQuad* cameraQuad_) { cameraQuad = cameraQuad_; }
     void close_uv_panel();

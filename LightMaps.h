@@ -19,4 +19,21 @@ public:
 	std::vector<irr::video::ITexture*> lightmap_textures;
 	MyEventReceiver* event_receiver = NULL;
 };
+
+class Lightmaps_Tool
+{
+public:
+	static Lightmap_Manager* lightmap_manager;
+
+	static void set_manager(Lightmap_Manager* lmm)
+	{
+		lightmap_manager = lmm;
+	}
+
+	static Lightmap_Manager* get_manager()
+	{
+		return lightmap_manager;
+	}
+
+};
 #endif

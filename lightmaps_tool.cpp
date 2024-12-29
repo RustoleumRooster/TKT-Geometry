@@ -57,11 +57,11 @@ LM_Viewer_Panel::LM_Viewer_Panel(IGUIEnvironment* environment, video::IVideoDriv
    // uv_scene = new GeometryStack(NULL,Scen)
 }
 
-void LM_Viewer_Panel::Initialize(scene::ISceneManager* smgr, geometry_scene* geo_scene)
+void LM_Viewer_Panel::Initialize(geometry_scene* geo_scene)
 {
     uv_scene = new GeometryStack();// (NULL, smgr, (MyEventReceiver*)device->getEventReceiver());
-    uv_scene->initialize(smgr, (MyEventReceiver*)device->getEventReceiver());
-    TestPanel::Initialize(smgr, geo_scene);
+    uv_scene->initialize(geo_scene->get_smgr(), (MyEventReceiver*)device->getEventReceiver());
+    TestPanel::Initialize(geo_scene);
 }
 
 LM_Viewer_Panel::~LM_Viewer_Panel()
@@ -161,7 +161,7 @@ void LM_Viewer_Panel::showMaterialGroup(int mg_n)
                     delete my_image;
                 my_image = NULL;
 
-                vector<video::ITexture*>& lm_textures = geo_scene->getLightmapManager()->lightmap_textures;
+                vector<video::ITexture*>& lm_textures = Lightmaps_Tool::get_manager()->lightmap_textures;
 
                 if (mg_n < lm_textures.size())
                 {
@@ -881,7 +881,7 @@ void Material_Buffers_Widget::click_OK()
 //
 //
 
-void Material_Buffers_Base::initialize(scene::ISceneManager* smgr)
+void Material_Buffers_Base::initialize()
 {
     m_typeDescriptor = (reflect::TypeDescriptor_Struct*)reflect::TypeResolver<material_buffers_struct>::get();
 
@@ -889,7 +889,7 @@ void Material_Buffers_Base::initialize(scene::ISceneManager* smgr)
         delete uv_edit;
 
     uv_edit = new LM_Viewer_Panel(env, device->getVideoDriver(), NULL, NULL, 0, core::recti());
-    uv_edit->Initialize(smgr, g_scene);
+    uv_edit->Initialize(g_scene);
 }
 
 Material_Buffers_Base::~Material_Buffers_Base()
@@ -941,6 +941,14 @@ void Material_Buffers_Base::select(int sel)
             m_struct.material_groups[i].selected = false;
     }
 
+}
+
+void Material_Buffers_Base::set_scene(geometry_scene* gs)
+{
+    tool_base::set_scene(gs);
+
+    if (uv_edit)
+        uv_edit->set_scene(gs);
 }
 
 void Material_Buffers_Base::close_uv_panel()

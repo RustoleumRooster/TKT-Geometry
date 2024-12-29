@@ -12,21 +12,17 @@
 using namespace irr;
 using namespace scene;
 
-MeshNode_Interface::MeshNode_Interface(scene::ISceneManager* smgr_,video::IVideoDriver* driver_,MyEventReceiver* receiver, video::E_MATERIAL_TYPE base_material_type_, video::E_MATERIAL_TYPE special_material_type_)
+MeshNode_Interface::MeshNode_Interface(scene::ISceneManager* smgr_,video::IVideoDriver* driver_,MyEventReceiver* receiver)
 {
     this->smgr = smgr_;
     this->driver = driver_;
-    this->base_material_type = base_material_type_;
-    this->special_material_type = special_material_type_;
     this->event_receiver = receiver;
 }
 
-void MeshNode_Interface::init(scene::ISceneManager* smgr_,video::IVideoDriver* driver_,MyEventReceiver* receiver, video::E_MATERIAL_TYPE base_material_type_, video::E_MATERIAL_TYPE special_material_type_)
+void MeshNode_Interface::init(scene::ISceneManager* smgr_,video::IVideoDriver* driver_,MyEventReceiver* receiver)
 {
     this->smgr = smgr_;
     this->driver = driver_;
-    this->base_material_type = base_material_type_;
-    this->special_material_type = special_material_type_;
     this->event_receiver = receiver;
 }
 

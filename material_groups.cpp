@@ -371,7 +371,7 @@ void Material_Groups_Base::show()
 void Material_Groups_Base::apply_material_to_buffer(scene::IMeshBuffer* buffer, int material_no, int lighting, bool selected, bool final_view)
 {
     //if (material_no >= material_groups.size())
-    if (material_no > 2)
+    if (material_no > 3)
     {
         if(final_view)
             return;

@@ -33,9 +33,10 @@ using namespace irr;
 using namespace core;
 using namespace gui;
 using namespace std;
-extern geometry_scene* g_scene;
-extern ViewPanel* ContextMenuOwner;
 
+//extern geometry_scene* g_scene;
+extern ViewPanel* ContextMenuOwner;
+extern SceneCoordinator* g_scene_coordinator;
 
 struct CubeOptions
 {
@@ -84,6 +85,8 @@ REFLECT_STRUCT_END()
 
 void do_add_geometry()
 {
+    geometry_scene* g_scene = g_scene_coordinator->current_scene();
+
     if(g_scene)
     {
         g_scene->geoNode()->add(g_scene->geoNode()->elements[0].brush);
@@ -92,6 +95,8 @@ void do_add_geometry()
 
 void do_subtract_geometry()
 {
+    geometry_scene* g_scene = g_scene_coordinator->current_scene();
+
     if(g_scene)
     {
         g_scene->geoNode()->subtract(g_scene->geoNode()->elements[0].brush);
@@ -101,6 +106,8 @@ void do_subtract_geometry()
 
 void do_add_semisolid_geometry()
 {
+    geometry_scene* g_scene = g_scene_coordinator->current_scene();
+
     if(g_scene)
     {
         g_scene->geoNode()->add_semisolid(g_scene->geoNode()->elements[0].brush);
@@ -109,6 +116,8 @@ void do_add_semisolid_geometry()
 
 void do_intersect_brush()
 {
+    geometry_scene* g_scene = g_scene_coordinator->current_scene();
+
     if(g_scene)
     {
         g_scene->geoNode()->intersect_active_brush();
@@ -118,6 +127,8 @@ void do_intersect_brush()
 
 void do_clip_brush()
 {
+    geometry_scene* g_scene = g_scene_coordinator->current_scene();
+
     if(g_scene)
     {
         g_scene->geoNode()->clip_active_brush();
@@ -126,6 +137,8 @@ void do_clip_brush()
 
 void do_rebuild()
 {
+    geometry_scene* g_scene = g_scene_coordinator->current_scene();
+
     if(g_scene)
     {
         g_scene->geoNode()->rebuild_geometry();
@@ -134,6 +147,8 @@ void do_rebuild()
 
 void do_new_scene()
 {
+    geometry_scene* g_scene = g_scene_coordinator->current_scene();
+
     if(g_scene)
     {
         g_scene->clear_scene();
@@ -142,6 +157,8 @@ void do_new_scene()
 
 void do_toggle_progressive_build()
 {
+    geometry_scene* g_scene = g_scene_coordinator->current_scene();
+
     if(g_scene)
     {
         g_scene->toggle_progressive_build();
@@ -155,6 +172,8 @@ void do_toggle_progressive_build()
 
 void do_save()
 {
+    geometry_scene* g_scene = g_scene_coordinator->current_scene();
+
     if(g_scene)
     {
         g_scene->WriteSceneNodesToFile("nodes.dat");
@@ -166,13 +185,13 @@ void do_save()
 
 void do_file_save_as()
 {
-    Save_Geometry_File* fsave = new Save_Geometry_File(g_scene);
+    Save_Geometry_File* fsave = new Save_Geometry_File(g_scene_coordinator);
     //std::cout<<"save as: not implemented\n";
 }
 
 void do_file_open()
 {
-    Open_Geometry_File* fopen = new Open_Geometry_File(g_scene);
+    Open_Geometry_File* fopen = new Open_Geometry_File(g_scene_coordinator);
 }
 
 void do_set_grid_snap(int snap)
@@ -239,6 +258,7 @@ void Test_EditWindow::click_OK()
 
 void do_refl_test()
 {
+    geometry_scene* g_scene = g_scene_coordinator->current_scene();
 
     //refl_cube.texture = NULL;
     //std::cout<<"OK\n";
@@ -259,6 +279,8 @@ void do_refl_test()
 
 void do_add_plane_test()
 {
+    geometry_scene* g_scene = g_scene_coordinator->current_scene();
+
     if(g_scene)
     {
         g_scene->geoNode()->add_plane(g_scene->geoNode()->elements[0].brush);
@@ -411,11 +433,14 @@ void OnMenuItemSelected(IGUIContextMenu* menu)
 
 bool MyEventReceiver::OnEvent(const SEvent& event)
 {
+    
+
     if(event.EventType == EET_GUI_EVENT)
     {
         s32 id = event.GUIEvent.Caller->getID();
         gui::IGUIEnvironment* env = device->getGUIEnvironment();
 
+        geometry_scene* g_scene = g_scene_coordinator->current_scene();
 
         switch(event.GUIEvent.EventType)
         {
@@ -508,7 +533,7 @@ bool MyEventReceiver::OnEvent(const SEvent& event)
                             //vk.run_soft_light(g_scene);
                             //vk.run_multipass_light(g_scene);
                             vk.run_amb_occlusion(g_scene);
-                            g_scene->getLightmapManager()->loadLightmapTextures(g_scene->geoNode());
+                            Lightmaps_Tool::get_manager()->loadLightmapTextures(g_scene->geoNode());
                         }
                     }
                         break;

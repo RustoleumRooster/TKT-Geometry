@@ -63,30 +63,13 @@ class GeometryStack : public USceneNode
 public:
     GeometryStack();
 
-    /*
-    GeometryStack(ISceneNode* parent, scene::ISceneManager* smgr_, MyEventReceiver* receiver,
-        video::E_MATERIAL_TYPE base_material_type_,
-        video::E_MATERIAL_TYPE special_material_type_,
-        TexturePicker_Base*,
-        Material_Groups_Base*);
-
-    GeometryStack(ISceneNode* parent, scene::ISceneManager* smgr_, MyEventReceiver* receiver);
-    */
     void initialize(ISceneNode* parent, scene::ISceneManager* smgr_, MyEventReceiver* receiver,
         video::E_MATERIAL_TYPE base_material_type_,
-        video::E_MATERIAL_TYPE special_material_type_,
-        TexturePicker_Base*,
-        Material_Groups_Base*);
+        video::E_MATERIAL_TYPE special_material_type_);
 
-    void initialize(ISceneNode* parent, scene::ISceneManager* smgr_, MyEventReceiver* receiver,
-        TexturePicker_Base*,
-        Material_Groups_Base*);
-
-    void set_default_materials(video::E_MATERIAL_TYPE base_material_type_, video::E_MATERIAL_TYPE special_material_type_);
+    void initialize(ISceneNode* parent, scene::ISceneManager* smgr_, MyEventReceiver* receiver);
 
     void initialize(scene::ISceneManager* smgr_, MyEventReceiver* receiver);
-
-  //  GeometryStack(USceneNode* parent, geometry_scene*, irr::scene::ISceneManager* smgr, int id, const core::vector3df& pos);
 
     ~GeometryStack();
 
@@ -147,12 +130,7 @@ private:
 
     polyfold total_geometry;
 
-    TexturePicker_Base* texture_picker_base = NULL;
-    Material_Groups_Base* material_groups_base = NULL;
     MyEventReceiver* event_receiver = NULL;
-
-    video::E_MATERIAL_TYPE base_material_type = video::EMT_SOLID;
-    video::E_MATERIAL_TYPE special_material_type = video::EMT_SOLID;
 
     int new_geometry_material_group = 0;
 

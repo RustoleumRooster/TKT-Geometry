@@ -1106,9 +1106,9 @@ void Texture_FormField::readValue(void* obj)
 
 void Texture_FormField::clickButton()
 {
-    if(this->owner && this->owner->g_scene && bVisible)
+    if(bVisible)
     {
-        my_texture = this->owner->g_scene->getTexturePickerBase()->getCurrentTexture();
+        my_texture = TexturePicker_Tool::getCurrentTexture();
 
         gui::IGUIElement* editbox =  (gui::IGUIElement*)(owner->getElementFromId(my_ID+1,true));
         if(editbox)

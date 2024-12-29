@@ -131,6 +131,11 @@ public:
         g_scene= g_scene_;
     }
 
+    static void set_scene(geometry_scene* g_scene_)
+    {
+        g_scene = g_scene_;
+    }
+
     static void MakeCubeWindow();
     static void MakeCylinderWindow();
     static void MakeSphereWindow();

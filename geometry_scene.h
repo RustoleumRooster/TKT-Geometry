@@ -26,12 +26,14 @@ class geometry_scene : public irr::IEventReceiver
 public:
 
     geometry_scene();
-    geometry_scene(video::IVideoDriver* driver_, MyEventReceiver* receiver);
-    geometry_scene(scene::ISceneManager* smgr_,video::IVideoDriver* driver_,MyEventReceiver* receiver,video::E_MATERIAL_TYPE base_material_type_, video::E_MATERIAL_TYPE special_material_type_);
+    geometry_scene(video::IVideoDriver* driver_, MyEventReceiver* receiver); //used only by uv_tool
     ~geometry_scene();
 
+    void enable();
+    void disable();
+
     void initialize(scene::ISceneManager* smgr_, video::IVideoDriver* driver_, MyEventReceiver* receiver);
-    void set_default_materials(video::E_MATERIAL_TYPE base_material_type_, video::E_MATERIAL_TYPE special_material_type_);
+    //void set_default_materials(video::E_MATERIAL_TYPE base_material_type_, video::E_MATERIAL_TYPE special_material_type_);
     int base_type=GEO_SOLID;
 
     void set_type(int t) { base_type = t; }
@@ -56,9 +58,6 @@ public:
 
     std::vector<Reflected_SceneNode*> editor_node_ptrs_from_uid(const std::vector<u64>& selection);
     MeshBuffer_Chunk get_face_buffer_by_uid(u64);
-
-    void setTexturePickerBase(TexturePicker_Base*);
-    TexturePicker_Base* getTexturePickerBase();
 
     void TextureToSelectedFaces();
 
@@ -87,18 +86,9 @@ public:
 
     //===============Material Groups
     void MaterialGroupToSelectedFaces();
-
-
-    void setMaterialGroupsBase(Material_Groups_Base*);
-    Material_Groups_Base* getMaterialGroupsBase();
-    //void setFinalMeshDirty(bool dirty = true) { final_mesh_dirty = dirty; }
     void visualizeMaterialGroups();
-    void showLightMaps();
 
-    void setLightmapManager(Lightmap_Manager*);
-    Lightmap_Manager* getLightmapManager() { return lightmap_manager; }
-
-    void set_new_geometry_material(int mg) { new_geometry_material_group = mg; }
+    //void set_new_geometry_material(int mg) { new_geometry_material_group = mg; }
 
     void set_selected_material_group(int mg) { selected_material_group = mg; }
     int get_selected_material_group() { return selected_material_group; }
@@ -119,27 +109,19 @@ public:
 
     void deleteSelectedNodes();
 
-    reflect::TypeDescriptor_Struct* getSelectedNodeClass();
-    void set_node_classes_base(Node_Classes_Base* base) {node_classes_base=base;}
     void addSceneSelectedSceneNodeType(core::vector3df pos);
 
     int selected_brush_vertex_editing;
     void drawGraph(LineHolder& graph);
 
-    //triangle_holder* get_triangles_for_face(int f_i);
-
     LineHolder special_graph;
-
-    //core::list<ISceneNode*> getGeometryNodes();
-    //int nGeometryNodes();
 
     void setRenderType(bool brushes, bool geo, bool loops, bool triangles);
 
     scene::ISceneNode* EditorNodes() { return editor_nodes; }
     scene::ISceneNode* ActualNodes() { return actual_nodes; }
-    //ISceneNode* GeometryNodes() { return geometry_nodes; }
+
     GeometryStack* geoNode() { return geometry_stack; }
-    //int nGeoNodes() { return geometry_stack.size(); }
 
     void loadLightmapTextures();
 
@@ -152,13 +134,15 @@ public:
     void setFinalMeshDirty() { geometry_stack->final_mesh_dirty = true; }
 
     ISceneManager* get_smgr() { return smgr; }
+
+    void write_files(int append_no);
+    void read_files(int append_no);
     
 private:
     
     int build_progress=0;
     bool progressive_build=true;
 
-    //polyfold total_geometry;
     std::vector<int> selected_brushes;
     std::vector<int> selected_faces;
     std::vector<Reflected_SceneNode*> selected_scene_nodes;
@@ -168,15 +152,6 @@ private:
     scene::ISceneManager* smgr=NULL;
     video::IVideoDriver* driver=NULL;
     MyEventReceiver* event_receiver=NULL;
-
-    TexturePicker_Base* texture_picker_base=NULL;
-    Material_Groups_Base* material_groups_base=NULL;
-    Node_Classes_Base* node_classes_base=NULL;
-    Lightmap_Manager* lightmap_manager = NULL;
-
-    int new_geometry_material_group = 0;
-    video::E_MATERIAL_TYPE base_material_type = video::EMT_SOLID;
-    video::E_MATERIAL_TYPE special_material_type = video::EMT_SOLID;
 
     core::vector3df drag_vec;
 
@@ -190,8 +165,6 @@ private:
     bool bSceneInProgress = false;
     bool b_dynamic_light = false;
 
-    //std::vector<triangle_holder> total_geometry_triangles;
-
     int selected_material_group = 0;
 
     REFLECT()
@@ -199,14 +172,40 @@ private:
     friend class Open_Geometry_File;
 };
 
-class Geometry_Scene_Manager
+class SceneCoordinator
 {
-public:
+    struct metadata
+    {
+        int n_scenes;
+    };
 
-    std::vector<geometry_scene> geo_scenes;
+public:
+    SceneCoordinator(scene::ISceneManager* smgr_, video::IVideoDriver* driver_, MyEventReceiver* receiver);
+    ~SceneCoordinator();
+
+    geometry_scene* current_scene();
+    geometry_scene* get_scene(int);
+    void swap_scene(int);
+    void add_scene();
+
+private:
+
+    bool write_metadata(std::string fname);
+    bool read_metadata(std::string fname, metadata&);
+
+    int scene_no = 0;
+    std::vector<reflect::pointer<geometry_scene>> scenes;
+
+    scene::ISceneManager* smgr;
+    video::IVideoDriver* driver;
+    MyEventReceiver* receiver;
+
+    friend class Open_Geometry_File;
+    friend class Save_Geometry_File;
 
     REFLECT()
 };
+
 
 struct clip_results
 {

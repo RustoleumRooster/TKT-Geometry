@@ -18,22 +18,21 @@
 
 extern IrrlichtDevice* device;
 
-void initialize_tools(geometry_scene& scene, gui::IGUIEnvironment* gui, multi_tool_panel* tool_panel)
+void initialize_tools(geometry_scene* scene, gui::IGUIEnvironment* gui, multi_tool_panel* tool_panel)
 {
     Material_Groups_Base* material_groups_base = new Material_Groups_Base(L"Materials", GUI_ID_MATERIAL_GROUPS_BASE, gui, tool_panel);
-    material_groups_base->set_scene(&scene);
+    material_groups_base->set_scene(scene);
     Material_Groups_Tool::initialize(gui, material_groups_base, tool_panel);
 
     TexturePicker_Base* texture_picker_base = new TexturePicker_Base(L"Textures", GUI_ID_TEXTURES_BASE, gui, tool_panel);
-    texture_picker_base->set_scene(&scene);
+    texture_picker_base->set_scene(scene);
     TexturePicker_Tool::initialize(texture_picker_base, tool_panel);
-    scene.setTexturePickerBase(texture_picker_base);
 
-    GeometryFactory::initialize(gui, &scene);
-    Texture_Adjust_Tool::initialize(gui, &scene);
+    GeometryFactory::initialize(gui, scene);
+    Texture_Adjust_Tool::initialize(gui, scene);
 
     Node_Properties_Base* node_properties_base = new Node_Properties_Base(L"Properties", GUI_ID_NODE_PROPERTIES_BASE, gui, tool_panel);
-    node_properties_base->set_scene(&scene);
+    node_properties_base->set_scene(scene);
     NodeProperties_Tool::initialize(node_properties_base, tool_panel);
 
     //Geo_Settings_Base* geo_settings_base = new Geo_Settings_Base;
@@ -41,8 +40,8 @@ void initialize_tools(geometry_scene& scene, gui::IGUIEnvironment* gui, multi_to
     //Geo_Settings_Tool::initialize(geo_settings_base, tool_panel);
 
     Material_Buffers_Base* material_buffers_base = new Material_Buffers_Base(L"Mesh Buffers", GUI_ID_MAT_BUFFERS_BASE, gui, tool_panel);
-    material_buffers_base->set_scene(&scene);
-    material_buffers_base->initialize(scene.get_smgr()); //TODO
+    material_buffers_base->set_scene(scene);
+    material_buffers_base->initialize();
     Material_Buffers_Tool::initialize(material_buffers_base, tool_panel);
 
     /*
@@ -54,15 +53,15 @@ void initialize_tools(geometry_scene& scene, gui::IGUIEnvironment* gui, multi_to
         */
 
     Node_Classes_Base* node_classes_base = new Node_Classes_Base(L"All Node Classes", GUI_ID_NODE_CLASSES_BASE, gui, tool_panel);
-    node_classes_base->set_scene(&scene);
+    node_classes_base->set_scene(scene);
     Node_Classes_Tool::initialize(node_classes_base, tool_panel);
 
     Node_Instances_Base* node_instances_base = new Node_Instances_Base(L"All Node Instances", GUI_ID_NODE_INSTANCES_BASE, gui, tool_panel);
-    node_instances_base->set_scene(&scene);
+    node_instances_base->set_scene(scene);
     Node_Instances_Tool::initialize(node_instances_base, tool_panel);
 
     File_Open_Base* file_open_base = new File_Open_Base(L"All Node Instances", GUI_ID_FILE_OPEN_BASE, gui, tool_panel);
-    file_open_base->set_scene(&scene);
+    file_open_base->set_scene(scene);
     //file_open_base->initialize(L"All Node Instances", GUI_ID_FILE_OPEN_BASE, gui, &scene, tool_panel);
     File_Open_Tool::initialize(file_open_base, tool_panel);
 
@@ -71,19 +70,47 @@ void initialize_tools(geometry_scene& scene, gui::IGUIEnvironment* gui, multi_to
     // LM_Viewer_Tool::initialize(LM_Viewer_base, tool_panel);
 
     UV_Editor_Base* UV_Editor_base = new UV_Editor_Base(L"UV Edtior", GUI_ID_UV_EDITOR_BASE, gui, tool_panel);
-    UV_Editor_base->set_scene(&scene, scene.get_smgr());
+    UV_Editor_base->set_scene(scene);
     UV_Editor_Tool::initialize(UV_Editor_base, tool_panel);
 
     Render_Tool_Base* render_tool_base = new Render_Tool_Base(L"Test Render", GUI_ID_UV_EDITOR_BASE, gui, tool_panel);
-    render_tool_base->set_scene(&scene, scene.get_smgr());
+    render_tool_base->set_scene(scene);
     //render_tool_base->setMaterial(materialType_passthru);
     Render_Tool::initialize(render_tool_base, tool_panel);
 
     Lightmap_Manager* lightmap_manager = new Lightmap_Manager();
-    scene.setLightmapManager(lightmap_manager);
+    //scene.setLightmapManager(lightmap_manager);
+    Lightmaps_Tool::set_manager(lightmap_manager);
+
 }
 
-void initialize_materials(geometry_scene& scene)
+void initialize_set_scene(geometry_scene* scene)
+{
+    Material_Groups_Tool::get_base()->set_scene(scene);
+    TexturePicker_Tool::get_base()->set_scene(scene);
+    GeometryFactory::set_scene(scene);
+    Texture_Adjust_Tool::set_scene(scene);
+    NodeProperties_Tool::get_base()->set_scene(scene);
+
+    //Geo_Settings_Base* geo_settings_base = new Geo_Settings_Base;
+    //geo_settings_base->initialize(L"Settings", GUI_ID_GEO_SETTINGS_BASE, gui, &scene, tool_panel);
+    //Geo_Settings_Tool::initialize(geo_settings_base, tool_panel);
+
+    Material_Buffers_Tool::get_base()->set_scene(scene);
+    Node_Classes_Tool::get_base()->set_scene(scene);
+    Node_Instances_Tool::get_base()->set_scene(scene);
+    File_Open_Tool::get_base()->set_scene(scene);
+
+
+    // LM_Viewer_Base* LM_Viewer_base = new LM_Viewer_Base;
+    // LM_Viewer_base->initialize(L"LM Viewer", GUI_ID_LM_VIEWER_BASE, gui, &scene, tool_panel);
+    // LM_Viewer_Tool::initialize(LM_Viewer_base, tool_panel);
+
+    UV_Editor_Tool::get_base()->set_scene(scene);
+    Render_Tool::get_base()->set_scene(scene);
+}
+
+void initialize_materials(geometry_scene* scene)
 {
     video::IVideoDriver* driver = device->getVideoDriver();
     video::IGPUProgrammingServices* gpu = driver->getGPUProgrammingServices();
@@ -188,11 +215,12 @@ void initialize_materials(geometry_scene& scene)
 
     Material_Groups_Base* material_groups_base = Material_Groups_Tool::get_base();
 
-    Material_Group m0{ "Unlit",false,false,false,false,video::SColor(255,128,64,64) };
-    Material_Group m1{ "Lightmap",false,false,true,false,video::SColor(255,128,128,64) };
-    Material_Group m2{ "Transparent",true,true,false,false,video::SColor(255,32,64,96) };
-    Material_Group m3{ "Sky",false,false,false,true,video::SColor(255,128,128,64) };
-    Material_Group m4{ "Water",false,false,false,false,video::SColor(255,128,128,64) };
+    Material_Group m0{ "Default",false,false,true,false,video::SColor(255,128,64,64) };
+    Material_Group m1{ "Unlit",false,false,false,false,video::SColor(255,128,64,64) };
+    Material_Group m2{ "Lightmap",false,false,true,false,video::SColor(255,128,128,64) };
+    Material_Group m3{ "Transparent",true,true,false,false,video::SColor(255,32,64,96) };
+    Material_Group m4{ "Sky",false,false,false,true,video::SColor(255,128,128,64) };
+    Material_Group m5{ "Water",false,false,false,false,video::SColor(255,128,128,64) };
 
 
     material_groups_base->LightingMaterial_Type = (video::E_MATERIAL_TYPE)materialType_lightmap;
@@ -210,10 +238,7 @@ void initialize_materials(geometry_scene& scene)
     material_groups_base->material_groups.push_back(m2);
     material_groups_base->material_groups.push_back(m3);
     material_groups_base->material_groups.push_back(m4);
-
-    scene.set_new_geometry_material(1); //Dynamic Light
-    scene.setMaterialGroupsBase(material_groups_base);
-    scene.set_default_materials(video::EMT_SOLID, (video::E_MATERIAL_TYPE)materialType_unlit_selected);
+    material_groups_base->material_groups.push_back(m5);
 
     Render_Tool_Base* render_tool_base = Render_Tool::get_base();
     render_tool_base->setMaterial(materialType_passthru);
@@ -223,12 +248,12 @@ void initialize_materials(geometry_scene& scene)
 
 }
 
-void initialize_camera_quad(geometry_scene& scene, GUI_layout* gui_layout, RenderList* renderList)
+void initialize_camera_quad(geometry_scene* scene, GUI_layout* gui_layout, RenderList* renderList)
 {
     CameraQuad* cameraQuad = gui_layout->getCameraQuad();
 
     cameraQuad->setRenderList(renderList);
-    cameraQuad->initialize(scene.get_smgr(), &scene);
+    cameraQuad->initialize(scene);
     cameraQuad->setGridSnap(8);
     cameraQuad->setRotateSnap(7.5);
 
@@ -243,3 +268,4 @@ void initialize_camera_quad(geometry_scene& scene, GUI_layout* gui_layout, Rende
     //((TestPanel_3D*)cameraQuad->getPanel(0))->SetViewStyle(PANEL3D_VIEW_LOOPS);
     //((TestPanel_3D*)cameraQuad->getPanel(0))->AddGraphs(graph, graph2, graph3);
 }
+

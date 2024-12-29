@@ -110,7 +110,8 @@ public:
 
     TestPanel* getPanel(int);
     void SetPanel(int,TestPanel*);
-    void initialize(scene::ISceneManager* smgr,geometry_scene* geo_scene);
+    void initialize(geometry_scene* geo_scene);
+    void set_scene(geometry_scene* geo_scene);
     virtual void render();
     void SetFullscreen(bool,ViewPanel* = NULL);
     void setGridSnap(int);
@@ -192,7 +193,8 @@ public:
    
 
     virtual scene::ICameraSceneNode* getCamera() {return NULL;}
-    virtual void Initialize(scene::ISceneManager* smgr,geometry_scene* geo_scene);
+    virtual void Initialize(geometry_scene* geo_scene);
+    void set_scene(geometry_scene* geo_scene);
     virtual void Render(video::IVideoDriver* driver) {};
     virtual void resize(core::dimension2d<u32> new_size) {};
     //virtual void position(const core::recti& rect, f32 x_split, f32 y_split, int quad);
@@ -362,7 +364,7 @@ class TestPanel_2D : public TestPanel
 public:
 
     TestPanel_2D(gui::IGUIEnvironment* environment, video::IVideoDriver* driver, gui::IGUIElement* parent,  s32 id, core::rect<s32> rectangle);
-    virtual void Initialize(scene::ISceneManager* smgr, geometry_scene* geo_scene); 
+
     virtual bool OnEvent(const SEvent& event);
     virtual scene::ICameraSceneNode* getCamera();
     virtual void setAxis(int);

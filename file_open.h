@@ -146,6 +146,11 @@ public:
         panel = panel_;
     }
 
+    static File_Open_Base* get_base()
+    {
+        return base;
+    }
+
     static io::path getSelectedFile();
     static io::path getSelectedDir();
 };

@@ -16,6 +16,8 @@ using namespace irr;
 using namespace core;
 using namespace std;
 
+Lightmap_Manager* Lightmaps_Tool::lightmap_manager = NULL;
+
 extern IrrlichtDevice* device;
 
 f32 reduce_dimension_base2(f32 dim, int n = 1)

@@ -60,9 +60,9 @@ UV_Editor_Panel::~UV_Editor_Panel()
         delete geo_scene;
 }
 
-void UV_Editor_Panel::Initialize(scene::ISceneManager* smgr_, geometry_scene* geo_scene)
+void UV_Editor_Panel::Initialize(geometry_scene* geo_scene)
 {
-    smgr = smgr_;
+    smgr = geo_scene->get_smgr();
     real_g_scene = geo_scene;
 }
 
@@ -834,7 +834,7 @@ UV_Editor_Base::~UV_Editor_Base()
         delete uv_edit;
 }
 
-void UV_Editor_Base::set_scene(geometry_scene* g_scene_, scene::ISceneManager* smgr)
+void UV_Editor_Base::set_scene(geometry_scene* g_scene_)
 {
     tool_base::set_scene(g_scene_);
 
@@ -842,7 +842,7 @@ void UV_Editor_Base::set_scene(geometry_scene* g_scene_, scene::ISceneManager* s
         delete uv_edit;
 
     uv_edit = new UV_Editor_Panel(env, device->getVideoDriver(), NULL, 0, core::recti());
-    uv_edit->Initialize(smgr, g_scene);
+    uv_edit->Initialize(g_scene);
 }
 
 void UV_Editor_Base::show()

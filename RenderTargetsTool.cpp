@@ -1,6 +1,7 @@
 
 #include "RenderTargetsTool.h"
 #include "myNodes.h"
+#include "geometry_scene.h"
 
 using namespace irr;
 using namespace video;
@@ -43,7 +44,7 @@ void RenderTargetPanel::Initialize(scene::ISceneManager* smgr, geometry_scene* g
     render_node->getMaterial(0).setTexture(0, driver->getTexture("wall.bmp"));
     render_node->getMaterial(0).MaterialType = my_material;
 
-    TestPanel::Initialize(smgr, geo_scene);
+    TestPanel::Initialize(geo_scene);
 
 }
 
@@ -233,10 +234,10 @@ void Render_Tool_Base::show()
     refresh_panel_view();
 }
 
-void Render_Tool_Base::set_scene(geometry_scene* g_scene_, scene::ISceneManager* smgr_)
+void Render_Tool_Base::set_scene(geometry_scene* g_scene_)
 {
     tool_base::set_scene(g_scene_);
-    smgr = smgr_;
+    smgr = g_scene_->get_smgr();
 }
 
 

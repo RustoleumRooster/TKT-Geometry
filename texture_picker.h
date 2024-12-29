@@ -131,6 +131,11 @@ public:
         return base;
     }
 
+    static video::ITexture* getCurrentTexture()
+    {
+        return base->getCurrentTexture();
+    }
+
     static TexturePicker_Base* base;
     static multi_tool_panel* panel;
 };

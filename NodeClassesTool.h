@@ -132,6 +132,11 @@ public:
         base = base_;
         panel = panel_;
     }
+
+    static Node_Classes_Base* get_base()
+    {
+        return base;
+    }
 };
 
 #endif

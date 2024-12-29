@@ -50,12 +50,12 @@ class MeshNode_Interface
 {
 public:
 
-    MeshNode_Interface(scene::ISceneManager* smgr_,video::IVideoDriver* driver_,MyEventReceiver* receiver,video::E_MATERIAL_TYPE base_material_type_, video::E_MATERIAL_TYPE special_material_type_);
+    MeshNode_Interface(scene::ISceneManager* smgr_,video::IVideoDriver* driver_,MyEventReceiver* receiver);
     
     MeshNode_Interface();
     ~MeshNode_Interface();
 
-    void init(scene::ISceneManager* smgr_,video::IVideoDriver* driver_,MyEventReceiver* receiver,video::E_MATERIAL_TYPE base_material_type_, video::E_MATERIAL_TYPE special_material_type_);
+    void init(scene::ISceneManager* smgr_,video::IVideoDriver* driver_,MyEventReceiver* receiver);
 
     virtual void generate_mesh_node(GeometryStack* geo_scene) = 0;
     virtual MeshBuffer_Chunk get_mesh_buffer_by_face(int f_i) = 0;
@@ -89,10 +89,7 @@ protected:
     TexturePicker* texture_picker=NULL;
     MyEventReceiver* event_receiver=NULL;
 
-    video::E_MATERIAL_TYPE base_material_type;
-    video::E_MATERIAL_TYPE special_material_type;
 
-    friend class GeometryStack;
     friend class GeometryStack;
 };
 

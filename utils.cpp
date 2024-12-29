@@ -11,7 +11,9 @@
 #include "CPLYMeshWriter.h"
 #include "file_open.h"
 #include "CameraPanel.h"
+#include "initialization.h"
 #include <random>
+#include <sstream>
 
 extern IrrlichtDevice* device;
 
@@ -764,6 +766,49 @@ bool geometry_scene::ReadTextures(io::path fname, std::vector<std::wstring>& tex
     return true;
 }
 
+bool SceneCoordinator::write_metadata(std::string fname)
+{
+    ofstream wf(fname, ios::out | ios::binary);
+
+    if (!wf)
+    {
+        cout << "Cannot open file\n";
+        return false;
+    }
+
+    int e = scenes.size();
+    wf.write((char*)&e, sizeof(int));
+
+    wf.close();
+    if (!wf.good())
+    {
+        cout << "error writing file\n";
+        return false;
+    }
+    return true;
+}
+
+bool SceneCoordinator::read_metadata(std::string fname, metadata& data)
+{
+    ifstream rf(fname.c_str(), ios::in | ios::binary);
+
+    if (!rf)
+    {
+        cout << "Cannot open file\n";
+        return false;
+    }
+
+    rf.read((char*)&data.n_scenes, sizeof(int));
+
+    rf.close();
+    if (!rf.good())
+    {
+        cout << "error reading file\n";
+        return false;
+    }
+    return true;
+}
+
 
 bool geometry_scene::WriteSceneNodesToFile(std::string fname)
 {
@@ -934,7 +979,7 @@ bool geometry_scene::Read2(io::path fname,io::path tex_fname)
     reflect::TypeDescriptor_Struct* typeDescriptor = (reflect::TypeDescriptor_Struct*)reflect::TypeResolver<geometry_scene>::get();
 
     typeDescriptor->deserialize(rf,this);
-    geometry_stack->initialize(smgr->getRootSceneNode(), smgr, event_receiver, base_material_type, special_material_type, texture_picker_base, material_groups_base);
+    geometry_stack->initialize(smgr->getRootSceneNode(), smgr, event_receiver);
     //geometry_stack->GeometryStack::GeometryStack();
 
     //typeDescriptor->dump(this,0);
@@ -1251,9 +1296,9 @@ bool ReadGUIStateFromFile(io::path fname)
 //  Open Geometry File
 //
 
-Open_Geometry_File::Open_Geometry_File(geometry_scene* gs)
+Open_Geometry_File::Open_Geometry_File(SceneCoordinator* sc)
 {
-    g_scene = gs;
+    scene_coordinator = sc;
 
     MyEventReceiver* receiver = (MyEventReceiver*)device->getEventReceiver();
     receiver->Register(this);
@@ -1274,23 +1319,10 @@ bool Open_Geometry_File::OnEvent(const SEvent& event)
     {
         if (event.UserEvent.UserData1 == USER_EVENT_DIRECTORY_SELECTED)
         {
-            io::path restore_path = FileSystem->getWorkingDirectory();
             io::path p = File_Open_Tool::getSelectedDir();
-            std::cout << " >>>>> reading files from " << p.c_str() << "\n";
 
-            FileSystem->changeWorkingDirectoryTo(p);
+            Open_Geometry_File::LoadProject(this->scene_coordinator, p);
 
-            g_scene->Read2("refl_serial.dat", "textures.txt");
-
-            g_scene->ReadSceneNodesFromFile("nodes.dat");
-            
-            g_scene->geoNode()->set_originals();
-            g_scene->geoNode()->build_total_geometry();
-            g_scene->geoNode()->generate_meshes();
-
-            ReadGUIStateFromFile("gui_state.dat");
-
-            FileSystem->changeWorkingDirectoryTo(restore_path);
             return true;
         }
         else if (event.UserEvent.UserData1 == USER_EVENT_FILE_DIALOGUE_CLOSED)
@@ -1307,24 +1339,74 @@ bool Open_Geometry_File::OnEvent(const SEvent& event)
     return false;
 }
 
-void Open_Geometry_File::LoadProject(geometry_scene* gs, io::path folder)
+void Open_Geometry_File::LoadProject(SceneCoordinator* sc, io::path folder)
 {
     
     io::IFileSystem* FS = device->getFileSystem();
 
-    if (FS && gs)
+    if (FS)
     {
         
         io::path restore_path = FS->getWorkingDirectory();
         FS->changeWorkingDirectoryTo(folder);
-        
-        gs->Read2("refl_serial.dat", "textures.txt");
-        gs->ReadSceneNodesFromFile("nodes.dat");
 
-        gs->geoNode()->set_originals();
-        gs->geoNode()->build_total_geometry();
-        gs->geoNode()->generate_meshes();
+        scene::ISceneManager* smgr = device->getSceneManager();
+        IEventReceiver* receiver = device->getEventReceiver();
+        video::IVideoDriver* driver = device->getVideoDriver();
 
+        //delete all geometry scenes
+        for (int i = 0; i < sc->scenes.size(); i++)
+        {
+            if (sc->scenes[i] != NULL)
+            {
+                if (i > 0)
+                    delete sc->scenes[i]->get_smgr();
+
+                delete sc->scenes[i];
+            }
+        }
+
+        std::cout << smgr->getRootSceneNode()->getChildren().getSize() << "nodes in smgr\n";
+
+        sc->scenes.clear();
+        sc->scene_no = 0;
+
+        //create the initial geometry scene
+        geometry_scene* scene0 = new geometry_scene();
+        scene0->initialize(smgr, driver, (MyEventReceiver*)receiver);
+        scene0->set_type(GEO_SOLID);
+        scene0->read_files(0);
+        scene0->geoNode()->set_originals();
+        scene0->geoNode()->build_total_geometry();
+        scene0->geoNode()->generate_meshes();
+
+        sc->scenes.push_back(reflect::pointer<geometry_scene>{scene0});
+
+        SceneCoordinator::metadata data;
+        sc->read_metadata("meta.dat", data);
+
+        //if there are more than one, create those as well
+        for (int i = 1; i < data.n_scenes; i++)
+        {
+            sc->add_scene();
+            sc->scenes[i]->read_files(i);
+            sc->scenes[i]->geoNode()->set_originals();
+            sc->scenes[i]->geoNode()->build_total_geometry();
+            sc->scenes[i]->geoNode()->generate_meshes();
+
+        }
+
+        //point all tools and GUI to the new main scene
+        initialize_set_scene(sc->scenes[0]);
+
+        gui::IGUIEnvironment* env = device->getGUIEnvironment();
+        gui::IGUIElement* root = env->getRootGUIElement();
+        CameraQuad* quad = (CameraQuad*)root->getElementFromId(GUI_ID_CAMERA_QUAD, true);
+
+        if (quad)
+            quad->set_scene(sc->scenes[0]);
+
+        //read the GUI state
         ReadGUIStateFromFile("gui_state.dat");
 
         FS->changeWorkingDirectoryTo(restore_path);
@@ -1333,15 +1415,45 @@ void Open_Geometry_File::LoadProject(geometry_scene* gs, io::path folder)
 
 }
 
+
+void geometry_scene::write_files(int append_no)
+{
+    std::stringstream nodes_name;
+    nodes_name << "nodes" << append_no << ".dat";
+
+    std::stringstream texture_name;
+    texture_name << "textures" << append_no << ".dat";
+
+    std::stringstream serial_name;
+    serial_name << "refl_serial" << append_no << ".dat";
+
+    WriteSceneNodesToFile(nodes_name.str().c_str());
+    WriteTextures(texture_name.str().c_str());
+    Write2(serial_name.str().c_str());
+}
+
+void geometry_scene::read_files(int append_no)
+{
+    std::stringstream nodes_name;
+    nodes_name << "nodes" << append_no << ".dat";
+
+    std::stringstream texture_name;
+    texture_name << "textures" << append_no << ".dat";
+
+    std::stringstream serial_name;
+    serial_name << "refl_serial" << append_no << ".dat";
+
+    this->Read2(serial_name.str().c_str(), texture_name.str().c_str());
+    this->ReadSceneNodesFromFile(nodes_name.str().c_str());
+}
+
 //=======================================================
 //  Save Geometry File
 //
 
-Save_Geometry_File::Save_Geometry_File(geometry_scene* gs, bool show)
+Save_Geometry_File::Save_Geometry_File(SceneCoordinator* sc, bool show)
 {
-    g_scene = gs;
-
-    
+    scene_coordinator = sc;
 
     FileSystem = device->getFileSystem();
 
@@ -1387,8 +1499,16 @@ bool Save_Geometry_File::OnEvent(const SEvent& event)
             io::path p = File_Open_Tool::getSelectedDir();
             std::cout << " >>>>> writing files to " << p.c_str() << "\n";
 
+
             FileSystem->changeWorkingDirectoryTo(p);
 
+            scene_coordinator->write_metadata("meta.dat");
+
+            for (int i = 0; i < scene_coordinator->scenes.size(); i++)
+            {
+                scene_coordinator->scenes[i]->write_files(i);
+            }
+            /*
             g_scene->WriteSceneNodesToFile("nodes.dat");
             g_scene->WriteTextures("textures.txt");
             g_scene->Write2("refl_serial.dat");
@@ -1396,6 +1516,9 @@ bool Save_Geometry_File::OnEvent(const SEvent& event)
             export_model("model.dat");
             export_model_2("model2.dat");
             WriteModelTextures("model_textures.txt");
+            */
+
+            WriteGUIStateToFile("gui_state.dat");
 
             FileSystem->changeWorkingDirectoryTo(restore_path);
             return true;
@@ -1415,7 +1538,7 @@ bool Save_Geometry_File::OnEvent(const SEvent& event)
 }
 
 bool Save_Geometry_File::export_model(io::path fname)
-{
+{/*
     SMesh* mesh = g_scene->geoNode()->final_meshnode_interface.getMesh();
 
     Model_Struct model{};
@@ -1501,13 +1624,14 @@ bool Save_Geometry_File::export_model(io::path fname)
         return true;
         
     }
-
+    */
     return false;
 }
 
 
 bool Save_Geometry_File::export_model_2(io::path fname)
 {
+    /*
     SMesh* mesh = g_scene->geoNode()->edit_meshnode_interface.getMesh();
 
     Model_Struct model{};
@@ -1601,11 +1725,14 @@ bool Save_Geometry_File::export_model_2(io::path fname)
     }
 
     return false;
+    */
+    return true;
 }
 
 
 bool Save_Geometry_File::WriteModelTextures(std::string fname)
 {
+    /*
     ofstream wf(fname, ios::out | ios::binary);
 
     if (!wf)
@@ -1637,5 +1764,6 @@ bool Save_Geometry_File::WriteModelTextures(std::string fname)
     }
 
     wf.close();
+    */
     return true;
 }

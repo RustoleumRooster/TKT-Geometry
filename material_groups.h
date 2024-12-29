@@ -129,6 +129,11 @@ public:
         panel = panel_;
     }
 
+    static void apply_material_to_buffer(scene::IMeshBuffer* buffer, int material_no, int lighting, bool selected, bool final_view)
+    {
+        base->apply_material_to_buffer(buffer, material_no, lighting, selected, final_view);
+    }
+
     static Material_Groups_Base* get_base()
     {
         return base;

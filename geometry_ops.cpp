@@ -66,63 +66,9 @@ GeometryStack::GeometryStack()
 {
 }
 
-/*
-GeometryStack::GeometryStack(ISceneNode* parent, scene::ISceneManager* smgr, MyEventReceiver* receiver,
-    video::E_MATERIAL_TYPE base_material_type, 
-    video::E_MATERIAL_TYPE special_material_type, 
-    TexturePicker_Base* texture_picker_base, 
-    Material_Groups_Base* material_groups_base)
-    : USceneNode(parent, smgr,-1,vector3df(0,0,0)),
-    base_material_type(base_material_type),
-    special_material_type(special_material_type),
-    event_receiver(receiver), 
-    material_groups_base(material_groups_base), 
-    texture_picker_base(texture_picker_base)
-{
-    geo_element red;
-    red.brush = make_poly_cube(256, 256, 256);
-    red.type = GEO_RED;
-    elements.push_back(red);
-
-    this->edit_meshnode_interface.init(smgr, device->getVideoDriver(), event_receiver, base_material_type, special_material_type);
-    this->final_meshnode_interface.init(smgr, device->getVideoDriver(), event_receiver, base_material_type, special_material_type);
-    this->setAutomaticCulling(scene::EAC_OFF);
-}
-
-GeometryStack::GeometryStack(ISceneNode* parent, scene::ISceneManager* smgr, MyEventReceiver* receiver)
-    : USceneNode(parent, smgr, -1, vector3df(0, 0, 0)), event_receiver(receiver)
-{
-}
-*/
-
 void GeometryStack::initialize(ISceneNode* parent, scene::ISceneManager* smgr, MyEventReceiver* receiver,
     video::E_MATERIAL_TYPE base_material_type_,
-    video::E_MATERIAL_TYPE special_material_type_,
-    TexturePicker_Base* material_groups_base_,
-    Material_Groups_Base* texture_picker_base_)
-{
-    SceneManager = smgr;
-
-    if (parent)
-        parent->addChild(this);
-
-    base_material_type = base_material_type_;
-    special_material_type = special_material_type_;
-    event_receiver = receiver;
-    material_groups_base = texture_picker_base_;
-    texture_picker_base = material_groups_base_;
-
-    geo_element red;
-    red.brush = make_poly_cube(256, 256, 256);
-    red.type = GEO_RED;
-    elements.push_back(red);
-
-    this->edit_meshnode_interface.init(smgr, device->getVideoDriver(), event_receiver, base_material_type, special_material_type);
-    this->final_meshnode_interface.init(smgr, device->getVideoDriver(), event_receiver, base_material_type, special_material_type);
-    this->setAutomaticCulling(scene::EAC_OFF);
-}
-
-void GeometryStack::initialize(ISceneNode* parent, scene::ISceneManager* smgr, MyEventReceiver* receiver, TexturePicker_Base* material_groups_base_, Material_Groups_Base* texture_picker_base_)
+    video::E_MATERIAL_TYPE special_material_type_)
 {
     SceneManager = smgr;
 
@@ -130,24 +76,36 @@ void GeometryStack::initialize(ISceneNode* parent, scene::ISceneManager* smgr, M
         parent->addChild(this);
 
     event_receiver = receiver;
-    material_groups_base = texture_picker_base_;
-    texture_picker_base = material_groups_base_;
 
     geo_element red;
     red.brush = make_poly_cube(256, 256, 256);
     red.type = GEO_RED;
     elements.push_back(red);
 
-    this->edit_meshnode_interface.init(smgr, device->getVideoDriver(), event_receiver, base_material_type, special_material_type);
-    this->final_meshnode_interface.init(smgr, device->getVideoDriver(), event_receiver, base_material_type, special_material_type);
+    this->edit_meshnode_interface.init(smgr, device->getVideoDriver(), event_receiver);
+    this->final_meshnode_interface.init(smgr, device->getVideoDriver(), event_receiver);
     this->setAutomaticCulling(scene::EAC_OFF);
 }
 
-void GeometryStack::set_default_materials(video::E_MATERIAL_TYPE base_material_type_, video::E_MATERIAL_TYPE special_material_type_)
+void GeometryStack::initialize(ISceneNode* parent, scene::ISceneManager* smgr, MyEventReceiver* receiver)
 {
-    base_material_type = base_material_type_;
-    special_material_type = special_material_type_;
+    SceneManager = smgr;
+
+    if (parent)
+        parent->addChild(this);
+
+    event_receiver = receiver;
+
+    geo_element red;
+    red.brush = make_poly_cube(256, 256, 256);
+    red.type = GEO_RED;
+    elements.push_back(red);
+
+    this->edit_meshnode_interface.init(smgr, device->getVideoDriver(), event_receiver);
+    this->final_meshnode_interface.init(smgr, device->getVideoDriver(), event_receiver);
+    this->setAutomaticCulling(scene::EAC_OFF);
 }
+
 
 void GeometryStack::initialize(scene::ISceneManager* smgr, MyEventReceiver* receiver)
 {
@@ -319,7 +277,7 @@ void GeometryStack::add(polyfold pf)
     geo.brush.generate_uids();
 
     {
-        video::ITexture* tex = texture_picker_base->getCurrentTexture();
+        video::ITexture* tex = TexturePicker_Tool::getCurrentTexture();
         io::path path = tex->getName();
 
         for (poly_face& face : geo.brush.faces)
@@ -346,7 +304,7 @@ void GeometryStack::add_plane(polyfold pf)
     geo.brush.generate_uids();
 
     {
-        video::ITexture* tex = texture_picker_base->getCurrentTexture();
+        video::ITexture* tex = TexturePicker_Tool::getCurrentTexture();
         io::path path = tex->getName();
 
         for (poly_face& face : geo.brush.faces)
@@ -376,7 +334,7 @@ void GeometryStack::add_semisolid(polyfold pf)
     geo.brush.generate_uids();
 
     {
-        video::ITexture* tex = texture_picker_base->getCurrentTexture();
+        video::ITexture* tex = TexturePicker_Tool::getCurrentTexture();
         io::path path = tex->getName();
 
         for (poly_face& face : geo.brush.faces)
@@ -403,7 +361,7 @@ void GeometryStack::subtract(polyfold pf)
     geo.brush.generate_uids();
 
     {
-        video::ITexture* tex = texture_picker_base->getCurrentTexture();
+        video::ITexture* tex = TexturePicker_Tool::getCurrentTexture();
         io::path path = tex->getName();
 
         for (poly_face& face : geo.brush.faces)
@@ -965,7 +923,7 @@ void GeometryStack::buildSceneNode(bool finalMesh, int light_mode)
         {
             scene::IMeshBuffer* buffer = my_MeshNode->getMesh()->getMeshBuffer(i);
             int f_i = final_meshnode_interface.getMaterialsUsed()[i].faces[0];
-            material_groups_base->apply_material_to_buffer(buffer, pf->faces[f_i].material_group, light_mode, false, true);
+            Material_Groups_Tool::apply_material_to_buffer(buffer, pf->faces[f_i].material_group, light_mode, false, true);
 
         }
 
@@ -983,7 +941,7 @@ void GeometryStack::buildSceneNode(bool finalMesh, int light_mode)
                 int buffer_index = edit_meshnode_interface.get_buffer_index_by_face(f_i);
                 scene::IMeshBuffer* buffer = this->my_MeshNode->getMesh()->getMeshBuffer(buffer_index);
 
-                material_groups_base->apply_material_to_buffer(buffer, pf->faces[f_i].material_group, light_mode, false, false);
+                Material_Groups_Tool::apply_material_to_buffer(buffer, pf->faces[f_i].material_group, light_mode, false, false);
 
                 video::ITexture* tex_j = driver->getTexture(pf->faces[f_i].texture_name.c_str());
 

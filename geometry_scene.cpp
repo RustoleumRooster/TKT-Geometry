@@ -14,6 +14,8 @@
 #include "NodeClassesTool.h"
 #include "LightMaps.h"
 #include "CMeshSceneNode.h"
+#include "initialization.h"
+
 
 #define TIME_HEADER() auto startTime = std::chrono::high_resolution_clock::now();\
     auto timeZero = startTime;\
@@ -34,6 +36,69 @@
 using namespace irr;
 using namespace std;
 
+SceneCoordinator::SceneCoordinator(scene::ISceneManager* smgr, video::IVideoDriver* driver, MyEventReceiver* receiver) :
+    smgr(smgr),driver(driver),receiver(receiver)
+{
+    geometry_scene* scene0 = new geometry_scene();
+    scene0->initialize(smgr, driver, receiver);
+    scene0->set_type(GEO_SOLID);
+    scene0->geoNode()->rebuild_geometry();
+
+    scenes.push_back(reflect::pointer<geometry_scene>{scene0});
+}
+
+SceneCoordinator::~SceneCoordinator()
+{
+}
+
+geometry_scene* SceneCoordinator::current_scene()
+{
+    return scenes[scene_no];
+}
+
+geometry_scene* SceneCoordinator::get_scene(int n)
+{
+    if (n < scenes.size())
+        return scenes[n];
+    else
+        return NULL;
+}
+
+void SceneCoordinator::swap_scene(int n)
+{
+    if (n >= scenes.size())
+        return;
+
+    current_scene()->disable();
+
+    geometry_scene* scene = scenes[n];
+
+    scene->enable();
+
+    initialize_set_scene(scene);
+
+    scene_no = n;
+}
+
+void SceneCoordinator::add_scene()
+{
+    geometry_scene* scene = new geometry_scene();
+
+    scene::ISceneManager* new_smgr = smgr->createNewSceneManager();
+
+    scene->initialize(new_smgr, driver, receiver);
+    scene->set_type(GEO_SOLID);
+    scene->geoNode()->rebuild_geometry();
+    scene->disable();
+
+    scenes.push_back(reflect::pointer<geometry_scene>{scene});
+}
+
+
+
+
+//====================================================
+
 geometry_scene::geometry_scene()
 {
 }
@@ -44,49 +109,43 @@ geometry_scene::geometry_scene(video::IVideoDriver* driver_, MyEventReceiver* re
     this->event_receiver = receiver;
 
     geometry_stack = new GeometryStack();
-    geometry_stack->initialize(NULL, smgr, receiver, video::EMT_SOLID, video::EMT_SOLID, NULL, NULL);
+    geometry_stack->initialize(NULL, smgr, receiver, video::EMT_SOLID, video::EMT_SOLID);
     this->geometry_stack->render_active_brush = false;
 
     event_receiver->Register(this);
 }
-/*
-geometry_scene::geometry_scene(scene::ISceneManager* smgr_,video::IVideoDriver* driver_,MyEventReceiver* receiver, video::E_MATERIAL_TYPE base_material_type_, video::E_MATERIAL_TYPE special_material_type_)
-    
-{
-    geometry_stack = new GeometryStack();
-    geometry_stack->initialize(smgr_->getRootSceneNode(), smgr_, receiver, base_material_type_, special_material_type_, texture_picker_base, material_groups_base);
-
-    this->smgr = smgr_;
-    this->driver = driver_;
-    this->base_material_type = base_material_type_;
-    this->special_material_type = special_material_type_;
-    this->event_receiver = receiver;
-
-    this->editor_nodes = new USceneNode(smgr->getRootSceneNode(), smgr, 0, vector3df(0, 0, 0));
-    this->actual_nodes = new USceneNode(smgr->getRootSceneNode(), smgr, 0, vector3df(0, 0, 0));
-    //this->geometry_stack = new GeometryStack(smgr->getRootSceneNode(), smgr, receiver, base_material_type_, special_material_type_, texture_picker_base, material_groups_base);
-
-    event_receiver->Register(this);
-
-}*/
 
 geometry_scene::~geometry_scene()
 {
     event_receiver->UnRegister(this);
 
-    if(geometry_stack == NULL)
+    if (actual_nodes)
+        actual_nodes->remove();
+
+    if (editor_nodes)
+        editor_nodes->remove();
+
+    if(geometry_stack != NULL)
         geometry_stack->remove();
+}
+
+void geometry_scene::enable()
+{
+    event_receiver->Register(this);
+}
+
+void geometry_scene::disable()
+{
+    event_receiver->UnRegister(this);
 }
 
 void geometry_scene::initialize(scene::ISceneManager* smgr_, video::IVideoDriver* driver_, MyEventReceiver* receiver)
 {
     geometry_stack = new GeometryStack();
-    geometry_stack->initialize(smgr_->getRootSceneNode(), smgr_, receiver, texture_picker_base, material_groups_base);
+    geometry_stack->initialize(smgr_->getRootSceneNode(), smgr_, receiver);
 
     this->smgr = smgr_;
     this->driver = driver_;
-   // this->base_material_type = base_material_type_;
-   // this->special_material_type = special_material_type_;
     this->event_receiver = receiver;
 
     this->editor_nodes = new USceneNode(smgr->getRootSceneNode(), smgr, 0, vector3df(0, 0, 0));
@@ -95,23 +154,6 @@ void geometry_scene::initialize(scene::ISceneManager* smgr_, video::IVideoDriver
     event_receiver->Register(this);
 }
 
-void geometry_scene::set_default_materials(video::E_MATERIAL_TYPE base_material_type_, video::E_MATERIAL_TYPE special_material_type_)
-{
-    this->base_material_type = base_material_type_;
-    this->special_material_type = special_material_type_;
-    geometry_stack->set_default_materials(base_material_type, special_material_type);
-}
-
-void geometry_scene::setMaterialGroupsBase(Material_Groups_Base* base)
-{
-    material_groups_base = base;
-    geometry_stack->material_groups_base = base;
-}
-
-Material_Groups_Base* geometry_scene::getMaterialGroupsBase()
-{
-    return material_groups_base;
-}
 
 void geometry_scene::visualizeMaterialGroups()
 {
@@ -145,27 +187,6 @@ void geometry_scene::visualizeMaterialGroups()
     b_Visualize = true;*/
 }
 
-void geometry_scene::showLightMaps()
-{
-
-}
-
-void geometry_scene::setLightmapManager(Lightmap_Manager* lm)
-{
-    lightmap_manager = lm;
-}
-
-void geometry_scene::setTexturePickerBase(TexturePicker_Base* texp)
-{
-    texture_picker_base = texp;
-    geometry_stack->texture_picker_base = texp;
-}
-
-TexturePicker_Base* geometry_scene::getTexturePickerBase()
-{
-    return texture_picker_base;
-}
-
 bool geometry_scene::OnEvent(const SEvent& event)
 {
     if(event.EventType == irr::EET_USER_EVENT)
@@ -174,8 +195,8 @@ bool geometry_scene::OnEvent(const SEvent& event)
         {
             case USER_EVENT_TEXTURE_SELECTED:
             {
-               // if(this->selected_faces.size()>0)
-               //     TextureToSelectedFaces();
+                if(this->selected_faces.size()>0)
+                    TextureToSelectedFaces();
             }
             break;
         }
@@ -253,7 +274,7 @@ void geometry_scene::setSelectedFaces(std::vector<int> selection)
             buffer->getMaterial().Lighting = false;
 
 
-            material_groups_base->apply_material_to_buffer(buffer, pf->faces[f_i].material_group, -1, bSelected, false);
+            Material_Groups_Tool::apply_material_to_buffer(buffer, pf->faces[f_i].material_group, -1, bSelected, false);
 
             if (b_Visualize)
             {
@@ -569,8 +590,10 @@ bool geometry_scene::IsEditNode()
 
 void geometry_scene::MaterialGroupToSelectedFaces()
 {
-    if (!material_groups_base || !getMeshNode() || !IsEditNode())
+    if (!getMeshNode() || !IsEditNode())
         return;
+
+    Material_Groups_Base* material_groups_base = Material_Groups_Tool::get_base();
 
     int mg = material_groups_base->getSelected();
 
@@ -596,7 +619,7 @@ void geometry_scene::MaterialGroupToSelectedFaces()
 
 void geometry_scene::TextureToSelectedFaces()
 {
-    if(!getTexturePickerBase() || !this->getMeshNode() || !IsEditNode())
+    if(!this->getMeshNode() || !IsEditNode())
         return;
 
     for(int i: this->selected_faces)
@@ -604,8 +627,8 @@ void geometry_scene::TextureToSelectedFaces()
         int brush_i = geometry_stack->get_total_geometry()->faces[i].original_brush;
         int face_i = geometry_stack->get_total_geometry()->faces[i].original_face;
 
-        geometry_stack->elements[brush_i].brush.faces[face_i].texture_name=core::stringw(texture_picker_base->getCurrentTexture()->getName().getPath());
-        geometry_stack->elements[brush_i].geometry.faces[face_i].texture_name=texture_picker_base->getCurrentTexture()->getName().getPath();
+        geometry_stack->elements[brush_i].brush.faces[face_i].texture_name=core::stringw(TexturePicker_Tool::getCurrentTexture()->getName().getPath());
+        geometry_stack->elements[brush_i].geometry.faces[face_i].texture_name= TexturePicker_Tool::getCurrentTexture()->getName().getPath();
     }
 
     for(int i=0; i<this->getMeshNode()->getMesh()->getMeshBufferCount();i++)
@@ -618,7 +641,7 @@ void geometry_scene::TextureToSelectedFaces()
                 b=true;
         }
         if(b)
-            getMeshNode()->SetFaceTexture(i,texture_picker_base->getCurrentTexture());
+            getMeshNode()->SetFaceTexture(i, TexturePicker_Tool::getCurrentTexture());
     }
 
     geometry_stack->setFinalMeshDirty();
@@ -646,7 +669,7 @@ void geometry_scene::setRenderType(bool brushes, bool geo, bool loops, bool tria
 
 void geometry_scene::loadLightmapTextures()
 {
-    getLightmapManager()->loadLightmapTextures(geometry_stack);
+    Lightmaps_Tool::get_manager()->loadLightmapTextures(geometry_stack);
 }
 
 void geometry_scene::save_selection()
@@ -867,11 +890,6 @@ void geometry_scene::delete_selected_brushes()
     }
 }
 
-reflect::TypeDescriptor_Struct* geometry_scene::getSelectedNodeClass()
-{
-    return this->node_classes_base->getSelectedTypeDescriptor();
-}
-
 void geometry_scene::addSceneLight(core::vector3df pos)
 {
     Reflected_SceneNode* a_light = new Reflected_LightSceneNode(editor_nodes,this,smgr,-1,pos);
@@ -883,7 +901,7 @@ void geometry_scene::addSceneLight(core::vector3df pos)
 
 void geometry_scene::addSceneSelectedSceneNodeType(core::vector3df pos)
 {
-    reflect::TypeDescriptor_Struct* typeDescriptor = this->node_classes_base->getSelectedTypeDescriptor();
+    reflect::TypeDescriptor_Struct* typeDescriptor = Node_Classes_Tool::get_base()->getSelectedTypeDescriptor();
     if(typeDescriptor)
     {
         //Reflected_SceneNode* a_thing = CreateNodeByTypeName(typeDescriptor->name, smgr);
@@ -963,6 +981,6 @@ REFLECT_STRUCT_BEGIN(geometry_scene)
     REFLECT_STRUCT_MEMBER(geometry_stack)
 REFLECT_STRUCT_END()
 
-REFLECT_STRUCT_BEGIN(Geometry_Scene_Manager)
-    REFLECT_STRUCT_MEMBER(geo_scenes)
+REFLECT_STRUCT_BEGIN(SceneCoordinator)
+    REFLECT_STRUCT_MEMBER(scenes)
 REFLECT_STRUCT_END()

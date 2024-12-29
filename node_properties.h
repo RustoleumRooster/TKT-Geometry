@@ -75,14 +75,21 @@ class NodeProperties_Tool
 {
 
 public:
+
     static void initialize(Node_Properties_Base* base_, multi_tool_panel* panel_)
     {
         base = base_;
         panel = panel_;
     }
+
     static void show()
     {
         panel->add_tool(base);
+    }
+
+    static Node_Properties_Base* get_base()
+    {
+        return base;
     }
 
     static Node_Properties_Base* base;

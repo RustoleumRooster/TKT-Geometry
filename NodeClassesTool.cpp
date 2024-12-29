@@ -273,8 +273,6 @@ void Node_Classes_Base::set_scene(geometry_scene* g_scene_)
 {
 	tool_base::set_scene(g_scene_);
 
-	g_scene->set_node_classes_base(this);
-
 	build_struct();
 }
 

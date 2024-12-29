@@ -903,11 +903,6 @@ void TestPanel_2D::drawGrid(video::IVideoDriver* driver, const video::SMaterial 
     }
 }
 
-void TestPanel_2D::Initialize(scene::ISceneManager* smgr, geometry_scene* geo_scene)
-{
-    TestPanel::Initialize(smgr, geo_scene);
-}
-
 bool GetOrthoClickPoint(dimension2d<u32> viewSize, scene::ICameraSceneNode * camera, int clickx, int clicky, vector3df &hit_vec)
 {
     const scene::SViewFrustum* frustum = camera->getViewFrustum();

@@ -11,7 +11,7 @@ public:
     UV_Editor_Panel(gui::IGUIEnvironment* environment, video::IVideoDriver* driver, gui::IGUIElement* parent, s32 id, core::rect<s32> rectangle);
     ~UV_Editor_Panel();
 
-    virtual void Initialize(scene::ISceneManager* smgr, geometry_scene* geo_scene);
+    virtual void Initialize(geometry_scene* geo_scene);
     virtual void SetMeshNodesVisible() {}
 
     virtual scene::ICameraSceneNode* getCamera();
@@ -117,7 +117,7 @@ public:
     virtual void show();
     void select(int sel);
 
-    void set_scene(geometry_scene* g_scene_, scene::ISceneManager* smgr);
+    void set_scene(geometry_scene* g_scene_);
     //virtual void initialize(std::wstring name_, int my_id, gui::IGUIEnvironment* env_, geometry_scene* g_scene_, multi_tool_panel* panel_) {}
     //void initialize(std::wstring name_, int my_id, gui::IGUIEnvironment* env_, geometry_scene* g_scene_, multi_tool_panel* panel_, scene::ISceneManager* smgr);
 

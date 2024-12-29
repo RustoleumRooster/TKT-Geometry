@@ -104,7 +104,7 @@ void CameraQuad::SetFullscreen(bool bFullscreen, ViewPanel* panel)
     m_bFullscreen = bFullscreen;
 }
 
-void CameraQuad::initialize(scene::ISceneManager* smgr,geometry_scene* geo_scene)
+void CameraQuad::initialize(geometry_scene* geo_scene)
 {
     int border = 4;
     int width = AbsoluteRect.getWidth();
@@ -119,10 +119,10 @@ void CameraQuad::initialize(scene::ISceneManager* smgr,geometry_scene* geo_scene
     TestPanel_2D* test_panel4 = new TestPanel_2D(Environment, driver, this,
 		GUI_ID_PANEL_2D_2, core::rect<s32>(core::position2d<s32>(466,316), core::dimension2d<u32>(450,300)));
    
-    test_panel->Initialize(smgr, geo_scene);
-    test_panel2->Initialize(smgr, geo_scene);
-    test_panel3->Initialize(smgr, geo_scene);
-    test_panel4->Initialize(smgr, geo_scene);
+    test_panel->Initialize(geo_scene);
+    test_panel2->Initialize(geo_scene);
+    test_panel3->Initialize(geo_scene);
+    test_panel4->Initialize(geo_scene);
 
     panel_TL = test_panel2;
     panel_TR = test_panel;
@@ -181,6 +181,14 @@ void CameraQuad::initialize(scene::ISceneManager* smgr,geometry_scene* geo_scene
     test_panel2->SetViewStyle(PANEL3D_VIEW_LOOPS);
     test_panel3->setAxis(CAMERA_Y_AXIS);
     test_panel4->setAxis(CAMERA_Z_AXIS);
+}
+
+void CameraQuad::set_scene(geometry_scene* geo_scene)
+{
+    panel_TL->set_scene(geo_scene);
+    panel_TR->set_scene(geo_scene);
+    panel_BL->set_scene(geo_scene);
+    panel_BR->set_scene(geo_scene);
 }
 
 void CameraQuad::resize(core::rect<s32> rect)
@@ -446,10 +454,15 @@ video::ITexture* TestPanel::getImage() const
 {
 	return Texture;
 }
-void TestPanel::Initialize(scene::ISceneManager* smgr_ , geometry_scene* geo_scene_)
+void TestPanel::Initialize(geometry_scene* geo_scene_)
 {
-    this->smgr=smgr_;
-    this->geo_scene=geo_scene_;
+    set_scene(geo_scene_);
+}
+
+void TestPanel::set_scene(geometry_scene* scene)
+{
+    this->smgr = scene->get_smgr();
+    this->geo_scene = scene;
 }
 
 void ViewPanel::position(const core::recti& myrect, f32 x_split, f32 y_split, int quad)

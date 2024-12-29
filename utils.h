@@ -6,6 +6,7 @@
 
 using namespace irr;
 
+class SceneCoordinator;
 class geometry_scene;
 class LineHolder;
 class polyfold;
@@ -135,15 +136,15 @@ irr::video::IImage* makeAlphaImage(video::IVideoDriver* driver,video::ITexture* 
 class Open_Geometry_File : public irr::IEventReceiver
 {
 public:
-	Open_Geometry_File(geometry_scene* gs);
+	Open_Geometry_File(SceneCoordinator* sc);
 	~Open_Geometry_File();
 
 	virtual bool OnEvent(const SEvent& event);
 
-    static void LoadProject(geometry_scene* gs, io::path folder);
+    static void LoadProject(SceneCoordinator* sc, io::path folder);
 
 private:
-	geometry_scene* g_scene = NULL;
+	SceneCoordinator* scene_coordinator = NULL;
 	io::IFileSystem* FileSystem = NULL;
 };
 
@@ -151,7 +152,7 @@ private:
 class Save_Geometry_File : public irr::IEventReceiver
 {
 public:
-	Save_Geometry_File(geometry_scene* gs, bool show = true );
+	Save_Geometry_File(SceneCoordinator*, bool show = true );
 	~Save_Geometry_File();
 
 	virtual bool OnEvent(const SEvent& event);
@@ -163,7 +164,8 @@ private:
     bool export_model_2(io::path fname);
     bool WriteModelTextures(std::string fname);
 
-	geometry_scene* g_scene = NULL;
+    SceneCoordinator* scene_coordinator = NULL;
+	//geometry_scene* g_scene = NULL;
 	io::IFileSystem* FileSystem = NULL;
 };
 
