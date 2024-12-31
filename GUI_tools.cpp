@@ -27,6 +27,8 @@ void Reflected_Widget_EditArea::show(bool editable, void* obj)
     form = new Reflected_GUI_Edit_Form(Environment, edit_panel, g_scene, my_ID + 1,
         core::rect<s32>(core::vector2di(x_offset, 4), core::dimension2du(120, 128)));
 
+    form->drop();
+
 	if(override_columns.size() > 0)
 		form->setColumns(override_columns);
 
@@ -145,7 +147,7 @@ void Reflected_Widget_EditArea::refresh()
     {
         form->write(temp_object);
     }
-    form->drop();
+    form->remove();
 
     my_base->widget_closing(this);
 
