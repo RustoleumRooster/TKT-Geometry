@@ -15,8 +15,10 @@
 #include "ShaderCallbacks.h"
 #include "custom_nodes.h"
 #include "edit_env.h"
+#include "SceneTool.h"
 
 extern IrrlichtDevice* device;
+extern GUI_layout* gui_layout;
 
 void initialize_tools(geometry_scene* scene, gui::IGUIEnvironment* gui, multi_tool_panel* tool_panel)
 {
@@ -82,6 +84,9 @@ void initialize_tools(geometry_scene* scene, gui::IGUIEnvironment* gui, multi_to
     //scene.setLightmapManager(lightmap_manager);
     Lightmaps_Tool::set_manager(lightmap_manager);
 
+    Scene_Instances_Base* scene_instances_base = new Scene_Instances_Base(L"All Scenes", GUI_ID_SCENE_INSTANCES_BASE, gui, tool_panel);
+    Scene_Instances_Tool::initialize(scene_instances_base, tool_panel);
+
 }
 
 void initialize_set_scene(geometry_scene* scene)
@@ -108,6 +113,9 @@ void initialize_set_scene(geometry_scene* scene)
 
     UV_Editor_Tool::get_base()->set_scene(scene);
     Render_Tool::get_base()->set_scene(scene);
+
+    CameraQuad* cameraQuad = gui_layout->getCameraQuad();
+    cameraQuad->set_scene(scene);
 }
 
 void initialize_materials(geometry_scene* scene)

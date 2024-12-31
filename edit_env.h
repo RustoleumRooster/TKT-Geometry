@@ -19,6 +19,7 @@ void OnMenuItemSelected(gui::IGUIContextMenu* menu);
 #define COLOR_SEMI_SELECTED      video::SColor(255,165,165,165)
 #define COLOR_SEMI_NOT_SELECTED  video::SColor(255,75,75,75)
 
+#define GUI_BUTTON_RIGHT_CLICKED s32{EGET_BUTTON_CLICKED + 253}
 #define GUI_BUTTON_SHIFT_CLICKED s32{EGET_BUTTON_CLICKED + 254}
 #define GUI_BUTTON_DOUBLE_CLICKED s32{EGET_BUTTON_CLICKED + 255}
 #define GUI_REFLECTED_FORM_CLOSED s32{EGET_BUTTON_CLICKED + 256}
@@ -112,6 +113,10 @@ enum
     GUI_ID_MENU_VIEW_MATGROUPS,
     GUI_ID_MENU_VIEW_GEOSETTINGS,
     GUI_ID_MENU_VIEW_UV_EDITOR,
+    GUI_ID_MENU_VIEW_SCENE_INSTANCES,
+
+    GUI_ID_SCENE_INSTANCES_RIGHTCLICK_MENU_ITEM_RENAME,
+    GUI_ID_SCENE_INSTANCES_RIGHTCLICK_MENU_ITEM_DELETE,
 
 	GUI_ID_REFLECTED_BASE = 1000,
 	GUI_ID_NODE_PROPERTIES_BASE,
@@ -125,7 +130,8 @@ enum
     GUI_ID_RENDER_TOOL_BASE,
     GUI_ID_FILE_OPEN_BASE,
     GUI_ID_LM_VIEWER_BASE,
-    GUI_ID_UV_EDITOR_BASE
+    GUI_ID_UV_EDITOR_BASE,
+    GUI_ID_SCENE_INSTANCES_BASE
 };
 
 enum
@@ -229,7 +235,7 @@ class multi_tool_panel;
 class GUI_layout
 {
 public:
-    GUI_layout(video::IVideoDriver*, scene::ISceneManager * smgr, gui::IGUIEnvironment*);
+    GUI_layout(video::IVideoDriver*, gui::IGUIEnvironment*);
 
     void initialize(core::rect<s32>);
 
@@ -248,7 +254,6 @@ private:
 
     gui::IGUIElement* main_panel = NULL;
     video::IVideoDriver* driver = NULL;
-    scene::ISceneManager* smgr = NULL;
     gui::IGUIEnvironment* env = NULL;
     CameraQuad* cameraQuad = NULL;
     multi_tool_panel* tool_panel = NULL;

@@ -33,8 +33,9 @@ using namespace std;
 
 extern IrrlichtDevice* device = 0;
 extern f32 global_clipping_plane[4] = { 1.0,1.0,0.0,0.0 };
-//extern geometry_scene* g_scene=NULL;
-extern SceneCoordinator* g_scene_coordinator = NULL;
+
+extern SceneCoordinator* gs_coordinator = NULL;
+extern GUI_layout* gui_layout = NULL;
 extern float g_time = 0;
 
 struct TestStruct
@@ -101,11 +102,9 @@ int main()
 
     geometry_scene& scene = *coord.current_scene();
 
-    g_scene_coordinator = &coord;
+    gs_coordinator = &coord;
 
-    //g_scene = coord.current_scene();
-
-    GUI_layout* gui_layout = new GUI_layout(driver, smgr, gui);
+    gui_layout = new GUI_layout(driver, gui);
 
     gui_layout->initialize(core::rect<s32>(core::position2d<s32>(0, 0), core::dimension2d<u32>(1200, 680)));
 

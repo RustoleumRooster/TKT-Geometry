@@ -27,6 +27,7 @@
 #include "LightMaps.h"
 #include "material_groups.h"
 #include "RenderTargetsTool.h"
+#include "SceneTool.h"
 
 extern IrrlichtDevice* device;
 using namespace irr;
@@ -35,8 +36,8 @@ using namespace gui;
 using namespace std;
 
 //extern geometry_scene* g_scene;
-extern ViewPanel* ContextMenuOwner;
-extern SceneCoordinator* g_scene_coordinator;
+extern IEventReceiver* ContextMenuOwner;
+extern SceneCoordinator* gs_coordinator;
 
 struct CubeOptions
 {
@@ -85,7 +86,7 @@ REFLECT_STRUCT_END()
 
 void do_add_geometry()
 {
-    geometry_scene* g_scene = g_scene_coordinator->current_scene();
+    geometry_scene* g_scene = gs_coordinator->current_scene();
 
     if(g_scene)
     {
@@ -95,7 +96,7 @@ void do_add_geometry()
 
 void do_subtract_geometry()
 {
-    geometry_scene* g_scene = g_scene_coordinator->current_scene();
+    geometry_scene* g_scene = gs_coordinator->current_scene();
 
     if(g_scene)
     {
@@ -106,7 +107,7 @@ void do_subtract_geometry()
 
 void do_add_semisolid_geometry()
 {
-    geometry_scene* g_scene = g_scene_coordinator->current_scene();
+    geometry_scene* g_scene = gs_coordinator->current_scene();
 
     if(g_scene)
     {
@@ -116,7 +117,7 @@ void do_add_semisolid_geometry()
 
 void do_intersect_brush()
 {
-    geometry_scene* g_scene = g_scene_coordinator->current_scene();
+    geometry_scene* g_scene = gs_coordinator->current_scene();
 
     if(g_scene)
     {
@@ -127,7 +128,7 @@ void do_intersect_brush()
 
 void do_clip_brush()
 {
-    geometry_scene* g_scene = g_scene_coordinator->current_scene();
+    geometry_scene* g_scene = gs_coordinator->current_scene();
 
     if(g_scene)
     {
@@ -137,7 +138,7 @@ void do_clip_brush()
 
 void do_rebuild()
 {
-    geometry_scene* g_scene = g_scene_coordinator->current_scene();
+    geometry_scene* g_scene = gs_coordinator->current_scene();
 
     if(g_scene)
     {
@@ -147,7 +148,7 @@ void do_rebuild()
 
 void do_new_scene()
 {
-    geometry_scene* g_scene = g_scene_coordinator->current_scene();
+    geometry_scene* g_scene = gs_coordinator->current_scene();
 
     if(g_scene)
     {
@@ -157,7 +158,7 @@ void do_new_scene()
 
 void do_toggle_progressive_build()
 {
-    geometry_scene* g_scene = g_scene_coordinator->current_scene();
+    geometry_scene* g_scene = gs_coordinator->current_scene();
 
     if(g_scene)
     {
@@ -172,7 +173,7 @@ void do_toggle_progressive_build()
 
 void do_save()
 {
-    geometry_scene* g_scene = g_scene_coordinator->current_scene();
+    geometry_scene* g_scene = gs_coordinator->current_scene();
 
     if(g_scene)
     {
@@ -185,13 +186,13 @@ void do_save()
 
 void do_file_save_as()
 {
-    Save_Geometry_File* fsave = new Save_Geometry_File(g_scene_coordinator);
+    Save_Geometry_File* fsave = new Save_Geometry_File(gs_coordinator);
     //std::cout<<"save as: not implemented\n";
 }
 
 void do_file_open()
 {
-    Open_Geometry_File* fopen = new Open_Geometry_File(g_scene_coordinator);
+    Open_Geometry_File* fopen = new Open_Geometry_File(gs_coordinator);
 }
 
 void do_set_grid_snap(int snap)
@@ -258,7 +259,7 @@ void Test_EditWindow::click_OK()
 
 void do_refl_test()
 {
-    geometry_scene* g_scene = g_scene_coordinator->current_scene();
+    geometry_scene* g_scene = gs_coordinator->current_scene();
 
     //refl_cube.texture = NULL;
     //std::cout<<"OK\n";
@@ -279,7 +280,7 @@ void do_refl_test()
 
 void do_add_plane_test()
 {
-    geometry_scene* g_scene = g_scene_coordinator->current_scene();
+    geometry_scene* g_scene = gs_coordinator->current_scene();
 
     if(g_scene)
     {
@@ -343,6 +344,17 @@ void OnMenuItemSelected(IGUIContextMenu* menu)
             ContextMenuOwner->OnEvent(event);
         }
         break;
+    case GUI_ID_SCENE_INSTANCES_RIGHTCLICK_MENU_ITEM_RENAME:
+    case GUI_ID_SCENE_INSTANCES_RIGHTCLICK_MENU_ITEM_DELETE:
+        {
+            SEvent event;
+            event.EventType = EET_GUI_EVENT;
+            event.GUIEvent.Caller = menu;
+            event.GUIEvent.Element = 0;
+            event.GUIEvent.EventType = EGET_MENU_ITEM_SELECTED;
+            ContextMenuOwner->OnEvent(event);
+        }
+    break;
     case GUI_ID_MENU_BUILD_PROGRESSIVE_BUILD:
         {
             do_toggle_progressive_build();
@@ -399,6 +411,11 @@ void OnMenuItemSelected(IGUIContextMenu* menu)
         UV_Editor_Tool::show();
         break;
     }
+    case GUI_ID_MENU_VIEW_SCENE_INSTANCES:
+    {
+        Scene_Instances_Tool::show();
+        break;
+    }
     case GUI_ID_MENU_VIEW_GEOSETTINGS:
     {
         Geo_Settings_Tool::show();
@@ -440,7 +457,7 @@ bool MyEventReceiver::OnEvent(const SEvent& event)
         s32 id = event.GUIEvent.Caller->getID();
         gui::IGUIEnvironment* env = device->getGUIEnvironment();
 
-        geometry_scene* g_scene = g_scene_coordinator->current_scene();
+        geometry_scene* g_scene = gs_coordinator->current_scene();
 
         switch(event.GUIEvent.EventType)
         {
@@ -722,10 +739,9 @@ bool GetAnyPlaneClickVector(dimension2d<u32> screenSize, scene::ICameraSceneNode
     return false;
 }
 
-GUI_layout::GUI_layout(video::IVideoDriver* driv, scene::ISceneManager* smg, gui::IGUIEnvironment* gui)
+GUI_layout::GUI_layout(video::IVideoDriver* driv, gui::IGUIEnvironment* gui)
 {
     driver = driv;
-    smgr = smg;
     env = gui;
 }
 
@@ -877,6 +893,7 @@ void GUI_layout::menu_layout()
     submenu->addItem(L"Material Groups", GUI_ID_MENU_VIEW_MATGROUPS, true, false, false, false);
     submenu->addItem(L"Editor Settings", GUI_ID_MENU_VIEW_GEOSETTINGS, true, false, false, false);
     submenu->addItem(L"UV Editor", GUI_ID_MENU_VIEW_UV_EDITOR, true, false, false, false);
+    submenu->addItem(L"Scene Instances", GUI_ID_MENU_VIEW_SCENE_INSTANCES, true, false, false, false);
 
     //gui::IGUIToolBar* bar = gui->addToolBar(main_panel,-1);
     VToolBar* bar = new VToolBar(env, main_panel, -1, core::rect<s32>(0, 0, 10, 10));

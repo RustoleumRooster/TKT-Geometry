@@ -13,6 +13,7 @@ void reset_geometry_ops_timers();
 class GeometryStack;
 class Node_Classes_Base;
 class Lightmap_Manager;
+class SceneCoordinator;
 
 struct scene_selection
 {
@@ -137,6 +138,9 @@ public:
 
     void write_files(int append_no);
     void read_files(int append_no);
+
+    const std::string& name() { return scene_name; }
+    void rename(const std::string& new_name);
     
 private:
     
@@ -159,6 +163,8 @@ private:
     USceneNode* actual_nodes = NULL;
     reflect::pointer<GeometryStack> geometry_stack;
 
+    std::string scene_name;
+
     LineHolder intersections_graph;
 
     bool b_Visualize = false;
@@ -170,6 +176,7 @@ private:
     REFLECT()
 
     friend class Open_Geometry_File;
+    friend class SceneCoordinator;
 };
 
 class SceneCoordinator
@@ -188,6 +195,8 @@ public:
     void swap_scene(int);
     void add_scene();
 
+    ISceneManager* current_smgr();
+
 private:
 
     bool write_metadata(std::string fname);
@@ -202,6 +211,7 @@ private:
 
     friend class Open_Geometry_File;
     friend class Save_Geometry_File;
+    friend class Scene_Instances_Base;
 
     REFLECT()
 };

@@ -19,7 +19,7 @@ using namespace core;
 using namespace gui;
 using namespace std;
 
-extern ViewPanel* ContextMenuOwner=NULL;
+extern IEventReceiver* ContextMenuOwner = NULL;
 
 extern irr::video::ITexture* small_circle_tex_add_selected;
 extern irr::video::ITexture* small_circle_tex_add_not_selected;

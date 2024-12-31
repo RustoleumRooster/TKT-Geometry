@@ -43,6 +43,7 @@ SceneCoordinator::SceneCoordinator(scene::ISceneManager* smgr, video::IVideoDriv
     scene0->initialize(smgr, driver, receiver);
     scene0->set_type(GEO_SOLID);
     scene0->geoNode()->rebuild_geometry();
+    scene0->rename("Main Scene");
 
     scenes.push_back(reflect::pointer<geometry_scene>{scene0});
 }
@@ -90,10 +91,20 @@ void SceneCoordinator::add_scene()
     scene->set_type(GEO_SOLID);
     scene->geoNode()->rebuild_geometry();
     scene->disable();
+    scene->rename("new scene");
 
     scenes.push_back(reflect::pointer<geometry_scene>{scene});
 }
 
+ISceneManager* SceneCoordinator::current_smgr()
+{
+    return scenes[scene_no]->smgr;
+}
+
+void geometry_scene::rename(const std::string& new_name)
+{
+    scene_name = new_name;
+}
 
 
 
@@ -979,6 +990,7 @@ std::vector<Reflected_SceneNode*> geometry_scene::getSceneNodes()
 REFLECT_STRUCT_BEGIN(geometry_scene)
     REFLECT_STRUCT_MEMBER(base_type)
     REFLECT_STRUCT_MEMBER(geometry_stack)
+    REFLECT_STRUCT_MEMBER(scene_name)
 REFLECT_STRUCT_END()
 
 REFLECT_STRUCT_BEGIN(SceneCoordinator)

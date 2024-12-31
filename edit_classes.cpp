@@ -348,6 +348,7 @@ EditWindow::~EditWindow()
 
 Reflected_GUI_Edit_Form::~Reflected_GUI_Edit_Form()
 {
+    //std::cout << "going out of scope (GUI Edit Form)\n";
     if(this->edit_fields)
         delete this->edit_fields;
     this->edit_fields=NULL;
@@ -642,6 +643,27 @@ void Reflected_GUI_Edit_Form::addTextEditCell(FormField* field, int row, int col
     cell_panel->drop();
 }
 
+// A bit of a hack, so that we can rename items in a list
+//
+void Reflected_GUI_Edit_Form::addTextLabelEdit(FormField* field, int row, int column, int tab, int ID)
+{
+    core::rect<s32> r = getCell(row, column, tab);
+    cell_background* cell_panel = new cell_background(Environment, this, field, CELL_TYPE_EDIT, -1, r);
+
+    gui::IGUIEditBox* box = Environment->addEditBox(L"",
+        core::rect<s32>(core::vector2di(4, 0), core::vector2di(r.getWidth(), r.getHeight())),
+        false, cell_panel, ID);
+
+    box->setDrawBackground(false);
+
+    cell_panel->my_element = box;
+    cell_by_rc[row * n_columns + column] = cell_panel;
+    cell_panel->border = true;
+    cell_panel->can_select = true;
+    cell_panel->highlight = field->bHighlight;
+    cell_panel->drop();
+}
+
 void Reflected_GUI_Edit_Form::addComboBoxCell(FormField* field, int row, int column, int ID)
 {
     core::rect<s32> r = getCell(row, column);
@@ -688,6 +710,10 @@ void Reflected_GUI_Edit_Form::setColumns(std::vector<s32> width)
 void FormField::addStaticTextLabel(std::string text, int row, int tab, int ID)
 {
     owner->addStaticTextLabel(this, text, row, tab, ID);
+}
+void FormField::addTextLabelEdit(int row, int column, int tab, int ID)
+{
+    owner->addTextLabelEdit(this, row, column, tab, ID);
 }
 void FormField::addStaticTextCell(std::string text, int row, int column, int ID)
 {
@@ -858,6 +884,50 @@ void String_FormField::readValue(void* obj)
             std::wstringstream ss;
             ss << get(obj)->c_str();
             textbox->setText(ss.str().c_str());
+        }
+    }
+}
+
+void String_EditField::setActive(int status)
+{
+    if (bVisible) {
+        cell_background* cell = owner->getCellPanel(my_row, 1);
+        if (cell)
+            cell->setStatus(status);
+    }
+}
+
+int String_EditField::addWidget(Reflected_GUI_Edit_Form* win, int ID, int row)
+{
+    BEGIN_WIDGET()
+
+    //addStaticTextLabel(text, row, tab, ID);
+    addTextLabelEdit(row, 0, tab, ID);
+
+    END_WIDGET()
+}
+
+int String_EditField::addInlineWidget(Reflected_GUI_Edit_Form* win, int ID, int row)
+{
+    BEGIN_WIDGET()
+
+    addTextEditCell(row, my_column, ID);
+
+    END_WIDGET()
+}
+
+void String_EditField::writeValue(void* obj)
+{
+    if (this->owner && obj && bVisible)
+    {
+        gui::IGUIEditBox* editbox = (gui::IGUIEditBox*)(owner->getElementFromId(bInline ? my_ID : my_ID, true));
+        if (editbox)
+        {
+            std::string val = std::string((core::string<char>(editbox->getText()).c_str()));
+            reflect::TypeResolver<std::string>::get()->copy(get(obj), &val);
+            std::string* str = (std::string*)obj;
+            int a = 9;
+            //*get(obj) = val;
         }
     }
 }
@@ -1544,6 +1614,10 @@ cell_background::cell_background(gui::IGUIEnvironment* env, gui::IGUIElement* pa
 {  
 }
 
+cell_background::~cell_background()
+{
+}
+
 bool cell_background::OnEvent(const SEvent& event)
 {
     if (isEnabled())
@@ -1554,7 +1628,6 @@ bool cell_background::OnEvent(const SEvent& event)
             {
                 if (my_element && can_select)
                 {
-                    
                     SEvent e;
                     e.EventType = EET_GUI_EVENT;
                     e.GUIEvent.Caller = my_element;
@@ -1571,11 +1644,24 @@ bool cell_background::OnEvent(const SEvent& event)
             }
             else if (event.MouseInput.Event == EMIE_LMOUSE_DOUBLE_CLICK)
             {
+                
                 SEvent e;
                 e.EventType = EET_GUI_EVENT;
                 e.GUIEvent.Caller = my_element;
                 e.GUIEvent.EventType = (gui::EGUI_EVENT_TYPE)GUI_BUTTON_DOUBLE_CLICKED;
                 Parent->OnEvent(e);
+            }
+            else if (event.MouseInput.Event == EMIE_RMOUSE_LEFT_UP)
+            {
+                if (my_element && can_select)
+                {
+                    SEvent e;
+                    e.EventType = EET_GUI_EVENT;
+                    e.GUIEvent.Caller = my_element;
+                    e.GUIEvent.EventType = (gui::EGUI_EVENT_TYPE)GUI_BUTTON_RIGHT_CLICKED;
+
+                    Parent->OnEvent(e);
+                }
             }
         }
         else if (event.EventType == EET_GUI_EVENT)

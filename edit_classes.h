@@ -63,6 +63,7 @@ class cell_background : public gui::IGUIElement
 {
 public:
     cell_background(gui::IGUIEnvironment* env, gui::IGUIElement* parent, FormField* field, int type, s32 id, core::rect<s32> rect);
+    ~cell_background();
 
     virtual void draw();
     virtual bool OnEvent(const SEvent& event);
@@ -117,6 +118,7 @@ public:
     cell_background* getCellPanel(int row, int column);
 
     void addStaticTextLabel(FormField* field, std::string text, int row, int tab, int ID);
+    void addTextLabelEdit(FormField* field, int row, int column, int tab, int ID);
     void addStaticTextCell(FormField* field, std::string text, int row, int column, int ID);
     void addTextEditCell(FormField* field, int row, int column, int ID);
     void addComboBoxCell(FormField* field, int row, int column, int ID);
@@ -185,6 +187,7 @@ public:
     virtual int getWidth(int column);
 
     void addStaticTextLabel(std::string text, int row, int tab, int ID);
+    void addTextLabelEdit(int row, int column, int tab, int ID);
     void addStaticTextCell(std::string text, int row, int column, int ID);
     void addTextEditCell(int row, int column, int ID);
     void addComboBoxCell(int row, int column, int ID);
@@ -208,6 +211,7 @@ public:
 	bool bBorder = false;
     bool bHighlight = false;
     bool bCanSelect = false;
+
     int text_color = FORM_TEXT_COLOR_NORMAL;
     size_t offset = 0;
     std::vector<int> tree_pos;
@@ -411,6 +415,15 @@ class String_StaticField : public String_FormField
 public:
     virtual int addWidget(Reflected_GUI_Edit_Form* win, int ID, int row);
     virtual void writeValue(void* obj) {}
+};
+
+class String_EditField : public String_FormField
+{
+    virtual void setActive(int);
+    virtual int addWidget(Reflected_GUI_Edit_Form* win, int ID, int ypos);
+    virtual int addInlineWidget(Reflected_GUI_Edit_Form* win, int ID, int row);
+    virtual void writeValue(void* obj);
+    virtual int getButtonType() { return FORM_FIELD_LABEL; }
 };
 
 //

@@ -125,7 +125,8 @@ struct TypeDescriptor_StdString : TypeDescriptor {
     TypeDescriptor_StdString() : TypeDescriptor{"std::string", sizeof(std::string)} {
     }
     virtual void dump(const void* obj, int /* unused */) const override {
-        std::cout << "std::string{\"" << *(const std::string*) obj << "\"}";
+        const std::string* str = (const std::string*)obj;
+        std::cout << "std::string{\"" << str->c_str() << "\"}";
     }
 
     virtual void serialize_flat(void** flat_obj, const void* obj)

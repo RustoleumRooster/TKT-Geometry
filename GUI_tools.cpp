@@ -147,9 +147,10 @@ void Reflected_Widget_EditArea::refresh()
     {
         form->write(temp_object);
     }
-    form->remove();
-
+    
     my_base->widget_closing(this);
+
+    form->remove();
 
     show(b_editable, NULL);
 }
@@ -267,6 +268,7 @@ bool Reflected_Widget_EditArea::OnEvent(const SEvent& event)
 
                     if (field)
                     {
+
                         field->setActive(CELL_STATUS_UNSELECT);
 
                         bool modified = m_typeDesc->getTreeNode(field->tree_pos)->modified;

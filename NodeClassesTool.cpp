@@ -70,7 +70,7 @@ void node_class_item::my_typeDesc::addFormWidget(Reflected_GUI_Edit_Form* win, T
 
 			String_StaticField* f = new String_StaticField();
 
-			f->setText(type_struct->members[m_i].name);
+			//f->setText(type_struct->members[m_i].name);
 			f->init("             ", tree_0, offset + ALIGN_BYTES, tab, bVisible);
 			f->bCanSelect = true;
 
@@ -331,6 +331,8 @@ void Node_Classes_Base::build_struct()
 
 	m_struct.sub_classes.clear();
 	int index;
+
+	//the root node class
 	for (index = 0; index < all_classes.size(); index++)
 	{
 
@@ -355,6 +357,7 @@ void Node_Classes_Base::build_struct()
 		}
 	}
 
+	//all derived node classes
 	while (all_classes.size() > 0)
 	{
 		for (index = 0; index < all_classes.size(); index++)
@@ -374,8 +377,6 @@ void Node_Classes_Base::build_struct()
 					nc.placeable = ((reflect::TypeDescriptor_SN_Struct*)nc.typeDescriptor)->placeable;
 					res->sub_classes.push_back(nc);
 					
-					//std::cout << all_classes[index]->name << " is under " << res->typeDescriptor->name << "\n";
-
 					std::vector<reflect::TypeDescriptor_Struct*> new_classes;
 					for (int i = 0; i < all_classes.size(); i++)
 					{
