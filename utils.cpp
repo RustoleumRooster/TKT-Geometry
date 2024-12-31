@@ -114,242 +114,6 @@ unsigned char* createBitmapInfoHeader(int height, int width) {
     return infoHeader;
 }
 
-void addDrawLines(polyfold& pf, LineHolder& graph,LineHolder& graph2,LineHolder& graph3)
-{
-    //if(false)
-    for(int f_i=0; f_i < pf.faces.size(); f_i++)
-        {
-           // if(f_i==2 )//|| f_i==2)
-           //if(f_i==29)
-            //if (f_i == 25 || f_i == 26)
-            {
-                //std::cout << f_i << " has " << pf.faces[f_i].vertices.size() << " v\n";
-                for (int p_i = 0; p_i < pf.faces[f_i].loops.size(); p_i++)
-                {
-                    //std::cout << f_i << " and " << p_i << "\n";
-                    //std::cout<<f_i<<", "<<p_i<<": "<<pf.faces[f_i].loops[p_i].vertices.size()<<" verts\n";
-                    //if(p_i==0)
-                    //if(pf.faces[f_i].loops[p_i].vertices.size()>0 && pf.faces[f_i].loops[p_i].type == LOOP_INNER)
-
-                    //if(p_i==1)
-                    if (pf.faces[f_i].loops[p_i].vertices.size() > 0)//&& pf.faces[f_i].loops[p_i].type == LOOP_INNER)
-                    {
-                       // if (pf.faces[f_i].loops[p_i].type != LOOP_INNER)
-                       //     continue;
-
-                        std::vector<int> tempv = pf.faces[f_i].loops[p_i].vertices;
-                        tempv.push_back(tempv[0]);
-
-                        //std::cout << f_i << " / " << p_i << ": " << pf.faces[f_i].loops[p_i].depth << "\n";
-
-                        //if(pf.faces[f_i].loops[p_i].type==LOOP_INNER)
-                        for (int i = 0; i < tempv.size() - 1; i++)
-                        {
-
-                            //std::cout<<tempv[i]<<" "<<tempv[i+1]<<", ";
-                            core::vector3df v0 = pf.vertices[tempv[i]].V;
-                            core::vector3df v1 = pf.vertices[tempv[i + 1]].V;
-
-                            //if(pf.is_closed_loop(f_i,p_i))
-                               // if (pf.faces[f_i].bFlippedNormal)
-
-                            //if (pf.faces[f_i].loops[p_i].depth % 2 == 0)
-                                if(pf.faces[f_i].loops[p_i].topo_group==LOOP_SOLID)
-                                // if(pf.faces[f_i].loops[p_i].topo_group==LOOP_GHOST_SOLID)
-                                //if(pf.faces[f_i].loops[p_i].type==LOOP_INNER)
-                            {
-                                graph2.lines.push_back(core::line3df(v0, v1));
-                            }
-                            //else if(pf.faces[f_i],pf.faces[f_i].loops[p_i].topo_group==LOOP_UNDEF)
-                            //else if(pf.faces[f_i].loops[p_i].topo_group==LOOP_HOLLOW)
-                            else //if(pf.faces[f_i].loops[p_i].topo_group==LOOP_GHOST_SOLID)
-                            {
-                                //graph.points.push_back(v0);
-                                graph.lines.push_back(core::line3df(v0, v1));
-                            }
-                            //else
-                            {
-                                // graph3.lines.push_back(core::line3df(v0,v1));
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    //std::cout<<"huh?\n";
-
-    if(false)
-    for(int e_i=0; e_i < pf.edges.size(); e_i++)
-    {
-        core::vector3df v0=pf.getVertex(e_i,0).V;
-        core::vector3df v1=pf.getVertex(e_i,1).V;
-        //if(e_i==28)
-        {
-            //if(pf.edges[e_i].p2== 1 || pf.edges[e_i].p2== 2)
-            //if(pf.edges[e_i].topo_group==3 )// || pf.edges[e_i].topo_group==3)
-            {
-                graph.lines.push_back(core::line3df(v0,v1));
-            }
-        }
-    }
-
-    if(false)
-    for(int e_i=0; e_i < pf.edges.size(); e_i++)
-    {
-        core::vector3df v0=pf.getVertex(e_i,0).V;
-        core::vector3df v1=pf.getVertex(e_i,1).V;
-        //if(e_i==48 || e_i== 49)// || e_i==41)
-        {
-            //std::cout<<pf.edges[33].topo_group<<" topo\n";
-            //if(true)
-            if(pf.edges[e_i].topo_group==3 )// || pf.edges[e_i].topo_group==3)
-            {
-                graph.lines.push_back(core::line3df(v0,v1));
-                //std::cout<<"edge "<<e_i<< "("<<my_poly.edges[e_i].topo_group<<") :   "<<v0.X<<","<<v0.Y<<","<<v0.Z<<" to "<<v1.X<<","<<v1.Y<<","<<v1.Z<<"\n";
-            }
-            else if(pf.edges[e_i].topo_group==0)// || pf.edges[e_i].topo_group==3)
-            {
-                graph2.lines.push_back(core::line3df(v0,v1));
-            }
-            else if(pf.edges[e_i].topo_group==1)// || pf.edges[e_i].topo_group==3)
-            {
-                graph2.lines.push_back(core::line3df(v0,v1));
-            }
-        }
-    }
-
-
-   //std::cout<<pf.vertices.size()<<"\n";
-    if(false)
-    for(int v_i=0;v_i<pf.vertices.size();v_i++)
-        {
-            core::vector3df v0 = pf.vertices[v_i].V;
-            graph.points.push_back(v0);
-         //   std::cout<<v_i<<":  "<<v0.X<<","<<v0.Y<<","<<v0.Z<<"\n";
-        }
-
-    if(false)
-    for(int f_i=0; f_i < pf.faces.size(); f_i++)
-    {
-        //core::vector3df v0 =pf.faces[f_i].m_normal;
-        //std::cout<<f_i<<": "<<v0.X<<","<<v0.Y<<","<<v0.Z<<"\n";
-    }
-
-    if(false)
-    for(int f_i=0; f_i < pf.faces.size(); f_i++)
-    {
-        ///if(f_i==5)
-        {
-
-            for(int v_i : pf.faces[f_i].vertices)
-            {
-                graph.points.push_back(pf.vertices[v_i].V);
-            }
-            //std::cout<<"n edges = "<<pf.faces[f_i].edges.size()<<"\n";
-            for(int i=0;i<pf.faces[f_i].edges.size();i++)
-            {
-                //if(i==0)
-                {
-                    int e_i = pf.faces[f_i].edges[i];
-                   // std::cout<<i<<" "<<e_i<<" ("<<pf.edges[e_i].topo_group<<") : "<<pf.edges[e_i].v0<<" "<<pf.edges[e_i].v1<<"\n";
-                    //if(e_i==13)
-                   {
-                    core::vector3df v0=pf.getVertex(e_i,0).V;
-                    core::vector3df v1=pf.getVertex(e_i,1).V;
-                    //std::cout<<pf.edges[e_i].v0<<" = "<<v0.X<<","<<v0.Y<<","<<v0.Z<<"\n";
-                    //std::cout<<pf.edges[e_i].v1<<" = "<<v1.X<<","<<v1.Y<<","<<v1.Z<<"\n";
-                    //graph.points.push_back(v0);
-                    //graph.points.push_back(v1);
-                    //if(true)
-                    if(pf.edges[e_i].topo_group==3 )//|| pf.edges[e_i].topo_group==3)// || pf.edges[e_i].topo_group==3)
-                    {
-                        graph.lines.push_back(core::line3df(v0,v1));
-                        //std::cout<<"edge "<<e_i<< "("<<my_poly.edges[e_i].topo_group<<") :   "<<v0.X<<","<<v0.Y<<","<<v0.Z<<" to "<<v1.X<<","<<v1.Y<<","<<v1.Z<<"\n";
-                    }
-                    else if(pf.edges[e_i].topo_group==0)// || pf.edges[e_i].topo_group==3)
-                    {
-                        graph2.lines.push_back(core::line3df(v0,v1));
-                    }
-                    else if(pf.edges[e_i].topo_group==1)// || pf.edges[e_i].topo_group==3)
-                    {
-                        graph3.lines.push_back(core::line3df(v0,v1));
-                    }
-                   }
-                }
-            }
-        }
-       //std::cout<<" a \n";
-    }
-
-    if(false)
-    for(int f_i=0; f_i < pf.faces.size(); f_i++)
-    {
-        core::vector3df w0 = pf.faces[f_i].m_center;
-        core::vector3df w1 = w0 +  pf.faces[f_i].m_normal*10;
-        graph2.lines.push_back(core::line3df(w0,w1));
-
-        for(int i=0;i<pf.faces[f_i].edges.size();i++)
-        {
-                int e_i = pf.faces[f_i].edges[i];
-                core::vector3df v0=pf.getVertex(e_i,0).V;
-                core::vector3df v1=pf.getVertex(e_i,1).V;
-                graph.lines.push_back(core::line3df(v0,v1));
-        }
-    }
-
-
-
-    if(false)
-    for(int e_i=0; e_i < pf.edges.size(); e_i++)
-    {
-        core::vector3df v0=pf.getVertex(e_i,0).V;
-        core::vector3df v1=pf.getVertex(e_i,1).V;
-        if(e_i%2 )
-        {
-            graph.lines.push_back(core::line3df(v0,v1));
-        }
-        else
-            graph2.lines.push_back(core::line3df(v0,v1));
-    }
-
-    LineHolder nograph;
-    //pf.classify_edges(nograph);
-
-    if(false)
-    for(int e_i=0; e_i < pf.edges.size(); e_i++)
-    {
-        core::vector3df v0=pf.getVertex(e_i,0).V;
-        core::vector3df v1=pf.getVertex(e_i,1).V;
-        //if(e_i == 16)
-            {
-           // std::cout<<e_i<<" edge!\n";
-            //if(pf.edges[e_i].topo_group==-1)// || pf.edges[e_i].topo_group==3)
-            if(pf.edges[e_i].topo_group == -1) continue;
-
-            //if(pf.classify_edge2(e_i)== TOP_CONVEX)
-            if(pf.edges[e_i].conv == EDGE_CONVEX )//|| pf.edges[e_i].conv == EDGE_CONCAVE)
-            //if(true)
-            {
-                graph2.lines.push_back(core::line3df(v0,v1));
-               // std::cout<<"edge "<<e_i<< "("<<pf.edges[e_i].topo_group<<") :   "<<v0.X<<","<<v0.Y<<","<<v0.Z<<" to "<<v1.X<<","<<v1.Y<<","<<v1.Z<<"\n";
-            }
-            //else if(pf.edges[e_i].topo_group==0 )// || pf.edges[e_i].topo_group==0)
-            //else  if(pf.classify_edge(e_i)== TOP_CONCAVE)
-            else if(pf.edges[e_i].conv == EDGE_SIMPLE)
-            {
-                graph3.lines.push_back(core::line3df(v0,v1));
-                //std::cout<<"edge "<<e_i<< "("<<pf.edges[e_i].topo_group<<") :   "<<v0.X<<","<<v0.Y<<","<<v0.Z<<" to "<<v1.X<<","<<v1.Y<<","<<v1.Z<<"\n";
-                //std::cout<<pf.find_edge(pf.getVertex(e_i,1).V,pf.getVertex(e_i,0).V)<<"\n";
-            }
-            else if(pf.edges[e_i].conv == EDGE_COMPLEX)
-            {
-                //std::cout<<"could not classify edge "<<e_i<<"\n";
-                graph.lines.push_back(core::line3df(v0,v1));
-            }
-           // std::cout<<"next...\n";
-        }
-    }
-}
 
 video::SColor makeUniqueColor()
 {
@@ -483,209 +247,6 @@ void MakeCircleImages(video::IVideoDriver* driver)
 					std::cout<<M[8]<<" "<<M[9]<<" "<<M[10]<<" "<<M[11]<<"\n"; \
 					std::cout<<M[12]<<" "<<M[13]<<" "<<M[14]<<" "<<M[15]<<"\n"; 
 
-void do_test_loop(polyfold& pf, int f_i, int p_i, LineHolder& graph, LineHolder& graph2)
-{
-    if(f_i >= pf.faces.size() || p_i >= pf.faces[f_i].loops.size())
-        return;
-
-    poly_face* f = &pf.faces[f_i];
-    /*
-    //pf.faces[f_i].loops[p_i].reverse();
-
-    // unit vectors
-    core::vector3df fr(f->m_normal);
-    core::vector3df to(vector3df(0,1,0));
-    fr.normalize();
-    to.normalize();
-
-    // axis multiplication by sin
-    core::vector3df vs(to.crossProduct(fr));
-
-    // axis of rotation
-    core::vector3df v(vs);
-    v.normalize();
-
-    // cosine angle
-    f32 ca = fr.dotProduct(to);
-
-    std::cout << ca << " !!!\n";
-    std::cout << vs.X << "," << vs.Y << "," << vs.Z << "\n";
-   
-   */
-    if(f->loops[p_i].vertices.size()==0)
-    return;
-
-   // pf.faces[f_i].loops[p_i].reverse();
-    //pf.set_loop_solid(f_i, p_i);
-   // f->flip_normal();
-   // f->m_normal *= -1;
-   // 
-   // std::cout << f->bFlippedNormal << " ??\n";
-
-   // f->bFlippedNormal = true;
-   // f->m_normal.Y *= -1;
-
-    pf.calc_loop_bbox(*f, f->loops[0]);
-
-    core::matrix4 R = f->get2Dmat();
-
-    MAT_COUT(R);
-
-    //R.setRotationCenter(vector3df(0, 0, 0), f->m_center);
-
-    std::vector<int> tempv = f->loops[p_i].vertices;
-    tempv.push_back(tempv[0]);
-
-    for(int i=0; i < tempv.size()-1; i++)
-       {
-
-        core::vector3df v0=pf.vertices[tempv[i]].V;
-        core::vector3df v1=pf.vertices[tempv[i+1]].V;
-
-       // std::cout<<v0.X<<" "<<v0.Z<<" to "<<v1.X<<" "<<v1.Z<<"\n";
-        R.rotateVect(v0);
-        R.rotateVect(v1);
-        v0.Y=0;
-        v1.Y=0;
-            {
-                graph.lines.push_back(core::line3df(v0,v1));
-            }
-
-        }
-    std::vector<core::vector3df> test_points;
-
-    //-128.001,45.2558,-445.256
-    core::vector3df av = core::vector3df(53.9966,0,64.0015);
-    //R.rotateVect(av);
-    //test_points.push_back(av);
-
-    f32 s = 16;
-
-   /* vector3df zvec = vector3df(14.344, 766.905, 8.57017);
-    R.rotateVect(zvec);
-    test_points.push_back(zvec);
-
-    zvec = vector3df(16.7073, 766.905, -0.25);
-    R.rotateVect(zvec);
-    test_points.push_back(zvec);
-
-    zvec = vector3df(31.4178, 765.81, 8.41837);
-    R.rotateVect(zvec);
-    test_points.push_back(zvec);*/
-    
-
-    for (int i = 0; i < pf.faces[f_i].loops[p_i].vertices.size(); i++)
-    {
-        int v_0 = pf.faces[f_i].loops[p_i].vertices[i];
-        int v_1 = i + 1 < pf.faces[f_i].loops[p_i].vertices.size() ?
-            pf.faces[f_i].loops[p_i].vertices[i + 1] : pf.faces[f_i].loops[p_i].vertices[0];
-
-        core::vector3df v0 = pf.vertices[v_0].V;
-        core::vector3df v1 = pf.vertices[v_1].V;
-
-        core::vector3df r = v1 - v0;
-
-        core::vector3df v3 = r.crossProduct(pf.faces[f_i].getOrientingNormal());
-        v3.normalize();
-        v3 *= 0.25;
-
-        core::vector3df ret = v0 + (v1 - v0) * 0.5 - v3;
-
-        //R.rotateVect(ret);
-        test_points.push_back(ret);
-    }
-
-   // 
-
-    if(false)
-    for(int i=0; i< f->loops[p_i].vertices.size(); i++)
-    {
-        int v_i = f->loops[p_i].vertices[i];
-        core::vector3df v0= pf.vertices[v_i].V;
-        R.rotateVect(v0);
-        test_points.push_back(v0);
-        test_points.push_back(v0+core::vector3df(s,0,0));
-        test_points.push_back(v0+core::vector3df(-s,0,0));
-        test_points.push_back(v0+core::vector3df(0,0,s));
-        test_points.push_back(v0+core::vector3df(0,0,-s));
-
-        if (i + 1< f->loops[p_i].vertices.size())
-        {
-            int v_j = f->loops[p_i].vertices[i+1];
-            core::vector3df v1 = pf.vertices[v_j].V;
-            R.rotateVect(v1);
-            core::vector3df v2 = v1 - v0;
-            v2.normalize();
-            test_points.push_back(v0 + v2 * s);
-            test_points.push_back(v0 - v2 * s);
-        }
-    }
-
-   //f32 testz = (f->loops[p_i].max_z - f->loops[p_i].min_z) * 0.5 + f->loops[p_i].min_z;
-   //f32 testx = f->loops[p_i].min_x - 10;
-   //test_points.push_back(vector3df(testx,0,testz));
-
-    graph.lines.push_back(core::line3df(core::vector3df(f->loops[p_i].min_x,0, f->loops[p_i].min_z), 
-        core::vector3df(f->loops[p_i].min_x, 0, f->loops[p_i].max_z)));
-    graph.lines.push_back(core::line3df(core::vector3df(f->loops[p_i].min_x, 0, f->loops[p_i].min_z),
-        core::vector3df(f->loops[p_i].max_x, 0, f->loops[p_i].min_z)));
-    graph.lines.push_back(core::line3df(core::vector3df(f->loops[p_i].max_x, 0, f->loops[p_i].max_z),
-        core::vector3df(f->loops[p_i].min_x, 0, f->loops[p_i].max_z)));
-    graph.lines.push_back(core::line3df(core::vector3df(f->loops[p_i].max_x, 0, f->loops[p_i].max_z),
-        core::vector3df(f->loops[p_i].max_x, 0, f->loops[p_i].min_z)));
-
-    core::vector3df center = f->m_center;
-    R.rotateVect(center);
-    center.Y = 0;
-
-    for (core::line3df& line : graph.lines)
-    {
-        line.end -= center;
-        line.start -= center;
-    }
-
-    for(core::vector3df v : test_points)
-    {
-        core::vector3df V = v;
-        //R.rotateVect(V);
-        f32 small_number = 0.01;
-        bool bIn = false;
-        bool bOutOfZone = false;
-
-        
-
-        if(V.X < f->loops[p_i].min_x - small_number || V.X > f->loops[p_i].max_x + small_number ||
-            V.Z < f->loops[p_i].min_z - small_number || V.Z > f->loops[p_i].max_z + small_number)
-            {
-            bOutOfZone= true;
-            //std::cout << "out of zone\n";
-            bIn = false;
-            }
-        
-        //if(!bOutOfZone)
-        {
-            //if(pf.is_closed_loop(f_i,p_i))
-            { 
-                //bIn = (pf.left_right_test(f_i, p_i, V.X,V.Z)==1);
-                bIn = pf.is_point_in_loop(f_i, p_i, V);
-                std::cout << bIn << "\n";
-            }
-            //else
-              //  std::cout<<"loop not closed\n";
-        }
-
-        R.rotateVect(V);
-
-        V.Y=0;
-
-        V -= center;
-
-        if(bIn)
-            graph.points.push_back(V);
-        else
-            graph2.points.push_back(V);
-    }
-}
 
 bool  geometry_scene::WriteTextures(std::string fname)
 {
@@ -1064,36 +625,7 @@ bool geometry_scene::ExportFinalMesh(std::string fname)
     return true;
 }
 
-REFLECT_STRUCT_BEGIN(camera_info_struct)
-    REFLECT_STRUCT_MEMBER(orthogonal)
-    REFLECT_STRUCT_MEMBER(position)
-    REFLECT_STRUCT_MEMBER(target)
-   // REFLECT_STRUCT_MEMBER(upvec)
-    //REFLECT_STRUCT_MEMBER(fovy)
-   // REFLECT_STRUCT_MEMBER(aspect)
-   // REFLECT_STRUCT_MEMBER(near)
-   // REFLECT_STRUCT_MEMBER(far)
-    REFLECT_STRUCT_MEMBER(projM)
-REFLECT_STRUCT_END()
 
-REFLECT_STRUCT_BEGIN(camera_panel_3D_info_struct)
-    REFLECT_STRUCT_MEMBER(my_camera)
-REFLECT_STRUCT_END()
-
-REFLECT_STRUCT_BEGIN(camera_panel_2D_info_struct)
-    REFLECT_STRUCT_MEMBER(my_camera)
-    REFLECT_STRUCT_MEMBER(axis)
-    REFLECT_STRUCT_MEMBER(viewSize)
-REFLECT_STRUCT_END()
-
-REFLECT_STRUCT_BEGIN(GUI_state_struct)
-    REFLECT_STRUCT_MEMBER(tl)
-    REFLECT_STRUCT_MEMBER(tr)
-    REFLECT_STRUCT_MEMBER(bl)
-    REFLECT_STRUCT_MEMBER(br)
-    REFLECT_STRUCT_MEMBER(dynamicLight)
-    REFLECT_STRUCT_MEMBER(viewStyle)
-REFLECT_STRUCT_END()
 
 
 REFLECT_STRUCT_BEGIN(Vertex_Struct)
@@ -1136,78 +668,6 @@ REFLECT_STRUCT_BEGIN(Model_Struct)
 REFLECT_STRUCT_END()
 
 
-bool ReadGUIStateFromFile(io::path fname)
-{
-    gui::IGUIEnvironment* env = device->getGUIEnvironment();
-    gui::IGUIElement* root = env->getRootGUIElement();
-    CameraQuad* quad = (CameraQuad*)root->getElementFromId(GUI_ID_CAMERA_QUAD, true);
-
-    if (!quad) return false;
-
-    ifstream rf(fname.c_str(), ios::in | ios::binary);
-
-    if (!rf)
-    {
-        cout << "Cannot open file " << fname.c_str() << "\n";
-        return false;
-    }
-
-    GUI_state_struct state_struct;
-
-    reflect::TypeDescriptor_Struct* typeDescriptor = (reflect::TypeDescriptor_Struct*)reflect::TypeResolver<GUI_state_struct>::get();
-
-    typeDescriptor->deserialize(rf, &state_struct);
-
-    //Top Left
-    ICameraSceneNode* camera = quad->getPanel(0)->getCamera();
-
-    camera->setPosition(state_struct.tl.my_camera.position);
-    camera->setTarget(state_struct.tl.my_camera.target);
-    camera->setProjectionMatrix(state_struct.tl.my_camera.projM, false);
-    camera->updateAbsolutePosition();
-
-    ((TestPanel_3D*)quad->getPanel(0))->SetDynamicLight(state_struct.dynamicLight);
-    ((TestPanel_3D*)quad->getPanel(0))->SetViewStyle(state_struct.viewStyle);
-
-    //Top Right
-    camera = quad->getPanel(1)->getCamera();
-    ((TestPanel_2D*)quad->getPanel(1))->setViewSize(state_struct.tr.viewSize);
-
-    camera->setPosition(state_struct.tr.my_camera.position);
-    camera->setTarget(state_struct.tr.my_camera.target);
-    camera->setProjectionMatrix(state_struct.tr.my_camera.projM, true);
-    camera->updateAbsolutePosition();
-
-    //Bottom Left
-    camera = quad->getPanel(2)->getCamera();
-    ((TestPanel_2D*)quad->getPanel(2))->setViewSize(state_struct.bl.viewSize);
-
-    camera->setPosition(state_struct.bl.my_camera.position);
-    camera->setTarget(state_struct.bl.my_camera.target);
-    camera->setProjectionMatrix(state_struct.bl.my_camera.projM, true);
-    camera->updateAbsolutePosition();
-
-    //Bottom Right
-    camera = quad->getPanel(3)->getCamera();
-    ((TestPanel_2D*)quad->getPanel(3))->setViewSize(state_struct.br.viewSize);
-
-    camera->setPosition(state_struct.br.my_camera.position);
-    camera->setTarget(state_struct.br.my_camera.target);
-    camera->setProjectionMatrix(state_struct.br.my_camera.projM, true);
-    camera->updateAbsolutePosition();
-
-    rf.close();
-    if (!rf.good())
-    {
-        cout << "error reading file\n";
-        return false;
-    }
-
-   // std::cout << "Loaded GUI state\n";
-
-    return true;
-}
-
     u64 random_number()
     {
         static random_device dev;
@@ -1218,79 +678,105 @@ bool ReadGUIStateFromFile(io::path fname)
         return dist(rng);
     }
 
-    bool WriteGUIStateToFile(io::path fname)
-{
-    gui::IGUIEnvironment* env = device->getGUIEnvironment();
-    gui::IGUIElement* root = env->getRootGUIElement();
-    CameraQuad* quad = (CameraQuad*)root->getElementFromId(GUI_ID_CAMERA_QUAD, true);
-
-    if (!quad) return false;
-
-    GUI_state_struct state_struct;
-
-    //Top Left
-    TestPanel* panel_TL = quad->getPanel(0);
-    
-    state_struct.dynamicLight = panel_TL->IsDynamicLight();
-    state_struct.viewStyle = ((TestPanel_3D*)panel_TL)->GetViewStyle();
-
-    ICameraSceneNode* camera = panel_TL->getCamera();
-    state_struct.tl.my_camera.orthogonal = false;
-    state_struct.tl.my_camera.position = camera->getAbsolutePosition();
-    state_struct.tl.my_camera.target = camera->getTarget();
-    state_struct.tl.my_camera.projM = camera->getProjectionMatrix();
-
-    //Top Right
-    TestPanel_2D* panel_TR = (TestPanel_2D * )quad->getPanel(1);
-    state_struct.tr.viewSize = panel_TR->getViewSize();
-
-    camera = panel_TR->getCamera();
-    state_struct.tr.my_camera.orthogonal = true;
-    state_struct.tr.my_camera.position = camera->getAbsolutePosition();
-    state_struct.tr.my_camera.target = camera->getTarget();
-    state_struct.tr.my_camera.projM = camera->getProjectionMatrix();
-
-    //Bottom Left
-    TestPanel_2D* panel_BL = (TestPanel_2D*)quad->getPanel(2);
-    state_struct.bl.viewSize = panel_BL->getViewSize();
-
-    camera = panel_BL->getCamera();
-    state_struct.bl.my_camera.orthogonal = true;
-    state_struct.bl.my_camera.position = camera->getAbsolutePosition();
-    state_struct.bl.my_camera.target = camera->getTarget();
-    state_struct.bl.my_camera.projM = camera->getProjectionMatrix();
-
-    //Bottom Right
-    TestPanel_2D* panel_BR = (TestPanel_2D*)quad->getPanel(3);
-    state_struct.br.viewSize = panel_BR->getViewSize();
-
-    camera = panel_BR->getCamera();
-    state_struct.br.my_camera.orthogonal = true;
-    state_struct.br.my_camera.position = camera->getAbsolutePosition();
-    state_struct.br.my_camera.target = camera->getTarget();
-    state_struct.br.my_camera.projM = camera->getProjectionMatrix();
-
-    //Write File
-    ofstream wf(fname.c_str(), ios::out | ios::binary);
-
-    if (!wf)
+    void save_gui_state(GUI_state_struct& state_struct)
     {
-        cout << "Cannot open file " << fname.c_str() << "\n";
-        return false;
+        gui::IGUIEnvironment* env = device->getGUIEnvironment();
+        gui::IGUIElement* root = env->getRootGUIElement();
+        CameraQuad* quad = (CameraQuad*)root->getElementFromId(GUI_ID_CAMERA_QUAD, true);
+
+        if (!quad) return;
+
+        //Top Left
+        TestPanel* panel_TL = quad->getPanel(0);
+
+        state_struct.dynamicLight = panel_TL->IsDynamicLight();
+        state_struct.viewStyle = ((TestPanel_3D*)panel_TL)->GetViewStyle();
+
+        ICameraSceneNode* camera = panel_TL->getCamera();
+        state_struct.tl.my_camera.orthogonal = false;
+        state_struct.tl.my_camera.position = camera->getAbsolutePosition();
+        state_struct.tl.my_camera.target = camera->getTarget();
+        state_struct.tl.my_camera.projM = camera->getProjectionMatrix();
+
+        //Top Right
+        TestPanel_2D* panel_TR = (TestPanel_2D*)quad->getPanel(1);
+        state_struct.tr.viewSize = panel_TR->getViewSize();
+
+        camera = panel_TR->getCamera();
+        state_struct.tr.my_camera.orthogonal = true;
+        state_struct.tr.my_camera.position = camera->getAbsolutePosition();
+        state_struct.tr.my_camera.target = camera->getTarget();
+        state_struct.tr.my_camera.projM = camera->getProjectionMatrix();
+
+        //Bottom Left
+        TestPanel_2D* panel_BL = (TestPanel_2D*)quad->getPanel(2);
+        state_struct.bl.viewSize = panel_BL->getViewSize();
+
+        camera = panel_BL->getCamera();
+        state_struct.bl.my_camera.orthogonal = true;
+        state_struct.bl.my_camera.position = camera->getAbsolutePosition();
+        state_struct.bl.my_camera.target = camera->getTarget();
+        state_struct.bl.my_camera.projM = camera->getProjectionMatrix();
+
+        //Bottom Right
+        TestPanel_2D* panel_BR = (TestPanel_2D*)quad->getPanel(3);
+        state_struct.br.viewSize = panel_BR->getViewSize();
+
+        camera = panel_BR->getCamera();
+        state_struct.br.my_camera.orthogonal = true;
+        state_struct.br.my_camera.position = camera->getAbsolutePosition();
+        state_struct.br.my_camera.target = camera->getTarget();
+        state_struct.br.my_camera.projM = camera->getProjectionMatrix();
+
+        state_struct.is_valid_state = true;
     }
 
-    reflect::TypeDescriptor_Struct* typeDescriptor = (reflect::TypeDescriptor_Struct*)reflect::TypeResolver<GUI_state_struct>::get();
-
-    typeDescriptor->serialize(wf, &state_struct);
-
-    wf.close();
-    if (!wf.good())
+    void restore_gui_state(const GUI_state_struct& state_struct)
     {
-        cout << "error writing file\n";
-        return false;
+        gui::IGUIEnvironment* env = device->getGUIEnvironment();
+        gui::IGUIElement* root = env->getRootGUIElement();
+        CameraQuad* quad = (CameraQuad*)root->getElementFromId(GUI_ID_CAMERA_QUAD, true);
+
+        if (!quad || !state_struct.is_valid_state) return;
+
+        //Top Left
+        ICameraSceneNode* camera = quad->getPanel(0)->getCamera();
+
+        camera->setPosition(state_struct.tl.my_camera.position);
+        camera->setTarget(state_struct.tl.my_camera.target);
+        camera->setProjectionMatrix(state_struct.tl.my_camera.projM, false);
+        camera->updateAbsolutePosition();
+
+        ((TestPanel_3D*)quad->getPanel(0))->SetDynamicLight(state_struct.dynamicLight);
+        ((TestPanel_3D*)quad->getPanel(0))->SetViewStyle(state_struct.viewStyle);
+
+        //Top Right
+        camera = quad->getPanel(1)->getCamera();
+        ((TestPanel_2D*)quad->getPanel(1))->setViewSize(state_struct.tr.viewSize);
+
+        camera->setPosition(state_struct.tr.my_camera.position);
+        camera->setTarget(state_struct.tr.my_camera.target);
+        camera->setProjectionMatrix(state_struct.tr.my_camera.projM, true);
+        camera->updateAbsolutePosition();
+
+        //Bottom Left
+        camera = quad->getPanel(2)->getCamera();
+        ((TestPanel_2D*)quad->getPanel(2))->setViewSize(state_struct.bl.viewSize);
+
+        camera->setPosition(state_struct.bl.my_camera.position);
+        camera->setTarget(state_struct.bl.my_camera.target);
+        camera->setProjectionMatrix(state_struct.bl.my_camera.projM, true);
+        camera->updateAbsolutePosition();
+
+        //Bottom Right
+        camera = quad->getPanel(3)->getCamera();
+        ((TestPanel_2D*)quad->getPanel(3))->setViewSize(state_struct.br.viewSize);
+
+        camera->setPosition(state_struct.br.my_camera.position);
+        camera->setTarget(state_struct.br.my_camera.target);
+        camera->setProjectionMatrix(state_struct.br.my_camera.projM, true);
+        camera->updateAbsolutePosition();
     }
-    return true;
-}
 
 //=======================================================
 //  Open Geometry File
@@ -1406,8 +892,7 @@ void Open_Geometry_File::LoadProject(SceneCoordinator* sc, io::path folder)
         if (quad)
             quad->set_scene(sc->scenes[0]);
 
-        //read the GUI state
-        ReadGUIStateFromFile("gui_state.dat");
+        sc->current_scene()->restore_gui_state();
 
         FS->changeWorkingDirectoryTo(restore_path);
 
@@ -1472,22 +957,7 @@ Save_Geometry_File::~Save_Geometry_File()
     //std::cout << "Save Geometry File... going out of scope\n";
 }
 
-bool Save_Geometry_File::Export(io::path folder)
-{
-    io::path restore_path = FileSystem->getWorkingDirectory();
 
-    std::cout << " >>>>> writing files to " << folder.c_str() << "\n";
-
-    FileSystem->changeWorkingDirectoryTo(folder);
-
-    export_model("model.dat");
-    export_model_2("model2.dat");
-    WriteModelTextures("model_textures.txt");
-
-    FileSystem->changeWorkingDirectoryTo(restore_path);
-
-    return true;
-}
 
 bool Save_Geometry_File::OnEvent(const SEvent& event)
 {
@@ -1504,21 +974,12 @@ bool Save_Geometry_File::OnEvent(const SEvent& event)
 
             scene_coordinator->write_metadata("meta.dat");
 
+            scene_coordinator->current_scene()->save_gui_state();
+
             for (int i = 0; i < scene_coordinator->scenes.size(); i++)
             {
                 scene_coordinator->scenes[i]->write_files(i);
             }
-            /*
-            g_scene->WriteSceneNodesToFile("nodes.dat");
-            g_scene->WriteTextures("textures.txt");
-            g_scene->Write2("refl_serial.dat");
-            WriteGUIStateToFile("gui_state.dat");
-            export_model("model.dat");
-            export_model_2("model2.dat");
-            WriteModelTextures("model_textures.txt");
-            */
-
-            WriteGUIStateToFile("gui_state.dat");
 
             FileSystem->changeWorkingDirectoryTo(restore_path);
             return true;
@@ -1537,233 +998,36 @@ bool Save_Geometry_File::OnEvent(const SEvent& event)
     return false;
 }
 
-bool Save_Geometry_File::export_model(io::path fname)
-{/*
-    SMesh* mesh = g_scene->geoNode()->final_meshnode_interface.getMesh();
-
-    Model_Struct model{};
-
-    if (mesh)
-    {
-        int n_buffers = mesh->getMeshBufferCount();
-
-        model.vertex_buffers.resize(n_buffers);
-
-        for (int i = 0; i < n_buffers; i++)
-        {
-            CMeshBuffer<video::S3DVertex2TCoords>* mesh_buffer = (CMeshBuffer<video::S3DVertex2TCoords>*)mesh->getMeshBuffer(i);
-
-           // std::cout << g_scene->final_meshnode_interface.getMaterialsUsed()[i].texture->getName().getPath().c_str() << "\n";
-
-            model.vertex_buffers[i].vertices.resize(mesh_buffer->getVertexCount());
-
-            for (int j = 0; j < mesh_buffer->getVertexCount(); j++)
-            {
-                model.vertex_buffers[i].vertices[j].pos = mesh_buffer->Vertices[j].Pos;
-                model.vertex_buffers[i].vertices[j].tex_coords_0 = mesh_buffer->Vertices[j].TCoords;
-                model.vertex_buffers[i].vertices[j].tex_coords_1 = mesh_buffer->Vertices[j].TCoords2;
-            }
-
-            model.vertex_buffers[i].indices.resize(mesh_buffer->getIndexCount());
-
-            for (int j = 0; j < mesh_buffer->getIndexCount(); j++)
-            {
-                model.vertex_buffers[i].indices[j] = mesh_buffer->Indices[j];
-            }
-        }
-
-        std::vector<TextureMaterial> materials_used = g_scene->geoNode()->final_meshnode_interface.getMaterialsUsed();
-        
-
-        for (int m_i = 0; m_i < materials_used.size(); m_i++)
-        {
-            //std::cout << "buffer " << m_i << "\n";
-            for (int i = 0; i < model.vertex_buffers[m_i].vertices.size(); i++)
-            {
-            //    std::cout << model.vertex_buffers[m_i].vertices[i].tex_coords_1.X << "," <<
-            //        model.vertex_buffers[m_i].vertices[i].tex_coords_1.Y << "\n";
-            }
-        }
-
-        model.lightmaps_info.resize(g_scene->geoNode()->final_meshnode_interface.getMaterialsUsed().size());
-
-        for (int i = 0; i < materials_used.size(); i++)
-        {
-            int n_lightmaps = materials_used[i].faces.size();
-
-            model.lightmaps_info[i].faces.resize(n_lightmaps);
-            model.lightmaps_info[i].lightmap_block_UL.resize(n_lightmaps);
-            model.lightmaps_info[i].lightmap_block_BR.resize(n_lightmaps);
-            model.lightmaps_info[i].size = materials_used[i].lightmap_size;
-
-            for (int j = 0; j < n_lightmaps; j++)
-            {
-                model.lightmaps_info[i].faces[j] = materials_used[i].faces[j];
-            }
-        }
-
-        ofstream wf(fname.c_str(), ios::out | ios::binary);
-
-        if (!wf)
-        {
-            cout << "Cannot open file\n";
-            return false;
-        }
-
-        reflect::TypeDescriptor_Struct* typeDescriptor = (reflect::TypeDescriptor_Struct*)reflect::TypeResolver<Model_Struct>::get();
-
-        typeDescriptor->serialize(wf, &model);
-
-        wf.close();
-        if (!wf.good())
-        {
-            cout << "error writing file\n";
-            return false;
-        }
-
-        return true;
-        
-    }
-    */
-    return false;
-}
 
 
-bool Save_Geometry_File::export_model_2(io::path fname)
-{
-    /*
-    SMesh* mesh = g_scene->geoNode()->edit_meshnode_interface.getMesh();
+REFLECT_STRUCT_BEGIN(camera_info_struct)
+    REFLECT_STRUCT_MEMBER(orthogonal)
+    REFLECT_STRUCT_MEMBER(position)
+    REFLECT_STRUCT_MEMBER(target)
+    // REFLECT_STRUCT_MEMBER(upvec)
+     //REFLECT_STRUCT_MEMBER(fovy)
+    // REFLECT_STRUCT_MEMBER(aspect)
+    // REFLECT_STRUCT_MEMBER(near)
+    // REFLECT_STRUCT_MEMBER(far)
+    REFLECT_STRUCT_MEMBER(projM)
+REFLECT_STRUCT_END()
 
-    Model_Struct model{};
+REFLECT_STRUCT_BEGIN(camera_panel_3D_info_struct)
+    REFLECT_STRUCT_MEMBER(my_camera)
+REFLECT_STRUCT_END()
 
-    if (mesh)
-    {
-        int n_buffers = mesh->getMeshBufferCount();
+REFLECT_STRUCT_BEGIN(camera_panel_2D_info_struct)
+    REFLECT_STRUCT_MEMBER(my_camera)
+    REFLECT_STRUCT_MEMBER(axis)
+    REFLECT_STRUCT_MEMBER(viewSize)
+REFLECT_STRUCT_END()
 
-        model.vertex_buffers.resize(n_buffers);
-        model.faces_info.resize(n_buffers);
-
-        std::vector<int> face_number_ref;
-        face_number_ref.resize(g_scene->geoNode()->get_total_geometry()->faces.size());
-
-        int c = 0;
-
-        std::vector<TextureMaterial> materials_used = g_scene->geoNode()->final_meshnode_interface.getMaterialsUsed();
-
-        for (int m_i = 0; m_i < materials_used.size(); m_i++)
-        {
-            //for (int i = 0; i < materials_used[m_i].records.size(); i++)
-            for (int i = 0; i < materials_used[m_i].faces.size(); i++)
-            {
-                //int f_i = materials_used[m_i].records[i].face;
-                int f_i = materials_used[m_i].faces[i];
-
-                if (g_scene->geoNode()->get_total_geometry()->faces[f_i].loops.size() > 0)
-                {
-                    face_number_ref[f_i] = c;
-
-                    int idx = g_scene->geoNode()->edit_meshnode_interface.get_buffer_index_by_face(f_i);
-                    CMeshBuffer<video::S3DVertex2TCoords>* mesh_buffer = (CMeshBuffer<video::S3DVertex2TCoords>*)mesh->getMeshBuffer(idx);
-
-                    model.vertex_buffers[c].vertices.resize(mesh_buffer->getVertexCount());
-
-                    for (int j = 0; j < mesh_buffer->getVertexCount(); j++)
-                    {
-                        model.vertex_buffers[c].vertices[j].pos = mesh_buffer->Vertices[j].Pos;
-                        model.vertex_buffers[c].vertices[j].tex_coords_0 = mesh_buffer->Vertices[j].TCoords;
-                        model.vertex_buffers[c].vertices[j].tex_coords_1 = mesh_buffer->Vertices[j].TCoords2;
-                    }
-
-                    model.vertex_buffers[c].indices.resize(mesh_buffer->getIndexCount());
-
-                    for (int j = 0; j < mesh_buffer->getIndexCount(); j++)
-                    {
-                        model.vertex_buffers[c].indices[j] = mesh_buffer->Indices[j];
-                    }
-                    
-                    c++;
-                }
-            }
-        }
-
-        model.lightmaps_info.resize(g_scene->geoNode()->final_meshnode_interface.getMaterialsUsed().size());
-
-        for (int i = 0; i < materials_used.size(); i++)
-        {
-            int n_lightmaps = materials_used[i].faces.size();
-
-            model.lightmaps_info[i].faces.resize(n_lightmaps);
-            model.lightmaps_info[i].size = materials_used[i].lightmap_size;
-
-            for (int j = 0; j < n_lightmaps; j++)
-            {
-                model.lightmaps_info[i].faces[j] = face_number_ref[materials_used[i].faces[j]];
-            }
-        }
-
-        ofstream wf(fname.c_str(), ios::out | ios::binary);
-
-        if (!wf)
-        {
-            cout << "Cannot open file\n";
-            return false;
-        }
-
-        reflect::TypeDescriptor_Struct* typeDescriptor = (reflect::TypeDescriptor_Struct*)reflect::TypeResolver<Model_Struct>::get();
-
-        typeDescriptor->serialize(wf, &model);
-
-        wf.close();
-        if (!wf.good())
-        {
-            cout << "error writing file\n";
-            return false;
-        }
-
-        return true;
-
-    }
-
-    return false;
-    */
-    return true;
-}
-
-
-bool Save_Geometry_File::WriteModelTextures(std::string fname)
-{
-    /*
-    ofstream wf(fname, ios::out | ios::binary);
-
-    if (!wf)
-    {
-        cout << "Cannot open file\n";
-        return false;
-    }
-
-    SMesh* mesh = g_scene->geoNode()->final_meshnode_interface.getMesh();
-    std::vector<std::string> texture_paths;
-
-    if (mesh)
-    {
-        int n_buffers = mesh->getMeshBufferCount();
-
-        for (int i = 0; i < n_buffers; i++)
-        {
-            std::string tex_name{ g_scene->geoNode()->final_meshnode_interface.getMaterialsUsed()[i].texture->getName().getPath().c_str() };
-
-            texture_paths.push_back(tex_name);
-        }
-    }
-
-    wf << texture_paths.size() << "\n";
-
-    for (int i = 0; i < texture_paths.size(); i++)
-    {
-        wf << texture_paths[i].c_str() << "\n";
-    }
-
-    wf.close();
-    */
-    return true;
-}
+REFLECT_STRUCT_BEGIN(GUI_state_struct)
+    REFLECT_STRUCT_MEMBER(tl)
+    REFLECT_STRUCT_MEMBER(tr)
+    REFLECT_STRUCT_MEMBER(bl)
+    REFLECT_STRUCT_MEMBER(br)
+    REFLECT_STRUCT_MEMBER(dynamicLight)
+    REFLECT_STRUCT_MEMBER(viewStyle)
+    REFLECT_STRUCT_MEMBER(is_valid_state)
+REFLECT_STRUCT_END()

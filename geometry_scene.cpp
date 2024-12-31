@@ -15,7 +15,7 @@
 #include "LightMaps.h"
 #include "CMeshSceneNode.h"
 #include "initialization.h"
-
+#include "utils.h"
 
 #define TIME_HEADER() auto startTime = std::chrono::high_resolution_clock::now();\
     auto timeZero = startTime;\
@@ -72,11 +72,15 @@ void SceneCoordinator::swap_scene(int n)
 
     current_scene()->disable();
 
+    current_scene()->save_gui_state();
+
     geometry_scene* scene = scenes[n];
 
     scene->enable();
 
     initialize_set_scene(scene);
+
+    scene->restore_gui_state();
 
     scene_no = n;
 }
@@ -104,6 +108,16 @@ ISceneManager* SceneCoordinator::current_smgr()
 void geometry_scene::rename(const std::string& new_name)
 {
     scene_name = new_name;
+}
+
+void geometry_scene::save_gui_state()
+{
+    ::save_gui_state(saved_gui_state);
+}
+
+void geometry_scene::restore_gui_state()
+{
+    ::restore_gui_state(saved_gui_state);
 }
 
 
@@ -991,6 +1005,7 @@ REFLECT_STRUCT_BEGIN(geometry_scene)
     REFLECT_STRUCT_MEMBER(base_type)
     REFLECT_STRUCT_MEMBER(geometry_stack)
     REFLECT_STRUCT_MEMBER(scene_name)
+    REFLECT_STRUCT_MEMBER(saved_gui_state)
 REFLECT_STRUCT_END()
 
 REFLECT_STRUCT_BEGIN(SceneCoordinator)

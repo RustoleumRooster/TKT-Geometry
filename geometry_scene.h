@@ -6,6 +6,7 @@
 #include "BufferManager.h"
 #include "USceneNode.h"
 #include "GeometryStack.h"
+#include "utils.h"
 
 void print_geometry_ops_timers();
 void reset_geometry_ops_timers();
@@ -141,6 +142,9 @@ public:
 
     const std::string& name() { return scene_name; }
     void rename(const std::string& new_name);
+
+    void save_gui_state();
+    void restore_gui_state();
     
 private:
     
@@ -164,6 +168,8 @@ private:
     reflect::pointer<GeometryStack> geometry_stack;
 
     std::string scene_name;
+
+    GUI_state_struct saved_gui_state;
 
     LineHolder intersections_graph;
 

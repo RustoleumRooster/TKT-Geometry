@@ -11,7 +11,6 @@ class geometry_scene;
 class LineHolder;
 class polyfold;
 
-
 struct camera_info_struct
 {
     bool orthogonal;
@@ -45,6 +44,7 @@ struct GUI_state_struct
     camera_panel_2D_info_struct br;
     bool dynamicLight;
     int viewStyle;
+    bool is_valid_state = false;
 
     REFLECT()
 };
@@ -120,16 +120,17 @@ struct Model_Struct
 
 u64 random_number();
 
-bool WriteGUIStateToFile(io::path fname);
-bool ReadGUIStateFromFile(io::path fname);
+void save_gui_state(GUI_state_struct& state);
+void restore_gui_state(const GUI_state_struct& state);
 
 void MakeCircleImages(video::IVideoDriver* driver);
-void addDrawLines(polyfold& pf, LineHolder& graph,LineHolder& graph1,LineHolder& graph2);
+
 irr::video::IImage* makeCircleImage(video::IVideoDriver* driver,int width, f32 radius, video::SColor);
 irr::video::IImage* makeSolidColorImage(video::IVideoDriver* driver, video::SColor col);
 video::SColor makeUniqueColor();
 
-void do_test_loop(polyfold& pf, int f_i, int p_i, LineHolder& graph, LineHolder& graph2);
+//void addDrawLines(polyfold& pf, LineHolder& graph, LineHolder& graph1, LineHolder& graph2);
+//void do_test_loop(polyfold& pf, int f_i, int p_i, LineHolder& graph, LineHolder& graph2);
 
 irr::video::IImage* makeAlphaImage(video::IVideoDriver* driver,video::ITexture* texture, int alpha);
 
