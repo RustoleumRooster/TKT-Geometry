@@ -129,7 +129,32 @@ struct TypeDescriptor_StdString : TypeDescriptor {
         std::cout << "std::string{\"" << str->c_str() << "\"}";
     }
 
-    virtual void serialize_flat(void** flat_obj, const void* obj)
+    virtual void serialize(std::ofstream& f, const void* obj) override
+    {
+        std::string* str = (std::string*)obj;
+        size_t n_chars = str->length();
+
+        f.write((char*) & n_chars, sizeof(size_t));
+        f.write(str->c_str(), sizeof(char) * n_chars);
+    }
+
+    virtual void deserialize(std::ifstream& f, void* obj) override
+    {
+        size_t n_chars;
+        f.read((char*)&n_chars, sizeof(size_t));
+
+        char* cstring = new char[n_chars+1];
+        cstring[n_chars] = 0;
+
+        f.read(cstring, sizeof(char) * n_chars);
+
+        std::string* to_str = (std::string*)obj;
+        new(to_str) std::string(cstring);
+        
+        delete[] cstring;
+    }
+
+    virtual void serialize_flat(void** flat_obj, const void* obj) override
     {
         std::string* to_str = (std::string*) *flat_obj;
         const std::string* from_str = (std::string*)obj;
@@ -139,12 +164,12 @@ struct TypeDescriptor_StdString : TypeDescriptor {
         *((char**)flat_obj) += aligned_size();
     }
 
-    virtual void deserialize_flat(void* obj, void** flat_obj)
+    virtual void deserialize_flat(void* obj, void** flat_obj, int item_count /*unused*/) override
     {
         *((char**)flat_obj) += aligned_size();
     }
 
-    virtual void suicide(void* obj)
+    virtual void suicide(void* obj) override
     {
         std::string* str = (std::string*) obj;
         str->std::string::~string();
