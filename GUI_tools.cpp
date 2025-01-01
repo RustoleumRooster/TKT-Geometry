@@ -90,7 +90,7 @@ void Reflected_Widget_EditArea::show(bool editable, void* obj)
     {
         my_scrollbar = NULL;
     }
-    
+
     FormField* f = form->edit_fields;
     while (f)
     {
@@ -354,7 +354,7 @@ Reflected_Widget_EditArea::~Reflected_Widget_EditArea()
     my_base->widget_closing(this);
 
     if (form)
-        form->drop();
+        form->remove();
 
     if (temp_object)
     {

@@ -348,7 +348,6 @@ EditWindow::~EditWindow()
 
 Reflected_GUI_Edit_Form::~Reflected_GUI_Edit_Form()
 {
-    //std::cout << "going out of scope (GUI Edit Form)\n";
     if(this->edit_fields)
         delete this->edit_fields;
     this->edit_fields=NULL;
@@ -358,6 +357,9 @@ Reflected_GUI_Edit_Form::~Reflected_GUI_Edit_Form()
 
     if (cell_by_rc)
         delete[] cell_by_rc;
+
+    cell_by_rc = NULL;
+
 }
 
 bool Reflected_GUI_Edit_Form::OnEvent(const SEvent& event)
@@ -1622,7 +1624,7 @@ bool cell_background::OnEvent(const SEvent& event)
 {
     if (isEnabled())
     {
-        if (event.EventType == EET_MOUSE_INPUT_EVENT)
+        if (event.EventType == EET_MOUSE_INPUT_EVENT && Parent)
         {
             if (event.MouseInput.Event == EMIE_LMOUSE_LEFT_UP)
             {
@@ -1644,12 +1646,13 @@ bool cell_background::OnEvent(const SEvent& event)
             }
             else if (event.MouseInput.Event == EMIE_LMOUSE_DOUBLE_CLICK)
             {
-                
                 SEvent e;
                 e.EventType = EET_GUI_EVENT;
                 e.GUIEvent.Caller = my_element;
                 e.GUIEvent.EventType = (gui::EGUI_EVENT_TYPE)GUI_BUTTON_DOUBLE_CLICKED;
                 Parent->OnEvent(e);
+
+                return true;
             }
             else if (event.MouseInput.Event == EMIE_RMOUSE_LEFT_UP)
             {
@@ -1662,6 +1665,8 @@ bool cell_background::OnEvent(const SEvent& event)
 
                     Parent->OnEvent(e);
                 }
+
+                return true;
             }
         }
         else if (event.EventType == EET_GUI_EVENT)
