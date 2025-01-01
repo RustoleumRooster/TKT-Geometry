@@ -66,40 +66,18 @@ GeometryStack::GeometryStack()
 {
 }
 
-void GeometryStack::initialize(ISceneNode* parent, scene::ISceneManager* smgr, MyEventReceiver* receiver,
-    video::E_MATERIAL_TYPE base_material_type_,
-    video::E_MATERIAL_TYPE special_material_type_)
-{
-    SceneManager = smgr;
-
-    if (parent)
-        parent->addChild(this);
-
-    event_receiver = receiver;
-
-    geo_element red;
-    red.brush = make_poly_cube(256, 256, 256);
-    red.type = GEO_RED;
-    elements.push_back(red);
-
-    this->edit_meshnode_interface.init(smgr, device->getVideoDriver(), event_receiver);
-    this->final_meshnode_interface.init(smgr, device->getVideoDriver(), event_receiver);
-    this->setAutomaticCulling(scene::EAC_OFF);
-}
 
 void GeometryStack::initialize(ISceneNode* parent, scene::ISceneManager* smgr, MyEventReceiver* receiver)
 {
     SceneManager = smgr;
 
     if (parent)
+    {
         parent->addChild(this);
+        this->drop();
+    }
 
     event_receiver = receiver;
-
-    geo_element red;
-    red.brush = make_poly_cube(256, 256, 256);
-    red.type = GEO_RED;
-    elements.push_back(red);
 
     this->edit_meshnode_interface.init(smgr, device->getVideoDriver(), event_receiver);
     this->final_meshnode_interface.init(smgr, device->getVideoDriver(), event_receiver);

@@ -101,6 +101,7 @@ int main()
     SceneCoordinator coord(smgr, driver, &receiver);
 
     geometry_scene& scene = *coord.current_scene();
+    scene.InitializeEmptyScene();
 
     gs_coordinator = &coord;
 

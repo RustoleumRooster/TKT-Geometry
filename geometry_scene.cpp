@@ -42,7 +42,7 @@ SceneCoordinator::SceneCoordinator(scene::ISceneManager* smgr, video::IVideoDriv
     geometry_scene* scene0 = new geometry_scene();
     scene0->initialize(smgr, driver, receiver);
     scene0->set_type(GEO_SOLID);
-    scene0->geoNode()->rebuild_geometry();
+    //scene0->geoNode()->rebuild_geometry();
     scene0->rename("Main Scene");
 
     scenes.push_back(reflect::pointer<geometry_scene>{scene0});
@@ -93,6 +93,7 @@ void SceneCoordinator::add_scene()
 
     scene->initialize(new_smgr, driver, receiver);
     scene->set_type(GEO_SOLID);
+    scene->InitializeEmptyScene();
     scene->geoNode()->rebuild_geometry();
     scene->disable();
     scene->rename("new scene");
@@ -120,21 +121,40 @@ void geometry_scene::restore_gui_state()
     ::restore_gui_state(saved_gui_state);
 }
 
+void geometry_scene::InitializeEmptyScene()
+{
+    if (!geometry_stack)
+    {
+        geometry_stack = new GeometryStack();
+        geometry_stack->initialize(smgr->getRootSceneNode(), smgr, event_receiver);
+        
+
+        geo_element red;
+        red.brush = make_poly_cube(256, 256, 256);
+        red.type = GEO_RED;
+        geometry_stack->elements.push_back(red);
+
+        geometry_stack->rebuild_geometry();
+    }
+}
+
 
 
 //====================================================
 
 geometry_scene::geometry_scene()
 {
+    geometry_stack = NULL;
 }
 
 geometry_scene::geometry_scene(video::IVideoDriver* driver_, MyEventReceiver* receiver)
 {
     this->driver = driver_;
     this->event_receiver = receiver;
+    this->geometry_stack = NULL;
 
     geometry_stack = new GeometryStack();
-    geometry_stack->initialize(NULL, smgr, receiver, video::EMT_SOLID, video::EMT_SOLID);
+    geometry_stack->initialize(NULL, smgr, receiver);
     this->geometry_stack->render_active_brush = false;
 
     event_receiver->Register(this);
@@ -166,9 +186,6 @@ void geometry_scene::disable()
 
 void geometry_scene::initialize(scene::ISceneManager* smgr_, video::IVideoDriver* driver_, MyEventReceiver* receiver)
 {
-    geometry_stack = new GeometryStack();
-    geometry_stack->initialize(smgr_->getRootSceneNode(), smgr_, receiver);
-
     this->smgr = smgr_;
     this->driver = driver_;
     this->event_receiver = receiver;
@@ -605,7 +622,9 @@ void geo_element::draw_geometry(video::IVideoDriver* driver, const video::SMater
 
 scene::CMeshSceneNode* geometry_scene::getMeshNode()
 { 
-    return geometry_stack->getMeshNode(); 
+    if(geometry_stack)
+        return geometry_stack->getMeshNode();
+    return NULL;
 }
 
 bool geometry_scene::IsEditNode() 
@@ -689,11 +708,13 @@ void geometry_scene::drawGraph(LineHolder& graph)
 
 void geometry_scene::setRenderType(bool brushes, bool geo, bool loops, bool triangles)
 {
-    geometry_stack->setRenderType(brushes, geo, loops, triangles);
+    if(geometry_stack)
+        geometry_stack->setRenderType(brushes, geo, loops, triangles);
 }
 
 void geometry_scene::loadLightmapTextures()
 {
+    if(geometry_stack)
     Lightmaps_Tool::get_manager()->loadLightmapTextures(geometry_stack);
 }
 
@@ -802,7 +823,8 @@ void geometry_scene::buildSceneGraph(bool addObjects, int light_mode, bool final
     cout << "scene total nodes = " << child_list.getSize() << "\n";
 
     //build the geometry mesh node
-    geometry_stack->buildSceneNode(finalscene, light_mode);
+    if(geometry_stack)
+        geometry_stack->buildSceneNode(finalscene, light_mode);
 
     if(finalscene)
     {

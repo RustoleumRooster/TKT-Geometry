@@ -171,19 +171,6 @@ void do_toggle_progressive_build()
     }
 }
 
-void do_save()
-{
-    geometry_scene* g_scene = gs_coordinator->current_scene();
-
-    if(g_scene)
-    {
-        g_scene->WriteSceneNodesToFile("nodes.dat");
-        g_scene->WriteTextures("textures.txt");
-        g_scene->Write2("refl_serial.dat");
-        WriteGUIStateToFile("gui_state.dat");
-    }
-}
-
 void do_file_save_as()
 {
     Save_Geometry_File* fsave = new Save_Geometry_File(gs_coordinator);

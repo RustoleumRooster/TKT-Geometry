@@ -145,6 +145,7 @@ public:
 
     void save_gui_state();
     void restore_gui_state();
+    void InitializeEmptyScene();
     
 private:
     

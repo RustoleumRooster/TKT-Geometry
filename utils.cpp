@@ -846,7 +846,7 @@ void Open_Geometry_File::LoadProject(SceneCoordinator* sc, io::path folder)
             if (sc->scenes[i] != NULL)
             {
                 if (i > 0)
-                    delete sc->scenes[i]->get_smgr();
+                    sc->scenes[i]->get_smgr()->drop();
 
                 delete sc->scenes[i];
             }

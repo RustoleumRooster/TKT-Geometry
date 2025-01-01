@@ -427,7 +427,8 @@ void File_Open_Base::build_struct()
                 f.name = std::string(p.c_str());
                 f.id = i;
                 f.isDirectory = FileList->isDirectory(i);
-                m_struct.sub_classes.push_back(f);
+                if(f.isDirectory)
+                    m_struct.sub_classes.push_back(f);
             }
             //FileBox->addItem(s.c_str(), skin->getIcon(FileList->isDirectory(i) ? EGDI_DIRECTORY : EGDI_FILE));
         }

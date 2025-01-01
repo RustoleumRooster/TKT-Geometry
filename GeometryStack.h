@@ -63,9 +63,6 @@ class GeometryStack : public USceneNode
 public:
     GeometryStack();
 
-    void initialize(ISceneNode* parent, scene::ISceneManager* smgr_, MyEventReceiver* receiver,
-        video::E_MATERIAL_TYPE base_material_type_,
-        video::E_MATERIAL_TYPE special_material_type_);
 
     void initialize(ISceneNode* parent, scene::ISceneManager* smgr_, MyEventReceiver* receiver);
 
