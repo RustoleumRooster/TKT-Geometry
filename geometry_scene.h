@@ -70,8 +70,8 @@ public:
     bool WriteTextures(std::string fname);
     bool ReadTextures(io::path fname, std::vector<std::wstring>&);
 
-    bool Write2(std::string fname);
-    bool Read2(io::path fname, io::path tex_fname);
+    bool Write(std::string fname);
+    bool Read(io::path fname, io::path tex_fname);
 
     bool WriteSceneNodesToFile(std::string fname);
     bool ReadSceneNodesFromFile(io::path);

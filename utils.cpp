@@ -314,8 +314,6 @@ bool geometry_scene::ReadTextures(io::path fname, std::vector<std::wstring>& tex
     getline(rf,line);
     n_textures = core::strtoul10(line.c_str());
 
-   // std::cout<<n_textures<<" textures used:\n";
-
     for(int i=0;i<n_textures;i++)
     {
         getline(rf,line);
@@ -383,11 +381,9 @@ bool geometry_scene::WriteSceneNodesToFile(std::string fname)
 
     wf<<"38\n";
 
-   // int e = this->scene_nodes.size();
     int e = this->editor_nodes->getChildren().size();
     wf.write((char*)&e,sizeof(int));
 
-    //for(Reflected_SceneNode* node : this->scene_nodes)
     for(ISceneNode* it : this->editor_nodes->getChildren())
     {
         Reflected_SceneNode* node = (Reflected_SceneNode*)it;
@@ -397,7 +393,6 @@ bool geometry_scene::WriteSceneNodesToFile(std::string fname)
 
         while(td)
         {
-            //td->dump(node,0);
             td->serialize(wf,node);
             td = td->inherited_type;
         }
@@ -442,25 +437,15 @@ bool geometry_scene::ReadSceneNodesFromFile(io::path fname)
         editor_nodes->removeChild(*it);
     }
 
-    /*
-    for(Reflected_SceneNode* node : this->scene_nodes)
-    {
-        node->remove();
-        node->drop();
-    }
-    this->scene_nodes.clear();
-    */
     int n_nodes;
     rf.read((char*)&n_nodes,sizeof(int));
 
-    //std::cout<<"reading "<<n_nodes<<" nodes\n";
     for(int i=0;i<n_nodes;i++)
     {
         getline(rf,line,'\0');
         reflect::TypeDescriptor_Struct* typeDescriptor = Reflected_SceneNode_Factory::getNodeTypeDescriptorByName(line);
         if(typeDescriptor)
         {
-            //Reflected_SceneNode* new_node = ((reflect::TypeDescriptor_SN_Struct*)typeDescriptor)->create_func(smgr, -1, core::vector3df(0, 0, 0));
             Reflected_SceneNode* new_node = Reflected_SceneNode_Factory::CreateNodeByTypeName(typeDescriptor->name, this->editor_nodes, this, this->smgr);
             if(new_node)
             {
@@ -468,13 +453,10 @@ bool geometry_scene::ReadSceneNodesFromFile(io::path fname)
                 while(td)
                 {
                     td->deserialize(rf,new_node);
-                    //td->dump(new_node,0);
                     td = td->inherited_type;
                     
                 }
-                //cout << new_node->UID() << "\n";
                 new_node->postEdit();
-                //this->scene_nodes.push_back(new_node);
             }
             else
                 {
@@ -500,7 +482,7 @@ bool geometry_scene::ReadSceneNodesFromFile(io::path fname)
     return true;
 }
 
-bool geometry_scene::Write2(std::string fname)
+bool geometry_scene::Write(std::string fname)
 {
     ofstream wf(fname,ios::out | ios::binary);
 
@@ -523,7 +505,7 @@ bool geometry_scene::Write2(std::string fname)
     return true;
 }
 
-bool geometry_scene::Read2(io::path fname,io::path tex_fname)
+bool geometry_scene::Read(io::path fname,io::path tex_fname)
 {
     ifstream rf(fname.c_str(),ios::in | ios::binary);
 
@@ -541,18 +523,6 @@ bool geometry_scene::Read2(io::path fname,io::path tex_fname)
 
     typeDescriptor->deserialize(rf,this);
     geometry_stack->initialize(smgr->getRootSceneNode(), smgr, event_receiver);
-    //geometry_stack->GeometryStack::GeometryStack();
-
-    //typeDescriptor->dump(this,0);
-
-   // std::cout << "surface groups:\n";
-    for (int j = 1; j < geometry_stack->elements.size(); j++)
-    {
-        //std::cout << j << ":\n";
-        //for (int i = 0; i < geometry_stack->elements[j].brush.surface_groups.size(); i++)
-        //    std::cout << i << " " << geometry_stack->elements[j].brush.surface_groups[i].type << "\n";
-    }
-
 
     for(int i=1;i<geometry_stack->elements.size();i++)
         for(poly_face& face : geometry_stack->elements[i].brush.faces)
@@ -588,8 +558,6 @@ bool geometry_scene::Read2(io::path fname,io::path tex_fname)
             geometry_stack->elements[i].brush.calc_center(f);
         }
 
-        //cout << geometry_stack->elements[i].brush.uid << "\n";
-
         //Geometry
         geometry_stack->elements[i].geometry.reduce_edges_vertices();
         geometry_stack->elements[i].geometry.recalc_bbox();
@@ -607,26 +575,8 @@ bool geometry_scene::Read2(io::path fname,io::path tex_fname)
 
     }
 
-   // std::cout<<"Loaded Geometry\n\n";
-
     return true;
 }
-
-bool geometry_scene::ExportFinalMesh(std::string fname)
-{
-    io::IFileSystem* fs = this->smgr->getFileSystem();
-    io::IWriteFile* io = fs->createAndWriteFile(fname.c_str());
-
-    scene::IMeshWriter* mesh_writer = smgr->createMeshWriter(scene::EMWT_IRR_MESH);
-
-    //mesh_writer->writeMesh(io, this->getFinalMeshNode()->getMesh());
-
-    delete mesh_writer;
-    return true;
-}
-
-
-
 
 REFLECT_STRUCT_BEGIN(Vertex_Struct)
     REFLECT_STRUCT_MEMBER(pos)
@@ -914,7 +864,7 @@ void geometry_scene::write_files(int append_no)
 
     WriteSceneNodesToFile(nodes_name.str().c_str());
     WriteTextures(texture_name.str().c_str());
-    Write2(serial_name.str().c_str());
+    Write(serial_name.str().c_str());
 }
 
 void geometry_scene::read_files(int append_no)
@@ -928,7 +878,7 @@ void geometry_scene::read_files(int append_no)
     std::stringstream serial_name;
     serial_name << "refl_serial" << append_no << ".dat";
 
-    this->Read2(serial_name.str().c_str(), texture_name.str().c_str());
+    this->Read(serial_name.str().c_str(), texture_name.str().c_str());
     this->ReadSceneNodesFromFile(nodes_name.str().c_str());
 }
 
@@ -997,8 +947,6 @@ bool Save_Geometry_File::OnEvent(const SEvent& event)
     }
     return false;
 }
-
-
 
 REFLECT_STRUCT_BEGIN(camera_info_struct)
     REFLECT_STRUCT_MEMBER(orthogonal)
