@@ -264,7 +264,7 @@ public:
     static void SetSpecialMaterialType(video::E_MATERIAL_TYPE m) {special_material_type=m;}
 
     template<typename T>
-    void resolve_uid_references(const reflect::uid_reference&, std::vector<T*>&);
+    static void resolve_uid_references(geometry_scene* a_geo_scene, reflect::uid_reference& uid_ref, std::vector<T*>& ptr_ref);
 
     int get_node_instance_id() { return node_instance_id; }
 
@@ -367,15 +367,39 @@ public:
 private:
     u64 face_uid;
 
+public:
+    REFLECT2()
+};
+
+class Reflected_MeshBuffer_Sky_SceneNode : public Reflected_MeshBuffer_SceneNode
+{
+public:
+
+    Reflected_MeshBuffer_Sky_SceneNode(USceneNode* parent, geometry_scene* geo_scene, irr::scene::ISceneManager* smgr, int id, const core::vector3df& pos);
+    ~Reflected_MeshBuffer_Sky_SceneNode();
+
+    virtual void postEdit() override;
+
+    bool OK;
+
+    REFLECT2()
+};
+
+class Reflected_MeshBuffer_Water_SceneNode : public Reflected_MeshBuffer_SceneNode
+{
+public:
+
+    Reflected_MeshBuffer_Water_SceneNode(USceneNode* parent, geometry_scene* geo_scene, irr::scene::ISceneManager* smgr, int id, const core::vector3df& pos);
+    
+    bool OK;
+
     REFLECT2()
 };
 
 template<typename T>
-void Reflected_SceneNode::resolve_uid_references(const reflect::uid_reference& uid_ref, std::vector<T*>& ptr_ref)
+void Reflected_SceneNode::resolve_uid_references(geometry_scene* a_geo_scene, reflect::uid_reference& uid_ref, std::vector<T*>& ptr_ref)
 {
-    ptr_ref.clear();
-
-    core::list<scene::ISceneNode*> child_list = geo_scene->EditorNodes()->getChildren();
+    core::list<scene::ISceneNode*> child_list = a_geo_scene->EditorNodes()->getChildren();
 
     for (scene::ISceneNode* inode : child_list)
     {

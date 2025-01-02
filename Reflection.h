@@ -212,6 +212,21 @@ struct TypeDescriptor_Struct : TypeDescriptor {
         //std::cout << this->name << " out of scope\n";
     }
 
+    bool isOfType(TypeDescriptor_Struct* tD)
+    {
+        TypeDescriptor_Struct* my_types = this;
+
+        while (my_types)
+        {
+            if (my_types == tD)
+                return true;
+
+            my_types = my_types->inherited_type;
+        }
+
+        return false;
+    }
+
    // TypeDescriptor_Struct(const char* name, size_t size, const std::initializer_list<Member>& init) : TypeDescriptor{nullptr, 0}, members{init} {
    // }
     virtual void dump(const void* obj, int indentLevel) const override {

@@ -13,6 +13,7 @@ using namespace irr;
 using namespace gui;
 
 extern IrrlichtDevice* device;
+extern SceneCoordinator* gs_coordinator;
 
 video::E_MATERIAL_TYPE Reflected_SceneNode::base_material_type = video::EMT_SOLID;
 video::E_MATERIAL_TYPE Reflected_SceneNode::special_material_type = video::EMT_SOLID;
@@ -733,6 +734,33 @@ u64 Reflected_MeshBuffer_SceneNode::get_uid()
     return face_uid;
 }
 
+
+Reflected_MeshBuffer_Sky_SceneNode::Reflected_MeshBuffer_Sky_SceneNode(USceneNode* parent, geometry_scene* geo_scene, irr::scene::ISceneManager* smgr, int id, const core::vector3df& pos) :
+    Reflected_MeshBuffer_SceneNode(parent,geo_scene,smgr,id,pos)
+{
+    m_texture = device->getVideoDriver()->getTexture("color_square_icon_nogood.png");
+    Buffer->Material.setTexture(0, m_texture);
+}
+
+Reflected_MeshBuffer_Sky_SceneNode::~Reflected_MeshBuffer_Sky_SceneNode()
+{
+    gs_coordinator->set_skyox_dirty();
+}
+
+void Reflected_MeshBuffer_Sky_SceneNode::postEdit()
+{
+    gs_coordinator->set_skyox_dirty();
+
+    Reflected_MeshBuffer_SceneNode::postEdit();
+}
+
+Reflected_MeshBuffer_Water_SceneNode::Reflected_MeshBuffer_Water_SceneNode(USceneNode* parent, geometry_scene* geo_scene, irr::scene::ISceneManager* smgr, int id, const core::vector3df& pos) :
+    Reflected_MeshBuffer_SceneNode(parent, geo_scene, smgr, id, pos)
+{
+    m_texture = device->getVideoDriver()->getTexture("color_square_icon_nogood.png");
+    Buffer->Material.setTexture(0, m_texture);
+}
+
 //
 //============================================================================
 //  REFLECTED NODE FACTORY CLASS
@@ -831,8 +859,23 @@ REFLECT_STRUCT_END()
 
 REFLECT_STRUCT2_BEGIN(Reflected_MeshBuffer_SceneNode)
     ALIAS("Mesh Buffer")
+    PLACEABLE(false)
     INHERIT_FROM(Reflected_Sprite_SceneNode)
     REFLECT_STRUCT2_MEMBER(face_uid)
+REFLECT_STRUCT2_END()
+
+REFLECT_STRUCT2_BEGIN(Reflected_MeshBuffer_Sky_SceneNode)
+    ALIAS("Sky Mesh Buffer")
+    PLACEABLE(false)
+    INHERIT_FROM(Reflected_MeshBuffer_SceneNode)
+    REFLECT_STRUCT2_MEMBER(OK)
+REFLECT_STRUCT2_END()
+
+REFLECT_STRUCT2_BEGIN(Reflected_MeshBuffer_Water_SceneNode)
+    ALIAS("Water Mesh Buffer")
+    PLACEABLE(false)
+    INHERIT_FROM(Reflected_MeshBuffer_SceneNode)
+    REFLECT_STRUCT2_MEMBER(OK)
 REFLECT_STRUCT2_END()
 
 REFLECT_STRUCT2_BEGIN(Reflected_LightSceneNode)

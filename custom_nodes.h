@@ -187,6 +187,7 @@ class Reflected_SkyNode : public Reflected_Sprite_SceneNode
 {
 public:
     Reflected_SkyNode(USceneNode* parent, geometry_scene* geo_scene, irr::scene::ISceneManager* smgr, int id, const core::vector3df& pos);
+    ~Reflected_SkyNode();
 
     virtual bool bShowEditorArrow() { return true; }
 

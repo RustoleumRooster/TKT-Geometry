@@ -820,6 +820,17 @@ polyfold GeometryStack::get_intersecting_geometry(polyfold pf)
     return combo;
 }
 
+void GeometryStack::recalculate_final_meshbuffer()
+{
+    if (final_mesh_dirty)
+    {
+        std::cout << "recalculating meshbuffers\n";
+        final_meshnode_interface.refresh_material_groups(this);
+        final_meshnode_interface.generate_mesh_node(this);
+        final_mesh_dirty = false;
+    }
+}
+
 triangle_holder* GeometryStack::get_triangles_for_face(int f_i)
 {
     return &total_geometry_triangles[f_i];

@@ -97,6 +97,7 @@ public:
     void buildSceneNode(bool finalMesh, int light_mode);
     scene::CMeshSceneNode* getMeshNode() { return my_MeshNode; }
     void setFinalMeshDirty(bool dirty = true) { final_mesh_dirty = dirty; }
+    void recalculate_final_meshbuffer();
 
     triangle_holder* get_triangles_for_face(int f_i);
 

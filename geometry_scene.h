@@ -131,6 +131,10 @@ public:
     scene_selection get_saved_selection();
     std::vector<u64> get_saved_selection_uids();
     Reflected_SceneNode* get_reflected_node_by_uid(u64);
+
+    std::vector<u64> get_reflected_node_uids_by_type(const char* node_type_name);
+
+    void setFaceNodeType(const std::vector<int>&, const char* node_type_name);
     void addFaceNode(int f_i);
 
     void setFinalMeshDirty() { geometry_stack->final_mesh_dirty = true; }
@@ -198,27 +202,41 @@ public:
     ~SceneCoordinator();
 
     geometry_scene* current_scene();
+    geometry_scene* skybox_scene();
     geometry_scene* get_scene(int);
     void swap_scene(int);
     void add_scene();
+
+    void set_skyox_dirty();
+    void cleanup_after_scene_nodes_added_deleted();
+    void rebuild_dirty_meshbuffers();
 
     ISceneManager* current_smgr();
 
 private:
 
+    void connect_skybox();
+
     bool write_metadata(std::string fname);
     bool read_metadata(std::string fname, metadata&);
 
     int scene_no = 0;
+   
     std::vector<reflect::pointer<geometry_scene>> scenes;
+
+    bool skybox_dirty = false;
+
+    geometry_scene* m_skybox_scene = NULL;
 
     scene::ISceneManager* smgr;
     video::IVideoDriver* driver;
     MyEventReceiver* receiver;
 
+
     friend class Open_Geometry_File;
     friend class Save_Geometry_File;
     friend class Scene_Instances_Base;
+    friend class Reflected_SkyNode;
 
     REFLECT()
 };

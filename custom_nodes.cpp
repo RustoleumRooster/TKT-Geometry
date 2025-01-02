@@ -15,6 +15,7 @@ using namespace video;
 
 extern IrrlichtDevice* device;
 extern f32 global_clipping_plane[4];
+extern SceneCoordinator* gs_coordinator;
 
 extern float g_time;
 
@@ -193,7 +194,7 @@ bool Reflected_WaterSurfaceNode::addSelfToScene(USceneNode* parent, irr::scene::
 
     std::vector<Reflected_MeshBuffer_SceneNode*> buffer_nodes;
 
-    resolve_uid_references<Reflected_MeshBuffer_SceneNode>(target, buffer_nodes);
+    resolve_uid_references<Reflected_MeshBuffer_SceneNode>(geo_scene, target, buffer_nodes);
 
     polyfold* pf = geo_scene->geoNode()->get_total_geometry();
 
@@ -290,6 +291,11 @@ Reflected_SkyNode::Reflected_SkyNode(USceneNode* parent, geometry_scene* geo_sce
     Buffer->Material.setTexture(0, m_texture);
 }
 
+Reflected_SkyNode::~Reflected_SkyNode()
+{
+    gs_coordinator->set_skyox_dirty();
+}
+
 bool Reflected_SkyNode::addSelfToScene(USceneNode* parent, irr::scene::ISceneManager* smgr, geometry_scene* geo_scene)
 {
     if (!enabled)
@@ -310,33 +316,40 @@ bool Reflected_SkyNode::addSelfToScene(USceneNode* parent, irr::scene::ISceneMan
 
     //==================
 
-    std::vector<Reflected_MeshBuffer_SceneNode*> buffer_nodes;
-
-    resolve_uid_references<Reflected_MeshBuffer_SceneNode>(target, buffer_nodes);
-
-    polyfold* pf = geo_scene->geoNode()->get_total_geometry();
-
-    for (Reflected_MeshBuffer_SceneNode* n : buffer_nodes)
+    int c = 0;
+    for (geometry_scene* a_geo_scene : gs_coordinator->scenes)
     {
-        for (int f_i = 0; f_i < pf->faces.size(); f_i++)
+        std::vector<Reflected_MeshBuffer_SceneNode*> buffer_nodes;
+
+        resolve_uid_references<Reflected_MeshBuffer_SceneNode>(a_geo_scene, target, buffer_nodes);
+
+        polyfold* pf = a_geo_scene->geoNode()->get_total_geometry();
+
+        for (Reflected_MeshBuffer_SceneNode* n : buffer_nodes)
         {
-            if (pf->faces[f_i].uid == n->get_uid())
+            for (int f_i = 0; f_i < pf->faces.size(); f_i++)
             {
-                MeshBuffer_Chunk chunk = geo_scene->geoNode()->final_meshnode_interface.get_mesh_buffer_by_face(f_i);
-
-                if (pf->faces[f_i].material_group != my_material_group)
+                if (pf->faces[f_i].uid == n->get_uid())
                 {
-                    dirty = true;
-                    //pf->faces[f_i].material_group = my_material_group;
+                    MeshBuffer_Chunk chunk = a_geo_scene->geoNode()->final_meshnode_interface.get_mesh_buffer_by_face(f_i);
+
+                    if (pf->faces[f_i].material_group != my_material_group)
+                    {
+                        dirty = true;
+                        //pf->faces[f_i].material_group = my_material_group;
+                    }
+
+                    IMeshBuffer* buffer = chunk.buffer;
+
+                    node->attach_to_buffer(buffer);
+                    node1->attach_to_buffer(buffer);
+                    c++;
                 }
-
-                IMeshBuffer* buffer = chunk.buffer;
-
-                node->attach_to_buffer(buffer);
-                node1->attach_to_buffer(buffer);
             }
         }
     }
+
+    std::cout << "linked " << c << " sky meshbuffers\n";
 
     //if(dirty)
     //    geo_scene->setFinalMeshDirty();
@@ -348,13 +361,17 @@ bool Reflected_SkyNode::addSelfToScene(USceneNode* parent, irr::scene::ISceneMan
 
 void Reflected_SkyNode::preEdit()
 {
-    target.old_uids = target.uids;
+    //target.old_uids = target.uids;
 
     Reflected_Sprite_SceneNode::preEdit();
 }
 
 void Reflected_SkyNode::postEdit()
 {
+
+    gs_coordinator->set_skyox_dirty();
+
+    /*
     for (u64 uid : target.old_uids)
     {
         Reflected_SceneNode* node = geo_scene->get_reflected_node_by_uid(uid);
@@ -374,6 +391,7 @@ void Reflected_SkyNode::postEdit()
             node->connect_input(this);
         }
     }
+    */
 
     Reflected_Sprite_SceneNode::postEdit();
 }
@@ -889,7 +907,7 @@ void MySkybox_SceneNode::render()
     if (this->WaterReflectionPass)
     {
         a = 0;
-       // std::cout << "water reflection sky\n";
+        //std::cout << "water reflection sky\n";
     }
     else
     {
@@ -898,7 +916,14 @@ void MySkybox_SceneNode::render()
     }
     
 
-    ICameraSceneNode* fp_camera = SceneManager->getActiveCamera();
+    ICameraSceneNode* fp_camera = gs_coordinator->current_smgr()->getActiveCamera();
+
+    //vector3df fp_pos = fp_camera->getAbsolutePosition();
+    //fp_pos *= 0.1;
+
+    my_camera->setPosition(fp_pos);
+    my_camera->updateAbsolutePosition();
+
     vector3df t_pos = my_camera->getAbsolutePosition() + fp_camera->getTarget() - fp_camera->getAbsolutePosition();
 
 

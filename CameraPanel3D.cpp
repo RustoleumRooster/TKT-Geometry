@@ -14,6 +14,8 @@
 #include "NodeClassesTool.h"
 
 extern IrrlichtDevice* device;
+extern SceneCoordinator* gs_coordinator;
+
 using namespace irr;
 using namespace core;
 using namespace gui;
@@ -867,11 +869,11 @@ void TestPanel_3D::right_click(core::vector2di pos)
             menu->addItem(L"(No node type selected)", -1, true, false, false, false);
         }
 
-        if (geo_scene->getSelectedFaces().size() == 1)
-        {
-            menu->addSeparator();
-            menu->addItem(L"Add Face Node", GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_ADD_MESHBUFFER_SCENENODE, true, false, false, false);
-        }
+        //if (geo_scene->getSelectedFaces().size() == 1)
+        //{
+        //    menu->addSeparator();
+        //    menu->addItem(L"Add Face Node", GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_ADD_MESHBUFFER_SCENENODE, true, false, false, false);
+        //}
 
         ContextMenuOwner = this->m_viewPanel;
     }
@@ -1157,6 +1159,12 @@ void TestPanel_3D::SetViewStyle(s32 vtype)
 
         geo_scene->setRenderType(false, true, false, false);
 
+        if (gs_coordinator->skybox_scene() && gs_coordinator->skybox_scene() != geo_scene)
+        {
+            gs_coordinator->skybox_scene()->buildSceneGraph(true, this->lighting_type, false);
+            gs_coordinator->skybox_scene()->setRenderType(false, true, false, false);
+        }
+
         break;
     case PANEL3D_VIEW_RENDER_FINAL:
        
@@ -1164,6 +1172,14 @@ void TestPanel_3D::SetViewStyle(s32 vtype)
         if (geo_scene->getSelectedFaces().size() > 0)
         {
             geo_scene->setSelectedFaces(std::vector<int>{});
+        }
+
+        gs_coordinator->rebuild_dirty_meshbuffers();
+
+        if (gs_coordinator->skybox_scene() && gs_coordinator->skybox_scene() != geo_scene)
+        {
+            gs_coordinator->skybox_scene()->buildSceneGraph(false, this->lighting_type, true);
+            gs_coordinator->skybox_scene()->setRenderType(false, true, false, false);
         }
 
         geo_scene->buildSceneGraph(false, this->lighting_type, true);
@@ -1179,8 +1195,16 @@ void TestPanel_3D::SetViewStyle(s32 vtype)
 
 void TestPanel_3D::render()
 {
-    driver->setRenderTarget(getImage(), true, true, video::SColor(255, 16, 16, 16));
     smgr->setActiveCamera(getCamera());
+
+    if (view_style == PANEL3D_VIEW_RENDER_FINAL)
+    {
+        if (gs_coordinator->skybox_scene())
+            gs_coordinator->skybox_scene()->get_smgr()->drawAll();
+    }
+
+    driver->setRenderTarget(getImage(), true, true, video::SColor(255, 16, 16, 16));
+    
 
     getCamera()->render();
 

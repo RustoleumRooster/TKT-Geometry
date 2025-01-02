@@ -824,11 +824,17 @@ void Open_Geometry_File::LoadProject(SceneCoordinator* sc, io::path folder)
         //if there are more than one, create those as well
         for (int i = 1; i < data.n_scenes; i++)
         {
-            sc->add_scene();
-            sc->scenes[i]->read_files(i);
-            sc->scenes[i]->geoNode()->set_originals();
-            sc->scenes[i]->geoNode()->build_total_geometry();
-            sc->scenes[i]->geoNode()->generate_meshes();
+
+            geometry_scene* scene = new geometry_scene();
+            scene::ISceneManager* new_smgr = smgr->createNewSceneManager();
+            scene->initialize(new_smgr, driver, (MyEventReceiver*)receiver);
+            scene->set_type(GEO_SOLID);
+            scene->read_files(i);
+            scene->geoNode()->set_originals();
+            scene->geoNode()->build_total_geometry();
+            scene->geoNode()->generate_meshes();
+
+            sc->scenes.push_back(reflect::pointer<geometry_scene>{scene});
 
         }
 
