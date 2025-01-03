@@ -133,6 +133,7 @@ public:
     Reflected_SceneNode* get_reflected_node_by_uid(u64);
 
     std::vector<u64> get_reflected_node_uids_by_type(const char* node_type_name);
+    std::vector<Reflected_SceneNode*> get_reflected_nodes_by_type(const char* node_type_name);
 
     void setFaceNodeType(const std::vector<int>&, const char* node_type_name);
     void addFaceNode(int f_i);
@@ -212,6 +213,8 @@ public:
     void rebuild_dirty_meshbuffers();
 
     ISceneManager* current_smgr();
+    void CopyAllMaterials();
+    void SetAllFinalMeshDirty();
 
 private:
 

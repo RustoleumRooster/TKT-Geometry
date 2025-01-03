@@ -378,9 +378,11 @@ public:
     Reflected_MeshBuffer_Sky_SceneNode(USceneNode* parent, geometry_scene* geo_scene, irr::scene::ISceneManager* smgr, int id, const core::vector3df& pos);
     ~Reflected_MeshBuffer_Sky_SceneNode();
 
+    void set_connected(bool);
+
     virtual void postEdit() override;
 
-    bool OK;
+    bool is_connected = false;
 
     REFLECT2()
 };
@@ -391,7 +393,9 @@ public:
 
     Reflected_MeshBuffer_Water_SceneNode(USceneNode* parent, geometry_scene* geo_scene, irr::scene::ISceneManager* smgr, int id, const core::vector3df& pos);
     
-    bool OK;
+    void set_connected(bool);
+
+    bool is_connected = false;
 
     REFLECT2()
 };

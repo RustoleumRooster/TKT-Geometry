@@ -456,7 +456,8 @@ bool geometry_scene::ReadSceneNodesFromFile(io::path fname)
                     td = td->inherited_type;
                     
                 }
-                new_node->postEdit();
+                new_node->drop();
+                new_node->postEdit(); //this gets called twice for each node but it's probably OK
             }
             else
                 {
@@ -698,7 +699,11 @@ REFLECT_STRUCT_END()
         camera->updateAbsolutePosition();
 
         ((TestPanel_3D*)quad->getPanel(0))->SetDynamicLight(state_struct.dynamicLight);
-        ((TestPanel_3D*)quad->getPanel(0))->SetViewStyle(state_struct.viewStyle);
+
+        if(state_struct.viewStyle == PANEL3D_VIEW_RENDER_FINAL)
+            ((TestPanel_3D*)quad->getPanel(0))->SetViewStyle(PANEL3D_VIEW_RENDER);
+        else
+            ((TestPanel_3D*)quad->getPanel(0))->SetViewStyle(state_struct.viewStyle);
 
         //Top Right
         camera = quad->getPanel(1)->getCamera();
@@ -840,6 +845,18 @@ void Open_Geometry_File::LoadProject(SceneCoordinator* sc, io::path folder)
 
         //point all tools and GUI to the new main scene
         initialize_set_scene(sc->scenes[0]);
+
+        for (geometry_scene* scene : sc->scenes)
+        {
+            for (ISceneNode* n : scene->editor_nodes->getChildren())
+            {
+                Reflected_SceneNode* sn = (Reflected_SceneNode*)n;
+                sn->preEdit();
+                sn->postEdit();
+            }
+        }
+
+        sc->cleanup_after_scene_nodes_added_deleted();
 
         gui::IGUIEnvironment* env = device->getGUIEnvironment();
         gui::IGUIElement* root = env->getRootGUIElement();

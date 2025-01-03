@@ -747,6 +747,22 @@ Reflected_MeshBuffer_Sky_SceneNode::~Reflected_MeshBuffer_Sky_SceneNode()
     gs_coordinator->set_skyox_dirty();
 }
 
+void Reflected_MeshBuffer_Sky_SceneNode::set_connected(bool b)
+{
+    this->is_connected = b;
+
+    if (this->is_connected)
+    {
+        m_texture = device->getVideoDriver()->getTexture("color_square_icon_good.png");
+        Buffer->Material.setTexture(0, m_texture);
+    }
+    else
+    {
+        m_texture = device->getVideoDriver()->getTexture("color_square_icon_nogood.png");
+        Buffer->Material.setTexture(0, m_texture);
+    }
+}
+
 void Reflected_MeshBuffer_Sky_SceneNode::postEdit()
 {
     gs_coordinator->set_skyox_dirty();
@@ -759,6 +775,22 @@ Reflected_MeshBuffer_Water_SceneNode::Reflected_MeshBuffer_Water_SceneNode(UScen
 {
     m_texture = device->getVideoDriver()->getTexture("color_square_icon_nogood.png");
     Buffer->Material.setTexture(0, m_texture);
+}
+
+void Reflected_MeshBuffer_Water_SceneNode::set_connected(bool b)
+{
+    this->is_connected = b;
+
+    if (this->is_connected)
+    {
+        m_texture = device->getVideoDriver()->getTexture("color_square_icon_good.png");
+        Buffer->Material.setTexture(0, m_texture);
+    }
+    else
+    {
+        m_texture = device->getVideoDriver()->getTexture("color_square_icon_nogood.png");
+        Buffer->Material.setTexture(0, m_texture);
+    }
 }
 
 //
@@ -868,14 +900,14 @@ REFLECT_STRUCT2_BEGIN(Reflected_MeshBuffer_Sky_SceneNode)
     ALIAS("Sky Mesh Buffer")
     PLACEABLE(false)
     INHERIT_FROM(Reflected_MeshBuffer_SceneNode)
-    REFLECT_STRUCT2_MEMBER(OK)
+    REFLECT_STRUCT2_MEMBER(is_connected)
 REFLECT_STRUCT2_END()
 
 REFLECT_STRUCT2_BEGIN(Reflected_MeshBuffer_Water_SceneNode)
     ALIAS("Water Mesh Buffer")
     PLACEABLE(false)
     INHERIT_FROM(Reflected_MeshBuffer_SceneNode)
-    REFLECT_STRUCT2_MEMBER(OK)
+    REFLECT_STRUCT2_MEMBER(is_connected)
 REFLECT_STRUCT2_END()
 
 REFLECT_STRUCT2_BEGIN(Reflected_LightSceneNode)
