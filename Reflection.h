@@ -681,7 +681,7 @@ struct TypeDescriptor_Reference : TypeDescriptor {
 
     bool isNull(const void* obj) const
     {
-        return (*(char*)obj) == NULL;
+        return getItem(obj) == NULL;
     }
 
     virtual std::string getFullName() const override {

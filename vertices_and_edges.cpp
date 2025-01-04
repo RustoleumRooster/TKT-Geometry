@@ -375,14 +375,16 @@ int polyfold::classify_point(int face_i, core::vector3df v0, core::vector3df v1,
     return RES;
 }
 
-
-
 int polyfold::classify_point(core::vector3df v0, LineHolder& graph)
 {
     if (this->vertices.size() == 0)
         return TOP_UNDEF;
 
-    for (int w = 0; w < this->vertices.size(); w++)
+    //this algorithm can fail in cases where the geometry is not strictly convex/concave,
+    //which is the case generally in the main clipping algorithm. Therefore, we start at the most
+    //newly added point, which in clipping would be a common intersection point. This (hopefully)
+    //guarantees that at that point, the geometry is strictly convex/concave
+    for (int w = this->vertices.size() -1; w >0; w--)
     {
         std::vector<core::vector3df> ipoints;
         std::vector<int> face_n;
@@ -406,9 +408,11 @@ int polyfold::classify_point(core::vector3df v0, LineHolder& graph)
             int status = -1;
 
             int res;
-            f32 d = 99999;
+            f32 d = 0xFFFF;
             for (int i = 0; i < ipoints.size(); i++)
             {
+                //graph.lines.push_back(line3df(v0, ipoints[i]));
+                //graph.points.push_back(ipoints[i]);
                 f32 r = v0.getDistanceFrom(ipoints[i]);
                 if (r < d && r>0.01)
                 {
