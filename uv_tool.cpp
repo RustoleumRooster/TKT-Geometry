@@ -594,7 +594,8 @@ void UV_Editor_Panel::right_click(core::vector2di pos)
                     GetScreenCoords(geo_node->elements[p_i].brush.vertices[v_i].V, coords);
                     if (core::vector2di(clickx, clicky).getDistanceFrom(coords) < 4)
                     {
-                        geo_scene->selected_brush_vertex_editing = p_i;
+                        //geo_scene->selected_brush_vertex_editing = p_i;
+                        geo_scene->set_selected_brush_vertex_editing(p_i);
                         geo_node->elements[p_i].selected_vertex = v_i;
                         bVertexClick = true;
                     }

@@ -10,12 +10,28 @@
 #include "BVH.h"
 #include "CMeshSceneNode.h"
 #include "reflected_nodes.h"
+#include "CameraPanel.h"
 
 #include <chrono>
 
 #include "clip_functions.h"
 
 extern IrrlichtDevice* device;
+extern TestPanel* Active_Camera_Window;
+
+extern irr::video::ITexture* small_circle_tex_add_selected;
+extern irr::video::ITexture* small_circle_tex_add_not_selected;
+extern irr::video::ITexture* small_circle_tex_sub_selected;
+extern irr::video::ITexture* small_circle_tex_sub_not_selected;
+extern irr::video::ITexture* small_circle_tex_red_selected;
+extern irr::video::ITexture* small_circle_tex_red_not_selected;
+
+extern irr::video::ITexture* med_circle_tex_add_selected;
+extern irr::video::ITexture* med_circle_tex_add_not_selected;
+extern irr::video::ITexture* med_circle_tex_sub_selected;
+extern irr::video::ITexture* med_circle_tex_sub_not_selected;
+extern irr::video::ITexture* med_circle_tex_red_selected;
+extern irr::video::ITexture* med_circle_tex_red_not_selected;
 
 float rebuild_geometry_time = 0.0;
 float build_total_geometry_time = 0.0;
@@ -118,74 +134,53 @@ void GeometryStack::render()
 
     driver->setMaterial(someMaterial);
 
-    if(render_active_brush)
-        this->elements[0].draw_brush(driver, someMaterial);
+    ICameraSceneNode* camera = SceneManager->getActiveCamera();
+
+    if (!camera || !Active_Camera_Window)
+        return;
+
+    core::matrix4 trans;
+    trans.setbyproduct_nocheck(camera->getProjectionMatrix(), camera->getViewMatrix());
+
+    core::dimension2d<u32> dim = Active_Camera_Window->getImage()->getOriginalSize();
+
+    dim.Width /= 2;
+    dim.Height /= 2;
+
+    if (render_active_brush)
+    {
+        this->elements[0].draw_brush(driver);
+    }
 
     if (render_brushes)
     {
-
         for (int e_i = 0; e_i < this->elements.size(); e_i++)
         {
-            this->elements[e_i].draw_brush(driver, someMaterial);
+            this->elements[e_i].draw_brush(driver);
         }
+    }
 
-        for (int e_i = 0; e_i < this->elements.size(); e_i++)
+    if (render_active_brush)
+    {
+        geo_element* geo = &this->elements[0];
+        if (geo->bSelected)
+        {
+            bool bDrawSelectedVertex = 0 == selected_brush_vertex_editing;
+            this->elements[0].draw_brush_vertices(trans, dim, bDrawSelectedVertex, driver);
+        }
+    }
+
+    if (render_brushes)
+    {
+        for (int e_i = 1; e_i < this->elements.size(); e_i++)
         {
             geo_element* geo = &this->elements[e_i];
-            /*
+
             if (geo->bSelected)
             {
-
-                core::vector2di coords;
-                for (int i = 0; i < geo->brush.vertices.size(); i++)
-                {
-                    GetScreenCoords(geo->brush.vertices[i].V, coords);
-                    coords.X -= 4;
-                    coords.Y -= 4;
-                    if (geo_scene->selected_brush_vertex_editing == e_i && geo->control_vertex_selected == false && geo->selected_vertex == i)
-                    {
-                        if (geo->type == GEO_ADD)
-                            driver->draw2DImage(med_circle_tex_add_selected, coords, core::rect<int>(0, 0, 8, 8), 0, video::SColor(255, 255, 255, 255), true);
-                        else if (geo->type == GEO_SUBTRACT)
-                            driver->draw2DImage(med_circle_tex_sub_selected, coords, core::rect<int>(0, 0, 8, 8), 0, video::SColor(255, 255, 255, 255), true);
-                        else if (geo->type == GEO_RED)
-                            driver->draw2DImage(med_circle_tex_red_selected, coords, core::rect<int>(0, 0, 8, 8), 0, video::SColor(255, 255, 255, 255), true);
-                    }
-                    else
-                    {
-                        if (geo->type == GEO_ADD)
-                            driver->draw2DImage(small_circle_tex_add_selected, coords, core::rect<int>(0, 0, 8, 8), 0, video::SColor(255, 255, 255, 255), true);
-                        else if (geo->type == GEO_SUBTRACT)
-                            driver->draw2DImage(small_circle_tex_sub_selected, coords, core::rect<int>(0, 0, 8, 8), 0, video::SColor(255, 255, 255, 255), true);
-                        else if (geo->type == GEO_RED)
-                            driver->draw2DImage(small_circle_tex_red_selected, coords, core::rect<int>(0, 0, 8, 8), 0, video::SColor(255, 255, 255, 255), true);
-                    }
-                }
-                for (int i = 0; i < geo->brush.control_vertices.size(); i++)
-                {
-                    GetScreenCoords(geo->brush.control_vertices[i].V, coords);
-                    coords.X -= 4;
-                    coords.Y -= 4;
-                    if (geo_scene->selected_brush_vertex_editing == e_i && geo->control_vertex_selected == true && geo->selected_vertex == i)
-                    {
-                        if (geo->type == GEO_ADD)
-                            driver->draw2DImage(med_circle_tex_add_selected, coords, core::rect<int>(0, 0, 8, 8), 0, video::SColor(255, 255, 255, 255), true);
-                        else if (geo->type == GEO_SUBTRACT)
-                            driver->draw2DImage(med_circle_tex_sub_selected, coords, core::rect<int>(0, 0, 8, 8), 0, video::SColor(255, 255, 255, 255), true);
-                        else if (geo->type == GEO_RED)
-                            driver->draw2DImage(med_circle_tex_red_selected, coords, core::rect<int>(0, 0, 8, 8), 0, video::SColor(255, 255, 255, 255), true);
-                    }
-                    else
-                    {
-                        if (geo->type == GEO_ADD)
-                            driver->draw2DImage(small_circle_tex_add_selected, coords, core::rect<int>(0, 0, 8, 8), 0, video::SColor(255, 255, 255, 255), true);
-                        else if (geo->type == GEO_SUBTRACT)
-                            driver->draw2DImage(small_circle_tex_sub_selected, coords, core::rect<int>(0, 0, 8, 8), 0, video::SColor(255, 255, 255, 255), true);
-                        else if (geo->type == GEO_RED)
-                            driver->draw2DImage(small_circle_tex_red_selected, coords, core::rect<int>(0, 0, 8, 8), 0, video::SColor(255, 255, 255, 255), true);
-                    }
-                }
-            }*/
+                bool bDrawSelectedVertex = e_i == selected_brush_vertex_editing;
+                this->elements[e_i].draw_brush_vertices(trans, dim, bDrawSelectedVertex, driver);
+            }
         }
     }
 }
@@ -793,7 +788,7 @@ void GeometryStack::clear_scene()
     this->rebuild_geometry();
 }
 
-polyfold GeometryStack::get_intersecting_geometry(polyfold pf)
+polyfold GeometryStack::get_intersecting_geometry(const polyfold& pf)
 {
     polyfold combo;
     std::vector<int> touched_brushes;
@@ -978,7 +973,86 @@ polyfold* GeometryStack::get_original_brush(int f_i)
     return pf;
 }
 
-#include "GeometryStack.h"
+void geo_element::draw_brush_vertices(const core::matrix4& trans, core::dimension2du view_dim, bool bDrawSelectedVertex, video::IVideoDriver* driver)
+{
+    video::ITexture* med_circle;
+    video::ITexture* small_circle;
+
+    if (this->type == GEO_ADD)
+    {
+        med_circle = med_circle_tex_add_selected;
+        small_circle = small_circle_tex_add_selected;
+    }
+    else if (this->type == GEO_SUBTRACT)
+    {
+        med_circle = med_circle_tex_sub_selected;
+        small_circle = small_circle_tex_sub_selected;
+    }
+    else if (this->type == GEO_RED)
+    {
+        med_circle = med_circle_tex_red_selected;
+        small_circle = small_circle_tex_red_selected;
+    }
+    else
+        return;
+
+    for (int i = 0; i < this->brush.vertices.size(); i++)
+    {
+        f32 transformedPos[4] = { this->brush.vertices[i].V.X,
+            this->brush.vertices[i].V.Y,
+            this->brush.vertices[i].V.Z,
+            1.0f };
+
+        trans.multiplyWith1x4Matrix(transformedPos);
+
+        const f32 zDiv = transformedPos[3] == 0.0f ? 1.0f :
+            core::reciprocal(transformedPos[3]);
+
+        vector2di coords = vector2di(
+            view_dim.Width + core::round32(view_dim.Width * (transformedPos[0] * zDiv)),
+            view_dim.Height - core::round32(view_dim.Height * (transformedPos[1] * zDiv)));
+
+        coords.X -= 4;
+        coords.Y -= 4;
+
+        if (this->bSelected && bDrawSelectedVertex && this->control_vertex_selected == false && this->selected_vertex == i)
+        {
+            driver->draw2DImage(med_circle, coords, core::rect<int>(0, 0, 8, 8), 0, video::SColor(255, 255, 255, 255), true);
+        }
+        else
+        {
+            driver->draw2DImage(small_circle, coords, core::rect<int>(0, 0, 8, 8), 0, video::SColor(255, 255, 255, 255), true);
+        }
+    }
+    for (int i = 0; i < this->brush.control_vertices.size(); i++)
+    {
+        f32 transformedPos[4] = { this->brush.control_vertices[i].V.X,
+            this->brush.control_vertices[i].V.Y,
+            this->brush.control_vertices[i].V.Z,
+            1.0f };
+
+        trans.multiplyWith1x4Matrix(transformedPos);
+
+        const f32 zDiv = transformedPos[3] == 0.0f ? 1.0f :
+            core::reciprocal(transformedPos[3]);
+
+        vector2di coords = vector2di(
+            view_dim.Width + core::round32(view_dim.Width * (transformedPos[0] * zDiv)),
+            view_dim.Height - core::round32(view_dim.Height * (transformedPos[1] * zDiv)));
+
+        coords.X -= 4;
+        coords.Y -= 4;
+
+        if (this->bSelected && bDrawSelectedVertex && this->control_vertex_selected == true && this->selected_vertex == i)
+        {
+            driver->draw2DImage(med_circle, coords, core::rect<int>(0, 0, 8, 8), 0, video::SColor(255, 255, 255, 255), true);
+        }
+        else
+        {
+            driver->draw2DImage(small_circle, coords, core::rect<int>(0, 0, 8, 8), 0, video::SColor(255, 255, 255, 255), true);
+        }
+    }
+}
 
 
 

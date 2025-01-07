@@ -20,6 +20,7 @@ using namespace gui;
 using namespace std;
 
 extern IEventReceiver* ContextMenuOwner = NULL;
+extern TestPanel* Active_Camera_Window = NULL;
 
 extern irr::video::ITexture* small_circle_tex_add_selected;
 extern irr::video::ITexture* small_circle_tex_add_not_selected;

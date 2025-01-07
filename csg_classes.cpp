@@ -572,7 +572,8 @@ void polyfold::calc_normal(int f_i)
 
             core::vector3df v1 = vertices[v_i0].V - vertices[v_i1].V;
             core::vector3df v2 = vertices[v_i1].V - vertices[v_i2].V;
-            core::vector3df cross = v1.crossProduct(v2);
+           // core::vector3df cross = v1.crossProduct(v2);
+            core::vector3df cross = v2.crossProduct(v1);
             cross.normalize();
 
             this->faces[f_i].m_normal = cross;

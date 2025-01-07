@@ -21,6 +21,7 @@ using namespace core;
 using namespace gui;
 
 extern IEventReceiver* ContextMenuOwner;
+extern TestPanel* Active_Camera_Window;
 
 extern irr::video::ITexture* small_circle_tex_add_selected;
 extern irr::video::ITexture* small_circle_tex_add_not_selected;
@@ -65,7 +66,7 @@ void TestPanel_3D::AddGraph(LineHolder& graph4)
 
 
 void TestPanel_3D::AddGraphs(LineHolder& graph1, LineHolder& graph2, LineHolder& graph3)
-{/*
+{
     for (vector3df v : graph1.points)
         this->graph.points.push_back(v);
     for (vector3df v : graph2.points)
@@ -75,7 +76,7 @@ void TestPanel_3D::AddGraphs(LineHolder& graph1, LineHolder& graph2, LineHolder&
     for (line3df lv : graph2.lines)
         this->graph2.lines.push_back(lv);
     for (line3df lv : graph3.lines)
-        this->graph3.lines.push_back(lv);*/
+        this->graph3.lines.push_back(lv);
 }
 
 scene::ICameraSceneNode* TestPanel_3D::getCamera()
@@ -891,7 +892,8 @@ void TestPanel_3D::right_click(core::vector2di pos)
                     GetScreenCoords(geo_node->elements[p_i].brush.vertices[v_i].V, coords);
                     if (core::vector2di(clickx, clicky).getDistanceFrom(coords) < 4)
                     {
-                        geo_scene->selected_brush_vertex_editing = p_i;
+                        //geo_scene->selected_brush_vertex_editing = p_i;
+                        geo_scene->set_selected_brush_vertex_editing(p_i);
                         geo_node->elements[p_i].selected_vertex = v_i;
                         geo_node->elements[p_i].control_vertex_selected = false;
                     }
@@ -903,7 +905,8 @@ void TestPanel_3D::right_click(core::vector2di pos)
                 GetScreenCoords(geo_node->elements[p_i].brush.control_vertices[v_i].V, coords);
                 if (core::vector2di(clickx, clicky).getDistanceFrom(coords) < 4)
                 {
-                    geo_scene->selected_brush_vertex_editing = p_i;
+                    //geo_scene->selected_brush_vertex_editing = p_i;
+                    geo_scene->set_selected_brush_vertex_editing(p_i);
                     geo_node->elements[p_i].selected_vertex = v_i;
                     geo_node->elements[p_i].control_vertex_selected = true;
                 }
@@ -1197,6 +1200,8 @@ void TestPanel_3D::render()
 {
     smgr->setActiveCamera(getCamera());
 
+    Active_Camera_Window = this;
+
     if (view_style == PANEL3D_VIEW_RENDER_FINAL)
     {
         if (gs_coordinator->skybox_scene())
@@ -1205,10 +1210,42 @@ void TestPanel_3D::render()
 
     driver->setRenderTarget(getImage(), true, true, video::SColor(255, 16, 16, 16));
     
-
     getCamera()->render();
 
-    smgr->drawAll();
+    if (view_style == PANEL3D_VIEW_LOOPS)
+    {
+
+        for (const core::line3df& aline : graph2.lines)
+        {
+            driver->draw3DLine(aline.start, aline.end, video::SColor(255, 96, 128, 96));
+        }
+        for (const core::line3df& aline : graph3.lines)
+        {
+            driver->draw3DLine(aline.start, aline.end, video::SColor(255, 32, 0, 150));
+        }
+        for (const core::line3df& aline : graph.lines)
+        {
+            driver->draw3DLine(aline.start, aline.end, video::SColor(255, 255, 0, 255));
+        }
+        for (core::vector3df v : graph.points)
+        {
+            int len = 4;
+            driver->draw3DLine(v + core::vector3df(len, 0, 0), v - core::vector3df(len, 0, 0), video::SColor(128, 255, 0, 255));
+            driver->draw3DLine(v + core::vector3df(0, len, 0), v - core::vector3df(0, len, 0), video::SColor(128, 255, 0, 255));
+            driver->draw3DLine(v + core::vector3df(0, 0, len), v - core::vector3df(0, 0, len), video::SColor(128, 255, 0, 255));
+        }
+
+        for (core::vector3df v : graph2.points)
+        {
+            int len = 4;
+            driver->draw3DLine(v + core::vector3df(len, 0, 0), v - core::vector3df(len, 0, 0), video::SColor(255, 96, 128, 96));
+            driver->draw3DLine(v + core::vector3df(0, len, 0), v - core::vector3df(0, len, 0), video::SColor(255, 96, 128, 96));
+            driver->draw3DLine(v + core::vector3df(0, 0, len), v - core::vector3df(0, 0, len), video::SColor(255, 96, 128, 96));
+        }
+        
+    }
+    else
+        smgr->drawAll();
 
     driver->setRenderTarget(NULL, true, true, video::SColor(0, 0, 0, 0));
 }

@@ -23,8 +23,9 @@ public:
     polyfold geometry;
 
     bool has_geometry();
-    void draw_brush(video::IVideoDriver* driver, const video::SMaterial material);
+    void draw_brush(video::IVideoDriver* driver);
     void draw_geometry(video::IVideoDriver* driver, const video::SMaterial material);
+    void draw_brush_vertices(const core::matrix4& trans, core::dimension2du view_dim, bool bDrawSelectedVertex, video::IVideoDriver* driver);
     video::SColor getColor();
     //bool isDeleted(){return bDeleted;}
 
@@ -86,7 +87,7 @@ public:
     void clip_active_brush();
     void clip_active_brush_plane_geometry();
 
-    polyfold get_intersecting_geometry(polyfold pf);
+    polyfold get_intersecting_geometry(const polyfold& pf);
     void build_intersecting_target(const polyfold& pf, polyfold& out);
     polyfold* get_total_geometry();
     std::vector<int> getSurfaceFromFace(int);
@@ -141,6 +142,7 @@ private:
     bool render_loops = false;
     bool render_triangles = false;
     bool render_active_brush = true;
+    int selected_brush_vertex_editing = 0;
 
     LineHolder loops_graph;
 

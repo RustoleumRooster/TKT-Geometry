@@ -16,6 +16,7 @@ using namespace core;
 using namespace gui;
 
 extern IEventReceiver* ContextMenuOwner;
+extern TestPanel* Active_Camera_Window;
 
 extern irr::video::ITexture* small_circle_tex_add_selected;
 extern irr::video::ITexture* small_circle_tex_add_not_selected;
@@ -617,7 +618,8 @@ void TestPanel_2D::right_click(core::vector2di pos)
                     GetScreenCoords(geo_node->elements[p_i].brush.vertices[v_i].V,coords);
                     if(core::vector2di(clickx,clicky).getDistanceFrom(coords)<4)
                     {
-                        geo_scene->selected_brush_vertex_editing =p_i;
+                        //geo_scene->selected_brush_vertex_editing =p_i;
+                        geo_scene->set_selected_brush_vertex_editing(p_i);
                         geo_node->elements[p_i].selected_vertex=v_i;
                         geo_node->elements[p_i].control_vertex_selected = false;
                         bVertexClick=true;
@@ -630,7 +632,8 @@ void TestPanel_2D::right_click(core::vector2di pos)
                 GetScreenCoords(geo_node->elements[p_i].brush.control_vertices[v_i].V, coords);
                 if (core::vector2di(clickx, clicky).getDistanceFrom(coords) < 4)
                 {
-                    geo_scene->selected_brush_vertex_editing = p_i;
+                    //geo_scene->selected_brush_vertex_editing = p_i;
+                    geo_scene->set_selected_brush_vertex_editing(p_i);
                     geo_node->elements[p_i].selected_vertex = v_i;
                     geo_node->elements[p_i].control_vertex_selected = true;
                     bVertexClick = true;
@@ -762,6 +765,8 @@ void TestPanel_2D::render()
 
     driver->setRenderTarget(getImage(), true, true, video::SColor(255,16,16,16));
     smgr->setActiveCamera(getCamera());
+
+    Active_Camera_Window = this;
 
     smgr->drawAll();
 

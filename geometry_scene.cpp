@@ -640,18 +640,17 @@ void geometry_scene::setBrushSelection_ShiftAdd(int new_sel)
 
 core::vector3df geometry_scene::getSelectedVertex()
 {
-
     bool bSelectedVertex=false;
     core::vector3df ret = core::vector3df(0,0,0);
 
     for(int p_i :this->selected_brushes)
     {
-        if(this->selected_brush_vertex_editing == p_i && geometry_stack->elements[p_i].control_vertex_selected == false && geometry_stack->elements[p_i].selected_vertex < geometry_stack->elements[p_i].brush.vertices.size())
+        if(geometry_stack->selected_brush_vertex_editing == p_i && geometry_stack->elements[p_i].control_vertex_selected == false && geometry_stack->elements[p_i].selected_vertex < geometry_stack->elements[p_i].brush.vertices.size())
         {
             bSelectedVertex=true;
             ret=geometry_stack->elements[p_i].brush.vertices[ geometry_stack->elements[p_i].selected_vertex].V;
         }
-        else if(this->selected_brush_vertex_editing == p_i && geometry_stack->elements[p_i].control_vertex_selected == true && geometry_stack->elements[p_i].selected_vertex < geometry_stack->elements[p_i].brush.control_vertices.size())
+        else if(geometry_stack->selected_brush_vertex_editing == p_i && geometry_stack->elements[p_i].control_vertex_selected == true && geometry_stack->elements[p_i].selected_vertex < geometry_stack->elements[p_i].brush.control_vertices.size())
         {
             bSelectedVertex = true;
             ret = geometry_stack->elements[p_i].brush.control_vertices[geometry_stack->elements[p_i].selected_vertex].V;
@@ -664,7 +663,7 @@ core::vector3df geometry_scene::getSelectedVertex()
     return ret;
 }
 
-void geo_element::draw_brush(video::IVideoDriver* driver, const video::SMaterial material)
+void geo_element::draw_brush(video::IVideoDriver* driver)
 {
     video::SColor col = this->getColor();
 
@@ -717,6 +716,7 @@ void geo_element::draw_geometry(video::IVideoDriver* driver, const video::SMater
             driver->draw3DLine(this->geometry.getVertex(i,0).V,this->geometry.getVertex(i,1).V,col);
     }
 }
+
 
 scene::CMeshSceneNode* geometry_scene::getMeshNode()
 { 
@@ -814,6 +814,12 @@ void geometry_scene::TextureToSelectedFaces()
     }
 
     geometry_stack->setFinalMeshDirty();
+}
+
+void geometry_scene::set_selected_brush_vertex_editing(int brush_i)
+{
+    if (geometry_stack)
+        geometry_stack->selected_brush_vertex_editing = brush_i;
 }
 
 void geometry_scene::drawGraph(LineHolder& graph)

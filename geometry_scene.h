@@ -113,7 +113,7 @@ public:
 
     void addSceneSelectedSceneNodeType(core::vector3df pos);
 
-    int selected_brush_vertex_editing;
+    void set_selected_brush_vertex_editing(int);
     void drawGraph(LineHolder& graph);
 
     LineHolder special_graph;

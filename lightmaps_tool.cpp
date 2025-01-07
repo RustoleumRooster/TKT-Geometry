@@ -464,7 +464,7 @@ void LM_Viewer_Panel::render()
         {
             for (int e_i = 0; e_i < this->uv_scene->elements.size(); e_i++)
             {
-                this->uv_scene->elements[e_i].draw_brush(driver, someMaterial);
+                this->uv_scene->elements[e_i].draw_brush(driver);
             }
 
             for (int e_i = 0; e_i < this->uv_scene->elements.size(); e_i++)

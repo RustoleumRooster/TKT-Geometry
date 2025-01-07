@@ -294,6 +294,7 @@ Reflected_SkyNode::Reflected_SkyNode(USceneNode* parent, geometry_scene* geo_sce
 Reflected_SkyNode::~Reflected_SkyNode()
 {
     gs_coordinator->set_skyox_dirty();
+    gs_coordinator->SetAllFinalMeshDirty();
 }
 
 bool Reflected_SkyNode::addSelfToScene(USceneNode* parent, irr::scene::ISceneManager* smgr, geometry_scene* geo_scene)
@@ -881,7 +882,8 @@ void MySkybox_SceneNode::resizeView(core::dimension2du new_size)
             buffer->getMaterial().setTexture(0, my_rtt2);
     }
 
-    geo_scene->getMeshNode()->copyMaterials();
+    gs_coordinator->CopyAllMaterials();
+    //geo_scene->getMeshNode()->copyMaterials();
 }
 
 void getReflectedCameraAngleOnly(ICameraSceneNode* camera, f32 z, const ICameraSceneNode* src)
@@ -919,10 +921,10 @@ void MySkybox_SceneNode::render()
     ICameraSceneNode* fp_camera = gs_coordinator->current_smgr()->getActiveCamera();
 
     //vector3df fp_pos = fp_camera->getAbsolutePosition();
-    //fp_pos *= 0.1;
+    //fp_pos *= 0.025;
 
-    my_camera->setPosition(fp_pos);
-    my_camera->updateAbsolutePosition();
+    //my_camera->setPosition(fp_pos);
+    //my_camera->updateAbsolutePosition();
 
     vector3df t_pos = my_camera->getAbsolutePosition() + fp_camera->getTarget() - fp_camera->getAbsolutePosition();
 
@@ -988,7 +990,6 @@ void MySkybox_SceneNode::attach_to_buffer(IMeshBuffer* buffer)
     //copyMaterials is called from the calling function
     
 }
-
 
 void MySkybox_SceneNode::load_shaders()
 {

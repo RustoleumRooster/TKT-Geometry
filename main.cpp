@@ -157,7 +157,7 @@ int main()
     core::rect<s32> windowsize_0 = driver->getViewPort();
 
     cout << "Loading Project\n";
-    //Open_Geometry_File::LoadProject(&scene, "../projects/cube_test");
+    Open_Geometry_File::LoadProject(gs_coordinator, "../projects/test01");
 
     //===============================================================
 

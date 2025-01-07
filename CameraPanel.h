@@ -352,9 +352,9 @@ private:
 
     s32 view_style;
 
-    //LineHolder graph;
-    //LineHolder graph2;
-    //LineHolder graph3;
+    LineHolder graph;
+    LineHolder graph2;
+    LineHolder graph3;
 
 };
 
