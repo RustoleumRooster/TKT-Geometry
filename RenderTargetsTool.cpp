@@ -1,6 +1,6 @@
 
 #include "RenderTargetsTool.h"
-#include "myNodes.h"
+#include "TwoTrianglesNode.h"
 #include "geometry_scene.h"
 
 using namespace irr;
@@ -10,8 +10,6 @@ extern IrrlichtDevice* device;
 
 Render_Tool_Base* Render_Tool::base = NULL;
 multi_tool_panel* Render_Tool::panel = NULL;
-
-
 
 //========================================================
 // Panel

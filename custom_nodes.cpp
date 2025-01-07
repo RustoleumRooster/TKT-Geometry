@@ -6,7 +6,7 @@
 #include "geometry_scene.h"
 #include "GUI_tools.h"
 #include "custom_nodes.h"
-#include "myNodes.h"
+#include "TwoTrianglesNode.h"
 #include "CMeshSceneNode.h"
 #include "material_groups.h"
 

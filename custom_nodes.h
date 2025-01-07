@@ -4,7 +4,7 @@
 #include <irrlicht.h>
 #include "Reflection.h"
 #include "CameraPanel.h"
-#include "myNodes.h"
+#include "TwoTrianglesNode.h"
 #include "edit_env.h"
 #include "reflected_nodes.h"
 
