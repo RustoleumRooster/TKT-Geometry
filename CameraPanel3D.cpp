@@ -1258,30 +1258,24 @@ bool TestPanel_3D::GetScreenCoords(core::vector3df V, core::vector2di& out_coord
 
 bool TestPanel_3D::Get3DScreenCoords(core::vector3df V, core::vector2di& out_coords)
 {
-    const scene::SViewFrustum* frustum = this->getCamera()->getViewFrustum();
-    const core::vector3df cameraPosition = this->getCamera()->getAbsolutePosition();
+    core::matrix4 trans;
+    trans.setbyproduct_nocheck(this->getCamera()->getProjectionMatrix(), this->getCamera()->getViewMatrix());
 
-    vector3df vNearLeftDown = frustum->getNearLeftDown();
-    vector3df vNearRightDown = frustum->getNearRightDown();
-    vector3df vNearLeftUp = frustum->getNearLeftUp();
-    vector3df vNearRightUp = frustum->getNearRightUp();
+    core::dimension2d<u32> dim = this->getImage()->getOriginalSize();
 
-    vector3df ray = V - cameraPosition;
+    dim.Width /= 2;
+    dim.Height /= 2;
 
-    core::plane3df aplane(vNearLeftDown, vNearLeftUp, vNearRightDown);
-    core::vector3df vIntersect;
+    f32 transformedPos[4] = { V.X, V.Y, V.Z, 1.0f };
 
-    if (aplane.getIntersectionWithLimitedLine(cameraPosition, V, vIntersect))
-    {
-        core::vector3df v_X = (vNearRightDown - vNearLeftDown);
-        v_X.normalize();
-        f32 t_X = v_X.dotProduct(vIntersect - vNearLeftDown);
-        t_X /= (vNearRightDown - vNearLeftDown).getLength();
+    trans.multiplyWith1x4Matrix(transformedPos);
 
-        core::vector3df v_Y = (vNearLeftUp - vNearLeftDown);
-        v_Y.normalize();
-        f32 t_Y = v_Y.dotProduct(vIntersect - vNearLeftDown);
-        t_Y /= (vNearLeftUp - vNearLeftDown).getLength();
+    const f32 zDiv = transformedPos[3] == 0.0f ? 1.0f :
+        core::reciprocal(transformedPos[3]);
+
+    out_coords = vector2di(
+        dim.Width + core::round32(dim.Width * (transformedPos[0] * zDiv)),
+        dim.Height - core::round32(dim.Height * (transformedPos[1] * zDiv)));
 
         out_coords.X = core::round32(t_X * this->Texture->getOriginalSize().Width);
         out_coords.Y = core::round32((1 - t_Y) * this->Texture->getOriginalSize().Height);
