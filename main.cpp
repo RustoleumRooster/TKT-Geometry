@@ -16,9 +16,10 @@
 #include "GUI_tools.h"
 #include "LightMaps.h"
 #include "geo_scene_settings.h"
-#include "custom_nodes.h"
+#include "my_reflected_nodes.h"
 #include "initialization.h"
 #include "polyfold_soa.h"
+#include "my_nodes.h"
 
 #include <random>
 #include <chrono>
@@ -176,6 +177,11 @@ int main()
      ((TestPanel_3D*)cameraQuad->getPanel(0))->AddGraphs(graph, graph2, graph4);
      */
 
+     CameraQuad* cameraQuad = gui_layout->getCameraQuad();
+
+     //((TestPanel_3D*)cameraQuad->getPanel(0))->AddGraphs(graph, graph2, graph4);
+     
+     
     //================================================================
 
 	while(device->run())
