@@ -16,14 +16,7 @@ bool is_same_point(const core::vector3df& v0, const core::vector3df& v1)
     {
         return true;
     }
-    /*
-    if (fabs(v0.X - v1.X) < 1.0 &&
-        fabs(v0.Y - v1.Y) < 1.0 &&
-        fabs(v0.Z - v1.Z) < 1.0)
-    {
-        // return true;
-        std::cout << "*warning* is_same_point(" << v0.X << "," << v1.X << " " << v0.Y << "," << v1.Y << " " << v0.Z << "," << v1.Z << ")\n";
-    }*/
+
     return false;
 }
 

@@ -302,19 +302,11 @@ void Node_Classes_Base::set_selected(node_class_item* item)
 
 void Node_Classes_Base::widget_closing(Reflected_Widget_EditArea* widget)
 {
-	//m_typeDescriptor->dump(&m_struct, 0);
-	//for (reflect::Member m : m_typeDescriptor->members)
-	//	std::cout << m.name << " " << m.offset << "\n";
-	//std::cout << "\n";
-	//m_struct.read_expanded(widget->m_typeDesc, std::vector<int>{});
 	m_struct.read_expanded(m_typeDescriptor, std::vector<int>{});
-
 }
 
 void Node_Classes_Base::show()
 {
-	//m_typeDescriptor->dump(&m_struct, 0);
-
 	core::rect<s32> client_rect(core::vector2di(0, 0),
 		core::dimension2du(this->panel->getClientRect()->getAbsolutePosition().getWidth(),
 			this->panel->getClientRect()->getAbsolutePosition().getHeight()));

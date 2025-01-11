@@ -91,26 +91,16 @@ void Texture_Adjust_Window::show()
                                             core::rect<s32>(form_pos2,core::dimension2du(96,128)));
 
     reflect::TypeDescriptor_Struct* typeDesc = (reflect::TypeDescriptor_Struct*)reflect::TypeResolver<TextureAlignment>::get();
-   // reflect::TypeDescriptor* typeDesc2 = reflect::TypeResolver<nSelected_struct>::get();
-    //typeDesc->addFormWidgets("", form,true);
+
     typeDesc->addFormWidget(form,NULL,std::vector<int>{},0,true,true,-1);
-    //typeDesc2->addFormWidget("", form2,obj2,false);
 
     SNAP_ID = GUI_ID_REFLECTED_BASE+2;
     int next_ID = form->ShowWidgets(GUI_ID_REFLECTED_BASE+2);
 
     STYLE_ID = next_ID-1;
 
-    //form->write_on_focus_lost=true;
-    //next_ID = form2->ShowWidgets(next_ID);
-
     Int_StaticField* f = new Int_StaticField();
-
     f->setText("selected faces");
-
-    //*obj2 = g_scene->getSelectedFaces().size();
-
-    //f->obj = (int*)&sel_struct;
     f->offset=0;
 
     form2->addEditField(f);
@@ -119,12 +109,6 @@ void Texture_Adjust_Window::show()
 
     sel_struct.nSelected = g_scene->getSelectedFaces().size();
 
-    //form->read();
-    //form2->read();
-
-    //core::vector2di pos = getRelativePosition().UpperLeftCorner;
-    //this->DesiredRect = core::rect<s32>(pos,core::dimension2d<u32>(196,form->getTotalHeight()+86));
-    //this->recalculateAbsolutePosition(true);
 
     int ypos = form->getTotalHeight()+10;
 
@@ -337,7 +321,6 @@ bool Texture_Adjust_Window::OnEvent(const SEvent& event)
                 }
 
                 refresh();
-                //form2->read();
             }
             break;
             case USER_EVENT_TEXTURE_PLANE_DRAG:

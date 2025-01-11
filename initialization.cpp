@@ -13,7 +13,7 @@
 #include "LightMaps.h"
 #include "geometry_scene.h"
 #include "ShaderCallbacks.h"
-#include "custom_nodes.h"
+#include "my_nodes.h"
 #include "edit_env.h"
 #include "SceneTool.h"
 
@@ -47,7 +47,6 @@ void initialize_tools(geometry_scene* scene, gui::IGUIEnvironment* gui, multi_to
     Material_Buffers_Tool::initialize(material_buffers_base, tool_panel);
 
     /*
-    std::cout << sizeof(int) << "int\n";
     std::cout << "\nReflection:\n";
     std::cout << Reflected_SceneNode_Factory::getNumTypes() << " reflected scene nodes registered:\n";
     for (int i = 0; i < Reflected_SceneNode_Factory::getNumTypes(); i++)
@@ -64,12 +63,7 @@ void initialize_tools(geometry_scene* scene, gui::IGUIEnvironment* gui, multi_to
 
     File_Open_Base* file_open_base = new File_Open_Base(L"All Node Instances", GUI_ID_FILE_OPEN_BASE, gui, tool_panel);
     file_open_base->set_scene(scene);
-    //file_open_base->initialize(L"All Node Instances", GUI_ID_FILE_OPEN_BASE, gui, &scene, tool_panel);
     File_Open_Tool::initialize(file_open_base, tool_panel);
-
-    // LM_Viewer_Base* LM_Viewer_base = new LM_Viewer_Base;
-    // LM_Viewer_base->initialize(L"LM Viewer", GUI_ID_LM_VIEWER_BASE, gui, &scene, tool_panel);
-    // LM_Viewer_Tool::initialize(LM_Viewer_base, tool_panel);
 
     UV_Editor_Base* UV_Editor_base = new UV_Editor_Base(L"UV Edtior", GUI_ID_UV_EDITOR_BASE, gui, tool_panel);
     UV_Editor_base->set_scene(scene);
@@ -77,16 +71,13 @@ void initialize_tools(geometry_scene* scene, gui::IGUIEnvironment* gui, multi_to
 
     Render_Tool_Base* render_tool_base = new Render_Tool_Base(L"Test Render", GUI_ID_UV_EDITOR_BASE, gui, tool_panel);
     render_tool_base->set_scene(scene);
-    //render_tool_base->setMaterial(materialType_passthru);
     Render_Tool::initialize(render_tool_base, tool_panel);
 
     Lightmap_Manager* lightmap_manager = new Lightmap_Manager();
-    //scene.setLightmapManager(lightmap_manager);
     Lightmaps_Tool::set_manager(lightmap_manager);
 
     Scene_Instances_Base* scene_instances_base = new Scene_Instances_Base(L"All Scenes", GUI_ID_SCENE_INSTANCES_BASE, gui, tool_panel);
     Scene_Instances_Tool::initialize(scene_instances_base, tool_panel);
-
 }
 
 void initialize_set_scene(geometry_scene* scene)
@@ -97,19 +88,12 @@ void initialize_set_scene(geometry_scene* scene)
     Texture_Adjust_Tool::set_scene(scene);
     NodeProperties_Tool::get_base()->set_scene(scene);
 
-    //Geo_Settings_Base* geo_settings_base = new Geo_Settings_Base;
-    //geo_settings_base->initialize(L"Settings", GUI_ID_GEO_SETTINGS_BASE, gui, &scene, tool_panel);
     //Geo_Settings_Tool::initialize(geo_settings_base, tool_panel);
 
     Material_Buffers_Tool::get_base()->set_scene(scene);
     Node_Classes_Tool::get_base()->set_scene(scene);
     Node_Instances_Tool::get_base()->set_scene(scene);
     File_Open_Tool::get_base()->set_scene(scene);
-
-
-    // LM_Viewer_Base* LM_Viewer_base = new LM_Viewer_Base;
-    // LM_Viewer_base->initialize(L"LM Viewer", GUI_ID_LM_VIEWER_BASE, gui, &scene, tool_panel);
-    // LM_Viewer_Tool::initialize(LM_Viewer_base, tool_panel);
 
     UV_Editor_Tool::get_base()->set_scene(scene);
     Render_Tool::get_base()->set_scene(scene);
@@ -208,7 +192,7 @@ void initialize_materials(geometry_scene* scene)
             "shaders/blur_vertshader.txt", "vertexMain", video::EVST_VS_1_1,
             "shaders/passthru_fragshader.txt", "pixelMain", video::EPST_PS_1_1,
             mc9, video::EMT_SOLID, 0);
-
+            
 
         mc->drop();
         mc2->drop();
@@ -232,7 +216,6 @@ void initialize_materials(geometry_scene* scene)
 
 
     material_groups_base->LightingMaterial_Type = (video::E_MATERIAL_TYPE)materialType_lightmap;
-    //material_groups_base->LightingMaterial_Type = (video::E_MATERIAL_TYPE)materialType_underwater;
     material_groups_base->LightingMaterial_Selected_Type = (video::E_MATERIAL_TYPE)materialType_lightmap_selected;
     material_groups_base->LightingOnlyMaterial_Type = (video::E_MATERIAL_TYPE)materialType_light_only;
     material_groups_base->LightingOnlyMaterial_Selected_Type = (video::E_MATERIAL_TYPE)materialType_light_only_selected;
@@ -271,9 +254,5 @@ void initialize_camera_quad(geometry_scene* scene, GUI_layout* gui_layout, Rende
 
     ((TestPanel_3D*)cameraQuad->getPanel(0))->SetViewStyle(PANEL3D_VIEW_RENDER);
 
-    //((TestPanel_3D*)cameraQuad->getPanel(0))->overrideMeshNode(mesh_node);
-    //((TestPanel_3D*)cameraQuad->getPanel(0))->setTotalGeometry(&pf);
-    //((TestPanel_3D*)cameraQuad->getPanel(0))->SetViewStyle(PANEL3D_VIEW_LOOPS);
-    //((TestPanel_3D*)cameraQuad->getPanel(0))->AddGraphs(graph, graph2, graph3);
 }
 

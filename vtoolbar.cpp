@@ -32,7 +32,7 @@ VToolBar::VToolBar(IGUIEnvironment* environment, IGUIElement* parent, s32 id, co
 		}
 	}
 	y=20;
-    //std::cout<<y<<" y\n";
+
 	core::rect<s32> rr;
 	rr.UpperLeftCorner.X = 0;
 	rr.UpperLeftCorner.Y = y;
@@ -102,7 +102,6 @@ IGUIButton* VToolBar::addButton(s32 id, const wchar_t* text,const wchar_t* toolt
 {
 	ButtonY += 3;
 
-	//core::rect<s32> rectangle(ButtonX,2,ButtonX+1,3);
 	core::rect<s32> rectangle(1,ButtonY,3,ButtonY+1);
 	if ( img )
 	{
@@ -127,9 +126,7 @@ IGUIButton* VToolBar::addButton(s32 id, const wchar_t* text,const wchar_t* toolt
 
 	ButtonY += rectangle.getHeight();
 
-	//IGUIButton* button = new CGUIButton(Environment, this, id, rectangle);
 	IGUIButton* button = Environment->addButton(rectangle,this,id);
-	//button->drop();
 
 	if (text)
 		button->setText(text);

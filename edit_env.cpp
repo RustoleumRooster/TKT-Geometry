@@ -8,7 +8,6 @@
 #include "csg_classes.h"
 #include "utils.h"
 #include "edit_classes.h"
-//#include "reflection.h"
 #include "create_primitives.h"
 #include "texture_picker.h"
 #include "GUI_tools.h"
@@ -22,7 +21,6 @@
 #include "vtoolbar.h"
 #include "ex_gui_elements.h"
 #include "vulkan_app.h"
-#include "custom_nodes.h"
 #include "geometry_scene.h"
 #include "LightMaps.h"
 #include "material_groups.h"
@@ -35,54 +33,8 @@ using namespace core;
 using namespace gui;
 using namespace std;
 
-//extern geometry_scene* g_scene;
 extern IEventReceiver* ContextMenuOwner;
 extern SceneCoordinator* gs_coordinator;
-
-struct CubeOptions
-{
-    int value;
-    REFLECT_MULTI_CHOICE()
-};
-
-REFLECT_MULTI_STRUCT_BEGIN(CubeOptions)
-REFLECT_MULTI_STRUCT_LABEL("default")
-REFLECT_MULTI_STRUCT_LABEL("Option A")
-REFLECT_MULTI_STRUCT_LABEL("Option B")
-REFLECT_MULTI_STRUCT_END()
-
-
-struct TestCube
-{
-    bool isEnabled;
-    int height;
-    int width;
-    int length;
-    video::SColor color;
-    video::ITexture* texture;
-    core::vector3df scale;
-    //CubeOptions type;
-    //CubeOptions subtype;
-
-    REFLECT()
-};
-
-REFLECT_STRUCT_BEGIN(TestCube)
-REFLECT_STRUCT_MEMBER(isEnabled)
-REFLECT_STRUCT_MEMBER(height)
-REFLECT_STRUCT_MEMBER(width)
-REFLECT_STRUCT_MEMBER(length)
-
-REFLECT_STRUCT_MEMBER(color)
-REFLECT_STRUCT_MEMBER(texture)
-
-REFLECT_STRUCT_MEMBER(scale)
-//REFLECT_STRUCT_MEMBER(type)
-//REFLECT_STRUCT_MEMBER(subtype)
-REFLECT_STRUCT_END()
-
-
-
 
 void do_add_geometry()
 {
@@ -174,7 +126,6 @@ void do_toggle_progressive_build()
 void do_file_save_as()
 {
     Save_Geometry_File* fsave = new Save_Geometry_File(gs_coordinator);
-    //std::cout<<"save as: not implemented\n";
 }
 
 void do_file_open()
@@ -221,50 +172,6 @@ void do_set_rotate_snap(f32 snap)
     }
 }
 
-TestCube refl_cube{true,64,256,128,NULL};
-
-class Test_EditWindow : public EditWindow
-{
-public:
-    Test_EditWindow(gui::IGUIEnvironment* env, gui::IGUIElement* parent, geometry_scene* g_scene,s32 id,core::rect<s32> rect)
-    : EditWindow(env,parent,g_scene,id,rect){}
-
-private:
-    virtual void click_OK();
-};
-
-void refl_test_write(Test_EditWindow* win)
-{
-    win->write(&refl_cube);
-}
-
-void Test_EditWindow::click_OK()
-{
-    refl_test_write(this);
-    this->remove();
-}
-
-void do_refl_test()
-{
-    geometry_scene* g_scene = gs_coordinator->current_scene();
-
-    //refl_cube.texture = NULL;
-    //std::cout<<"OK\n";
-    gui::IGUIEnvironment* env = device->getGUIEnvironment();
-    gui::IGUIElement* root = env->getRootGUIElement();
-
-    Test_EditWindow* win = new Test_EditWindow(env,env->getRootGUIElement(),g_scene,-1,core::rect<s32>(140,200,16+196,64+196));
-    win->setText(L"Reflected GUI");
-
-    //std::cout<<g_scene<<"\n";
-    reflect::TypeDescriptor_Struct* typeDesc = (reflect::TypeDescriptor_Struct*)reflect::TypeResolver<TestCube>::get();
-
-    //typeDesc->dump(&refl_cube,0);
-
-    win->Show(typeDesc, &refl_cube);
-    win->drop();
-}
-
 void do_add_plane_test()
 {
     geometry_scene* g_scene = gs_coordinator->current_scene();
@@ -274,12 +181,6 @@ void do_add_plane_test()
         g_scene->geoNode()->add_plane(g_scene->geoNode()->elements[0].brush);
     }
 }
-
-void do_texture_picker_test()
-{
-    TexturePicker_Tool::show();
-}
-
 
 void OnMenuItemSelected(IGUIContextMenu* menu)
 {
@@ -349,7 +250,6 @@ void OnMenuItemSelected(IGUIContextMenu* menu)
         }
     case GUI_ID_MENU_BUILD_BUILD_FINAL:
         {
-            //do_build_final_mesh();
             break;
         }
     case GUI_ID_MENU_FILE_NEW:
@@ -359,7 +259,6 @@ void OnMenuItemSelected(IGUIContextMenu* menu)
         }
     case GUI_ID_MENU_FILE_OPEN:
         {
-            //File_Open_Tool::show();
             do_file_open();
             break;
         }
@@ -504,38 +403,20 @@ bool MyEventReceiver::OnEvent(const SEvent& event)
                         VulkanApp vk;
                         if (System_Point_Light::verify_inputs(g_scene))
                         {
-                            //vk.run_point_light(g_scene);
-
                             g_scene->loadLightmapTextures();
                         }
+                        break;
                     }
-                        //std::cout<<"Rebuild\n";
-                        break;
-                    case GUI_ID_BUTTON_SAVE:
-                        //do_save();
-                        //std::cout<<"Save\n";
-                        g_scene->save_selection();
-                        break;
                     case GUI_ID_BUTTON_TEXTURES:
-                        //TexturePicker_Tool::show();
-                        //Geo_Settings_Tool::show();
-                        //Material_Buffers_Tool::show();
-                        //Node_Instances_Tool::show();
-                        //g_scene->clip_active_brush_plane_geometry();
-                        //LM_Viewer_Tool::show();
                         Render_Tool::show();
                         break;
-                    case GUI_ID_BUTTON_NODES:
-                        ListReflectedNodes_Tool::show();
-                        break;
+
                     case GUI_ID_BUTTON_LIGHTS:
                     {
                         VulkanApp vk;
                         if (System_Soft_Light::verify_inputs(g_scene))
                         {
-                            //vk.run_point_light(g_scene);
-                            //vk.run_soft_light(g_scene);
-                            //vk.run_multipass_light(g_scene);
+
                             vk.run_amb_occlusion(g_scene);
                             Lightmaps_Tool::get_manager()->loadLightmapTextures(g_scene->geoNode());
                         }
@@ -659,40 +540,6 @@ bool hasModalDialogue()
 //
 //
 
-
-bool GetPlaneClickVector(dimension2d<u32> screenSize, scene::ICameraSceneNode * camera, int clickx, int clicky, vector3df &hit_vec)
-{
-    const scene::SViewFrustum* frustum = camera->getViewFrustum();
-    const core::vector3df cameraPosition = camera->getAbsolutePosition();
-
-    vector3df vNearLeftDown = frustum->getNearLeftDown();
-    vector3df vNearRightDown = frustum->getNearRightDown();
-    vector3df vNearLeftUp = frustum->getNearLeftUp();
-    vector3df vNearRightUp = frustum->getNearRightUp();
-
-    f32 t_X = (f32)clickx / screenSize.Width;
-    f32 t_Y = 1.0 - (f32)clicky / screenSize.Height;
-
-    //screen space: Y is horizontal axis
-    vector3df X_vec = (vNearRightDown - vNearLeftDown) * t_X;
-    vector3df Y_vec = (vNearLeftUp - vNearLeftDown) * t_Y;
-    vector3df target = vNearLeftDown + Y_vec + X_vec;
-
-    vector3df ray = target-cameraPosition;
-    ray.normalize();
-
-    //world space: Y is vertical axis
-    if(ray.Y < 0)
-    {
-        f32 t_Y = - (target.Y - 0.0) / ray.Y;
-        hit_vec = target + (ray*t_Y);
-
-        return true;
-    }
-    return false;
-}
-
-
 bool GetAnyPlaneClickVector(dimension2d<u32> screenSize, scene::ICameraSceneNode * camera, core::plane3df plane, int clickx, int clicky, vector3df &hit_vec)
 {
     const scene::SViewFrustum* frustum = camera->getViewFrustum();
@@ -734,7 +581,6 @@ GUI_layout::GUI_layout(video::IVideoDriver* driv, gui::IGUIEnvironment* gui)
 
 void GUI_layout::initialize(core::rect<s32> win_rect)
 {
-    //core::rect<s32>(core::position2d<s32>(0, 0), core::dimension2d<u32>(900, 680))
     core::rect<s32> main_panel_rect = win_rect;
 
     main_panel_rect.LowerRightCorner.X -= 300;
@@ -744,7 +590,6 @@ void GUI_layout::initialize(core::rect<s32> win_rect)
 
     MySkin* skin = new MySkin(EGST_WINDOWS_CLASSIC, driver);
 
-    //gui::IGUISkin* skin = gui->getSkin();
     gui::IGUIFont* builtinfont = env->getBuiltInFont();
     gui::IGUIFontBitmap* bitfont = 0;
     if (builtinfont && builtinfont->getType() == EGFT_BITMAP)
@@ -809,7 +654,6 @@ void GUI_layout::resize(core::rect<s32> win_rect)
 
     main_panel_rect.LowerRightCorner.X -= 300;
 
-    //core::rect<s32>(core::position2d<s32>(0, 0), core::dimension2d<u32>(900, 680))
     main_panel = new gui::IGUIElement(gui::EGUIET_ELEMENT, env, env->getRootGUIElement(), -1, main_panel_rect);
 
     menu_layout();
@@ -882,7 +726,6 @@ void GUI_layout::menu_layout()
     submenu->addItem(L"UV Editor", GUI_ID_MENU_VIEW_UV_EDITOR, true, false, false, false);
     submenu->addItem(L"Scene Instances", GUI_ID_MENU_VIEW_SCENE_INSTANCES, true, false, false, false);
 
-    //gui::IGUIToolBar* bar = gui->addToolBar(main_panel,-1);
     VToolBar* bar = new VToolBar(env, main_panel, -1, core::rect<s32>(0, 0, 10, 10));
 
     video::ITexture* image = driver->getTexture("cube_icon_small.png");

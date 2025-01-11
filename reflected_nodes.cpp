@@ -6,7 +6,7 @@
 #include "utils.h"
 #include "geometry_scene.h"
 #include "GUI_tools.h"
-#include "custom_nodes.h"
+#include "my_reflected_nodes.h"
 #include "USceneNode.h"
 
 using namespace irr;
@@ -18,145 +18,12 @@ extern SceneCoordinator* gs_coordinator;
 video::E_MATERIAL_TYPE Reflected_SceneNode::base_material_type = video::EMT_SOLID;
 video::E_MATERIAL_TYPE Reflected_SceneNode::special_material_type = video::EMT_SOLID;
 
-ListReflectedNodes_Base* ListReflectedNodes_Tool::base = NULL;
-multi_tool_panel* ListReflectedNodes_Tool::panel = NULL;
-
 std::vector<reflect::TypeDescriptor_Struct*> Reflected_SceneNode_Factory::SceneNode_Types{};
 
-ListReflectedNodesWindow::ListReflectedNodesWindow(IGUIEnvironment* env, IGUIElement* parent,ListReflectedNodes_Base* base_, s32 id,core::rect<s32> rect)
-    : IGUIElement(EGUIET_ELEMENT,env,parent,id,rect), base(base_),my_ID(id)
-{
-    LISTBOX_ID = my_ID+1;
-    OK_BUTTON_ID = my_ID+2;
-
-    IGUISkin* skin = Environment->getSkin();
-    IGUIFont* font = skin->getFont();
-    int itemheight = font->getDimension(L"A").Height + 4;
-
-    core::rect<s32> r(0,0,getRelativePosition().getWidth(),base->typeDescriptors.size()*itemheight+4);
-
-    skin->draw3DSunkenPane(this,skin->getColor(EGDC_3D_FACE),true,true,r);
-
-    IGUIListBox* listbox = Environment->addListBox(r,this,LISTBOX_ID);
-    listbox->setDrawBackground(false);
-
-    for(reflect::TypeDescriptor* td : base->typeDescriptors)
-    {
-        reflect::TypeDescriptor_Struct* typeDesc = (reflect::TypeDescriptor_Struct*) td;
-
-        std::wstring txt(typeDesc->alias,typeDesc->alias+strlen(typeDesc->alias));
-        listbox->addItem(txt.c_str());
-    }
-
-    listbox->setSelected(-1);
-
-    if(base->selectedDescriptor != NULL)
-        for(int i=0;i<base->typeDescriptors.size();i++)
-        {
-            if(base->typeDescriptors[i] == base->selectedDescriptor)
-                listbox->setSelected(i);
-        }
-
-    //Environment->addButton(core::rect<s32>(core::vector2di(120,200),core::vector2di(180,228)),this,OK_BUTTON_ID,L"Ok");
-}
-/*
-void ListReflectedNodesWindow::move(core::position2d<s32> new_pos)
-{
-    IGUIWindow::move(new_pos);
-    base->win_pos = getRelativePosition().UpperLeftCorner;
-}*/
-
-ListReflectedNodesWindow::~ListReflectedNodesWindow()
-{
-    //std::cout << "Out of scope (List node classes)\n";
-}
-
-bool ListReflectedNodesWindow::OnEvent(const SEvent& event)
-{
-    if(event.EventType == EET_GUI_EVENT)
-    {
-        s32 id = event.GUIEvent.Caller->getID();
-
-        switch(event.GUIEvent.EventType)
-        {
-            case EGET_LISTBOX_CHANGED:
-            {
-                if(id == LISTBOX_ID)
-                {
-                    IGUIListBox* listbox = (IGUIListBox*)event.GUIEvent.Caller;
-                    int sel = listbox->getSelected();
-
-                    if(sel != -1)
-                        this->base->selectedDescriptor = this->base->typeDescriptors[sel];
-                    else
-                        this->base->selectedDescriptor = NULL;
-
-                    return true;
-                }
-            }break;
-        }
-
-    }
-    else if(event.EventType == EET_MOUSE_INPUT_EVENT)
-    {
-        if(event.MouseInput.Event == EMIE_RMOUSE_PRESSED_DOWN)
-        {
-            if(!AbsoluteClippingRect.isPointInside( core::position2d<s32>(event.MouseInput.X, event.MouseInput.Y ) ))
-            {
-                Environment->removeFocus(this);
-            }
-            else
-            {
-                Environment->setFocus(this);
-            }
-        }
-    }
-
-    return IGUIElement::OnEvent(event);
-}
-
-void ListReflectedNodesWindow::click_OK()
-{
-    IGUIListBox* listbox = (IGUIListBox*)getElementFromId(LISTBOX_ID);
-
-    int sel = listbox->getSelected();
-
-    if(sel != -1)
-        this->base->selectedDescriptor = this->base->typeDescriptors[sel];
-    else
-        this->base->selectedDescriptor = NULL;
-
-    this->remove();
-}
-
-reflect::TypeDescriptor_Struct* ListReflectedNodes_Base::getSelectedTypeDescriptor()
-{
-    return selectedDescriptor;
-}
-
-void ListReflectedNodes_Base::show()
-{
-    //ListReflectedNodesWindow* win = new ListReflectedNodesWindow(env,env->getRootGUIElement(),this,-1,core::rect<s32>(140,200,140+196,200+240));
-    core::rect<s32> client_rect(core::vector2di(0,0),
-                                core::dimension2du(this->panel->getClientRect()->getAbsolutePosition().getWidth(),
-                                                   this->panel->getClientRect()->getAbsolutePosition().getHeight()));
-
-    ListReflectedNodesWindow* widget = new ListReflectedNodesWindow(env,this->panel->getClientRect(),this,GUI_ID_NODE_PROPERTIES_BASE,client_rect);
-   // win->setText(L"Scene Nodes");
-    widget->drop();
-}
-
-void ListReflectedNodes_Base::initialize(std::wstring name_, int my_id, IGUIEnvironment* env_, geometry_scene* g_scene_,multi_tool_panel* panel_ )
-{
-    typeDescriptors = Reflected_SceneNode_Factory::getAllTypes();
-
-    //tool_base::initialize(name_,my_id,env_,g_scene_,panel_);
-}
 
 //============================================================================
 //  Unique Scene Node
 //
-
 
 USceneNode::USceneNode(ISceneNode* parent, irr::scene::ISceneManager* smgr, int id, const core::vector3df& pos) :
     ISceneNode(parent,smgr,id,pos), my_UID(random_number())
@@ -167,8 +34,6 @@ USceneNode::USceneNode(ISceneNode* parent, irr::scene::ISceneManager* smgr, int 
 //============================================================================
 //  Reflected_SceneNode
 //
-
-
 
 REFLECT_STRUCT2_BEGIN(Reflected_SceneNode)
     ALIAS("Node")
@@ -659,7 +524,7 @@ void Reflected_Model_SceneNode::setUnlit(bool unlit)
 }
 
 Reflected_MeshBuffer_SceneNode::Reflected_MeshBuffer_SceneNode(USceneNode* parent, geometry_scene* geo_scene, irr::scene::ISceneManager* smgr, int id, const core::vector3df& pos) :
-    Reflected_Sprite_SceneNode(parent,geo_scene,smgr,id,pos)
+    Reflected_Sprite_SceneNode(parent, geo_scene, smgr, id, pos), face_uid(0)
 {
     m_texture = device->getVideoDriver()->getTexture("color_square_icon.png");
     Buffer->Material.setTexture(0, m_texture);
@@ -667,16 +532,6 @@ Reflected_MeshBuffer_SceneNode::Reflected_MeshBuffer_SceneNode(USceneNode* paren
 
 bool Reflected_MeshBuffer_SceneNode::addSelfToScene(USceneNode* parent, irr::scene::ISceneManager* smgr, geometry_scene* geo_scene)
 {
-    /*
-    polyfold* pf = geo_scene->geoNode()->get_total_geometry();
-
-    for (int f_i = 0; f_i < pf->faces.size(); f_i++)
-    {
-        if (pf->faces[f_i].uid == this->face_uid)
-        {
-            std::cout << "found it: "<<f_i<<"\n";
-        }
-    }*/
     return false;
 }
 
@@ -733,7 +588,6 @@ u64 Reflected_MeshBuffer_SceneNode::get_uid()
 {
     return face_uid;
 }
-
 
 Reflected_MeshBuffer_Sky_SceneNode::Reflected_MeshBuffer_Sky_SceneNode(USceneNode* parent, geometry_scene* geo_scene, irr::scene::ISceneManager* smgr, int id, const core::vector3df& pos) :
     Reflected_MeshBuffer_SceneNode(parent,geo_scene,smgr,id,pos)
@@ -910,63 +764,12 @@ REFLECT_STRUCT2_BEGIN(Reflected_MeshBuffer_Water_SceneNode)
     REFLECT_STRUCT2_MEMBER(is_connected)
 REFLECT_STRUCT2_END()
 
-REFLECT_STRUCT2_BEGIN(Reflected_LightSceneNode)
-    ALIAS("Light")
-    INHERIT_FROM(Reflected_Sprite_SceneNode)
-    REFLECT_STRUCT2_MEMBER(enabled)
-    REFLECT_STRUCT2_MEMBER(light_radius)
-REFLECT_STRUCT2_END()
-
-REFLECT_STRUCT2_BEGIN(Reflected_SkyNode)
-    ALIAS("Sky Node")
-    INHERIT_FROM(Reflected_Sprite_SceneNode)
-    REFLECT_STRUCT2_MEMBER(enabled)
-    REFLECT_STRUCT2_MEMBER(target)
-REFLECT_STRUCT2_END()
-
-REFLECT_STRUCT2_BEGIN(Reflected_WaterSurfaceNode)
-    ALIAS("Water Surface")
-    REFLECT_STRUCT2_MEMBER(enabled)
-    REFLECT_STRUCT2_MEMBER(target)
-    INHERIT_FROM(Reflected_Sprite_SceneNode)
-REFLECT_STRUCT2_END()
-
 REFLECT_STRUCT2_BEGIN(Reflected_PointNode)
     ALIAS("Point Node")
     INHERIT_FROM(Reflected_Sprite_SceneNode)
 REFLECT_STRUCT2_END()
 
-REFLECT_STRUCT2_BEGIN(Reflected_TestNode)
-    ALIAS("Test Node")
-    INHERIT_FROM(Reflected_Sprite_SceneNode)
-    REFLECT_STRUCT2_MEMBER(bEnabled)
-    REFLECT_STRUCT2_MEMBER(nParticles)
-    REFLECT_STRUCT2_MEMBER(options)
-    REFLECT_STRUCT2_MEMBER(velocity)
-    REFLECT_STRUCT2_MEMBER(scale)
-    REFLECT_STRUCT2_MEMBER(my_vec)
-    REFLECT_STRUCT2_MEMBER(vec2)
-    REFLECT_STRUCT2_MEMBER(color)
-REFLECT_STRUCT2_END()
 
-REFLECT_STRUCT2_BEGIN(Reflected_SimpleEmitterSceneNode)
-    ALIAS("Particle Emitter")
-    INHERIT_FROM(Reflected_Sprite_SceneNode)
 
-    REFLECT_STRUCT2_MEMBER(EmitBox)
-    REFLECT_STRUCT2_MEMBER(texture)
-    REFLECT_STRUCT2_MEMBER(particle_scale)
-    REFLECT_STRUCT2_MEMBER(minParticlesPerSecond)
-    REFLECT_STRUCT2_MEMBER(maxParticlesPerSecond)
-    REFLECT_STRUCT2_MEMBER(lifeTimeMin)
-    REFLECT_STRUCT2_MEMBER(lifeTimeMax)
-
-    REFLECT_STRUCT2_MEMBER(bool_A)
-    REFLECT_STRUCT2_MEMBER(bool_B)
-    REFLECT_STRUCT2_MEMBER(color)
-    REFLECT_STRUCT2_MEMBER(Vector_A)
-    REFLECT_STRUCT2_MEMBER(Vector_B)
-    REFLECT_STRUCT2_MEMBER(Vector_C)
-REFLECT_STRUCT2_END()
 
 

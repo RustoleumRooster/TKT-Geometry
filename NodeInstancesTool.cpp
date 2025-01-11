@@ -110,11 +110,6 @@ void node_instance::my_typeDesc::addFormWidget(Reflected_GUI_Edit_Form* win, Typ
 
 void node_tree_item::my_typeDesc::addFormWidget(Reflected_GUI_Edit_Form* win, TypeDescriptor_Struct* type_struct, std::vector<int> tree_0, size_t offset_base, bool bVisible, bool bEditable, int tab)
 {
-	//std::cout << std::string(4 * (tab + 1), ' ') << "node_tree_item ";
-	//for (int i = 0; i < tree_0.size(); i++)
-	//	std::cout << tree_0[i] << " ";
-	//std::cout << " [" << offset_base << "]\n";
-
 	TREE_STRUCT_ADD_FORMWIDGET_HEADER()
 
 		if (!hasSubs)
@@ -174,10 +169,6 @@ void Node_Instances_Widget::show()
 	STATIC_TEXT_ID = OK_BUTTON_ID + 1;
 
 	my_widget = new Reflected_Widget_EditArea(Environment, edit_panel, g_scene, my_base, STATIC_TEXT_ID + 1, pr);
-	//my_widget->setName("material groups widget");
-
-	//reflect::TypeDescriptor_Struct* typeDescriptor = (reflect::TypeDescriptor_Struct*)reflect::TypeResolver<Node_Classes_struct>::get();
-
 	my_widget->show(false, my_base->getObj());
 
 	int ypos = my_widget->getEditAreaHeight() + 8;
@@ -231,8 +222,6 @@ bool Node_Instances_Widget::OnEvent(const SEvent& event)
 		}
 		else if (event.UserEvent.UserData1 == USER_EVENT_SELECTION_CHANGED)
 		{
-			//std::cout << "Node Instances: selection changed\n";
-
 			if (my_widget)
 			{
 				my_widget->remove();
@@ -240,9 +229,7 @@ bool Node_Instances_Widget::OnEvent(const SEvent& event)
 			
 			core::rect<s32> pr(0, 0, getRelativePosition().getWidth(), getRelativePosition().getHeight());
 			my_widget = new Reflected_Widget_EditArea(Environment, edit_panel, g_scene, my_base, my_ID + 2, pr);
-			//my_widget->setName("material groups widget");
-
-			//reflect::TypeDescriptor_Struct* typeDescriptor = (reflect::TypeDescriptor_Struct*)reflect::TypeResolver<Node_Classes_struct>::get();
+			
 			my_base->build_struct();
 
 			my_widget->show(false, my_base->getObj());
@@ -392,7 +379,6 @@ Node_Instances_Base::Node_Instances_Base(std::wstring name, int my_id, gui::IGUI
 void Node_Instances_Base::show()
 {
 	build_struct();
-	//m_typeDescriptor->dump(&m_struct, 0);
 
 	core::rect<s32> client_rect(core::vector2di(0, 0),
 		core::dimension2du(this->panel->getClientRect()->getAbsolutePosition().getWidth(),
@@ -449,8 +435,6 @@ void Node_Instances_Base::build_initial_struct()
 					nc.expanded = true;
 					res->sub_classes.push_back(nc);
 
-					//std::cout << all_classes[index]->name << " is under " << res->typeDescriptor->name << "\n";
-
 					std::vector<reflect::TypeDescriptor_Struct*> new_classes;
 					for (int i = 0; i < all_classes.size(); i++)
 					{
@@ -474,14 +458,10 @@ void Node_Instances_Base::build_struct()
 {
 	m_struct = m_initial_struct;
 
-	//for (int i = 0; i < g_scene->getSceneNodes().size(); i++)
-	//for (int i = 0; i < g_scene->getSelectedNodes().size(); i++)
 	int i = 0;
 	for(ISceneNode* it : g_scene->EditorNodes()->getChildren())
 	{
 		Reflected_SceneNode* node = (Reflected_SceneNode*)it;
-		//Reflected_SceneNode* node = g_scene->getSceneNodes()[i];
-		//Reflected_SceneNode* node = g_scene->getSelectedNodes()[i];
 		reflect::TypeDescriptor_Struct* typeDesc = node->GetDynamicReflection();
 
 		node_tree_item* res = m_struct.find_type(typeDesc);

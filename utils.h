@@ -129,7 +129,7 @@ irr::video::IImage* makeCircleImage(video::IVideoDriver* driver,int width, f32 r
 irr::video::IImage* makeSolidColorImage(video::IVideoDriver* driver, video::SColor col);
 video::SColor makeUniqueColor();
 
-//void addDrawLines(polyfold& pf, LineHolder& graph, LineHolder& graph1, LineHolder& graph2);
+void addDrawLines(polyfold& pf, LineHolder& graph, LineHolder& graph1, LineHolder& graph2);
 //void do_test_loop(polyfold& pf, int f_i, int p_i, LineHolder& graph, LineHolder& graph2);
 
 irr::video::IImage* makeAlphaImage(video::IVideoDriver* driver,video::ITexture* texture, int alpha);
@@ -149,7 +149,6 @@ private:
 	io::IFileSystem* FileSystem = NULL;
 };
 
-
 class Save_Geometry_File : public irr::IEventReceiver
 {
 public:
@@ -166,7 +165,6 @@ private:
     bool WriteModelTextures(std::string fname);
 
     SceneCoordinator* scene_coordinator = NULL;
-	//geometry_scene* g_scene = NULL;
 	io::IFileSystem* FileSystem = NULL;
 };
 

@@ -13,13 +13,10 @@
 #include "reflect_custom_types.h"
 #include "material_groups.h"
 #include "edit_env.h"
-//#include "edit_env.h"
 
 using namespace std;
 using namespace gui;
 
-//LM_Viewer_Base* LM_Viewer_Tool::base = NULL;
-//multi_tool_panel* LM_Viewer_Tool::panel = NULL;
 
 Material_Buffers_Base* Material_Buffers_Tool::base = NULL;
 multi_tool_panel* Material_Buffers_Tool::panel = NULL;
@@ -59,7 +56,7 @@ LM_Viewer_Panel::LM_Viewer_Panel(IGUIEnvironment* environment, video::IVideoDriv
 
 void LM_Viewer_Panel::Initialize(geometry_scene* geo_scene)
 {
-    uv_scene = new GeometryStack();// (NULL, smgr, (MyEventReceiver*)device->getEventReceiver());
+    uv_scene = new GeometryStack();
     uv_scene->initialize(geo_scene->get_smgr(), (MyEventReceiver*)device->getEventReceiver());
     TestPanel::Initialize(geo_scene);
 }
@@ -133,7 +130,6 @@ void LM_Viewer_Panel::showMaterialGroup(int mg_n)
         if (mg_n < mat_groups.size())
         {
             current_mat_group = mg_n;
-            //current_material = mat_groups[mg_n];
 
             for (int f_i : mat_groups[mg_n].faces)
             {
@@ -152,8 +148,7 @@ void LM_Viewer_Panel::showMaterialGroup(int mg_n)
                     }
                 }
             }
-
-            
+ 
             if (bRenderLightmap)
             {
                 
@@ -169,11 +164,8 @@ void LM_Viewer_Panel::showMaterialGroup(int mg_n)
                 }
             }
         }
-
-        
     }
 }
-
 
 bool LM_Viewer_Panel::OnEvent(const SEvent& event)
 {
@@ -273,15 +265,9 @@ void LM_Viewer_Panel::make_face(polyfold* pf_0, int f_no, video::ITexture* face_
     if (buffer)
     {
         polyfold* source_brush = &geo_scene->geoNode()->elements[original_brush].brush;
-        //poly_face* face = &(og_brush->faces[original_face]);
 
         u32 n_points = source_brush->vertices.size();
         vertex_index.assign(n_points, -1);
-
-        // std::cout << buffer->getIndexCount() << " indices\n";
-
-         //u32* indices = (u32*)buffer->getIndices();
-        // video::S3DVertex* vertices = (video::S3DVertex2TCoords*)buffer->getVertices();
 
         int c = 0;
 
@@ -306,16 +292,12 @@ void LM_Viewer_Panel::make_face(polyfold* pf_0, int f_no, video::ITexture* face_
             n_points = source_brush->vertices.size();
             vertex_index.assign(n_points, -1);
         }
-        //std::cout << "chunks:\n";
+
         for (int i = chunk.begin_i; i < chunk.end_i; i += 3)
         {
-            // core::dimension2du texture_size = face_texture->getOriginalSize();
-
             u32 v0 = buffer->getIndices()[i];
             u32 v1 = buffer->getIndices()[i + 1];
             u32 v2 = buffer->getIndices()[i + 2];
-
-            // std::cout << v0 << "," << v1 << "," << v2 << "\n";
 
             video::S3DVertex2TCoords* vtx0 = &((video::S3DVertex2TCoords*)buffer->getVertices())[v0];
             video::S3DVertex2TCoords* vtx1 = &((video::S3DVertex2TCoords*)buffer->getVertices())[v1];
@@ -350,8 +332,6 @@ void LM_Viewer_Panel::make_face(polyfold* pf_0, int f_no, video::ITexture* face_
             int e2 = uv_poly.get_edge_or_add(a, c, 0);
         }
 
-        //std::cout << uv_poly.edges.size() << " edges \n";
-
         for (int i = 0; i < uv_poly.edges.size(); i++)
         {
             int v_i0 = uv_poly.edges[i].v0;
@@ -366,13 +346,6 @@ void LM_Viewer_Panel::make_face(polyfold* pf_0, int f_no, video::ITexture* face_
             }
         }
 
-        c = 0;
-        for (int i = 0; i < uv_poly.edges.size(); i++)
-        {
-            if (uv_poly.edges[i].topo_group == 2)
-                c++;
-        }
-
         if (uv_scene)
         {
             geo_element em;
@@ -385,13 +358,9 @@ void LM_Viewer_Panel::make_face(polyfold* pf_0, int f_no, video::ITexture* face_
 
 void LM_Viewer_Panel::drawGrid(video::IVideoDriver* driver, const video::SMaterial material)
 {
-    //driver->setTransform(video::ETS_WORLD, core::IdentityMatrix);
-    //driver->setMaterial(material);
-
     int far_value = this->getCamera()->getFarValue();
     far_value *= -1;
 
-    //if (m_axis == CAMERA_Y_AXIS)
     {
         int interval = gridSpace;
         while (viewSize.Width / interval > 36 || viewSize.Height / interval > 36)
@@ -428,7 +397,6 @@ void LM_Viewer_Panel::drawGrid(video::IVideoDriver* driver, const video::SMateri
 
 void LM_Viewer_Panel::render()
 {
-
     driver->setRenderTarget(getImage(), true, true, video::SColor(255, 4, 4, 4));
     smgr->setActiveCamera(getCamera());
 
@@ -438,14 +406,6 @@ void LM_Viewer_Panel::render()
     someMaterial.Lighting = false;
     someMaterial.Thickness = 1.0;
     someMaterial.MaterialType = video::EMT_SOLID;
-
-    
-
-   // if (my_window && my_window->getTextureImage())
-   // {
-   //     my_window->getTextureImage()->render();
-   //     //driver->draw2DImage(uv_texture, core::vector2di(0, 0), false);
-   // }
 
     if (bRenderLightmap && my_image)
     {
@@ -477,35 +437,9 @@ void LM_Viewer_Panel::render()
 
                     //for (int i = 0; i < current_material.records.size(); i++)
                     {
-                    //    if (f_i == current_material.faces[i])
+                        //    if (f_i == current_material.faces[i])
                         {
                             //....
-                        }
-                    }
-
-                    core::vector2di coords;
-                    for (int i = 0; i < geo->brush.vertices.size(); i++)
-                    {
-                        GetScreenCoords(geo->brush.vertices[i].V, coords);
-                        coords.X -= 4;
-                        coords.Y -= 4;/*
-                        if (uv_scene->selected_brush_vertex_editing == e_i && geo->selected_vertex == i)
-                        {
-                            if (geo->type == GEO_ADD)
-                                driver->draw2DImage(med_circle_tex_add_selected, coords, core::rect<int>(0, 0, 8, 8), 0, video::SColor(255, 255, 255, 255), true);
-                            else if (geo->type == GEO_SUBTRACT)
-                                driver->draw2DImage(med_circle_tex_sub_selected, coords, core::rect<int>(0, 0, 8, 8), 0, video::SColor(255, 255, 255, 255), true);
-                            else if (geo->type == GEO_RED)
-                                driver->draw2DImage(med_circle_tex_red_selected, coords, core::rect<int>(0, 0, 8, 8), 0, video::SColor(255, 255, 255, 255), true);
-                        }
-                        else*/
-                        {
-                            if (geo->type == GEO_ADD)
-                                driver->draw2DImage(small_circle_tex_add_selected, coords, core::rect<int>(0, 0, 8, 8), 0, video::SColor(255, 255, 255, 255), true);
-                            else if (geo->type == GEO_SUBTRACT)
-                                driver->draw2DImage(small_circle_tex_sub_selected, coords, core::rect<int>(0, 0, 8, 8), 0, video::SColor(255, 255, 255, 255), true);
-                            else if (geo->type == GEO_RED)
-                                driver->draw2DImage(small_circle_tex_red_selected, coords, core::rect<int>(0, 0, 8, 8), 0, video::SColor(255, 255, 255, 255), true);
                         }
                     }
                 }
@@ -520,14 +454,9 @@ void LM_Viewer_Panel::render()
     driver->setRenderTarget(0, true, true, video::SColor(0, 0, 0, 0));
 }
 
-
-
 void LM_Viewer_Panel::OnMenuItemSelected(IGUIContextMenu* menu)
 {
 }
-
-
-
 
 void LM_Viewer_Panel::left_click(core::vector2di pos)
 {

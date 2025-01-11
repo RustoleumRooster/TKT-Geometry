@@ -510,9 +510,6 @@ void multi_tool_panel::draw()
 	gui::IGUISkin* skin = Environment->getSkin();
 	video::IVideoDriver* driver = Environment->getVideoDriver();
 
-    //skin->draw2DRectangle(this, video::SColor(255,80,80,80),
-    //                     AbsoluteRect,
-    //                     &AbsoluteClippingRect);
     skin->draw3DToolBar(this,
                          AbsoluteRect,
                          &AbsoluteClippingRect);
@@ -731,7 +728,6 @@ reflect::TypeDescriptor_Struct* simple_reflected_tool_base::getFlatTypeDescripto
 
 reflect::TypeDescriptor_Struct* simple_reflected_tool_base::getTypeDescriptor()
 {
-   // return (reflect::TypeDescriptor_Struct*)m_typeDescriptor;
     return getFlatTypeDescriptor();
 }
 

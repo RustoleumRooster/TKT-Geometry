@@ -352,6 +352,9 @@ void GeometryStack::subtract(polyfold pf)
 
 void GeometryStack::build_intersecting_target(const polyfold& pf, polyfold& out)
 {
+    // A function useful for testing
+    //
+
     std::vector<polyfold*> polies;
 
     int num = 0;
@@ -638,11 +641,6 @@ void GeometryStack::rebuild_geometry(bool only_build_new_geometry)
     {
         el.geometry.addDrawLinesEdges(loops_graph);
     }
-
-    //GenLightMaps* LM = LightMaps_Tool::getLightmaps();
-
-    //if(LM)
-    //    LM->calc_lightmap_tcoords();
 
     SEvent event;
     event.EventType = EET_USER_EVENT;

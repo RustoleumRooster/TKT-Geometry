@@ -153,10 +153,6 @@ void File_Open_Widget::refresh()
     pr.UpperLeftCorner.Y += 24;
     my_widget = new Reflected_Widget_EditArea(Environment, edit_panel, g_scene, my_base, my_ID + 2, pr);
 
-    //my_base->build_struct();
-
-    //((folder_tree_item*)(my_base->getObj()))->simple_dump(0);
-
     my_widget->show(false, my_base->getObj());
     my_widget->drop();
 
@@ -236,8 +232,6 @@ bool File_Open_Widget::OnEvent(const SEvent& event)
                             my_widget->refresh();
                         }
 
-                       
-
                         return true;
                     }
                 }
@@ -247,7 +241,6 @@ bool File_Open_Widget::OnEvent(const SEvent& event)
         {
             if (event.GUIEvent.Caller == my_editbox)
             {
-                //my_editbox->getText
                 core::stringw str(my_editbox->getText());
                 io::path p(str.c_str());
                 my_base->setFileNameOnly(p);
@@ -327,12 +320,10 @@ File_Open_Base::File_Open_Base(std::wstring name, int my_id, gui::IGUIEnvironmen
 
 void File_Open_Base::show()
 {
-
     if (restoreCWD)
         RestoreDirectory = FileSystem->getWorkingDirectory();
     if (StartDirectory != L"")
     {
-        //StartDirectory = startDir;
         FileSystem->changeWorkingDirectoryTo(StartDirectory);
     }
 
@@ -345,13 +336,6 @@ void File_Open_Base::show()
 
     win->show();
     win->drop();
-    
-    //core::rect<s32> client_rect(core::vector2di(0, 0),
-    //    core::dimension2du(this->panel->getClientRect()->getAbsolutePosition().getWidth(),
-    //        win->getClientRect()->getAbsolutePosition().getHeight()));
-
-    //core::rect<s32> client_rect = win->getClientRect();
-    //client_rect.UpperLeftCorner.Y += 24;
 
     File_Open_Widget* widget = new File_Open_Widget(env, win, g_scene, this, my_ID, win->getClientRect());
 
@@ -399,13 +383,10 @@ std::string File_Open_Base::getWorkingDirStr()
 
 void File_Open_Base::build_struct()
 {
-
     FileList = FileSystem->createFileList();
     core::stringw s;
 
     m_struct.sub_classes.clear();
-
-   // std::cout << FileSystem->getWorkingDirectory().c_str() << "\n";
 
     if (FileList)
     {
@@ -414,15 +395,7 @@ void File_Open_Base::build_struct()
             if (i > 0)
             {
                 io::path p = FileList->getFileName(i);
-                //io::path p0 = FileSystem->getAbsolutePath(p);
-                //std::cout << p.c_str() << "\n";
-                if (i < 3)
-                {
-                    io::path p1 = FileSystem->getAbsolutePath(p);
-                    //std::cout << p1.c_str() << "\n";
-                }
-                //FileList->
-                //pathToStringW(s, FileList->getFileName(i));
+
                 folder_tree_item f;
                 f.name = std::string(p.c_str());
                 f.id = i;
@@ -430,7 +403,6 @@ void File_Open_Base::build_struct()
                 if(f.isDirectory)
                     m_struct.sub_classes.push_back(f);
             }
-            //FileBox->addItem(s.c_str(), skin->getIcon(FileList->isDirectory(i) ? EGDI_DIRECTORY : EGDI_FILE));
         }
     }
 }
@@ -473,8 +445,6 @@ void File_Open_Base::click_OK()
         event.EventType = EET_USER_EVENT;
         event.UserEvent.UserData1 = USER_EVENT_FILE_SELECTED;
         (MyEventReceiver*)device->getEventReceiver()->OnEvent(event);
-       // std::cout << "file name: " << FileName.c_str() << "\n";
-
     }
 }
 
@@ -484,7 +454,6 @@ void File_Open_Base::window_closed()
     event.EventType = EET_USER_EVENT;
     event.UserEvent.UserData1 = USER_EVENT_FILE_DIALOGUE_CLOSED;
     (MyEventReceiver*)device->getEventReceiver()->OnEvent(event);
-    //std::cout << "file open dialogue closed\n";
 
     if (restoreCWD)
         FileSystem->changeWorkingDirectoryTo(RestoreDirectory);

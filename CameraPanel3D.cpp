@@ -47,9 +47,6 @@ TestPanel_3D::TestPanel_3D(IGUIEnvironment* environment, video::IVideoDriver* dr
     : TestPanel(environment, driver, parent, id, rectangle)
 {
     bShowBrushes = false;
-    //#ifdef _DEBUG
-    //setDebugName("TestPanel");
-    //#endif
 }
 
 TestPanel_3D::~TestPanel_3D()
@@ -87,8 +84,6 @@ scene::ICameraSceneNode* TestPanel_3D::getCamera()
         {
             this->camera = smgr->addCameraSceneNode(0, core::vector3df(-300, 400, -300), core::vector3df(0, 0, 0), -1, false);
             this->camera->setNearValue(5.0);
-            //this->camera->setPosition(core::vector3df(-300,400,-300));
-            //this->camera->setTarget(core::vector3df(0,0,0));
         }
     }
     return this->camera;
@@ -135,14 +130,12 @@ bool TestPanel_3D::OnEvent(const SEvent& event)
                 if (!bTextureEdit)
                 {
                     bTextureEdit = true;
-                    // std::cout<<"Texture Edit Mode begin\n";
                 }
             }
             break;
             case USER_EVENT_TEXTURE_EDIT_MODE_END:
             {
                 bTextureEdit = false;
-                // std::cout<<"Texture Edit Mode end\n";
             }
             break;
             case USER_EVENT_SELECTION_CHANGED:
@@ -152,7 +145,6 @@ bool TestPanel_3D::OnEvent(const SEvent& event)
                     if (bTextureEdit)
                     {
                         bTextureEdit = false;
-                        // std::cout<<"Texture Edit Mode end\n";7
                     }
                 }
             }
@@ -176,7 +168,7 @@ bool TestPanel_3D::OnEvent(const SEvent& event)
             break;
             case EGET_ELEMENT_LEFT:
             {
-                //std::cout<<"left\n";
+
             }
             break;
             case EGET_ELEMENT_FOCUS_LOST:
@@ -194,8 +186,8 @@ bool TestPanel_3D::OnEvent(const SEvent& event)
             break;
         case EET_MOUSE_INPUT_EVENT:
 
-            mousex = event.MouseInput.X;// -AbsoluteClippingRect.UpperLeftCorner.X;
-            mousey = event.MouseInput.Y;// -AbsoluteClippingRect.UpperLeftCorner.Y;
+            mousex = event.MouseInput.X;
+            mousey = event.MouseInput.Y;
             bShiftDown = event.MouseInput.Shift;
 
             switch (event.MouseInput.Event)
@@ -225,7 +217,6 @@ bool TestPanel_3D::OnEvent(const SEvent& event)
 
                 if (clickx == mousex && clicky == mousey)
                     left_click(core::vector2di(event.MouseInput.X, event.MouseInput.Y));
-                //std::cout<<"lmouse up\n";
             }
             return true;
             case EMIE_LMOUSE_PRESSED_DOWN:
@@ -275,7 +266,6 @@ bool TestPanel_3D::OnEvent(const SEvent& event)
                     else if (get_click_face(clickx, clicky, hit_results))
                     {
                         vDragCameraInitialPosition = this->getCamera()->getAbsolutePosition();
-                        //vDragCameraInitialTarget = this->getCamera()->getTarget();
 
                         core::plane3df hit_plane(hit_results.hitvec, core::vector3df(0, 1, 0));
                         core::vector3df r = this->getCamera()->getAbsolutePosition() - this->getCamera()->getTarget();
@@ -294,7 +284,7 @@ bool TestPanel_3D::OnEvent(const SEvent& event)
                         bRotateCamera = false;
                         bZoomCamera = false;
                     }
-                    else //if(GetPlaneClickVector(this->Texture->getOriginalSize(),this->getCamera(),clickx,clicky,hitvec))
+                    else
                     {
                         vDragCameraInitialPosition = this->getCamera()->getAbsolutePosition();
                         vDragCameraInitialTarget = this->getCamera()->getTarget();
@@ -524,7 +514,8 @@ bool TestPanel_3D::OnEvent(const SEvent& event)
         } //switch event type
 
     }//if enabled
-   // return IGUIElement::OnEvent(event);
+
+    //return IGUIElement::OnEvent(event);
     return false;
 }
 
@@ -870,12 +861,6 @@ void TestPanel_3D::right_click(core::vector2di pos)
             menu->addItem(L"(No node type selected)", -1, true, false, false, false);
         }
 
-        //if (geo_scene->getSelectedFaces().size() == 1)
-        //{
-        //    menu->addSeparator();
-        //    menu->addItem(L"Add Face Node", GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_ADD_MESHBUFFER_SCENENODE, true, false, false, false);
-        //}
-
         ContextMenuOwner = this->m_viewPanel;
     }
     else if (geo_scene && geo_scene->getBrushSelection().size() > 0)
@@ -892,7 +877,6 @@ void TestPanel_3D::right_click(core::vector2di pos)
                     GetScreenCoords(geo_node->elements[p_i].brush.vertices[v_i].V, coords);
                     if (core::vector2di(clickx, clicky).getDistanceFrom(coords) < 4)
                     {
-                        //geo_scene->selected_brush_vertex_editing = p_i;
                         geo_scene->set_selected_brush_vertex_editing(p_i);
                         geo_node->elements[p_i].selected_vertex = v_i;
                         geo_node->elements[p_i].control_vertex_selected = false;
@@ -905,7 +889,6 @@ void TestPanel_3D::right_click(core::vector2di pos)
                 GetScreenCoords(geo_node->elements[p_i].brush.control_vertices[v_i].V, coords);
                 if (core::vector2di(clickx, clicky).getDistanceFrom(coords) < 4)
                 {
-                    //geo_scene->selected_brush_vertex_editing = p_i;
                     geo_scene->set_selected_brush_vertex_editing(p_i);
                     geo_node->elements[p_i].selected_vertex = v_i;
                     geo_node->elements[p_i].control_vertex_selected = true;
@@ -1089,20 +1072,20 @@ void TestPanel_3D::SetMeshNodesVisible()
         switch (this->view_style)
         {
         case PANEL3D_VIEW_RENDER:
-            //geo_scene->getMeshNode()->setWireFrame(false);
             geo_scene->getMeshNode()->setVisible(true);
             geo_scene->setRenderType(false, true, false, false);
             break;
+
         case PANEL3D_VIEW_RENDER_FINAL:
-            //geo_scene->getMeshNode()->setWireFrame(false);
             geo_scene->getMeshNode()->setVisible(true);
             geo_scene->setRenderType(false, true, false, false);
             break;
+
         case PANEL3D_VIEW_TRIANGLES:
-            //geo_scene->getMeshNode()->setWireFrame(true);
             geo_scene->getMeshNode()->setVisible(true);
             geo_scene->setRenderType(false, true, false, true);
             break;
+
         case PANEL3D_VIEW_LOOPS:
             geo_scene->getMeshNode()->setVisible(false);
             geo_scene->setRenderType(false, true, true, false);
@@ -1277,9 +1260,5 @@ bool TestPanel_3D::Get3DScreenCoords(core::vector3df V, core::vector2di& out_coo
         dim.Width + core::round32(dim.Width * (transformedPos[0] * zDiv)),
         dim.Height - core::round32(dim.Height * (transformedPos[1] * zDiv)));
 
-        out_coords.X = core::round32(t_X * this->Texture->getOriginalSize().Width);
-        out_coords.Y = core::round32((1 - t_Y) * this->Texture->getOriginalSize().Height);
-        return true;
-    }
-    return false;
+    return true;
 }

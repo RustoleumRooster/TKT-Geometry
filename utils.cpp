@@ -141,7 +141,6 @@ irr::video::IImage* makeSolidColorImage(video::IVideoDriver* driver, video::SCol
 irr::video::IImage* makeAlphaImage(video::IVideoDriver* driver,video::ITexture* texture, int alpha)
 {
     video::IImage* img = driver->createImage(texture,core::vector2di(0,0),texture->getSize());
-    //std::cout<<texture->getSize().Width<<","<<texture->getSize().Height<<"\n";
      for(int i=0;i<texture->getSize().Width;i++)
         for(int j=0;j<texture->getSize().Height;j++)
             {
@@ -156,9 +155,6 @@ irr::video::IImage* makeAlphaImage(video::IVideoDriver* driver,video::ITexture* 
 irr::video::IImage* makeCircleImage(video::IVideoDriver* driver,int width, f32 radius, video::SColor col)
 {
 
-
-    //std::cout<<"Generating Static Texture \n";
-
     video::IImage*     img = driver->createImage(irr::video::ECF_A8R8G8B8,core::dimension2d<u32>(width,width));
 
     srand(45325);
@@ -171,9 +167,6 @@ irr::video::IImage* makeCircleImage(video::IVideoDriver* driver,int width, f32 r
                         f32 d = sqrt((((f32)width * 0.5)-j-0.5)*(((f32)width * 0.5)-j-0.5)+
                                 (((f32)width * 0.5)-i-0.5)*(((f32)width * 0.5)-i-0.5));
 
-                        //color.setRed(r);
-                        //color.setGreen(r);
-                        //color.setBlue(r);
                         if(d<radius)
                             color.setAlpha(255);
                         else if(d<radius+0.5)
@@ -248,7 +241,7 @@ void MakeCircleImages(video::IVideoDriver* driver)
 					std::cout<<M[12]<<" "<<M[13]<<" "<<M[14]<<" "<<M[15]<<"\n"; 
 
 
-bool  geometry_scene::WriteTextures(std::string fname)
+bool geometry_scene::WriteTextures(std::string fname)
 {
      ofstream wf(fname,ios::out | ios::binary);
 
@@ -597,7 +590,6 @@ REFLECT_STRUCT_BEGIN(Face_Bounding_Rect_Struct)
     REFLECT_STRUCT_MEMBER(v3)
 REFLECT_STRUCT_END()
 
-
 REFLECT_STRUCT_BEGIN(Face_Info_Struct)
     REFLECT_STRUCT_MEMBER(normal)
     REFLECT_STRUCT_MEMBER(tangent)
@@ -619,119 +611,119 @@ REFLECT_STRUCT_BEGIN(Model_Struct)
 REFLECT_STRUCT_END()
 
 
-    u64 random_number()
-    {
-        static random_device dev;
-        static mt19937 rng(dev());
+u64 random_number()
+{
+    static random_device dev;
+    static mt19937 rng(dev());
 
-        std::uniform_int_distribution<u64> dist(0, std::numeric_limits<u64>::max());
+    std::uniform_int_distribution<u64> dist(0, std::numeric_limits<u64>::max());
 
-        return dist(rng);
-    }
+    return dist(rng);
+}
 
-    void save_gui_state(GUI_state_struct& state_struct)
-    {
-        gui::IGUIEnvironment* env = device->getGUIEnvironment();
-        gui::IGUIElement* root = env->getRootGUIElement();
-        CameraQuad* quad = (CameraQuad*)root->getElementFromId(GUI_ID_CAMERA_QUAD, true);
+void save_gui_state(GUI_state_struct& state_struct)
+{
+    gui::IGUIEnvironment* env = device->getGUIEnvironment();
+    gui::IGUIElement* root = env->getRootGUIElement();
+    CameraQuad* quad = (CameraQuad*)root->getElementFromId(GUI_ID_CAMERA_QUAD, true);
 
-        if (!quad) return;
+    if (!quad) return;
 
-        //Top Left
-        TestPanel* panel_TL = quad->getPanel(0);
+    //Top Left
+    TestPanel* panel_TL = quad->getPanel(0);
 
-        state_struct.dynamicLight = panel_TL->IsDynamicLight();
-        state_struct.viewStyle = ((TestPanel_3D*)panel_TL)->GetViewStyle();
+    state_struct.dynamicLight = panel_TL->IsDynamicLight();
+    state_struct.viewStyle = ((TestPanel_3D*)panel_TL)->GetViewStyle();
 
-        ICameraSceneNode* camera = panel_TL->getCamera();
-        state_struct.tl.my_camera.orthogonal = false;
-        state_struct.tl.my_camera.position = camera->getAbsolutePosition();
-        state_struct.tl.my_camera.target = camera->getTarget();
-        state_struct.tl.my_camera.projM = camera->getProjectionMatrix();
+    ICameraSceneNode* camera = panel_TL->getCamera();
+    state_struct.tl.my_camera.orthogonal = false;
+    state_struct.tl.my_camera.position = camera->getAbsolutePosition();
+    state_struct.tl.my_camera.target = camera->getTarget();
+    state_struct.tl.my_camera.projM = camera->getProjectionMatrix();
 
-        //Top Right
-        TestPanel_2D* panel_TR = (TestPanel_2D*)quad->getPanel(1);
-        state_struct.tr.viewSize = panel_TR->getViewSize();
+    //Top Right
+    TestPanel_2D* panel_TR = (TestPanel_2D*)quad->getPanel(1);
+    state_struct.tr.viewSize = panel_TR->getViewSize();
 
-        camera = panel_TR->getCamera();
-        state_struct.tr.my_camera.orthogonal = true;
-        state_struct.tr.my_camera.position = camera->getAbsolutePosition();
-        state_struct.tr.my_camera.target = camera->getTarget();
-        state_struct.tr.my_camera.projM = camera->getProjectionMatrix();
+    camera = panel_TR->getCamera();
+    state_struct.tr.my_camera.orthogonal = true;
+    state_struct.tr.my_camera.position = camera->getAbsolutePosition();
+    state_struct.tr.my_camera.target = camera->getTarget();
+    state_struct.tr.my_camera.projM = camera->getProjectionMatrix();
 
-        //Bottom Left
-        TestPanel_2D* panel_BL = (TestPanel_2D*)quad->getPanel(2);
-        state_struct.bl.viewSize = panel_BL->getViewSize();
+    //Bottom Left
+    TestPanel_2D* panel_BL = (TestPanel_2D*)quad->getPanel(2);
+    state_struct.bl.viewSize = panel_BL->getViewSize();
 
-        camera = panel_BL->getCamera();
-        state_struct.bl.my_camera.orthogonal = true;
-        state_struct.bl.my_camera.position = camera->getAbsolutePosition();
-        state_struct.bl.my_camera.target = camera->getTarget();
-        state_struct.bl.my_camera.projM = camera->getProjectionMatrix();
+    camera = panel_BL->getCamera();
+    state_struct.bl.my_camera.orthogonal = true;
+    state_struct.bl.my_camera.position = camera->getAbsolutePosition();
+    state_struct.bl.my_camera.target = camera->getTarget();
+    state_struct.bl.my_camera.projM = camera->getProjectionMatrix();
 
-        //Bottom Right
-        TestPanel_2D* panel_BR = (TestPanel_2D*)quad->getPanel(3);
-        state_struct.br.viewSize = panel_BR->getViewSize();
+    //Bottom Right
+    TestPanel_2D* panel_BR = (TestPanel_2D*)quad->getPanel(3);
+    state_struct.br.viewSize = panel_BR->getViewSize();
 
-        camera = panel_BR->getCamera();
-        state_struct.br.my_camera.orthogonal = true;
-        state_struct.br.my_camera.position = camera->getAbsolutePosition();
-        state_struct.br.my_camera.target = camera->getTarget();
-        state_struct.br.my_camera.projM = camera->getProjectionMatrix();
+    camera = panel_BR->getCamera();
+    state_struct.br.my_camera.orthogonal = true;
+    state_struct.br.my_camera.position = camera->getAbsolutePosition();
+    state_struct.br.my_camera.target = camera->getTarget();
+    state_struct.br.my_camera.projM = camera->getProjectionMatrix();
 
-        state_struct.is_valid_state = true;
-    }
+    state_struct.is_valid_state = true;
+}
 
-    void restore_gui_state(const GUI_state_struct& state_struct)
-    {
-        gui::IGUIEnvironment* env = device->getGUIEnvironment();
-        gui::IGUIElement* root = env->getRootGUIElement();
-        CameraQuad* quad = (CameraQuad*)root->getElementFromId(GUI_ID_CAMERA_QUAD, true);
+void restore_gui_state(const GUI_state_struct& state_struct)
+{
+    gui::IGUIEnvironment* env = device->getGUIEnvironment();
+    gui::IGUIElement* root = env->getRootGUIElement();
+    CameraQuad* quad = (CameraQuad*)root->getElementFromId(GUI_ID_CAMERA_QUAD, true);
 
-        if (!quad || !state_struct.is_valid_state) return;
+    if (!quad || !state_struct.is_valid_state) return;
 
-        //Top Left
-        ICameraSceneNode* camera = quad->getPanel(0)->getCamera();
+    //Top Left
+    ICameraSceneNode* camera = quad->getPanel(0)->getCamera();
 
-        camera->setPosition(state_struct.tl.my_camera.position);
-        camera->setTarget(state_struct.tl.my_camera.target);
-        camera->setProjectionMatrix(state_struct.tl.my_camera.projM, false);
-        camera->updateAbsolutePosition();
+    camera->setPosition(state_struct.tl.my_camera.position);
+    camera->setTarget(state_struct.tl.my_camera.target);
+    camera->setProjectionMatrix(state_struct.tl.my_camera.projM, false);
+    camera->updateAbsolutePosition();
 
-        ((TestPanel_3D*)quad->getPanel(0))->SetDynamicLight(state_struct.dynamicLight);
+    ((TestPanel_3D*)quad->getPanel(0))->SetDynamicLight(state_struct.dynamicLight);
 
-        if(state_struct.viewStyle == PANEL3D_VIEW_RENDER_FINAL)
-            ((TestPanel_3D*)quad->getPanel(0))->SetViewStyle(PANEL3D_VIEW_RENDER);
-        else
-            ((TestPanel_3D*)quad->getPanel(0))->SetViewStyle(state_struct.viewStyle);
+    if(state_struct.viewStyle == PANEL3D_VIEW_RENDER_FINAL)
+        ((TestPanel_3D*)quad->getPanel(0))->SetViewStyle(PANEL3D_VIEW_RENDER);
+    else
+        ((TestPanel_3D*)quad->getPanel(0))->SetViewStyle(state_struct.viewStyle);
 
-        //Top Right
-        camera = quad->getPanel(1)->getCamera();
-        ((TestPanel_2D*)quad->getPanel(1))->setViewSize(state_struct.tr.viewSize);
+    //Top Right
+    camera = quad->getPanel(1)->getCamera();
+    ((TestPanel_2D*)quad->getPanel(1))->setViewSize(state_struct.tr.viewSize);
 
-        camera->setPosition(state_struct.tr.my_camera.position);
-        camera->setTarget(state_struct.tr.my_camera.target);
-        camera->setProjectionMatrix(state_struct.tr.my_camera.projM, true);
-        camera->updateAbsolutePosition();
+    camera->setPosition(state_struct.tr.my_camera.position);
+    camera->setTarget(state_struct.tr.my_camera.target);
+    camera->setProjectionMatrix(state_struct.tr.my_camera.projM, true);
+    camera->updateAbsolutePosition();
 
-        //Bottom Left
-        camera = quad->getPanel(2)->getCamera();
-        ((TestPanel_2D*)quad->getPanel(2))->setViewSize(state_struct.bl.viewSize);
+    //Bottom Left
+    camera = quad->getPanel(2)->getCamera();
+    ((TestPanel_2D*)quad->getPanel(2))->setViewSize(state_struct.bl.viewSize);
 
-        camera->setPosition(state_struct.bl.my_camera.position);
-        camera->setTarget(state_struct.bl.my_camera.target);
-        camera->setProjectionMatrix(state_struct.bl.my_camera.projM, true);
-        camera->updateAbsolutePosition();
+    camera->setPosition(state_struct.bl.my_camera.position);
+    camera->setTarget(state_struct.bl.my_camera.target);
+    camera->setProjectionMatrix(state_struct.bl.my_camera.projM, true);
+    camera->updateAbsolutePosition();
 
-        //Bottom Right
-        camera = quad->getPanel(3)->getCamera();
-        ((TestPanel_2D*)quad->getPanel(3))->setViewSize(state_struct.br.viewSize);
+    //Bottom Right
+    camera = quad->getPanel(3)->getCamera();
+    ((TestPanel_2D*)quad->getPanel(3))->setViewSize(state_struct.br.viewSize);
 
-        camera->setPosition(state_struct.br.my_camera.position);
-        camera->setTarget(state_struct.br.my_camera.target);
-        camera->setProjectionMatrix(state_struct.br.my_camera.projM, true);
-        camera->updateAbsolutePosition();
-    }
+    camera->setPosition(state_struct.br.my_camera.position);
+    camera->setTarget(state_struct.br.my_camera.target);
+    camera->setProjectionMatrix(state_struct.br.my_camera.projM, true);
+    camera->updateAbsolutePosition();
+}
 
 //=======================================================
 //  Open Geometry File
@@ -873,7 +865,6 @@ void Open_Geometry_File::LoadProject(SceneCoordinator* sc, io::path folder)
 
 }
 
-
 void geometry_scene::write_files(int append_no)
 {
     std::stringstream nodes_name;
@@ -930,8 +921,6 @@ Save_Geometry_File::~Save_Geometry_File()
     //std::cout << "Save Geometry File... going out of scope\n";
 }
 
-
-
 bool Save_Geometry_File::OnEvent(const SEvent& event)
 {
     if (event.EventType == EET_USER_EVENT)
@@ -975,11 +964,6 @@ REFLECT_STRUCT_BEGIN(camera_info_struct)
     REFLECT_STRUCT_MEMBER(orthogonal)
     REFLECT_STRUCT_MEMBER(position)
     REFLECT_STRUCT_MEMBER(target)
-    // REFLECT_STRUCT_MEMBER(upvec)
-     //REFLECT_STRUCT_MEMBER(fovy)
-    // REFLECT_STRUCT_MEMBER(aspect)
-    // REFLECT_STRUCT_MEMBER(near)
-    // REFLECT_STRUCT_MEMBER(far)
     REFLECT_STRUCT_MEMBER(projM)
 REFLECT_STRUCT_END()
 

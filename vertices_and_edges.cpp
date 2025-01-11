@@ -6,7 +6,6 @@
 
 using namespace irr;
 
-
 void sort_inline_vertices(polyfold& pf)
 {
     if (pf.vertices.size() < 3) return;
@@ -30,7 +29,7 @@ void sort_inline_vertices(polyfold& pf)
     res = -1;
     for (int i = 0; i < pf.vertices.size(); i++)
     {
-        d = 99999;
+        d = 0xFFFF;
         for (int j = 0; j < pf.vertices.size(); j++)
         {
             core::vector3df r = pf.vertices[j].V - origin;
@@ -160,14 +159,10 @@ int polyfold::classify_point(int face_i, core::vector3df v0, core::vector3df v1,
     {
         //COMPLEX POINT / EDGE
         graph.points.push_back(v0);
-        //std::cout<<"complex\n";
-        //std::vector<core::vector3df> slip_vecs = this->get_edge_slip_vectors(undef_edges[0]);
-        //std::cout<<v0.X<<" "<<v0.Y<<" "<<v0.Z<<" to ";
-        //std::cout<<v1.X<<" "<<v1.Y<<" "<<v1.Z<<"\n";
+
         std::vector<int> nfaces;
         std::vector<int> mfaces;
         std::vector<int> medges;
-
 
         for (int e_i : undef_edges)
             medges.push_back(e_i);
@@ -203,14 +198,14 @@ int polyfold::classify_point(int face_i, core::vector3df v0, core::vector3df v1,
         }
 
         int ii = 0;
-        //std::cout << " complex edge: ";
+        
+        //==========================
+        //Complex Edge
         while (RES == TOP_UNDEF && ii < medges.size())
         {
             int e_0 = medges[ii];
 
             std::vector<core::vector3df> slip_vecs;
-           // std::cout << e_0 << " ";
-
             core::vector3df v2 = this->getVertex(e_0, 0).V - this->getVertex(e_0, 1).V;
 
             std::vector<int> bfaces;
@@ -222,8 +217,6 @@ int polyfold::classify_point(int face_i, core::vector3df v0, core::vector3df v1,
                         bfaces.push_back(f_i);
                 }
             }
-
-            //std::cout<<bfaces.size()<<" faces for edge... "<<e_0<<"\n";
 
             for (int f_i : bfaces)
             {
@@ -237,17 +230,6 @@ int polyfold::classify_point(int face_i, core::vector3df v0, core::vector3df v1,
             }
             v2.normalize();
 
-            //std::cout<<slip_vecs.size()<<" slip vecs\n";
-
-           // std::cout<<v2.X<<","<<v2.Y<<","<<v2.Z<<" <-- \n";
-           // for(int i=0;i<slip_vecs.size();i++)
-           //     std::cout<<slip_vecs[i].X<<","<<slip_vecs[i].Y<<","<<slip_vecs[i].Z<<"\n";
-
-
-//            graph.points.push_back(this->getVertex(e_0,1).V+v2*0.5+r);
-
-               // std::cout<<"aiy\n";
-
             for (int i = 0; i < slip_vecs.size(); i++)
             {
                 if (RES != TOP_UNDEF)
@@ -255,13 +237,12 @@ int polyfold::classify_point(int face_i, core::vector3df v0, core::vector3df v1,
 
                 core::vector3df w0 = v0 + v2 * 3 + slip_vecs[i] * 3;
                 core::vector3df w1 = v1 + v2 * 3 + slip_vecs[i] * 3;
-                //graph.lines.push_back(core::line3df(w0,w1));
+
                 core::vector3df ipoint;
                 f32 d = 9999;
                 f32 dd;
                 std::vector<f32> dist;
                 std::vector<int> res;
-                // std::cout<<"---\n";
 
                 for (int f_i : mfaces)
                 {
@@ -271,12 +252,9 @@ int polyfold::classify_point(int face_i, core::vector3df v0, core::vector3df v1,
                         w1 = v1 + v2 * 10 + slip_vecs[i] * 10;
                         f_plane.getIntersectionWithLine(w1, v0 - v1, ipoint);
 
-                        //RES = this->classify_point_face(f_i,w1);
                         dd = ipoint.getDistanceFrom(w1);
                         dist.push_back(ipoint.getDistanceFrom(w1));
                         res.push_back(this->classify_point_face(f_i, w1));
-                        //std::cout<<"got a point! ("<<f_i<<") "<<dd<<", RES = "<<this->classify_point_face(f_i,w1)<<"\n";
-
                     }
                 }
                 if (res.size() > 1)
@@ -297,7 +275,7 @@ int polyfold::classify_point(int face_i, core::vector3df v0, core::vector3df v1,
                         if (i != smallest_i)
                             dif = std::min(fabs(smallest - dist[i]), dif);
                     }
-                    //std::cout<<"dif="<<dif<<"\n";
+
                     if (dif > 0.01)
                     {
                         f32 d = 9999;
@@ -313,14 +291,11 @@ int polyfold::classify_point(int face_i, core::vector3df v0, core::vector3df v1,
                 }
                 else if (res.size() == 1)
                 {
-                    //std::cout<<"* ";
                     RES = res[0];
                 }
             }
             ii++;
         }
-
-        //std::cout<<" RES = "<<RES<<"\n";
         return RES;
     }
 
@@ -411,8 +386,6 @@ int polyfold::classify_point(core::vector3df v0, LineHolder& graph)
             f32 d = 0xFFFF;
             for (int i = 0; i < ipoints.size(); i++)
             {
-                //graph.lines.push_back(line3df(v0, ipoints[i]));
-                //graph.points.push_back(ipoints[i]);
                 f32 r = v0.getDistanceFrom(ipoints[i]);
                 if (r < d && r>0.01)
                 {

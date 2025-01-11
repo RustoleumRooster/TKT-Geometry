@@ -2,10 +2,8 @@
 #include <iostream>
 #include "csg_classes.h"
 #include "tolerances.h"
-#include "geometry_scene.h"
 
 using namespace irr;
-
 
 bool vec_is_left_from(const core::vector3df& v0_, const core::vector3df& v1_)
 {
@@ -72,8 +70,7 @@ std::vector<poly_edge> get_all_connections(polyfold pf, int p_i, int vert)
             my_v=i;
     }
 
-    bool bReverse = //pf.is_closed_loop(0, p_i) == false;
-        pf.faces[0].loops[p_i].topo_group == LOOP_HOLLOW;
+    bool bReverse = pf.faces[0].loops[p_i].topo_group == LOOP_HOLLOW;
 
     if(my_v== -1)std::cout<<"triangle, get_all_connections... error, point not on loop!\n";
 
@@ -255,8 +252,8 @@ std::vector<triangle> get_adjacent_triangles(const polyfold& pf, int e_i, LineHo
 
     if(ret.size() > 2)
     {
-        f32 bestleft=999999;
-        f32 bestright=999999;
+        f32 bestleft=0xFFFF;
+        f32 bestright=0xFFFF;
         triangle left;
         triangle right;
 
@@ -304,28 +301,14 @@ bool improve_triangle(polyfold& pf, int e_i, LineHolder& graph)
 
     if(adj.size() == 2)
     {
-        //std::cout<<adj[0].A<<" "<<adj[0].B<<" "<<adj[0].C<<", "<<adj[1].A<<" "<<adj[1].B<<" "<<adj[1].C<<"\n";
-        //graph.lines.push_back(core::line3df(pf.vertices[adj[0].C].V,pf.vertices[adj[1].C].V));
         core::vector3df v1 = pf.vertices[adj[0].C].V - pf.vertices[adj[0].A].V;
         core::vector3df v2 = pf.vertices[adj[0].A].V - pf.vertices[adj[1].C].V;
         core::vector3df v3 = pf.vertices[adj[1].C].V - pf.vertices[adj[0].B].V;
         core::vector3df v4 = pf.vertices[adj[0].B].V - pf.vertices[adj[0].C].V;
 
-        //graph.lines.push_back(core::line3df(pf.vertices[adj[0].C].V,pf.vertices[adj[0].A].V));
-       // graph.lines.push_back(core::line3df(pf.vertices[adj[0].A].V,pf.vertices[adj[1].C].V));
-       // graph.lines.push_back(core::line3df(pf.vertices[adj[1].C].V,pf.vertices[adj[0].B].V));
-       // graph.lines.push_back(core::line3df(pf.vertices[adj[0].B].V,pf.vertices[adj[0].C].V));
-
-        //std::cout<<v1.crossProduct(v2).Y<<"\n";
-        //std::cout<<v2.crossProduct(v3).Y<<"\n";
-        //std::cout<<v3.crossProduct(v4).Y<<"\n";
-        //std::cout<<v4.crossProduct(v1).Y<<"\n";
-
         if ((vec_is_left_from(v1,v2)&&vec_is_left_from(v2,v3)&&vec_is_left_from(v3,v4)&&vec_is_left_from(v4,v1)) ||
             (vec_is_right_from(v1,v2)&&vec_is_right_from(v2,v3)&&vec_is_right_from(v3,v4)&&vec_is_right_from(v4,v1)))
             {
-                //std::cout<<adj[0].A<<" "<<adj[0].B<<" "<<adj[0].C<<", "<<adj[1].A<<" "<<adj[1].B<<" "<<adj[1].C<<"\n";
-
                 triangle T = adj[0];
 
                 core::line2df line_ab = core::line2df(pf.vertices[T.A].V.X,pf.vertices[T.A].V.Z,pf.vertices[T.B].V.X,pf.vertices[T.B].V.Z);
@@ -377,11 +360,6 @@ bool improve_triangle(polyfold& pf, int e_i, LineHolder& graph)
                     pf.edges[new_e].topo_group = 3;
                     pf.faces[0].addEdge(new_e);
 
-                  // graph.lines.push_back(core::line3df(pf.vertices[adj[0].C].V,pf.vertices[adj[1].C].V));
-                  // graph.lines.push_back(core::line3df(pf.vertices[adj[0].C].V, pf.vertices[adj[0].A].V));
-                  // graph.lines.push_back(core::line3df(pf.vertices[adj[0].A].V,pf.vertices[adj[1].C].V));
-                  // graph.lines.push_back(core::line3df(pf.vertices[adj[1].C].V,pf.vertices[adj[0].B].V));
-                  // graph.lines.push_back(core::line3df(pf.vertices[adj[0].B].V,pf.vertices[adj[0].C].V));
                     return true;
                 }
             }
@@ -461,12 +439,6 @@ triangle_holder get_triangles_for_loop(polyfold& pf, LineHolder& graph)
         }
     }
 
-    for (poly_edge edge : pf.edges)
-    {
-        //   if(edge.topo_group>=0)
-        //       graph.lines.push_back(core::line3df(pf.vertices[edge.v0].V,pf.vertices[edge.v1].V));
-    }
-
     bool bKeepGoing = true;
 
     bool* tracker = new bool[pf.vertices.size()];
@@ -482,8 +454,6 @@ triangle_holder get_triangles_for_loop(polyfold& pf, LineHolder& graph)
                 continue;
 
             std::vector<poly_edge> links = get_all_connections2(pf, v_i);
-
-            //std::cout << v_i << " " << links.size() << " "<<pf.edges.size()<<"\n";
 
             if (links.size() <= 1)
                 tracker[v_i] = false;
@@ -516,9 +486,6 @@ triangle_holder get_triangles_for_loop(polyfold& pf, LineHolder& graph)
 
                 if (pf.find_edge(best_edge.v0, best_edge.v1) == -1)
                 {
-                    // if(v_i==0)
-                    //     graph.lines.push_back(core::line3df(pf.vertices[edge.v0].V, pf.vertices[edge.v1].V));
-
                     int new_e = pf.get_edge_or_add(best_edge.v0, best_edge.v1, 3);
                     pf.faces[0].addEdge(new_e);
                 }
@@ -528,48 +495,32 @@ triangle_holder get_triangles_for_loop(polyfold& pf, LineHolder& graph)
 
     delete[] tracker;
 
-    for(poly_edge edge : pf.edges)
-    {
-       // if(edge.topo_group>=0)
-       //     graph.lines.push_back(core::line3df(pf.vertices[edge.v0].V,pf.vertices[edge.v1].V));
-    }
-
     //===============
     LineHolder nograph;
     int num=0;
-    //if(false)
+
+    try_again:
+    for(int e_i : pf.faces[0].edges)
     {
-        try_again:
-        for(int e_i : pf.faces[0].edges)
+        if(pf.edges[e_i].topo_group != -1)
+        {
+
+            bool b = false;
+
+            for(int e_j : fixed_edges)
+                if(e_j == e_i)
+                    b=true;
+
+            if(!b && improve_triangle(pf, e_i, graph))
             {
-                if(pf.edges[e_i].topo_group != -1)
-                {
-
-                    bool b = false;
-
-                    for(int e_j : fixed_edges)
-                        if(e_j == e_i)
-                            b=true;
-
-                    if(!b && improve_triangle(pf, e_i, graph))
-                    {
-                        num++;
-                        goto try_again;
-                    }
-                }
+                num++;
+                goto try_again;
             }
+        }
     }
-
-    for(poly_edge edge : pf.edges)
-    {
-        if(edge.topo_group>=0)
-            graph.lines.push_back(core::line3df(pf.vertices[edge.v0].V,pf.vertices[edge.v1].V));
-    }
-
-
+    
     num=0;
-    //bool bKeepGoing;
-    //do
+
     for(int g=0;g<2;g++)
     {
         bKeepGoing = false;
@@ -587,33 +538,26 @@ triangle_holder get_triangles_for_loop(polyfold& pf, LineHolder& graph)
                 int e_J;
                 int e_K;
 
-               // graph.points.push_back(pf.getVertex(e_i,0).V);
-               // graph.points.push_back(pf.getVertex(e_i,1).V);
-
                 for( int e_j: connex0)
                     for( int e_k : connex1)
-                {
-
-                    //graph.lines.push_back(core::line3df(pf.getVertex(e_j,0).V,pf.getVertex(e_j,1).V));
-                    //graph.lines.push_back(core::line3df(pf.getVertex(e_k,0).V,pf.getVertex(e_k,1).V));
-
-                    int v_i = pf.get_opposite_end(e_j,pf.edges[e_i].v0);
-                    int v_j = pf.get_opposite_end(e_k,pf.edges[e_i].v1);
-                    if(v_i == v_j && (dd = pf.vertices[v_i].V.getDistanceFrom(r))<d)
                     {
-                        if(pf.edges[e_j].topo_group==0 && pf.edges[e_k].topo_group==0)
-                        {
-                        // TODO - bug fix (see below)
-                        //    std::cout<<"careful!\n";
-                        }
-                        //else std::cout<<"...\n";
 
-                        e_J = e_j;
-                        e_K = e_k;
-                        v_k = v_i;
-                        d = dd;
+                        int v_i = pf.get_opposite_end(e_j,pf.edges[e_i].v0);
+                        int v_j = pf.get_opposite_end(e_k,pf.edges[e_i].v1);
+                        if(v_i == v_j && (dd = pf.vertices[v_i].V.getDistanceFrom(r))<d)
+                        {
+                            if(pf.edges[e_j].topo_group==0 && pf.edges[e_k].topo_group==0)
+                            {
+                            // TODO - bug fix (see below)
+                            //    std::cout<<"careful!\n";
+                            }
+
+                            e_J = e_j;
+                            e_K = e_k;
+                            v_k = v_i;
+                            d = dd;
+                        }
                     }
-                }
 
                 bKeepGoing = true;
 
@@ -647,20 +591,13 @@ triangle_holder get_triangles_for_loop(polyfold& pf, LineHolder& graph)
                     }
                     num++;
 
-
-                    //graph.lines.push_back(core::line3df(pf.vertices[v_a].V,pf.vertices[v_b].V));
-                    //graph.lines.push_back(core::line3df(pf.vertices[v_b].V,pf.vertices[v_c].V));
-                    //graph.lines.push_back(core::line3df(pf.vertices[v_c].V,pf.vertices[v_a].V));
-
                     triangle T;
                     T.A = v_a;
                     T.B = v_b;
                     T.C = v_c;
 
-                    //std::cout<<T.A<<","<<T.B<<","<<T.C<<"\n";
                     t_holder.triangles.push_back(T);
 
-                    //num++;
                     if(num > 360)
                     {
                         std::cout<<"\n*trianglize high count warning... \n";
@@ -670,8 +607,6 @@ triangle_holder get_triangles_for_loop(polyfold& pf, LineHolder& graph)
         }
 
     }
-
-  // std::cout<<" t= "<<t_holder.triangles.size()<<", ";
 
     return t_holder;
 }
@@ -686,7 +621,6 @@ void polyfold::trianglize(int face_i, triangle_holder& t_holder, scene::SMeshBuf
     std::vector<triangle> no_triangle;
     std::vector<int> fixed_edges;
 
-    //triangle_holder t_holder;
     {
         poly_face f;
         for(int v_i:this->faces[face_i].vertices)
@@ -789,8 +723,6 @@ void polyfold::trianglize(int face_i, triangle_holder& t_holder, scene::SMeshBuf
         }
     }
 
-   // std::cout<<" "<<t_holder.vertices.size()<<" vertices "<<t_holder.triangles.size()<<" triangles\n";
-
    core::matrix4 R_inv;
    R_inv = R;
    R_inv.makeInverse();
@@ -814,21 +746,6 @@ void polyfold::trianglize(int face_i, triangle_holder& t_holder, scene::SMeshBuf
              T.A = T.B;
              T.B = temp;
         }
-        //graph.lines.push_back(core::line3df(t_holder.vertices[T.A],t_holder.vertices[T.B]));
-        //graph.lines.push_back(core::line3df(t_holder.vertices[T.B],t_holder.vertices[T.C]));
-        //graph.lines.push_back(core::line3df(t_holder.vertices[T.C],t_holder.vertices[T.A]));
-        
-   }
-
-   //std::cout << t_holder.triangles.size() << "\n";
-
-   for(int i=0; i<t_holder.triangles.size(); i++)
-   {
-       {
-       // graph.lines.push_back(core::line3df(t_holder.vertices[T.A],t_holder.vertices[T.B]));
-       // graph.lines.push_back(core::line3df(t_holder.vertices[T.B],t_holder.vertices[T.C]));
-       // graph.lines.push_back(core::line3df(t_holder.vertices[T.C],t_holder.vertices[T.A]));
-       }
    }
 
    if(buffer)
@@ -862,64 +779,8 @@ void polyfold::trianglize(int face_i, triangle_holder& t_holder, scene::SMeshBuf
         buffer->recalculateBoundingBox();
    }
 
-   // return t_holder;
 }
-/*
-void process_triangles_sphere(triangle_holder& t_h)
-{
-    triangle_holder ret;
 
-    for(triangle T : t_h.triangles)
-    {
-        auto find_vertex = [ret] (core::vector3df vert) {
-            for(int i=0;i<ret.vertices.size();i++)
-                {
-                    if(ret.vertices[i] == vert)
-                        return i;
-                }
-                return -1;
-            };
-
-        int A;
-        int B;
-        int C;
-
-        core::vector3df v = t_h.vertices[T.A];
-        int v_i = find_vertex(v);
-        if(v_i == -1)
-        {
-            ret.vertices.push_back(v);
-            v_i = ret.vertices.size() -1;
-        }
-        A = v_i;
-
-        v = t_h.vertices[T.B];
-        v_i = find_vertex(v);
-        if(v_i == -1)
-        {
-            ret.vertices.push_back(v);
-            v_i = ret.vertices.size() -1;
-        }
-        B = v_i;
-
-        v = t_h.vertices[T.C];
-        v_i = find_vertex(v);
-        if(v_i == -1)
-        {
-            ret.vertices.push_back(v);
-            v_i = ret.vertices.size() -1;
-        }
-        C = v_i;
-
-        triangle new_T;
-        new_T.A=A;
-        new_T.B=B;
-        new_T.C=C;
-        ret.triangles.push_back(new_T);
-    }
-    t_h = ret;
-}
-*/
 int triangle_holder::get_point_or_add(core::vector3df point)
 {
     for( int i=0; i<this->vertices.size(); i++)

@@ -10,10 +10,6 @@
 using namespace irr;
 using namespace gui;
 
-//gui::IGUIEnvironment* Texture_Picker_Base::env = NULL;
-//geometry_scene* Texture_Picker_Base::g_scene = NULL;
-//std::vector<TextureInfo> Texture_Picker_Base::my_textures;
-//int Texture_Picker_Base::selection = -1;
 TexturePicker_Base* TexturePicker_Tool::base = NULL;
 multi_tool_panel* TexturePicker_Tool::panel = NULL;
 
@@ -27,14 +23,11 @@ TexturePicker::TexturePicker(IGUIEnvironment* environment,  IGUIElement* parent,
 	#endif
 
     MY_SCROLLBAR_ID = GUI_ID_TEXTURE_SCROLL_BAR;
-	//my_scrollbar = environment->addScrollBar(false,core::rect<s32>(0,0,15,this->AbsoluteRect.getHeight()),this,GUI_ID_TEXTURE_SCROLL_BAR);
+
 	my_scrollbar = new CGUIScrollBar2(false,environment,this,GUI_ID_TEXTURE_SCROLL_BAR,core::rect<s32>(0,0,16,this->AbsoluteRect.getHeight()));
 	my_scrollbar->drop();
 
-	//my_scrollbar->setMax(256);
     my_scrollbar->setMax(getTotalLength());
-	//my_scrollbar->setPos(32);
-	//my_scrollbar->setLargeStep(64);
 }
 
 TexturePicker::~TexturePicker()
@@ -49,21 +42,18 @@ int TexturePicker::getTotalLength()
 
 void TexturePicker::do_layout()
 {
-    
     int start_i =0;
-    int end_i = texture_list.size(); //my_base->my_textures.size();
+    int end_i = texture_list.size();
     int scroll_pos = my_scrollbar->getPos();
-    int total_length = //(my_base->my_textures.size()/2)*(32+texture_icon_size);
-                        //((texture_list.size()+1)/2)*(32+texture_icon_size);
-                        getTotalLength();
-    int view_length = RelativeRect.getHeight();//566;//660-56;
+    int total_length = getTotalLength();
+    int view_length = RelativeRect.getHeight();
     int move_length=0;
-    //std::cout<<texture_list.size()/2+1<<" rows\n";
+
     if(total_length > view_length)
     {
         move_length = total_length - view_length;
     }
-    int start_pos = scroll_pos;// move_length; // *(f32(scroll_pos) / 255.0);
+    int start_pos = scroll_pos;
 
     core::list<gui::IGUIElement*> child_list = this->getChildren();
 
@@ -85,8 +75,6 @@ void TexturePicker::do_layout()
 
         if(ypos + 32  + texture_icon_size > start_pos && ypos < start_pos + view_length)
         {
-            //if(my_base->my_textures[i].category == my_base->selected_category ||
-           //    my_base->selected_category == 0)
             {
                 TextureIcon* img = new TextureIcon(Environment,this,-1, core::rect<s32>(xpos-border,ypos-start_pos-border,xpos+texture_icon_size+border,ypos-start_pos+texture_icon_size+16+border));
                 img->setImage(texture_list[i].texture);
@@ -108,8 +96,7 @@ void TexturePicker::selected(int sel)
     {
         selection=sel;
         my_base->selection=texture_list[sel].texture_number;
-        //std::string s(my_textures[sel].name.begin(),my_textures[sel].name.end());
-        //std::cout<<"selected "<<my_textures[selection].name<<"\n";
+
         do_layout();
         if(this->geo_scene && this->geo_scene->getSelectedFaces().size() > 0)
         {
@@ -219,7 +206,6 @@ void TexturePicker::scrubList()
     }
     else
     {
-       // ((CGUIScrollBar2*)my_scrollbar)->setDrawHeight(RelativeRect.getHeight()-32);
         my_scrollbar->setPos(0);
         my_scrollbar->setEnabled(false);
         my_scrollbar->setVisible(false);
@@ -273,13 +259,9 @@ void Texture_Picker_Window::show()
         my_ComboBox->addItem(str.c_str());
     }
 
-    //texturePicker->my_textures = Texture_Picker_Base::my_textures;
     texturePicker->scrubList();
     texturePicker->do_layout();
-
-
 }
-
 
 bool Texture_Picker_Window::OnEvent(const SEvent& event)
 {
@@ -327,13 +309,11 @@ TexturePicker_Base::TexturePicker_Base(std::wstring name, int my_id, gui::IGUIEn
 
 void TexturePicker_Base::show()
 {
-
     core::rect<s32> client_rect(core::vector2di(0,0),
                                 core::dimension2du(this->panel->getClientRect()->getAbsolutePosition().getWidth(),
                                                    this->panel->getClientRect()->getAbsolutePosition().getHeight()));
 
     Texture_Picker_Window* widget = new Texture_Picker_Window(env,panel->getClientRect(),g_scene,this,GUI_ID_TEXTURES_BASE,client_rect);
-    //widget->setText(L"Choose Texture");
 
     widget->show();
     widget->my_ComboBox->setSelected(this->selected_category);
@@ -341,36 +321,14 @@ void TexturePicker_Base::show()
     widget->drop();
 }
 
-/*
-void Texture_Picker_Base::addTexture(std::string name)
-{
-    TextureInfo texinfo;
-    texinfo.texture = device->getVideoDriver()->getTexture(name.c_str());
-
-    io::path path = texinfo.texture->getName();
-    core::deletePathFromFilename(path);
-    core::cutFilenameExtension(path,path);
-    core::stringw str = path;
-    texinfo.name = str;
-
-    my_textures.push_back(texinfo);
-}*/
-
 void TexturePicker_Base::addTexture(video::ITexture* texture, std::string name, std::string category)
 {
     TextureInfo texinfo;
     texinfo.texture = texture;
 
-    //io::path path = texinfo.texture->getName();
-    //core::deletePathFromFilename(path);
-    //core::cutFilenameExtension(path,path);
     std::wstring wstr(name.begin(),name.end());
     core::stringw str(wstr.c_str());
     texinfo.name = str;
-
-    //std::wstring wstr(category.begin(),category.end());
-    //core::stringw str1w(wstr.c_str());
-    //texinfo.category = str1w;
 
     if(category != std::string(""))
         {
@@ -407,10 +365,6 @@ void TexturePicker_Base::addTexture(std::string name, std::string category)
     core::cutFilenameExtension(path,path);
     core::stringw str = path;
     texinfo.name = str;
-
-    //std::wstring wstr(category.begin(),category.end());
-    //core::stringw str1w(wstr.c_str());
-    //texinfo.category = str1w;
 
     if(category != std::string(""))
         {

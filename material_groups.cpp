@@ -1,13 +1,9 @@
-
-
-
 #include <irrlicht.h>
 #include "material_groups.h"
 #include "edit_env.h"
 #include "edit_classes.h"
 #include "geometry_scene.h"
 #include "utils.h"
-#include "custom_nodes.h"
 
 using namespace irr;
 using namespace gui;
@@ -16,12 +12,9 @@ extern IrrlichtDevice* device;
 
 Material_Groups_Base* Material_Groups_Tool::base = NULL;
 IGUIEnvironment* Material_Groups_Tool::env = NULL;
-//geometry_scene* Material_Groups_Tool::g_scene = NULL;
 multi_tool_panel* Material_Groups_Tool::panel = NULL;
 
-//Material_Groups_Widget::mGroups_struct Material_Groups_Widget::mg_struct{0};
 Material_Groups_Widget::nSelected_struct Material_Groups_Widget::sel_struct{2};
-
 
 REFLECT_STRUCT_BEGIN(Material_Groups_Widget::nSelected_struct)
     REFLECT_STRUCT_MEMBER(nSelected)
@@ -51,17 +44,8 @@ void Material_Groups_Widget::show()
     VISUALIZE_BUTTON_ID = my_ID + 2;
     COMBOBOX_ID = my_ID + 3;
 
-    //form = new Reflected_GUI_Edit_Form(Environment,this,NULL,OK_BUTTON_ID+1,
-    //                                        core::rect<s32>(form_pos,core::dimension2du(128,128)));
     form2 = new Reflected_GUI_Edit_Form(Environment,this,NULL,VISUALIZE_BUTTON_ID+1,
                                             core::rect<s32>(form_pos2,core::dimension2du(128,128)));
-
-    //reflect::TypeDescriptor_Struct* typeDesc = (reflect::TypeDescriptor_Struct*)reflect::TypeResolver<mGroups_struct>::get();
-   // reflect::TypeDescriptor* typeDesc2 = reflect::TypeResolver<nSelected_struct>::get();
-    //typeDesc->addFormWidgets("", form,true);
-    //typeDesc->addFormWidget(form,NULL,std::vector<int>{},0,true,true,0);
-
-    //int next_ID = form->ShowWidgets(GUI_ID_REFLECTED_BASE+3);
 
     Int_StaticField* f = new Int_StaticField();
     f->setText("selected faces");
@@ -87,34 +71,21 @@ void Material_Groups_Widget::show()
     
     for (Material_Group mg : base->material_groups)
     {
-       
-        //std::wstring txt(typeDesc->alias, typeDesc->alias + strlen(typeDesc->alias));
         std::wstring txt(mg.name.begin(),mg.name.end());
         m_listbox->addItem(txt.c_str());
     }
 
     m_listbox->setSelected(-1);
 
-    
-
-    //*obj2 = g_scene->getSelectedFaces().size();
-
-    //f->obj = (int*)&sel_struct;
-    
-
     sel_struct.nSelected = g_scene->getSelectedFaces().size();
 
     int ypos = form2->getTotalHeight()+32 + base->material_groups.size() * itemheight + 4;
 
-    //VISUALIZE_BUTTON_ID=next_ID;
-
     Environment->addButton(core::rect<s32>(form_pos+core::vector2di(100,ypos),form_pos+core::vector2di(160,ypos+28)),this,VISUALIZE_BUTTON_ID,L"Visualize");
-
 
     r = core::rect<s32>(core::vector2di(getRelativePosition().getWidth()-96, ypos+48), core::dimension2di(96, 24));
 
     m_combobox_lmres = Environment->addComboBox(r, this, COMBOBOX_ID);
-    //m_combobox_lmres->setDrawBackground(false);
 
     m_combobox_lmres->addItem(L"None");
     m_combobox_lmres->addItem(L"16");
@@ -127,8 +98,6 @@ void Material_Groups_Widget::show()
 
     m_combobox_lmres->setSelected(0);
 
-    //bringToFront(form2);
-
     SEvent event;
     event.EventType = EET_USER_EVENT;
     event.UserEvent.UserData1=USER_EVENT_SELECTION_CHANGED;
@@ -138,96 +107,15 @@ void Material_Groups_Widget::show()
 
 void Material_Groups_Widget::refresh()
 {
-    /*
-    if(form)
-    {
-        form->remove();
-    }*/
-
     core::vector2di form_pos(8,60);
-    //form = new Reflected_GUI_Edit_Form(Environment,this,NULL,GUI_ID_REFLECTED_BASE,
-    //                                        core::rect<s32>(form_pos,core::dimension2du(96,128)));
 
-    //bool editable = this->sel_struct.nSelected > 0;
-
-   // reflect::TypeDescriptor_Struct* typeDesc = (reflect::TypeDescriptor_Struct*)reflect::TypeResolver<mGroups_struct>::get();
-//    typeDesc->addFormWidgets("", form,editable);
-   // typeDesc->addFormWidget(form,NULL,std::vector<int>{},0,true,editable,0);
-
-    //int next_ID = form->ShowWidgets(GUI_ID_REFLECTED_BASE+2);
-
-    //form->read(&mg_struct);
     form2->read(&sel_struct);
-
-    //FormField* f = form->edit_fields;
-    GeometryStack* geo_node = g_scene->geoNode();
-
-    if( g_scene->getSelectedFaces().size() > 1)
-    {
-        int f_0 = g_scene->getSelectedFaces()[0];
-        int brush_0 = geo_node->get_total_geometry()->faces[f_0].original_brush;
-        int face_0 = geo_node->get_total_geometry()->faces[f_0].original_face;
-
-        for( int f_i : g_scene->getSelectedFaces())
-        {
-            int b_i = g_scene->getSelectedFaces()[0];
-
-            int brush_j = geo_node->get_total_geometry()->faces[f_i].original_brush;
-            int face_j = geo_node->get_total_geometry()->faces[f_i].original_face;
-
-            bool b = (geo_node->elements[brush_j].brush.faces[face_j].material_group ==
-                        geo_node->elements[brush_0].brush.faces[face_0].material_group);
-
-            if(b)
-            {
-                //mg_struct.group_no.value = geo_node->elements[brush_0].brush.faces[face_0].material_group;
-                //form->read(&mg_struct);
-                bWrite=true;
-            }
-            else
-            {
-                //f->setActive(false);
-                bWrite=false;
-            }
-        }
-    }
-    else if( g_scene->getSelectedFaces().size() == 1)
-    {
-        int f_0 = g_scene->getSelectedFaces()[0];
-        int brush_0 = geo_node->get_total_geometry()->faces[f_0].original_brush;
-        int face_0 = geo_node->get_total_geometry()->faces[f_0].original_face;
-
-        //mg_struct.group_no.value = geo_node->elements[brush_0].brush.faces[face_0].material_group;
-        //form->read(&mg_struct);
-        bWrite=true;
-    }
 }
-
 
 void Material_Groups_Widget::click_OK()
 {
-    if(!bWrite)
-        return;
 
-    std::vector<int> selection = this->g_scene->getSelectedFaces();
-    GeometryStack* geo_node = g_scene->geoNode();
-
-    //this->form->write(&mg_struct);
-
-    for(int b_i: selection)
-    {
-        int brush_j = geo_node->get_total_geometry()->faces[b_i].original_brush;
-        int face_j = geo_node->get_total_geometry()->faces[b_i].original_face;
-
-        poly_face* f = &geo_node->elements[brush_j].brush.faces[face_j];
-
-        //f->material_group = mg_struct.group_no.value;
-        //this->geo_node->get_total_geometry()->faces[b_i].material_group == mg_struct.group_no.value;
-        f->material_group = 1;
-        geo_node->get_total_geometry()->faces[b_i].material_group = 1;
-    }
 }
-
 
 bool Material_Groups_Widget::OnEvent(const SEvent& event)
 {
@@ -304,9 +192,9 @@ bool Material_Groups_Widget::OnEvent(const SEvent& event)
             {
                 if(id==VISUALIZE_BUTTON_ID)
                 {
-                   // std::cout << "visualize!\n";
+
                     g_scene->visualizeMaterialGroups();
-                    //click_OK();
+
                     return true;
                 }
                 break;
@@ -346,12 +234,6 @@ Material_Groups_Base::Material_Groups_Base(std::wstring name, int my_id, gui::IG
 
 Material_Groups_Base::~Material_Groups_Base()
 {
-    /*
-    for (Material_Group& mg : material_groups)
-    {
-        if (mg.texture)
-            env->getVideoDriver()->removeTexture(mg.texture);
-    }*/
 }
 
 void Material_Groups_Base::show()
@@ -370,7 +252,6 @@ void Material_Groups_Base::show()
 
 void Material_Groups_Base::apply_material_to_buffer(scene::IMeshBuffer* buffer, int material_no, int lighting, bool selected, bool final_view)
 {
-    //if (material_no >= material_groups.size())
     if (material_no > 3)
     {
         if(final_view)

@@ -3,7 +3,6 @@
 #include "csg_classes.h"
 #include "tolerances.h"
 
-
 //#define ACCELERATED_PROPAGATION
 
 using namespace irr;
@@ -89,7 +88,7 @@ std::vector<int> polyfold::get_loop_going_left(int f_i, int v_0, int e_0, int v_
 {
     std::vector<int> e_loop;
     e_loop.push_back(e_0);
-    //graph.lines.push_back(core::line3df(this->getVertex(e_0,0).V,this->getVertex(e_0,1).V));
+
     int v_i = v_1;
     int e_i = e_0;
 
@@ -111,46 +110,6 @@ std::vector<int> polyfold::get_loop_going_left(int f_i, int v_0, int e_0, int v_
         e_loop.push_back(e_i);
     };
 }
-
-
-
-
-/*
-void polyfold::copy_loops(polyfold& pf, int f_i)
-{
-    poly_face& f = faces[f_i];
-
-    f.loops.clear();
-
-    for (poly_loop loop : pf.faces[f_i].loops)
-    {
-        poly_loop new_loop;
-        for (int v_i : loop.vertices)
-        {
-            int v = get_point_or_add(pf.vertices[v_i].V);
-            new_loop.vertices.push_back(v);
-            f.addVertex(v);
-        }
-
-        std::vector<int> tempv = loop.vertices;
-        tempv.push_back(tempv[0]);
-
-        for (int i = 0; i < tempv.size() - 1; i++)
-        {
-            core::vector3df v0 = pf.vertices[tempv[i]].V;
-            core::vector3df v1 = pf.vertices[tempv[i + 1]].V;
-            int new_e = get_edge_or_add(get_point_or_add(v0), get_point_or_add(v1), 0);
-            f.addEdge(new_e);
-        }
-
-        new_loop.type = loop.type;
-        new_loop.topo_group = loop.topo_group;
-        new_loop.direction = loop.direction;
-        calc_loop_bbox(f, new_loop);
-        f.loops.push_back(new_loop);
-    }
-
-}*/
 
 bool polyfold::is_clockwise_loop(int f_i, int p_i) const
 {
@@ -292,27 +251,14 @@ void polyfold::do_loops(int f_i, int e_0, LineHolder& graph)
     int v0 = this->edges[e_0].v0;
     int v1 = this->edges[e_0].v1;
 
-    //std::cout<<"f "<<f_i<<" e "<<e_0<<"\n";
-
-    //std::cout<<"e_0="<<e_0<<" v0="<<v0<<" v1="<<v1<<" ";
     if (this->edges[e_0].p2 == 0 || this->edges[e_0].p2 == 2)
     {
-        //std::cout<<"a\n";
         std::vector<int> res = get_loop_going_right(f_i, v0, e_0, v1, nograph);
-        //std::cout<<"right res: ";
-        //for(int i=0;i<res.size();i++)
-        //    std::cout<<res[i]<<" ";
-        //std::cout<<"\n";
         this->add_loop_from_edges(f_i, res, false);
     }
     if (this->edges[e_0].p2 == 1)
     {
-        //std::cout<<"b\n";
         std::vector<int> res = get_loop_going_left(f_i, v0, e_0, v1, nograph);
-        //std::cout<<"left res: ";
-        //for(int i=0;i<res.size();i++)
-        //    std::cout<<res[i]<<" ";
-        //std::cout<<"\n";
         this->add_loop_from_edges(f_i, res, true);
     }
 
@@ -383,8 +329,6 @@ void polyfold::calc_loops(int f_i, LineHolder& graph)
             }
         }
     } while (found_loose_end == true);
-
-    //if (n_loose_ends > 0) std::cout << " Calc Loops: cleaned up " << n_loose_ends << " loose ends\n";
 
     for (int e_0 : this->faces[f_i].edges)
     {
@@ -468,21 +412,6 @@ void polyfold::add_loop_from_edges(int f_i, std::vector<int> e_vec, bool is_left
             this->faces[f_i].loops[new_p].type = LOOP_INNER;
         else
             this->faces[f_i].loops[new_p].type = LOOP_OUTER;
-
-        /*
-        if(f_i==0)
-        //if(false)
-        {
-        std::cout<<"f "<<f_i<<" loop "<<this->faces[f_i].loops.size()<<" ";
-
-        if(is_left) std::cout<<" is_left=true ";
-        else std::cout<<" is_left=false ";
-
-        if(bCW) std::cout<<"bCW = true\n";
-        else std::cout<<"bCW = false\n";
-        }
-        */
-
     }
 }
 

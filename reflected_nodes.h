@@ -174,56 +174,6 @@ namespace reflect
     };*/
 }
 
-
-class ListReflectedNodesWindow : public gui::IGUIElement
-{
-public:
-    ListReflectedNodesWindow(gui::IGUIEnvironment* env, gui::IGUIElement* parent,ListReflectedNodes_Base*,s32 id,core::rect<s32> rect);
-    ~ListReflectedNodesWindow();
-    void click_OK();
-    bool OnEvent(const SEvent& event);
-
-    ListReflectedNodes_Base* base=NULL;
-    int OK_BUTTON_ID;
-    int LISTBOX_ID;
-    int my_ID;
-
-};
-
-
-class ListReflectedNodes_Base : public tool_base
-{
-public:
-    virtual void initialize(std::wstring name_,int my_id, gui::IGUIEnvironment* env_, geometry_scene* g_scene_, multi_tool_panel*);
-    virtual void show();
-    reflect::TypeDescriptor_Struct* getSelectedTypeDescriptor();
-
-private:
-    std::vector<reflect::TypeDescriptor_Struct*> typeDescriptors;
-    reflect::TypeDescriptor_Struct* selectedDescriptor = NULL;
-
-    friend class ListReflectedNodesWindow;
-};
-
-
-class ListReflectedNodes_Tool
-{
-public:
-    static void initialize(ListReflectedNodes_Base* base_, multi_tool_panel* panel_)
-    {
-        base = base_;
-        panel = panel_;
-    }
-    static void show()
-    {
-        panel->add_tool(base);
-    }
-
-    static ListReflectedNodes_Base* base;
-    static multi_tool_panel* panel;
-};
-
-
 //
 //========================================================================================
 //  REFLECTED IRRLICHT SCENE NODES

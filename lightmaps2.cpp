@@ -178,7 +178,6 @@ bool lightmaps_fill(MeshNode_Interface* mesh_node, std::vector<lm_block>::iterat
 						0, 0, 0, 0,
 						0, 0, 0, 0);
 	
-
 	for (; blocks_it != blocks_end; ++blocks_it)
 	{
 		face_block.dimension = dimension2du(blocks_it->width, blocks_it->height);
@@ -193,21 +192,6 @@ bool lightmaps_fill(MeshNode_Interface* mesh_node, std::vector<lm_block>::iterat
 		u32 block_width = 256;
 
 		matrix4 m;
-
-		/*
-		std::cout << " scale = " << (f32)(blocks_it->width - 3) / (f32)block_width << " / " <<
-			(f32)(blocks_it->width - 3) / (f32)block_width << "\n";
-
-		std::cout<<" trans = " << (f32)(face_block.coords.UpperLeftCorner.X + 1.5f) / (f32)block_width << " / " <<
-			(f32)(face_block.coords.UpperLeftCorner.Y + 1.5f) / (f32)block_height << "\n";
-		*/
-
-		//m.setScale(vector3df((f32)(blocks_it->width - 3) / (f32)block_width,
-		//	(f32)(blocks_it->height - 3) / (f32)block_height, 1.0f));
-
-		//m.setTranslation(vector3df((f32)(face_block.coords.UpperLeftCorner.X + 1.5f) / (f32)block_width,
-		//	(f32)(face_block.coords.UpperLeftCorner.Y + 1.5f) / (f32)block_height, 0));
-		//std::cout << blocks_it->width << " / " << block_width << "\n";
 
 		f32 x_factor = 1.0f / (f32)block_width;
 		f32 y_factor = 1.0f / (f32)block_height;
@@ -233,116 +217,12 @@ bool lightmaps_fill(MeshNode_Interface* mesh_node, std::vector<lm_block>::iterat
 		
 		ret.lightmap_size = new_block.dimension.Width;
 		ret.has_lightmap = true;
-		//ret.
 	}
 
 	*out = ret;
 
 	return true;
 }
-/*
-int is_reducible(geometry_scene* geo_scene, int f_i, int reduce)
-{
-	polyfold* pf = geo_scene->get_total_geometry();
-
-
-	if (pf->faces[f_i].loops.size() > 0 && pf->faces[f_i].temp_b == false)
-	{
-		lm_block b;
-
-		vector<int> surface;
-		surface_group& sfg = *pf->getFaceSurfaceGroup(f_i);
-		int sfg_i = pf->getFaceSurfaceGroupNo(f_i);
-
-		switch (sfg.type)
-		{
-		case SURFACE_GROUP_CYLINDER:
-		case SURFACE_GROUP_DOME:
-		case SURFACE_GROUP_SPHERE:
-			surface = geo_scene->getSurfaceFromFace(f_i);
-			break;
-		default:
-			surface = vector<int>{ f_i };
-			break;
-		}
-
-		for (int f_j : surface)
-		{
-			pf->faces[f_j].temp_b = true;
-		}
-
-		switch (sfg.type)
-		{
-			case SURFACE_GROUP_STANDARD:
-			case SURFACE_GROUP_CUSTOM_UVS_BRUSH:
-			case SURFACE_GROUP_CUSTOM_UVS_GEOMETRY:
-			{
-				map_face_to_uvs2 mapper;
-
-				pf->calc_tangent(f_i);
-
-				poly_face* f = &pf->faces[f_i];
-				b.width = reduce_dimension_base2(f->bbox2d.getWidth(), reduce);
-				b.height = reduce_dimension_base2(f->bbox2d.getHeight(), reduce);
-
-				mapper.init(&geo_scene->get_total_geometry()->faces[f_i], 1, b.width, b.height);
-
-				map_uvs(geo_scene, &geo_scene->edit_meshnode_interface, vector<int>{ f_i }, mapper, MAP_UVS_LIGHTMAP);
-
-				b.faces = vector<int>{ f_i };
-
-
-
-			} break;
-
-			case SURFACE_GROUP_CYLINDER:
-			{
-				map_cylinder_to_uv2 mapper;
-
-				b.width = reduce_dimension_base2(sfg.radius * 2 * 3.1459, reduce);
-				b.height = reduce_dimension_base2(sfg.height, reduce);
-				b.faces = surface;
-
-
-			
-
-			} break;
-			case SURFACE_GROUP_DOME:
-			case SURFACE_GROUP_SPHERE:
-			{
-
-				map_sphere_to_uv2 mapper;
-
-				b.width = reduce_dimension_base2(sfg.radius * 2 * 3.1459 * 2, reduce);
-				b.height = b.width;
-				b.faces = surface;
-
-				mapper.init(&sfg, pf, surface, sfg_i, b.width, b.height);
-
-				for (int b_i : surface)
-				{
-					pf->calc_tangent(b_i);
-					//cout << pf->faces[b_i].m_tangent.X << "," << pf->faces[b_i].m_tangent.Y << "," << pf->faces[b_i].m_tangent.Z << "\n";
-				}
-
-				map_uvs(geo_scene, &geo_scene->edit_meshnode_interface, surface, mapper, MAP_UVS_LIGHTMAP);
-
-				
-
-			} break;
-			
-			default:
-			{
-				std::cout << "error, unknown surface type...\n";
-				return;
-			}break;
-
-		}
-
-	}
-
-}
-*/
 
 template<typename back_type>
 void initialize_block(GeometryStack* geo_node, int f_i, back_type ret, int reduce)
@@ -358,7 +238,6 @@ void initialize_block(GeometryStack* geo_node, int f_i, back_type ret, int reduc
 	{
 		lm_block b;
 
-		
 		surface_group& sfg = *pf->getFaceSurfaceGroup(f_i);
 		int sfg_i = pf->getFaceSurfaceGroupNo(f_i);
 
@@ -379,47 +258,13 @@ void initialize_block(GeometryStack* geo_node, int f_i, back_type ret, int reduc
 			pf->faces[f_j].temp_b = true;
 		}
 
-		/*
-		surface = vector<int>{ f_i };
-		for (int f_j : surface)
-		{
-			pf->faces[f_j].temp_b = true;
-		}
-
-		{
-			map_face_to_uvs2 mapper;
-
-			pf->calc_tangent(f_i);
-
-			poly_face* f = &pf->faces[f_i];
-			b.width = reduce_dimension_base2(f->bbox2d.getWidth(), reduce);
-			b.height = reduce_dimension_base2(f->bbox2d.getHeight(), reduce);
-			b.bounding_verts_index0 = 1;
-
-			rectf new_box;
-			new_box.UpperLeftCorner.X = f->bbox2d.LowerRightCorner.Y;
-			new_box.UpperLeftCorner.Y = f->bbox2d.UpperLeftCorner.X;
-			new_box.LowerRightCorner.X = f->bbox2d.UpperLeftCorner.Y;
-			new_box.LowerRightCorner.Y = f->bbox2d.LowerRightCorner.X;
-
-			f->bbox2d = new_box;
-			f->m_tangent = f->m_normal.crossProduct(f->m_tangent);
-
-			//mapper.init(&geo_node->get_total_geometry()->faces[f_i], 1,b.width,b.height);
-			mapper.init(&geo_node->get_total_geometry()->faces[f_i], 0, b.width, b.height);
-
-			map_uvs(geo_node, &geo_node->edit_meshnode_interface, vector<int>{ f_i }, mapper, MAP_UVS_LIGHTMAP);
-
-			b.faces = vector<int>{ f_i };
-		}*/
-
 		switch (sfg.type)
 		{
 			case SURFACE_GROUP_STANDARD:
 			case SURFACE_GROUP_CUSTOM_UVS_BRUSH:
 			case SURFACE_GROUP_CUSTOM_UVS_GEOMETRY:
 			{
-				map_face_to_uvs2 mapper;
+				map_face_to_uvs mapper;
 
 				pf->calc_tangent(f_i);
 
@@ -437,7 +282,6 @@ void initialize_block(GeometryStack* geo_node, int f_i, back_type ret, int reduc
 				f->bbox2d = new_box;
 				f->m_tangent = f->m_normal.crossProduct(f->m_tangent);
 				
-				//mapper.init(&geo_node->get_total_geometry()->faces[f_i], 1,b.width,b.height);
 				mapper.init(&geo_node->get_total_geometry()->faces[f_i], 0,b.width,b.height);
 
 				map_uvs(geo_node, &geo_node->edit_meshnode_interface, vector<int>{ f_i }, mapper, MAP_UVS_LIGHTMAP);
@@ -448,20 +292,17 @@ void initialize_block(GeometryStack* geo_node, int f_i, back_type ret, int reduc
 
 			case SURFACE_GROUP_CYLINDER:
 			{
-				map_sphere_to_uv3 mapper;
+				map_sphere_to_uv mapper;
 
 				b.width = reduce_dimension_base2(sfg.radius * 2 * 3.1459 * 2, reduce);
 				b.height = reduce_dimension_base2(sfg.height, reduce);
 				b.faces = surface;
 
-
-				//mapper.init(&sfg, pf, sfg_i,b.width,b.height);
 				mapper.init(&sfg, pf, surface, sfg_i, b.width, b.height, true);
 
 				for (int b_i : surface)
 				{
 					pf->calc_tangent(b_i);
-					//cout << pf->faces[b_i].m_tangent.X << "," << pf->faces[b_i].m_tangent.Y << "," << pf->faces[b_i].m_tangent.Z << "\n";
 					if (b.height > b.width)
 					{
 						poly_face* f = &pf->faces[b_i];
@@ -479,26 +320,12 @@ void initialize_block(GeometryStack* geo_node, int f_i, back_type ret, int reduc
 
 				map_uvs(geo_node, &geo_node->edit_meshnode_interface, surface, mapper, MAP_UVS_LIGHTMAP);
 
-				
-				//std::cout << " width = " << b.width << "\n";
-				//std::cout << " height = " << b.height << "\n";
-				//std::cout << " trans = " << -mapper.m_min.X << " / " << -mapper.m_min.Y << "\n";
-				//std::cout << " uv size = " << mapper.uv_width() << " / " << mapper.uv_height() << "\n";
-				//std::cout << " uv off = " << mapper.m_min.X << " / " << mapper.m_min.Y << "\n";
-				//std::cout << " scale = " << 1.0f / mapper.uv_width() << " / " << 1.0f / mapper.uv_height() << "\n";
-				
-				//m_scale.setScale(vector3df(1.0f / mapper.uv_width(), 1.0f / mapper.uv_height(), 1.0f));
-				//m_translate.setTranslation(vector3df(-mapper.m_min.X,-mapper.m_min.Y,0.0f));
-
-				//apply_transform_to_uvs(&geo_node->edit_meshnode_interface, surface, MAP_UVS_LIGHTMAP, m_translate);
-				//apply_transform_to_uvs(&geo_node->edit_meshnode_interface, surface, MAP_UVS_LIGHTMAP, m_scale);
-
 			} break;
 			case SURFACE_GROUP_DOME:
 			case SURFACE_GROUP_SPHERE:
 			{
 
-				map_sphere_to_uv3 mapper;
+				map_sphere_to_uv mapper;
 
 				b.width = reduce_dimension_base2(sfg.radius * 2 * 3.1459 * 2, reduce);
 				b.height = b.width;
@@ -509,8 +336,7 @@ void initialize_block(GeometryStack* geo_node, int f_i, back_type ret, int reduc
 				for (int b_i : surface)
 				{
 					pf->calc_tangent(b_i);
-					//cout << pf->faces[b_i].m_tangent.X << "," << pf->faces[b_i].m_tangent.Y << "," << pf->faces[b_i].m_tangent.Z << "\n";
-				
+
 					if (b.height > b.width)
 					{
 						poly_face* f = &pf->faces[b_i];
@@ -528,42 +354,7 @@ void initialize_block(GeometryStack* geo_node, int f_i, back_type ret, int reduc
 
 				map_uvs(geo_node, &geo_node->edit_meshnode_interface, surface, mapper, MAP_UVS_LIGHTMAP);
 
-				//std::cout << " trans = " << -mapper.m_min.X << " / " << -mapper.m_min.Y << "\n";
-				//std::cout << " scale = " << 1.0f / mapper.uv_width() << " / " << 1.0f / mapper.uv_height() << "\n";
-
-				//m_scale.setScale(vector3df(1.0f / mapper.uv_width(), 1.0f / mapper.uv_height(), 1.0f));
-				//m_translate.setTranslation(vector3df(-mapper.m_min.X, -mapper.m_min.Y, 0.0f));
-
-				//apply_transform_to_uvs(&geo_node->edit_meshnode_interface, surface, MAP_UVS_LIGHTMAP, m_translate);
-				//apply_transform_to_uvs(&geo_node->edit_meshnode_interface, surface, MAP_UVS_LIGHTMAP, m_scale);
-
 			} break;
-			/*
-			case SURFACE_GROUP_DOME:
-			case SURFACE_GROUP_SPHERE:
-			{
-				
-				map_sphere_to_uv mapper;
-
-				mapper.init(&sfg);
-
-				map_uvs(geo_node, &geo_node->edit_meshnode_interface, surface, mapper, MAP_UVS_LIGHTMAP);
-
-				b.faces = surface;
-				b.width = reduce_dimension_base2(mapper.uv_width() * sfg.radius * 2 * 3.1459, reduce);
-				b.height = reduce_dimension_base2(mapper.uv_height() * sfg.radius * 2 * 3.1459, reduce);
-
-				//std::cout << " trans = " << -mapper.m_min.X << " / " << -mapper.m_min.Y << "\n";
-				//std::cout << " scale = " << 1.0f / mapper.uv_width() << " / " << 1.0f / mapper.uv_height() << "\n";
-
-				m_scale.setScale(vector3df(1.0f / mapper.uv_width(), 1.0f / mapper.uv_height(), 1.0f));
-				m_translate.setTranslation(vector3df(-mapper.m_min.X, -mapper.m_min.Y, 0.0f));
-
-				apply_transform_to_uvs(&geo_node->edit_meshnode_interface, surface, MAP_UVS_LIGHTMAP, m_translate);
-				apply_transform_to_uvs(&geo_node->edit_meshnode_interface, surface, MAP_UVS_LIGHTMAP, m_scale);
-
-			} break;
-			*/
 			default:
 			{
 				std::cout << "error, unknown surface type...\n";
@@ -575,12 +366,6 @@ void initialize_block(GeometryStack* geo_node, int f_i, back_type ret, int reduc
 		{
 			swap(b.width, b.height);
 			b.bFlipped = true;
-
-			for (int b_i : surface)
-			{
-				//pf->faces[b_i].m_tangent = pf->faces[b_i].m_tangent.crossProduct(pf->faces[b_i].m_normal);
-				//pf->faces[b_i].m_tangent *= -1;
-			}
 		}
 
 		*ret = b;
@@ -676,7 +461,10 @@ void Lightmap_Manager::loadLightmapTextures(GeometryStack* geo_node)
 	for (int i = 0; i < material_groups.size(); i++)
 	{
 		if (material_groups[i].has_lightmap == false)
+		{
+			lightmap_textures.push_back(NULL);
 			continue;
+		}
 
 		std::stringstream ss;
 		ss << "../projects/export/lightmap_" << inc << ".bmp";

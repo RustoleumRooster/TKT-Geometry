@@ -265,7 +265,7 @@ bool TestPanel_2D::OnEvent(const SEvent& event)
                             }
                             if(geo_scene->getBrushSelection().size()>0 && bShiftDown==false && bCtrlDown==false)
                             {
-                                vDragBrushOriginalPosition = this->geo_scene->getSelectedVertex();//elements[geo_scene->getSelection()[0]].brush.vertices[0].V;
+                                vDragBrushOriginalPosition = this->geo_scene->getSelectedVertex();
                                 bDragBrush=true;
                             }
                             else if(geo_scene->getBrushSelection().size()>0 && bShiftDown==true)
@@ -280,7 +280,6 @@ bool TestPanel_2D::OnEvent(const SEvent& event)
                             }
                             else if(geo_scene->getSelectedNodes().size()==1 && bShiftDown==true)
                             {
-                                //vRotateBrushOrigin=geo_scene->getSelectedSceneNode(0)->getPosition();
                                 vRotateBrushOrigin=geo_scene->getSelectedNodes()[0]->getPosition();
                                 bRotateNode=true;
 
@@ -429,8 +428,8 @@ bool TestPanel_2D::OnEvent(const SEvent& event)
                                 f32 Z_i = grid_snap*core::round32(V.Z/this->grid_snap);
                                 V=core::vector3df(X_i,Y_i,Z_i);
                                 core::matrix4 M;
-                                int v0 = 0;//this->geo_scene->elements[this->selected_brush].selected_vertex;
-                                //core::vector3df T = V-this->geo_scene->elements[geo_scene->getSelection()[0]].brush.vertices[v0].V;
+                                int v0 = 0;
+                                
                                 core::vector3df T = V-this->geo_scene->getSelectedVertex();
                                 if(T.getLength()>0.05)
                                 {
@@ -471,17 +470,15 @@ bool TestPanel_2D::OnEvent(const SEvent& event)
                             f32 Z_i = grid_snap*core::round32(V.Z/this->grid_snap);
                             V=core::vector3df(X_i,Y_i,Z_i);
                             core::matrix4 M;
-                            int v0 = 0;//this->geo_scene->elements[this->selected_brush].selected_vertex;
-                            //core::vector3df T = V-this->geo_scene->elements[geo_scene->getSelection()[0]].brush.vertices[v0].V;
+                            int v0 = 0;
+                            
                             core::vector3df T = V-this->geo_scene->getSelectedNodes()[0]->getPosition();
                             if(T.getLength()>0.05)
                             {
                                 M.setTranslation(T);
-                                //this->geo_scene->elements[this->selected_brush].brush.translate(M);
-                                //for(int i : geo_scene->getSelectedNodes())
+
                                 for(Reflected_SceneNode* node : geo_scene->getSelectedNodes())
                                 {
-                                    //geo_scene->getSceneNodes()[i]->translate(M);
                                     node->translate(M);
                                 }
                             }
@@ -618,7 +615,6 @@ void TestPanel_2D::right_click(core::vector2di pos)
                     GetScreenCoords(geo_node->elements[p_i].brush.vertices[v_i].V,coords);
                     if(core::vector2di(clickx,clicky).getDistanceFrom(coords)<4)
                     {
-                        //geo_scene->selected_brush_vertex_editing =p_i;
                         geo_scene->set_selected_brush_vertex_editing(p_i);
                         geo_node->elements[p_i].selected_vertex=v_i;
                         geo_node->elements[p_i].control_vertex_selected = false;
@@ -632,7 +628,6 @@ void TestPanel_2D::right_click(core::vector2di pos)
                 GetScreenCoords(geo_node->elements[p_i].brush.control_vertices[v_i].V, coords);
                 if (core::vector2di(clickx, clicky).getDistanceFrom(coords) < 4)
                 {
-                    //geo_scene->selected_brush_vertex_editing = p_i;
                     geo_scene->set_selected_brush_vertex_editing(p_i);
                     geo_node->elements[p_i].selected_vertex = v_i;
                     geo_node->elements[p_i].control_vertex_selected = true;
@@ -760,9 +755,6 @@ bool TestPanel_2D::GetOrthoScreenCoords(core::vector3df V, core::vector2di &out_
 
 void TestPanel_2D::render()
 {
-    //if(isVisible()==false)
-    //    return;
-
     driver->setRenderTarget(getImage(), true, true, video::SColor(255,16,16,16));
     smgr->setActiveCamera(getCamera());
 

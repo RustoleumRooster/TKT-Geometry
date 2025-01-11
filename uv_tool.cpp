@@ -393,29 +393,6 @@ void UV_Editor_Panel::make_face(polyfold* pf_0, int f_no, video::ITexture* face_
             int e1 = uv_poly->get_edge_or_add(b, c, 0);
             int e2 = uv_poly->get_edge_or_add(a, c, 0);
         }
-
-        /*
-        for (int i = 0; i < uv_poly->edges.size(); i++)
-        {
-            int v_i0 = uv_poly->edges[i].v0;
-            int v_i1 = uv_poly->edges[i].v1;
-
-            core::vector3df v0 = uv_poly->vertices[v_i0].V;
-            core::vector3df v1 = uv_poly->vertices[v_i1].V;
-
-            if (pf_0->find_edge(v0, v1) != -1)
-            {
-                uv_poly->edges[i].topo_group = 2;
-            }
-        }
-
-        c = 0;
-        for (int i = 0; i < uv_poly->edges.size(); i++)
-        {
-            if (uv_poly->edges[i].topo_group == 2)
-                c++;
-        }
-        */
     }
 }
 
@@ -467,8 +444,6 @@ void UV_Editor_Panel::make_custom_surface_group()
                 tc.vertex = i;
                 tc.texcoord = pos;
                 sfg->texcoords.push_back(tc);
-
-                //std::cout << "  " << pos.X << "," << pos.Y << "\n";
             }
 
         }

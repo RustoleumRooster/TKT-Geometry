@@ -10,7 +10,7 @@ void apply_transform_to_uvs(MeshNode_Interface* mesh_node, const std::vector<int
 	for (int b_i : surface)
 	{
 		MeshBuffer_Chunk chunk = mesh_node->get_mesh_buffer_by_face(b_i);
-		//std::cout << b_i << ":\n";
+
 		if (chunk.buffer)
 		{
 			vector<u16> indices;
@@ -56,7 +56,6 @@ void apply_transform_to_uvs(MeshNode_Interface* mesh_node, const std::vector<int
 
 					vtx->TCoords2.set(V4[0], V4[1]);
 
-					//std::cout << V4[0]<< "," << V4[1] << "\n";
 				}
 			}
 		}
