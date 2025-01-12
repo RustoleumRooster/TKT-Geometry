@@ -113,48 +113,73 @@ void do_initial_topology(polyfold& pf4, polyfold& pf5, const std::vector<BVH_int
 }
 
 template<bool bAccelerate>
-void propagate_topo_group(polyfold& pf, int e_i, int v0)
+void propagate_topo_group(polyfold& pf, int e_0)
 {
-    int v1 = pf.get_opposite_end(e_i, v0);
-    bool safe = true;
+    struct edge_point_pair {
+        int edge;
+        int vertex;
+    };
+
+    std::vector<edge_point_pair> edges_to_explore;
+
+    edges_to_explore.push_back(edge_point_pair{ e_0, pf.edges[e_0].v0 });
+    edges_to_explore.push_back(edge_point_pair{ e_0, pf.edges[e_0].v1 });
+
+    auto no_common_topology = [&](const std::vector<int>& edges) -> bool 
+    {
+        for (int e_j : edges)
+        {
+            if (pf.edges[e_j].topo_group == 3)
+                return false;
+        }
+        return true;
+    };
 
     std::vector<int> c_edges;
+    std::vector<edge_point_pair> all_new_edges;
 
-    if(bAccelerate)
-        pf.get_all_edges_from_point_accelerated(e_i, v1, c_edges);
-    else
-        pf.get_all_edges_from_point(e_i, v1, c_edges);
-
-    for (int e_j : c_edges)
+    while (edges_to_explore.size() > 0)
     {
-        if (pf.edges[e_j].topo_group == 3)
-            safe = false;
-    }
+        all_new_edges.clear();
+        
+        for (edge_point_pair e : edges_to_explore)
+        {
+            c_edges.clear();
 
-    if (safe)
-    {
-        for (int e_j : c_edges)
-            if (pf.edges[e_j].topo_group == 2)
-            {
-                pf.edges[e_j].topo_group = pf.edges[e_i].topo_group;
-                //pf.propagate_topo_group(e_j, v1);
-                propagate_topo_group<bAccelerate>(pf, e_j, v1);
-            }
+            if (bAccelerate)
+                pf.get_all_edges_from_point_accelerated(e.edge, e.vertex, c_edges);
+            else
+                pf.get_all_edges_from_point(e.edge, e.vertex, c_edges);
+
+            if(no_common_topology(c_edges))
+                for (int e_j : c_edges)
+                {
+                    if (pf.edges[e_j].topo_group == 2)
+                    {
+                        pf.edges[e_j].topo_group = pf.edges[e_0].topo_group;
+                        int new_vertex = pf.get_opposite_end(e_j, e.vertex);
+
+                        all_new_edges.push_back(edge_point_pair{ e_j, new_vertex });
+                    }
+                }
+        }
+
+        edges_to_explore = all_new_edges;
     }
 }
 
 template<bool bAccelerate>
 bool apply_topology_groups(polyfold& pf, polyfold& pf2, int default_group, LineHolder& graph)
 {
+
     for (int e_i = 0; e_i < pf.edges.size(); e_i++)
     {
         if (pf.edges[e_i].topo_group == 0 || pf.edges[e_i].topo_group == 1)
         {
-            propagate_topo_group<bAccelerate>(pf, e_i, pf.edges[e_i].v0);
-            propagate_topo_group<bAccelerate>(pf, e_i, pf.edges[e_i].v1);
+            propagate_topo_group<bAccelerate>(pf, e_i);
         }
     }
-
+    
     bool found_one;
     do
     {
@@ -190,8 +215,7 @@ bool apply_topology_groups(polyfold& pf, polyfold& pf2, int default_group, LineH
                     }
                 }
 
-                propagate_topo_group<bAccelerate>(pf, e_i, pf.edges[e_i].v0);
-                propagate_topo_group<bAccelerate>(pf, e_i, pf.edges[e_i].v1);
+                propagate_topo_group<bAccelerate>(pf, e_i);
             }
         }
     } while (found_one == true);
