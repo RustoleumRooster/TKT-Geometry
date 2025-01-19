@@ -213,9 +213,15 @@ bool apply_topology_groups(polyfold& pf, polyfold& pf2, int default_group, LineH
                     {
                         pf.edges[e_i].topo_group = TOP_FRONT;
                     }
+                    else //plane geometry
+                    {
+                        //TODO
+                       // pf.edges[e_i].topo_group = TOP_BEHIND;
+                    }
                 }
 
-                propagate_topo_group<bAccelerate>(pf, e_i);
+                if (pf.edges[e_i].topo_group != 2)
+                    propagate_topo_group<bAccelerate>(pf, e_i);
             }
         }
     } while (found_one == true);
