@@ -8,6 +8,7 @@
 #include "scrollbar2.h"
 #include "ex_gui_elements.h"
 #include "edit_env.h"
+#include "NodeInstancesTool.h"
 
 using namespace irr;
 
@@ -83,7 +84,7 @@ bool Node_Properties_Widget::OnEvent(const SEvent& event)
             onRefresh();
             return true;
         }
-        else if (event.UserEvent.UserData1 == USER_EVENT_SELECTION_CHANGED)
+        else if (event.UserEvent.UserData1 == USER_EVENT_SELECTION_CHANGED && my_base->waiting_for_node_selection == false)
         {
             if (my_widget)
             {
@@ -91,6 +92,7 @@ bool Node_Properties_Widget::OnEvent(const SEvent& event)
             }
 
             my_base->refresh_types();
+            my_base->preEdit();
 
             core::rect<s32> pr(0, 0, getRelativePosition().getWidth(), getRelativePosition().getHeight());
             my_widget = new Reflected_Widget_EditArea(Environment, edit_panel, g_scene, my_base, my_ID + 2, pr);
@@ -99,6 +101,38 @@ bool Node_Properties_Widget::OnEvent(const SEvent& event)
             my_widget->drop();
 
             onRefresh();
+
+            return true;
+        }
+        else if (event.UserEvent.UserData1 == USER_EVENT_NODES_SELECTED)
+        {
+            my_base->node_selection_made();
+
+            std::vector<int> tree_pos = my_base->node_selection_member;
+            reflect::Member* m = my_widget->m_typeDesc->getTreeNode(tree_pos);
+            size_t offset = my_widget->m_typeDesc->getTreeNodeOffset(tree_pos);
+
+            m->modified = true;
+            m->type->copy((char*)my_widget->temp_object + offset, &my_base->saved_uids);
+
+            FormField* f = my_widget->form->edit_fields;
+            while (f)
+            {
+                if (f->tree_pos == tree_pos)
+                {
+                    f->readValue((char*)my_widget->temp_object);
+                    break;
+                }
+                f = f->next;
+            }
+
+            onRefresh();
+
+            return true;
+        }
+        else if (event.UserEvent.UserData1 == USER_EVENT_NODE_SELECTION_ENDED)
+        {
+            my_base->node_selection_over();
 
             return true;
         }
@@ -133,6 +167,10 @@ void Node_Properties_Widget::click_OK()
 
 Node_Properties_Base::Node_Properties_Base(std::wstring name, int my_id, gui::IGUIEnvironment* env, multi_tool_panel* panel)
     : reflected_tool_base(name,my_id,env,panel)
+{
+}
+
+Node_Properties_Base::~Node_Properties_Base()
 {
 }
 
@@ -203,12 +241,84 @@ void Node_Properties_Base::show()
 
     widget->show();
     widget->drop();
-
 }
 
 void Node_Properties_Base::refresh_types()
 {
     my_typeDescriptors = Node_Properties_Base::GetTypeDescriptors(g_scene);
+}
+
+void Node_Properties_Base::choose_node_selection(std::vector<int> tree_pos)
+{
+    preEdit();
+
+    saved_selection = g_scene->getSelectedNodes();
+
+    waiting_for_node_selection = true;
+    node_selection_member = tree_pos;
+
+    Node_Selector_Tool::show();
+}
+
+void Node_Properties_Base::clear_selection(std::vector<int> tree_pos)
+{
+    node_selection_member = tree_pos;
+
+    saved_uids.clear();
+
+    preEdit();
+
+    MyEventReceiver* receiver = (MyEventReceiver*)device->getEventReceiver();
+
+    SEvent event;
+    event.EventType = EET_USER_EVENT;
+    event.UserEvent.UserData1 = USER_EVENT_NODES_SELECTED;
+
+    receiver->OnEvent(event);
+}
+
+void Node_Properties_Base::node_selection_made()
+{
+    std::vector<int> tree_pos = node_selection_member;
+
+    if (waiting_for_node_selection)
+    {
+        std::vector<int> branch;
+        for (int i = 1; i < tree_pos.size(); i++)
+            branch.push_back(tree_pos[i]);
+
+        if (branch.size() > 0)
+        {
+            reflect::TypeDescriptor_Struct* typeDesc = my_typeDescriptors[tree_pos[0]];
+
+            reflect::Member* m = typeDesc->getTreeNode(branch);
+            size_t offset = typeDesc->getTreeNodeOffset(branch);
+
+            std::vector<Reflected_SceneNode*> nodes = g_scene->getSelectedNodes();
+            
+            saved_uids.clear();
+
+            for (Reflected_SceneNode* n : nodes)
+                saved_uids.push_back(n->UID());
+        }
+    }
+}
+
+void Node_Properties_Base::node_selection_over()
+{
+    if (waiting_for_node_selection)
+    {
+        waiting_for_node_selection = false;
+        g_scene->setSelectedNodes(saved_selection);
+    }
+}
+
+void Node_Properties_Base::preEdit()
+{
+    for (Reflected_SceneNode* node : g_scene->getSelectedNodes())
+    {
+        node->preEdit();
+    }
 }
 
 reflect::TypeDescriptor_Struct* Node_Properties_Base::new_node_properties_flat_typedescriptor(std::vector<reflect::TypeDescriptor_Struct*> typeDescriptors)
@@ -395,6 +505,3 @@ void* Node_Properties_Base::getObj()
     }
     return NULL;
 }
-
-
-

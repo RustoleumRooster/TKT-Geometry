@@ -47,16 +47,22 @@ class Node_Properties_Base : public reflected_tool_base
 {
 public:
     Node_Properties_Base(std::wstring name, int my_id, gui::IGUIEnvironment* env, multi_tool_panel* panel);
+    ~Node_Properties_Base();
 
     static std::vector<reflect::TypeDescriptor_Struct*> GetTypeDescriptors(geometry_scene* geo_scene);
 
     void refresh_types();
 
+    void choose_node_selection(std::vector<int>);
+    void clear_selection(std::vector<int>);
+    void node_selection_made();
+    void node_selection_over();
+    void preEdit();
+
     reflect::TypeDescriptor_Struct* new_node_properties_flat_typedescriptor(std::vector<reflect::TypeDescriptor_Struct*>);
 
     // Inherited via reflected_tool_base
-    //virtual void initialize(std::wstring name_, int my_id, gui::IGUIEnvironment* env_, geometry_scene* g_scene_, multi_tool_panel*);
-    virtual void show();
+    virtual void show() override;
     virtual void widget_closing(Reflected_Widget_EditArea*) override;
     virtual reflect::TypeDescriptor_Struct* getTypeDescriptor() override;
     virtual void read_obj(void* obj) override;
@@ -69,6 +75,11 @@ public:
 
     std::vector<reflect::TypeDescriptor_Struct*> my_typeDescriptors;
 
+    bool waiting_for_node_selection = false;
+    std::vector<int> node_selection_member;
+
+    std::vector<u64> saved_uids;
+    std::vector<Reflected_SceneNode*> saved_selection;
 };
 
 class NodeProperties_Tool

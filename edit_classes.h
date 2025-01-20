@@ -12,6 +12,7 @@ using namespace irr;
 class FormField;
 class Reflected_GUI_Edit_Form;
 class geometry_scene;
+class reflected_tool_base;
 
 namespace reflect
 {
@@ -182,7 +183,7 @@ public:
     virtual int getHeight(){return (bVisible&&(!bInline))?1:0;}
     virtual int getNumIds(){return 2;}
     virtual int getButtonType() {return FORM_FIELD_NO_BUTTON;}
-    virtual void clickButton() {}
+    virtual bool clickButton(s32 id, reflected_tool_base*) { return false; } /*Only return true if this will cause panel to unshow*/
     virtual void copy(void*, void*) {}
     virtual int getWidth(int column);
 
@@ -356,10 +357,9 @@ public:
     virtual void writeValue(void* obj) {}
     virtual int getHeight();
     virtual int getButtonType() { return FORM_FIELD_BUTTON; }
-    virtual void clickButton();
-    //virtual int getNumIds(){return 1;}
+    virtual bool clickButton(s32 id, reflected_tool_base*) override;
+    virtual int getNumIds() override {return 3;}
 
-    //video::ITexture* texture = NULL;
     int ypos_ = 0;
     virtual bool is_equal(void* a, void* b) {
         return *get(a) == *get(b);
@@ -368,7 +368,6 @@ public:
     std::vector<u64>* get(void* obj_) { return (std::vector<u64>*)((char*)obj_ + offset); }
 
     std::vector<u64> target_uid;
-    //char* my_pointer = NULL;
 };
 
 class UID_Reference_EditField : public UID_Reference_FormField
@@ -474,7 +473,7 @@ public:
     virtual void setActive(int) {};
     //virtual int getHeight(){return 2;}
     virtual int getButtonType() {return FORM_FIELD_BUTTON;}
-    virtual void clickButton();
+    virtual bool clickButton(s32 id, reflected_tool_base*) override;
     virtual bool is_equal(void* a, void* b) {
         return *get(a) == *get(b);
     }

@@ -60,6 +60,7 @@ void initialize_tools(geometry_scene* scene, gui::IGUIEnvironment* gui, multi_to
     Node_Instances_Base* node_instances_base = new Node_Instances_Base(L"All Node Instances", GUI_ID_NODE_INSTANCES_BASE, gui, tool_panel);
     node_instances_base->set_scene(scene);
     Node_Instances_Tool::initialize(node_instances_base, tool_panel);
+    Node_Selector_Tool::initialize(node_instances_base);
 
     File_Open_Base* file_open_base = new File_Open_Base(L"All Node Instances", GUI_ID_FILE_OPEN_BASE, gui, tool_panel);
     file_open_base->set_scene(scene);

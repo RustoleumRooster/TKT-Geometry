@@ -6,6 +6,7 @@
 #include "GUI_tools.h"
 #include "tree_struct.h"
 #include "reflect_custom_types.h"
+#include "CGUIWindow.h"
 
 using namespace irr;
 
@@ -68,6 +69,7 @@ struct node_tree_item
     reflect::TypeDescriptor_Struct* typeDescriptor;
     node_tree_item* find_type(reflect::TypeDescriptor_Struct* tD);
     bool has_items_recursive();
+    void set_selected_recursive(Node_Instances_Base*);
 };
 
 class Node_Instances_Widget : public gui::IGUIElement
@@ -102,21 +104,18 @@ public:
     Node_Instances_Base(std::wstring name, int my_id, gui::IGUIEnvironment* env, multi_tool_panel* panel);
 
     virtual void show();
+    void show_window();
 
     virtual reflect::TypeDescriptor_Struct* getFlatTypeDescriptor() override;
-
-    virtual void widget_closing(Reflected_Widget_EditArea* widget);
-
-    //virtual void initialize(std::wstring name_, int my_id, gui::IGUIEnvironment* env_, geometry_scene* g_scene_, multi_tool_panel* panel_) override;
-
+    virtual void widget_closing(Reflected_Widget_EditArea* widget) override;
     virtual void init_member(reflect::TypeDescriptor_Struct* flat_typeDescriptor, std::vector<int> tree_pos) override;
-
     virtual void write_attributes(reflect::TypeDescriptor_Struct* flat_typeDescriptor) override;
-
     virtual void toggle_expanded_struct(reflect::TypeDescriptor_Struct* flat_typeDescriptor, std::vector<int> tree_pos) override;
 
     std::string getTypesString();
 
+    void set_selected(node_instance&);
+    void select();
     void select(Reflected_SceneNode* sel, bool shift);
 
     virtual void* getObj() {
@@ -149,6 +148,40 @@ public:
     {
         base = base_;
         panel = panel_;
+    }
+
+    static Node_Instances_Base* get_base()
+    {
+        return base;
+    }
+};
+
+class Node_Selector_Window : public gui::CGUIWindow
+{
+public:
+    Node_Selector_Window(gui::IGUIEnvironment* env, gui::IGUIElement* parent, Node_Instances_Base* base, geometry_scene* g_scene_, s32 id, core::rect<s32> rect);
+    ~Node_Selector_Window();
+
+    void show();
+    virtual bool OnEvent(const SEvent& event);
+
+    Node_Instances_Base* my_base;
+};
+
+class Node_Selector_Tool
+{
+    static Node_Instances_Base* base;
+
+public:
+
+    static void show()
+    {
+        base->show_window();
+    }
+
+    static void initialize(Node_Instances_Base* base_)
+    {
+        base = base_;
     }
 
     static Node_Instances_Base* get_base()

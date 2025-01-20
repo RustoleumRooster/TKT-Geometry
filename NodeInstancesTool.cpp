@@ -18,6 +18,7 @@ using namespace gui;
 extern IrrlichtDevice* device;
 
 Node_Instances_Base* Node_Instances_Tool::base = NULL;
+Node_Instances_Base* Node_Selector_Tool::base = NULL;
 multi_tool_panel* Node_Instances_Tool::panel = NULL;
 
 REFLECT_CUSTOM_STRUCT_BEGIN(node_instance)
@@ -101,8 +102,8 @@ void node_instance::my_typeDesc::addFormWidget(Reflected_GUI_Edit_Form* win, Typ
 	f->init("             ", tree, offset + ALIGN_BYTES, tab, bVisible);
 
 	if (my_attributes.selected)
-		f->bBorder = true;
-		//f->setActive(CELL_STATUS_SELECT);
+		//f->bBorder = true;
+		f->bHighlight = true;
 
 	f->bCanSelect = true;
 	win->addEditField(f);
@@ -222,19 +223,9 @@ bool Node_Instances_Widget::OnEvent(const SEvent& event)
 		}
 		else if (event.UserEvent.UserData1 == USER_EVENT_SELECTION_CHANGED)
 		{
-			if (my_widget)
-			{
-				my_widget->remove();
-			}
-			
-			core::rect<s32> pr(0, 0, getRelativePosition().getWidth(), getRelativePosition().getHeight());
-			my_widget = new Reflected_Widget_EditArea(Environment, edit_panel, g_scene, my_base, my_ID + 2, pr);
-			
-			my_base->build_struct();
+			my_base->select();
 
-			my_widget->show(false, my_base->getObj());
-			my_widget->drop();
-
+			my_widget->refresh();
 			onRefresh();
 
 			return true;
@@ -290,9 +281,21 @@ bool Node_Instances_Widget::OnEvent(const SEvent& event)
 
 void Node_Instances_Widget::click_OK()
 {
-	//reflect::TypeDescriptor_Struct* td = (reflect::TypeDescriptor_Struct*)reflect::TypeResolver<geo_settings_struct>::get();
+	MyEventReceiver* receiver = (MyEventReceiver*)device->getEventReceiver();
 
-	//my_widget->write(td, my_base->getObj());
+	SEvent event;
+	event.EventType = EET_USER_EVENT;
+	event.UserEvent.UserData1 = USER_EVENT_NODES_SELECTED;
+	receiver->OnEvent(event);
+
+	if (Parent)
+	{
+		SEvent e;
+		e.EventType = EET_GUI_EVENT;
+		e.GUIEvent.Caller = this;
+		e.GUIEvent.EventType = (gui::EGUI_EVENT_TYPE)GUI_REFLECTED_FORM_CLOSED;
+		Parent->OnEvent(e);
+	}
 }
 
 void Node_Instances_Base::init_member(reflect::TypeDescriptor_Struct* flat_typeDescriptor, std::vector<int> tree_pos)
@@ -320,6 +323,21 @@ std::string Node_Instances_Base::getTypesString()
 		ss << "Selection: " << g_scene->getSelectedNodes().size() << " " << td->alias;
 		return std::string(ss.str());
 	}
+}
+
+void Node_Instances_Base::set_selected(node_instance& item)
+{
+	item.selected = false;
+	for (Reflected_SceneNode* n : g_scene->getSelectedNodes())
+	{
+		if (item.node_ptr == (char*)n)
+			item.selected = true;
+	}
+}
+
+void Node_Instances_Base::select()
+{
+	m_struct.set_selected_recursive(this);
 }
 
 void Node_Instances_Base::select(Reflected_SceneNode* sel, bool shift)
@@ -385,6 +403,24 @@ void Node_Instances_Base::show()
 			this->panel->getClientRect()->getAbsolutePosition().getHeight()));
 
 	Node_Instances_Widget* widget = new Node_Instances_Widget(env, this->panel->getClientRect(), g_scene, this, my_ID, client_rect);
+
+	widget->show();
+	widget->drop();
+}
+
+void Node_Instances_Base::show_window()
+{
+	build_struct();
+
+	Node_Selector_Window* win = new Node_Selector_Window(env, env->getRootGUIElement(), this, g_scene, -1, core::rect<s32>(500, 64, 500 + 400, 64 + 340));
+
+	std::wstring s(L"Select Nodes");
+	win->setText(s.c_str());
+
+	win->show();
+	win->drop();
+
+	Node_Instances_Widget* widget = new Node_Instances_Widget(env, win, g_scene, this, my_ID, win->getClientRect());
 
 	widget->show();
 	widget->drop();
@@ -478,4 +514,51 @@ void Node_Instances_Base::build_struct()
 	}
 
 	m_struct.has_items_recursive();
+}
+
+Node_Selector_Window::Node_Selector_Window(gui::IGUIEnvironment* env, gui::IGUIElement* parent, Node_Instances_Base* base, geometry_scene* g_scene_, s32 id, core::rect<s32> rect)
+	: gui::CGUIWindow(env, parent, id, rect), my_base(base)
+{
+}
+
+Node_Selector_Window::~Node_Selector_Window()
+{
+	MyEventReceiver* receiver = (MyEventReceiver*)device->getEventReceiver();
+
+	SEvent event;
+	event.EventType = EET_USER_EVENT;
+	event.UserEvent.UserData1 = USER_EVENT_NODE_SELECTION_ENDED;
+
+	receiver->OnEvent(event);
+}
+
+void Node_Selector_Window::show()
+{
+}
+
+bool Node_Selector_Window::OnEvent(const SEvent& event)
+{
+	if (event.EventType == EET_USER_EVENT)
+	{
+		return false;
+	}
+	else if (event.EventType == EET_GUI_EVENT)
+	{
+		if (event.GUIEvent.EventType == (gui::EGUI_EVENT_TYPE)GUI_REFLECTED_FORM_CLOSED)
+		{
+			remove();
+			return true;
+		}
+	}
+
+	return gui::CGUIWindow::OnEvent(event);
+}
+
+void node_tree_item::set_selected_recursive(Node_Instances_Base* base)
+{
+	for (node_instance& item : instances)
+		base->set_selected(item);
+
+	for (node_tree_item& item : sub_classes)
+		item.set_selected_recursive(base);
 }

@@ -15,6 +15,7 @@
 //#include "Reflection.h"
 #include "geometry_scene.h"
 #include "texture_picker.h"
+#include "node_properties.h"
 
 extern IrrlichtDevice* device;
 using namespace irr;
@@ -321,7 +322,7 @@ bool EditWindow::OnEvent(const SEvent& event)
                         }
                         else if(field->getButtonType() ==  FORM_FIELD_BUTTON)
                         {
-                            field->clickButton();
+                            field->clickButton(id, NULL);
                         }
                     }
                 break;
@@ -1176,7 +1177,7 @@ void Texture_FormField::readValue(void* obj)
     }
 }
 
-void Texture_FormField::clickButton()
+bool Texture_FormField::clickButton(s32 id, reflected_tool_base* base)
 {
     if(bVisible)
     {
@@ -1197,6 +1198,8 @@ void Texture_FormField::clickButton()
                 editbox->setText(L"no texture");
         }
     }
+
+    return false;
 }
 
 void Texture_EditField::writeValue(void* obj)
@@ -1228,9 +1231,10 @@ int UID_Reference_EditField::addWidget(Reflected_GUI_Edit_Form* win, int ID, int
     BEGIN_WIDGET()
 
     addStaticTextLabel(text, row, tab, ID);
-    env->addButton(win->getCell(row, 1), win, ID + 1, L"Use Selection");
+    env->addButton(win->getCell(row, 1), win, ID + 1, L"Choose");
+    env->addButton(win->getCell(row, 2), win, ID + 2, L"Clear");
 
-    addStaticTextLabel("no selection", row + 1, tab + 2, ID + 2);
+    addStaticTextLabel("0 selected", row + 1, tab + 2, ID + 3);
 
     END_WIDGET()
 }
@@ -1254,7 +1258,6 @@ void UID_Reference_FormField::readValue(void* obj)
         if (editbox)
         {
             //Read from Object into Vector
-
             reflect::TypeDescriptor* td = reflect::TypeResolver<std::vector<u64>>::get();
 
             td->copy(&target_uid,(char*)get(obj));
@@ -1263,19 +1266,8 @@ void UID_Reference_FormField::readValue(void* obj)
             ss << target_uid.size();
             ss << " selected";
 
-            gui::IGUIElement* editbox = (gui::IGUIElement*)(owner->getElementFromId(my_ID + 2, true));
+            gui::IGUIElement* editbox = (gui::IGUIElement*)(owner->getElementFromId(my_ID + 3, true));
             editbox->setText(ss.str().c_str());
-
-            //if (my_UID_Reference != NULL)
-            //{
-              //  io::path path = my_texture->getName();
-              //  core::deletePathFromFilename(path);
-              //  core::cutFilenameExtension(path, path);
-              //  core::stringw str = path;
-              //  editbox->setText(str.c_str());
-            //}
-            //else
-            //    editbox->setText(L"no target");
         }
     }
 }
@@ -1285,33 +1277,25 @@ int UID_Reference_FormField::getHeight()
     return 2;
 }
 
-void UID_Reference_FormField::clickButton()
+bool UID_Reference_FormField::clickButton(s32 id, reflected_tool_base* base)
 {
     if (this->owner && this->owner->g_scene && bVisible)
     {
-        target_uid = this->owner->g_scene->get_saved_selection_uids();
+        Node_Properties_Base* node_properties_base = (Node_Properties_Base*)base;
 
-        reflect::Member* m = this->owner->get_typeDescriptor()->getTreeNode(this->tree_pos);
-
-        m->modified = true;
-        /*
-        my_texture = this->owner->g_scene->getTexturePickerBase()->getCurrentTexture();
-
-        gui::IGUIElement* editbox = (gui::IGUIElement*)(owner->getElementFromId(my_ID + 1, true));
-        if (editbox)
+        if (id == my_ID + 1)
         {
-            if (my_texture != NULL)
-            {
-                io::path path = my_texture->getName();
-                core::deletePathFromFilename(path);
-                core::cutFilenameExtension(path, path);
-                core::stringw str = path;
-                editbox->setText(str.c_str());
-            }
-            else
-                editbox->setText(L"no texture");
-        }*/
+            node_properties_base->choose_node_selection(this->tree_pos);
+        }
+        else if (id == my_ID + 2)
+        {
+            node_properties_base->clear_selection(this->tree_pos);
+        }
+
+        return true;
     }
+
+    return false;
 }
 
 int UID_Reference_StaticField::addWidget(Reflected_GUI_Edit_Form* win, int ID, int row)
