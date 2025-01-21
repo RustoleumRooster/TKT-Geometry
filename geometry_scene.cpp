@@ -111,66 +111,9 @@ void SceneCoordinator::add_scene()
     scenes.push_back(reflect::pointer<geometry_scene>{scene});
 }
 
-void SceneCoordinator::connect_skybox()
+void SceneCoordinator::connect_skybox(geometry_scene* scene)
 {
-    m_skybox_scene = NULL;
-    Reflected_SkyNode* skynode = NULL;
-
-    for (geometry_scene* scene : this->scenes)
-    {
-        std::vector<u64> uids = scene->get_reflected_node_uids_by_type("Reflected_SkyNode");
-
-        if (uids.size() > 0)
-        {
-            m_skybox_scene = scene;
-            skynode = (Reflected_SkyNode*)scene->get_reflected_node_by_uid(uids[0]);
-
-            break;
-        }
-    }
-
-    std::vector<u64> face_uids;
-
-    if (skynode && m_skybox_scene)
-    {
-        for (geometry_scene* scene : this->scenes)
-        {
-            std::vector<Reflected_SceneNode*> nodes = scene->get_reflected_nodes_by_type("Reflected_MeshBuffer_Sky_SceneNode");
-            for (Reflected_SceneNode* n : nodes)
-            {
-                face_uids.push_back(n->UID());
-                ((Reflected_MeshBuffer_Sky_SceneNode*)n)->set_connected(true);
-            }
-        }
-
-        skynode->target.uids = face_uids;
-
-    }
-    else
-    {
-        for (geometry_scene* scene : this->scenes)
-        {
-            std::vector<Reflected_SceneNode*> nodes = scene->get_reflected_nodes_by_type("Reflected_MeshBuffer_Sky_SceneNode");
-            for (Reflected_SceneNode* n : nodes)
-            {
-                ((Reflected_MeshBuffer_Sky_SceneNode*)n)->set_connected(false);
-            }
-        }
-    }
-}
-
-void SceneCoordinator::set_skyox_dirty()
-{
-    skybox_dirty = true;
-}
-
-void SceneCoordinator::cleanup_after_scene_nodes_added_deleted()
-{
-    if (skybox_dirty)
-    {
-        connect_skybox();
-        skybox_dirty = false;
-    }
+    m_skybox_scene = scene;
 }
 
 void SceneCoordinator::rebuild_dirty_meshbuffers()
@@ -386,12 +329,12 @@ void geometry_scene::setSelectedNodes_ShiftAdd(Reflected_SceneNode* new_sel)
     setSelectedNodes(selection);
 }
 
-void geometry_scene::setSelectedFaces(std::vector<int> selection)
+void geometry_scene::setSelectedFaces(std::vector<int> selection, bool force)
 {
     if(this->getMeshNode() == NULL || IsEditNode() == false)
         return;
 
-    if(selected_faces.size() == 0 && selection.size() == 0)
+    if(!force && selected_faces.size() == 0 && selection.size() == 0)
         return;
 
     if(selection.size() == 1 && selected_faces.size()==1 && selection[0] == selected_faces[0])
@@ -743,13 +686,11 @@ void geometry_scene::MaterialGroupToSelectedFaces()
 
     if (dirty_mesh)
     {
-        if (mg == 4)
+        const Material_Group& material = material_groups_base->material_groups[mg];
+
+        if (material.create_meshBuffer_Node)
         {
-            setFaceNodeType(selected_faces, "Reflected_MeshBuffer_Sky_SceneNode");
-        }
-        else if (mg == 5)
-        {
-            setFaceNodeType(selected_faces, "Reflected_MeshBuffer_Water_SceneNode");
+            setFaceNodeType(selected_faces, material.meshBuffer_Node_typeName);
         }
         else
         {
@@ -757,8 +698,6 @@ void geometry_scene::MaterialGroupToSelectedFaces()
         }
 
         geometry_stack->setFinalMeshDirty();
-
-        gs_coordinator->cleanup_after_scene_nodes_added_deleted();
     }
 }
 
@@ -1023,8 +962,8 @@ void geometry_scene::buildSceneGraph(bool addObjects, int light_mode, bool final
         }
     }
     
-    if(finalscene)
-        geometry_stack->recalculate_final_meshbuffer();
+   // if(finalscene)
+   //     geometry_stack->recalculate_final_meshbuffer();
 
     count = 0;
     child_list = editor_nodes->getChildren();
@@ -1046,8 +985,11 @@ void geometry_scene::buildSceneGraph(bool addObjects, int light_mode, bool final
         
     }
 
+    if (endScene)
+        geoNode()->getMeshNode()->copyMaterials();
+
     if (finalscene)
-        cout << "Scene has " << actual_nodes->getChildren().getSize() << " nodes\n";
+        cout << "(Scene has " << actual_nodes->getChildren().getSize() << " nodes)\n";
 
     child_list = smgr->getRootSceneNode()->getChildren();
 
@@ -1078,6 +1020,20 @@ void geometry_scene::buildSceneGraph(bool addObjects, int light_mode, bool final
     }
 
     b_Visualize = false;
+}
+
+void geometry_scene::beginScene()
+{
+    core::list<scene::ISceneNode*> child_list = editor_nodes->getChildren();
+    for (core::list<scene::ISceneNode*>::Iterator it = child_list.begin(); it != child_list.end(); ++it)
+    {
+        Reflected_SceneNode* node = (Reflected_SceneNode*)(*it);
+
+        node->onSceneInit();
+    }
+
+    //Caller calls
+    //geoNode()->getMeshNode()->copyMaterials();
 }
 
 
@@ -1156,7 +1112,7 @@ void geometry_scene::addSceneSelectedSceneNodeType(core::vector3df pos)
             a_thing->preEdit();
             a_thing->postEdit();
 
-            gs_coordinator->cleanup_after_scene_nodes_added_deleted();
+            //gs_coordinator->cleanup_after_scene_nodes_added_deleted();
         }
     }
 }
@@ -1193,7 +1149,7 @@ void geometry_scene::deleteSelectedNodes()
 
     selectionChanged();
 
-    gs_coordinator->cleanup_after_scene_nodes_added_deleted();
+   // gs_coordinator->cleanup_after_scene_nodes_added_deleted();
 }
 
 REFLECT_STRUCT_BEGIN(geometry_scene)

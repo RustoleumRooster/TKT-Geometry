@@ -11,6 +11,7 @@
 #include "CMeshSceneNode.h"
 #include "reflected_nodes.h"
 #include "CameraPanel.h"
+#include "LightMaps.h"
 
 #include <chrono>
 
@@ -889,15 +890,12 @@ void GeometryStack::buildSceneNode(bool finalMesh, int light_mode)
         my_MeshNode->remove();
     my_MeshNode = NULL;
 
-    if (final_mesh_dirty)
-    {
-        std::cout << "recalculating meshbuffers\n";
-        final_meshnode_interface.refresh_material_groups(this);
-        final_meshnode_interface.generate_mesh_node(this);
-    }
+    
 
     if (finalMesh) //final mesh
     {
+        recalculate_final_meshbuffer();
+
         b_isEditNode = false;
         this->my_MeshNode = final_meshnode_interface.addMeshSceneNode(this, SceneManager, this);
 
@@ -933,6 +931,9 @@ void GeometryStack::buildSceneNode(bool finalMesh, int light_mode)
 
         my_MeshNode->copyMaterials();
     }
+
+   // if(final_meshnode_interface.getMaterialsUsed().size() > 0)
+   //     Lightmaps_Tool::get_manager()->loadLightmapTextures(this);
 
     my_MeshNode->setMaterialFlag(video::EMF_LIGHTING, false);
 

@@ -12,6 +12,7 @@
 #include "texture_picker.h"
 #include "CMeshSceneNode.h"
 #include "NodeClassesTool.h"
+#include "LightMaps.h"
 
 extern IrrlichtDevice* device;
 extern SceneCoordinator* gs_coordinator;
@@ -1073,33 +1074,35 @@ void TestPanel_3D::SetMeshNodesVisible()
         {
         case PANEL3D_VIEW_RENDER:
             geo_scene->getMeshNode()->setVisible(true);
+            geo_scene->ActualNodes()->setVisible(false);
             geo_scene->setRenderType(false, true, false, false);
             break;
 
         case PANEL3D_VIEW_RENDER_FINAL:
             geo_scene->getMeshNode()->setVisible(true);
+            geo_scene->ActualNodes()->setVisible(true);
             geo_scene->setRenderType(false, true, false, false);
             break;
 
         case PANEL3D_VIEW_TRIANGLES:
             geo_scene->getMeshNode()->setVisible(true);
+            geo_scene->ActualNodes()->setVisible(false);
             geo_scene->setRenderType(false, true, false, true);
             break;
 
         case PANEL3D_VIEW_LOOPS:
             geo_scene->getMeshNode()->setVisible(false);
+            geo_scene->ActualNodes()->setVisible(false);
             geo_scene->setRenderType(false, true, true, false);
             break;
         }
-
     }
     else if(geo_scene->getMeshNode())
     {
         geo_scene->getMeshNode()->setVisible(false);
+        geo_scene->ActualNodes()->setVisible(false);
     }
-
 }
-
 
 void TestPanel_3D::SetViewStyle(s32 vtype)
 {
@@ -1151,6 +1154,13 @@ void TestPanel_3D::SetViewStyle(s32 vtype)
             gs_coordinator->skybox_scene()->setRenderType(false, true, false, false);
         }
 
+        if(geo_scene->geoNode()->elements.size() > 1)
+            Lightmaps_Tool::get_manager()->loadLightmapTextures(geo_scene->geoNode());
+
+        geo_scene->setSelectedFaces(std::vector<int>{}, true);
+
+        //gs_coordinator->CopyAllMaterials();
+
         break;
     case PANEL3D_VIEW_RENDER_FINAL:
        
@@ -1172,6 +1182,17 @@ void TestPanel_3D::SetViewStyle(s32 vtype)
        
         geo_scene->setRenderType(false, true, false, false);
 
+        geo_scene->beginScene();
+        if (gs_coordinator->skybox_scene() && gs_coordinator->skybox_scene() != geo_scene)
+        {
+            gs_coordinator->skybox_scene()->beginScene();
+        }
+
+        if (geo_scene->geoNode()->elements.size() > 1)
+            Lightmaps_Tool::get_manager()->loadLightmapTextures(geo_scene->geoNode());
+
+        gs_coordinator->CopyAllMaterials();
+
         bShowGeometry = true;
 
         break;
@@ -1185,11 +1206,6 @@ void TestPanel_3D::render()
 
     Active_Camera_Window = this;
 
-    if (view_style == PANEL3D_VIEW_RENDER_FINAL)
-    {
-        if (gs_coordinator->skybox_scene())
-            gs_coordinator->skybox_scene()->get_smgr()->drawAll();
-    }
 
     driver->setRenderTarget(getImage(), true, true, video::SColor(255, 16, 16, 16));
     

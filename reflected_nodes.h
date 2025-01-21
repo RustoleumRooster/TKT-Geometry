@@ -194,6 +194,8 @@ public:
     virtual void render_special(video::SMaterial& material) {}
 
     virtual const core::aabbox3df& getBoundingBox() const;
+    virtual const core::aabbox3df& getMyBoundingBox() const;
+
     virtual void OnRegisterSceneNode();
     virtual ESCENE_NODE_TYPE getType() {return ESNT_UNKNOWN;}
 
@@ -207,8 +209,10 @@ public:
     virtual bool bShowEditorArrow() {return false;}
     virtual void setUnlit(bool){}
 
-    virtual void endScene() {}
+    
     virtual bool addSelfToScene(USceneNode* parent, irr::scene::ISceneManager* smgr, geometry_scene* geo_scene) { return false; }
+    virtual void onSceneInit() {}
+    virtual void endScene() {}
 
     static void SetBaseMaterialType(video::E_MATERIAL_TYPE m) {base_material_type=m;}
     static void SetSpecialMaterialType(video::E_MATERIAL_TYPE m) {special_material_type=m;}
@@ -216,10 +220,11 @@ public:
     template<typename T>
     static void resolve_uid_references(geometry_scene* a_geo_scene, reflect::uid_reference& uid_ref, std::vector<T*>& ptr_ref);
 
-    int get_node_instance_id() { return node_instance_id; }
-
     void connect_input(Reflected_SceneNode*);
-    virtual void disconnect(Reflected_SceneNode*);
+    void disconnect(Reflected_SceneNode*);
+
+    virtual void on_connect_node(Reflected_SceneNode*) {}
+    virtual void on_disconnect_node(Reflected_SceneNode*) {}
 
     f32 getDistanceFromCamera(TestPanel* viewPanel);
 
@@ -243,10 +248,11 @@ public:
     reflect::vector3 Rotation;
     bool bSelected=false;
 
-    int node_instance_id=0;
+    //int node_instance_id=0;
 
     std::vector<u64> input_nodes;
     std::vector<Reflected_SceneNode*> input_node_ptrs;
+    core::aabbox3df total_bounding_box;
 
     REFLECT2()
 };
@@ -257,7 +263,8 @@ class Reflected_Sprite_SceneNode : public Reflected_SceneNode
 public:
     Reflected_Sprite_SceneNode(USceneNode* parent, geometry_scene* geo_scene, irr::scene::ISceneManager* smgr, int id, const core::vector3df& pos);
 
-    virtual const core::aabbox3df& getBoundingBox() const;
+    virtual const core::aabbox3df& getMyBoundingBox() const;
+
     virtual void OnRegisterSceneNode();
 
     void set_buffer();
@@ -280,7 +287,7 @@ class Reflected_Model_SceneNode : public Reflected_SceneNode
 public:
     Reflected_Model_SceneNode(USceneNode* parent, geometry_scene* geo_scene, irr::scene::ISceneManager* smgr, int id, const core::vector3df& pos);
 
-    virtual const core::aabbox3df& getBoundingBox() const;
+    virtual const core::aabbox3df& getMyBoundingBox() const;
     virtual void OnRegisterSceneNode();
 
     virtual void preEdit();
@@ -308,6 +315,7 @@ public:
     Reflected_MeshBuffer_SceneNode(USceneNode* parent, geometry_scene* geo_scene, irr::scene::ISceneManager* smgr, int id, const core::vector3df& pos);
 
     virtual bool addSelfToScene(USceneNode* parent, irr::scene::ISceneManager* smgr, geometry_scene* geo_scene) override;
+    virtual void endScene() override;
 
     IMeshBuffer* get_mesh_buffer();
     void restore_original_texture();
@@ -321,6 +329,8 @@ public:
     REFLECT2()
 };
 
+class MySkybox_SceneNode;
+
 class Reflected_MeshBuffer_Sky_SceneNode : public Reflected_MeshBuffer_SceneNode
 {
 public:
@@ -332,18 +342,30 @@ public:
 
     virtual void postEdit() override;
 
+    void connect_sky_sceneNode(MySkybox_SceneNode*, MySkybox_SceneNode*);
+
     bool is_connected = false;
 
     REFLECT2()
 };
+
+class WaterSurface_SceneNode;
 
 class Reflected_MeshBuffer_Water_SceneNode : public Reflected_MeshBuffer_SceneNode
 {
 public:
 
     Reflected_MeshBuffer_Water_SceneNode(USceneNode* parent, geometry_scene* geo_scene, irr::scene::ISceneManager* smgr, int id, const core::vector3df& pos);
-    
+    ~Reflected_MeshBuffer_Water_SceneNode();
+
+    virtual void on_connect_node(Reflected_SceneNode*) override;
+    virtual void on_disconnect_node(Reflected_SceneNode*) override;
+
     void set_connected(bool);
+
+    virtual void postEdit() override;
+
+    void connect_water_sceneNode(WaterSurface_SceneNode*);
 
     bool is_connected = false;
 

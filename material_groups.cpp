@@ -71,7 +71,8 @@ void Material_Groups_Widget::show()
     
     for (Material_Group mg : base->material_groups)
     {
-        std::wstring txt(mg.name.begin(),mg.name.end());
+        std::string stext(mg.name);
+        std::wstring txt(stext.begin(),stext.end());
         m_listbox->addItem(txt.c_str());
     }
 
@@ -252,9 +253,15 @@ void Material_Groups_Base::show()
 
 void Material_Groups_Base::apply_material_to_buffer(scene::IMeshBuffer* buffer, int material_no, int lighting, bool selected, bool final_view)
 {
-    if (material_no > 3)
+    Material_Group mg = material_groups[material_no];
+
+    if (mg.create_meshBuffer_Node)
     {
-        if(final_view)
+        //=========================================================================
+        //These meshbuffers are "managed" by their respective meshbuffer_sceneNodes, in final view only
+        //
+
+        if (final_view)
             return;
         else
         {
@@ -265,8 +272,6 @@ void Material_Groups_Base::apply_material_to_buffer(scene::IMeshBuffer* buffer, 
             return;
         }
     }
-
-    Material_Group mg = material_groups[material_no];
 
     if (lighting != -1)
         lighting_mode = lighting;

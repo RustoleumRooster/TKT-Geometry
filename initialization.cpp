@@ -20,6 +20,19 @@
 extern IrrlichtDevice* device;
 extern GUI_layout* gui_layout;
 
+video::ITexture* CloudsShaderCallBack::texture0 = NULL;
+video::ITexture* CloudsShaderCallBack::texture1 = NULL;
+video::ITexture* CloudsShaderCallBack::texture2 = NULL;
+
+void CloudsShaderCallBack::initialize()
+{
+    video::IVideoDriver* driver = device->getVideoDriver();
+
+    texture0 = driver->getTexture("../media/new_pnoise.bmp");
+    texture1 = driver->getTexture("../media/new_pnoise2.bmp");
+    texture2 = driver->getTexture("../media/new_pnoise3.bmp");
+}
+
 void initialize_tools(geometry_scene* scene, gui::IGUIEnvironment* gui, multi_tool_panel* tool_panel)
 {
     Material_Groups_Base* material_groups_base = new Material_Groups_Base(L"Materials", GUI_ID_MATERIAL_GROUPS_BASE, gui, tool_panel);
@@ -120,6 +133,7 @@ void initialize_materials(geometry_scene* scene)
     s32 materialType_underwater = 0;
     s32 materialType_water_surface = 0;
     s32 materialType_passthru = 0;
+    s32 materialType_clouds = 0;
 
     if (gpu)
     {
@@ -132,6 +146,7 @@ void initialize_materials(geometry_scene* scene)
         UnderwaterShaderCallback* mc7 = new UnderwaterShaderCallback();
         WaterSurfaceShaderCallback* mc8 = new WaterSurfaceShaderCallback();
         VanillaShaderCallBack* mc9 = new VanillaShaderCallBack();
+        CloudsShaderCallBack* mc10 = new CloudsShaderCallBack();
 
 
         materialType_unlit_selected = gpu->addHighLevelShaderMaterialFromFiles(
@@ -193,6 +208,11 @@ void initialize_materials(geometry_scene* scene)
             "shaders/blur_vertshader.txt", "vertexMain", video::EVST_VS_1_1,
             "shaders/passthru_fragshader.txt", "pixelMain", video::EPST_PS_1_1,
             mc9, video::EMT_SOLID, 0);
+
+        materialType_clouds = gpu->addHighLevelShaderMaterialFromFiles(
+            "vert_shader_default.txt", "vertexMain", video::EVST_VS_1_1,
+            "frag_shader_clouds", "pixelMain", video::EPST_PS_1_1,
+            mc10, video::EMT_SOLID, 0);
             
 
         mc->drop();
@@ -204,26 +224,40 @@ void initialize_materials(geometry_scene* scene)
         mc7->drop();
         mc8->drop();
         mc9->drop();
+        mc10->drop();
     }
 
     Material_Groups_Base* material_groups_base = Material_Groups_Tool::get_base();
 
-    Material_Group m0{ "Default",false,false,true,false,video::SColor(255,128,64,64) };
-    Material_Group m1{ "Unlit",false,false,false,false,video::SColor(255,128,64,64) };
-    Material_Group m2{ "Lightmap",false,false,true,false,video::SColor(255,128,128,64) };
-    Material_Group m3{ "Transparent",true,true,false,false,video::SColor(255,32,64,96) };
-    Material_Group m4{ "Sky",false,false,false,true,video::SColor(255,128,128,64) };
-    Material_Group m5{ "Water",false,false,false,false,video::SColor(255,128,128,64) };
+    Material_Group m0{ "Default",video::SColor(255,128,64,64) };
+    m0.lightmap = true;
 
+    Material_Group m1{ "Unlit",video::SColor(255,128,64,64) };
+    m1.lightmap = false;
 
-    material_groups_base->LightingMaterial_Type = (video::E_MATERIAL_TYPE)materialType_lightmap;
-    material_groups_base->LightingMaterial_Selected_Type = (video::E_MATERIAL_TYPE)materialType_lightmap_selected;
-    material_groups_base->LightingOnlyMaterial_Type = (video::E_MATERIAL_TYPE)materialType_light_only;
-    material_groups_base->LightingOnlyMaterial_Selected_Type = (video::E_MATERIAL_TYPE)materialType_light_only_selected;
-    material_groups_base->SolidMaterial_Type = video::EMT_SOLID;
-    material_groups_base->SolidMaterial_Selected_Type = (video::E_MATERIAL_TYPE)materialType_unlit_selected;
-    material_groups_base->SolidMaterial_WaterSurface_Type = (video::E_MATERIAL_TYPE)materialType_water_surface;
-    material_groups_base->Material_Projection_Type = (video::E_MATERIAL_TYPE)materialType_projection;
+    Material_Group m2{ "Lightmap",video::SColor(255,128,128,64) };
+    m2.lightmap = true;
+
+    Material_Group m3{ "Transparent",video::SColor(255,32,64,96) };
+    m3.lightmap = false;
+    m3.transparent = true;
+    m3.two_sided = true;
+
+    Material_Group m4{ "Skybox",video::SColor(255,128,128,64) };
+    m4.lightmap = false;
+    m4.create_meshBuffer_Node = true;
+    m4.meshBuffer_Node_typeName = "Reflected_MeshBuffer_Sky_SceneNode";
+
+    Material_Group m5{ "Water Surface",video::SColor(255,128,128,64) };
+    m5.lightmap = false;
+    m5.create_meshBuffer_Node = true;
+    m5.meshBuffer_Node_typeName = "Reflected_MeshBuffer_Water_SceneNode";
+
+    Material_Group m6{ "Clouds",video::SColor(255,128,128,64) };
+    m6.lightmap = false;
+    m6.create_meshBuffer_Node = true;
+    m6.meshBuffer_Node_typeName = "Reflected_MeshBuffer_Clouds_SceneNode";
+
 
     material_groups_base->material_groups.push_back(m0);
     material_groups_base->material_groups.push_back(m1);
@@ -231,6 +265,22 @@ void initialize_materials(geometry_scene* scene)
     material_groups_base->material_groups.push_back(m3);
     material_groups_base->material_groups.push_back(m4);
     material_groups_base->material_groups.push_back(m5);
+    material_groups_base->material_groups.push_back(m6);
+
+    CloudsShaderCallBack::initialize();
+
+
+    material_groups_base->LightingMaterial_Type = (video::E_MATERIAL_TYPE)materialType_lightmap_clipped;
+    material_groups_base->LightingMaterial_Selected_Type = (video::E_MATERIAL_TYPE)materialType_lightmap_selected;
+    material_groups_base->LightingOnlyMaterial_Type = (video::E_MATERIAL_TYPE)materialType_light_only;
+    material_groups_base->LightingOnlyMaterial_Selected_Type = (video::E_MATERIAL_TYPE)materialType_light_only_selected;
+    material_groups_base->SolidMaterial_Type = video::EMT_SOLID;
+    material_groups_base->SolidMaterial_Selected_Type = (video::E_MATERIAL_TYPE)materialType_unlit_selected;
+    material_groups_base->SolidMaterial_WaterSurface_Type = (video::E_MATERIAL_TYPE)materialType_water_surface;
+    material_groups_base->Material_Projection_Type = (video::E_MATERIAL_TYPE)materialType_projection;
+    material_groups_base->Material_Clouds_Type = (video::E_MATERIAL_TYPE)materialType_clouds;
+
+   
 
     Render_Tool_Base* render_tool_base = Render_Tool::get_base();
     render_tool_base->setMaterial(materialType_passthru);

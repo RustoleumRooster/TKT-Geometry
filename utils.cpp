@@ -848,7 +848,6 @@ void Open_Geometry_File::LoadProject(SceneCoordinator* sc, io::path folder)
             }
         }
 
-        sc->cleanup_after_scene_nodes_added_deleted();
 
         gui::IGUIEnvironment* env = device->getGUIEnvironment();
         gui::IGUIElement* root = env->getRootGUIElement();
@@ -857,12 +856,10 @@ void Open_Geometry_File::LoadProject(SceneCoordinator* sc, io::path folder)
         if (quad)
             quad->set_scene(sc->scenes[0]);
 
-        sc->current_scene()->restore_gui_state();
-
         FS->changeWorkingDirectoryTo(restore_path);
 
+        sc->current_scene()->restore_gui_state();
     }
-
 }
 
 void geometry_scene::write_files(int append_no)

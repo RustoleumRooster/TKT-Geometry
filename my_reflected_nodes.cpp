@@ -20,6 +20,11 @@ extern SceneCoordinator* gs_coordinator;
 
 extern float g_time;
 
+//NB: If you add new source files that have reflected scene nodes, you may have to move this
+//initialization to ensure that it executes before the initialization of the reflected scene nodes, 
+//or they will register ahead of time and get wiped off of the master list
+std::vector<reflect::TypeDescriptor_Struct*> Reflected_SceneNode_Factory::SceneNode_Types{};
+
 //============================================================================
 //  Reflected_LightSceneNode
 //
@@ -207,6 +212,11 @@ Reflected_WaterSurfaceNode::Reflected_WaterSurfaceNode(USceneNode* parent, geome
     Buffer->Material.setTexture(0, m_texture);
 }
 
+Reflected_WaterSurfaceNode::~Reflected_WaterSurfaceNode()
+{
+    geo_scene->setFinalMeshDirty();
+}
+
 bool Reflected_WaterSurfaceNode::addSelfToScene(USceneNode* parent, irr::scene::ISceneManager* smgr, geometry_scene* geo_scene)
 {
     if (!enabled)
@@ -215,38 +225,42 @@ bool Reflected_WaterSurfaceNode::addSelfToScene(USceneNode* parent, irr::scene::
     WaterSurface_SceneNode* node = new WaterSurface_SceneNode(parent, smgr, 77, Location, Rotation, geo_scene);
     node->drop();
 
-    node_instance_id = node->getID();
+    my_node = node;
 
+    
+    return true;
+}
 
-    //==================
+void Reflected_WaterSurfaceNode::onSceneInit()
+{
+    if (!enabled)
+        return;
 
-    bool dirty = false;
+    std::vector<Reflected_MeshBuffer_Water_SceneNode*> buffer_nodes;
 
-    std::vector<Reflected_MeshBuffer_SceneNode*> buffer_nodes;
-
-    resolve_uid_references<Reflected_MeshBuffer_SceneNode>(geo_scene, target, buffer_nodes);
+    resolve_uid_references<Reflected_MeshBuffer_Water_SceneNode>(geo_scene, target, buffer_nodes);
 
     polyfold* pf = geo_scene->geoNode()->get_total_geometry();
 
-    for (Reflected_MeshBuffer_SceneNode* n: buffer_nodes)
+    for (Reflected_MeshBuffer_Water_SceneNode* n : buffer_nodes)
     {
-        for (int f_i = 0; f_i < pf->faces.size(); f_i++)
-        {
-            if (pf->faces[f_i].uid == n->get_uid())
-            {
-                MeshBuffer_Chunk chunk = geo_scene->geoNode()->final_meshnode_interface.get_mesh_buffer_by_face(f_i);
-
-                IMeshBuffer* buffer = chunk.buffer;
-
-                node->attach_to_buffer(buffer);
-            }
-        }
+        n->connect_water_sceneNode(my_node);
     }
 
-    //caller calls
-    //geo_scene->getMeshNode()->copyMaterials();
+    geometry_scene* sky_scene = gs_coordinator->skybox_scene();
 
-    return true;
+    if (sky_scene)
+    {
+        std::vector<u64> uids = sky_scene->get_reflected_node_uids_by_type("Reflected_SkyNode");
+
+        if (uids.size() > 0)
+        {
+            Reflected_SkyNode* skynode = (Reflected_SkyNode*)sky_scene->get_reflected_node_by_uid(uids[0]);
+
+            if (skynode)
+                this->my_node->setSkybox(skynode->underwater_skynode);
+        }
+    }
 }
 
 void Reflected_WaterSurfaceNode::preEdit()
@@ -265,6 +279,7 @@ void Reflected_WaterSurfaceNode::postEdit()
         if (node)
         {
             node->disconnect(this);
+            node->postEdit();
         }
     }
 
@@ -275,6 +290,7 @@ void Reflected_WaterSurfaceNode::postEdit()
         if (node)
         {
             node->connect_input(this);
+            node->postEdit();
         }
     }
 
@@ -283,24 +299,32 @@ void Reflected_WaterSurfaceNode::postEdit()
 
 void Reflected_WaterSurfaceNode::endScene()
 {
-    for (u64 uid : target.uids)
-    {
-        Reflected_SceneNode* node = geo_scene->get_reflected_node_by_uid(uid);
-        Reflected_MeshBuffer_SceneNode* face_node = dynamic_cast<Reflected_MeshBuffer_SceneNode*>(node);
+}
 
-        if (face_node)
-        {
-            face_node->restore_original_texture();
-        }
+void Reflected_WaterSurfaceNode::connect_sky_sceneNode(MySkybox_SceneNode* node)
+{
+    my_node->setSkybox(node);
+}
+
+
+void Reflected_MeshBuffer_Water_SceneNode::on_connect_node(Reflected_SceneNode* node)
+{
+    Reflected_WaterSurfaceNode* water_node = dynamic_cast<Reflected_WaterSurfaceNode*>(node);
+
+    if (water_node)
+    {
+        this->set_connected(true);
     }
 }
 
-Reflected_PointNode::Reflected_PointNode(USceneNode* parent, geometry_scene* geo_scene, ISceneManager* smgr, int id, const core::vector3df& pos) :
-    Reflected_Sprite_SceneNode(parent, geo_scene, smgr, id, pos)
+void Reflected_MeshBuffer_Water_SceneNode::on_disconnect_node(Reflected_SceneNode* node)
 {
-    m_texture = device->getVideoDriver()->getTexture("triangle_symbol.png");
-    Buffer->Material.setTexture(0, m_texture);
+    Reflected_WaterSurfaceNode* water_node = dynamic_cast<Reflected_WaterSurfaceNode*>(node);
 
+    if (water_node)
+    {
+        this->set_connected(false);
+    }
 }
 
 //===========================================================
@@ -319,11 +343,13 @@ Reflected_SkyNode::Reflected_SkyNode(USceneNode* parent, geometry_scene* geo_sce
 {
     m_texture = device->getVideoDriver()->getTexture("triangle_symbol.png");
     Buffer->Material.setTexture(0, m_texture);
+
+    gs_coordinator->connect_skybox(geo_scene);
 }
 
 Reflected_SkyNode::~Reflected_SkyNode()
 {
-    gs_coordinator->set_skyox_dirty();
+    gs_coordinator->connect_skybox(NULL);
     gs_coordinator->SetAllFinalMeshDirty();
 }
 
@@ -332,52 +358,52 @@ bool Reflected_SkyNode::addSelfToScene(USceneNode* parent, irr::scene::ISceneMan
     if (!enabled)
         return false;
 
-    MySkybox_SceneNode* node = new MySkybox_SceneNode(parent, smgr, -1, Location, Rotation, geo_scene);
-    node->WaterReflectionPass = false;
-    node->drop();
+    regular_skynode = new MySkybox_SceneNode(parent, smgr, -1, Location, Rotation, geo_scene);
+    regular_skynode->WaterReflectionPass = false;
+    regular_skynode->drop();
 
 
-    MySkybox_SceneNode* node1 = new MySkybox_SceneNode(parent, smgr, -1, Location, Rotation, geo_scene);
-    node1->WaterReflectionPass = true;
-    node1->drop();
-
-    node_instance_id = node->getID();
-
-    bool dirty = false;
-
-    //==================
-
-    int c = 0;
-    for (geometry_scene* a_geo_scene : gs_coordinator->scenes)
-    {
-        std::vector<Reflected_MeshBuffer_SceneNode*> buffer_nodes;
-
-        resolve_uid_references<Reflected_MeshBuffer_SceneNode>(a_geo_scene, target, buffer_nodes);
-
-        polyfold* pf = a_geo_scene->geoNode()->get_total_geometry();
-
-        for (Reflected_MeshBuffer_SceneNode* n : buffer_nodes)
-        {
-            for (int f_i = 0; f_i < pf->faces.size(); f_i++)
-            {
-                if (pf->faces[f_i].uid == n->get_uid())
-                {
-                    MeshBuffer_Chunk chunk = a_geo_scene->geoNode()->final_meshnode_interface.get_mesh_buffer_by_face(f_i);
-
-                    IMeshBuffer* buffer = chunk.buffer;
-
-                    node->attach_to_buffer(buffer);
-                    node1->attach_to_buffer(buffer);
-                    c++;
-                }
-            }
-        }
-    }
-
-    //caller calls
-    //geo_scene->getMeshNode()->copyMaterials();
+    underwater_skynode = new MySkybox_SceneNode(parent, smgr, -1, Location, Rotation, geo_scene);
+    underwater_skynode->WaterReflectionPass = true;
+    underwater_skynode->drop();
 
     return true;
+}
+
+void Reflected_SkyNode::onSceneInit()
+{
+    if (!enabled)
+        return;
+
+    int c = 0;
+
+    for (geometry_scene* a_geo_scene : gs_coordinator->scenes)
+    {
+        std::vector<Reflected_MeshBuffer_Sky_SceneNode*> buffer_nodes;
+
+        resolve_uid_references<Reflected_MeshBuffer_Sky_SceneNode>(a_geo_scene, target, buffer_nodes);
+
+        if (buffer_nodes.size() > 0)
+        {
+            RenderSky_SceneNode* renderNode = new RenderSky_SceneNode((USceneNode*)a_geo_scene->ActualNodes(), a_geo_scene->get_smgr(), -1, Location, Rotation, geo_scene);
+            renderNode->drop();
+            renderNode->set_skynode(regular_skynode);
+        }
+
+        for (Reflected_MeshBuffer_Sky_SceneNode* n : buffer_nodes)
+        {
+            n->connect_sky_sceneNode(regular_skynode, underwater_skynode);
+        }
+
+        std::vector<Reflected_WaterSurfaceNode*> waterNodes;
+
+        resolve_uid_references<Reflected_WaterSurfaceNode>(a_geo_scene, target, waterNodes);
+
+        for (Reflected_WaterSurfaceNode* n : waterNodes)
+        {
+            n->connect_sky_sceneNode(underwater_skynode);
+        }
+    }
 }
 
 void Reflected_SkyNode::preEdit()
@@ -390,7 +416,7 @@ void Reflected_SkyNode::preEdit()
 void Reflected_SkyNode::postEdit()
 {
 
-    gs_coordinator->set_skyox_dirty();
+    //gs_coordinator->connect_skybox();
 
     /*
     for (u64 uid : target.old_uids)
@@ -419,5 +445,47 @@ void Reflected_SkyNode::postEdit()
 
 void Reflected_SkyNode::endScene()
 {
+    /*
+    for (u64 uid : target.uids)
+    {
+        Reflected_SceneNode* node = geo_scene->get_reflected_node_by_uid(uid);
+        Reflected_MeshBuffer_SceneNode* face_node = dynamic_cast<Reflected_MeshBuffer_SceneNode*>(node);
+
+        if (face_node)
+        {
+            face_node->restore_original_texture();
+        }
+    }
+    */
+
+    //called by caller
+    //geoNode()->getMeshNode()->copyMaterials();
 }
 
+//==========================================================
+// Clouds Meshbuffer Node
+//
+
+Reflected_MeshBuffer_Clouds_SceneNode::Reflected_MeshBuffer_Clouds_SceneNode(USceneNode* parent, geometry_scene* geo_scene, irr::scene::ISceneManager* smgr, int id, const core::vector3df& pos)
+    :Reflected_MeshBuffer_SceneNode(parent, geo_scene, smgr, id, pos)
+{
+    m_texture = device->getVideoDriver()->getTexture("color_square_icon_good.png");
+    Buffer->Material.setTexture(0, m_texture);
+}
+
+Reflected_MeshBuffer_Clouds_SceneNode::~Reflected_MeshBuffer_Clouds_SceneNode()
+{
+
+}
+
+bool Reflected_MeshBuffer_Clouds_SceneNode::addSelfToScene(USceneNode* parent, irr::scene::ISceneManager* smgr, geometry_scene* geo_scene)
+{
+    std::cout << "Clouds are here !!!\n";
+    return false;
+}
+
+REFLECT_STRUCT2_BEGIN(Reflected_MeshBuffer_Clouds_SceneNode)
+    ALIAS("Clouds Mesh Buffer")
+    PLACEABLE(false)
+    INHERIT_FROM(Reflected_MeshBuffer_SceneNode)
+REFLECT_STRUCT2_END()

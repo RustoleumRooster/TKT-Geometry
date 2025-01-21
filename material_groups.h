@@ -11,12 +11,14 @@ using namespace irr;
 
 struct Material_Group
 {
-    std::string name;
-    bool two_sided;
-    bool transparent;
-    bool lightmap;
-    bool isSky;
-    video::SColor color;
+    const char* name;
+    video::SColor color{ video::SColor(32,64,96,255) };
+
+    bool two_sided = false;
+    bool transparent = false;
+    bool lightmap = false;
+    bool create_meshBuffer_Node = false;
+    const char* meshBuffer_Node_typeName = NULL;
 };
 
 class geometry_scene;
@@ -102,6 +104,7 @@ public:
     video::E_MATERIAL_TYPE SolidMaterial_Selected_Type = video::EMT_SOLID;
     video::E_MATERIAL_TYPE SolidMaterial_WaterSurface_Type = video::EMT_SOLID;
     video::E_MATERIAL_TYPE Material_Projection_Type = video::EMT_SOLID;
+    video::E_MATERIAL_TYPE Material_Clouds_Type = video::EMT_SOLID;
 
     friend int main();
 

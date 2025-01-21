@@ -18,7 +18,6 @@ extern IrrlichtDevice* device;
 
 void Reflected_Widget_EditArea::show(bool editable, void* obj)
 {
-
     int x_offset = 16;
 
     core::rect<s32> pr(0, 0, getRelativePosition().getWidth(), getMaxFormsHeight());
@@ -209,8 +208,13 @@ bool Reflected_Widget_EditArea::OnEvent(const SEvent& event)
                     }
                     else if (field->getButtonType() == FORM_FIELD_BUTTON)
                     {
+                        bool return_without_finishing = field->clickButton(id, my_base);
                         
-                        field->clickButton();
+                        if(return_without_finishing)
+                        {
+                            return true;
+                        }
+
                         field->writeValue(temp_object);
 
                         refresh();

@@ -5,6 +5,7 @@
 
 extern IrrlichtDevice* device;
 extern f32 global_clipping_plane[4];
+extern float g_time;
 
 #define MAT_COUT(M) std::cout<<M[0]<<" "<<M[1]<<" "<<M[2]<<" "<<M[3]<<"\n"; \
 					std::cout<<M[4]<<" "<<M[5]<<" "<<M[6]<<" "<<M[7]<<"\n"; \
@@ -312,5 +313,56 @@ core::matrix4 World = driver->getTransform(video::ETS_WORLD);
 	//core::matrix4 mView;
 	//core::matrix4 mProj;
 };
+
+class CloudsShaderCallBack : public video::IShaderConstantSetCallBack
+{
+public:
+
+	virtual void OnSetConstants(video::IMaterialRendererServices* services, s32 userData) override;
+
+	static void initialize();
+
+	static video::ITexture* texture0;
+	static video::ITexture* texture1;
+	static video::ITexture* texture2;
+};
+
+void CloudsShaderCallBack::OnSetConstants(video::IMaterialRendererServices* services,
+	s32 userData)
+{
+	video::IVideoDriver* driver = services->getVideoDriver();
+
+
+	//Projection and WorldView matrices
+
+	core::matrix4 Proj = driver->getTransform(video::ETS_PROJECTION);
+
+	services->setPixelShaderConstant("P", Proj.pointer(), 16);
+
+	core::matrix4 MV = driver->getTransform(video::ETS_VIEW);
+	core::matrix4 World = driver->getTransform(video::ETS_WORLD);
+	MV *= World;
+
+	services->setPixelShaderConstant("MV", MV.pointer(), 16);
+
+	core::vector3df pos = device->getSceneManager()->getActiveCamera()->getAbsolutePosition();
+
+	services->setVertexShaderConstant("mCamPos", reinterpret_cast<f32*>(&pos), 3);
+
+	services->setPixelShaderConstant("Time", reinterpret_cast<f32*>(&g_time), 1);
+
+	s32 TextureLayerID = 0;
+
+	services->setPixelShaderConstant("myTexture", &TextureLayerID, 1);
+
+	TextureLayerID = 1;
+
+	services->setPixelShaderConstant("myTexture2", &TextureLayerID, 1);
+
+	TextureLayerID = 2;
+
+	services->setPixelShaderConstant("myTexture3", &TextureLayerID, 1);
+
+}
 
 #endif

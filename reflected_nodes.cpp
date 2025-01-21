@@ -8,6 +8,7 @@
 #include "GUI_tools.h"
 #include "my_reflected_nodes.h"
 #include "USceneNode.h"
+#include "my_nodes.h"
 
 using namespace irr;
 using namespace gui;
@@ -17,8 +18,6 @@ extern SceneCoordinator* gs_coordinator;
 
 video::E_MATERIAL_TYPE Reflected_SceneNode::base_material_type = video::EMT_SOLID;
 video::E_MATERIAL_TYPE Reflected_SceneNode::special_material_type = video::EMT_SOLID;
-
-std::vector<reflect::TypeDescriptor_Struct*> Reflected_SceneNode_Factory::SceneNode_Types{};
 
 
 //============================================================================
@@ -69,6 +68,13 @@ void Reflected_SceneNode::postEdit()
 {
     this->setPosition(this->Location);
     this->setRotation(this->Rotation);
+
+    total_bounding_box = getMyBoundingBox();
+
+    for (Reflected_SceneNode* n : input_node_ptrs)
+    {
+        total_bounding_box.addInternalBox(n->getMyBoundingBox());
+    }
 }
 
 void Reflected_SceneNode::connect_input(Reflected_SceneNode* node)
@@ -85,6 +91,8 @@ void Reflected_SceneNode::connect_input(Reflected_SceneNode* node)
     {
         input_nodes.push_back(node->UID());
         rebuild_input_ptrs_list();
+
+        on_connect_node(node);
     }
 }
 
@@ -96,6 +104,11 @@ void Reflected_SceneNode::disconnect(Reflected_SceneNode* node)
     {
         if (uid != node->UID())
             new_inputs.push_back(uid);
+
+        if (uid == node->UID())
+        {
+            on_disconnect_node(node);
+        }
     }
 
     input_nodes = new_inputs;
@@ -116,7 +129,7 @@ void Reflected_SceneNode::rebuild_input_ptrs_list()
 
 const core::aabbox3df& Reflected_SceneNode::getBoundingBox() const
 {
-    return core::aabbox3df();
+    return total_bounding_box;
 }
 
 void Reflected_SceneNode::draw_box(video::IVideoDriver* driver, core::aabbox3df b)
@@ -147,7 +160,6 @@ void Reflected_SceneNode::draw_box(video::IVideoDriver* driver, core::aabbox3df 
     driver->draw3DLine(edges[3],edges[7],video::SColor(128,255,255,255));
 
     delete[] edges;
-
 }
 
 void Reflected_SceneNode::draw_inputs(video::IVideoDriver* driver)
@@ -167,7 +179,11 @@ void Reflected_SceneNode::draw_inputs(video::IVideoDriver* driver)
     {
         driver->draw3DLine(this->Location, node->Location, video::SColor(128, 40, 150, 255));
     }
+}
 
+const core::aabbox3df& Reflected_SceneNode::getMyBoundingBox() const
+{
+    return core::aabbox3df{};
 }
 
 void Reflected_SceneNode::draw_arrow(video::IVideoDriver* driver, core::vector3df v, core::vector3df rot)
@@ -345,6 +361,7 @@ void Reflected_Sprite_SceneNode::set_buffer()
     Buffer->Vertices[3].Color = video::SColor(255,255,255,255);
     Buffer->Vertices[3].Normal = view;
     Buffer->Vertices[3].TCoords = core::vector2df(0,1);
+
     }
 }
 
@@ -362,6 +379,10 @@ void Reflected_Sprite_SceneNode::render()
 
 	driver->setTransform(video::ETS_WORLD, mat);
 	driver->setMaterial(Buffer->Material);
+
+    driver->draw3DBox(
+        getBoundingBox(),
+        video::SColor(255, 190, 128, 128));
 
 	driver->drawVertexPrimitiveList(Buffer->getVertices(), 4,
 		Buffer->getIndices(), 2, video::EVT_STANDARD, EPT_TRIANGLES,Buffer->getIndexType());
@@ -395,9 +416,9 @@ void Reflected_Sprite_SceneNode::render_special(video::SMaterial& material)
 
 }
 
-const core::aabbox3df& Reflected_Sprite_SceneNode::getBoundingBox() const
+const core::aabbox3df& Reflected_Sprite_SceneNode::getMyBoundingBox() const
 {
-    return Buffer->getBoundingBox();
+    return Buffer->BoundingBox;
 }
 
 //============================================================================
@@ -439,7 +460,7 @@ Reflected_Model_SceneNode::Reflected_Model_SceneNode(USceneNode* parent, geometr
 	//((scene::SMeshBuffer*)Mesh->getMeshBuffer(0))->Material.setTexture(0,);
 }
 
-const core::aabbox3df& Reflected_Model_SceneNode::getBoundingBox() const
+const core::aabbox3df& Reflected_Model_SceneNode::getMyBoundingBox() const
 {
     return Box;
 }
@@ -523,6 +544,10 @@ void Reflected_Model_SceneNode::setUnlit(bool unlit)
     //this->Mesh->setMaterialFlag(video::EMF_LIGHTING,!unlit);
 }
 
+//===================================================================
+// Reflected MeshBuffer Node
+//
+
 Reflected_MeshBuffer_SceneNode::Reflected_MeshBuffer_SceneNode(USceneNode* parent, geometry_scene* geo_scene, irr::scene::ISceneManager* smgr, int id, const core::vector3df& pos) :
     Reflected_Sprite_SceneNode(parent, geo_scene, smgr, id, pos), face_uid(0)
 {
@@ -533,6 +558,11 @@ Reflected_MeshBuffer_SceneNode::Reflected_MeshBuffer_SceneNode(USceneNode* paren
 bool Reflected_MeshBuffer_SceneNode::addSelfToScene(USceneNode* parent, irr::scene::ISceneManager* smgr, geometry_scene* geo_scene)
 {
     return false;
+}
+
+void Reflected_MeshBuffer_SceneNode::endScene()
+{
+    restore_original_texture();
 }
 
 void Reflected_MeshBuffer_SceneNode::restore_original_texture()
@@ -558,6 +588,9 @@ void Reflected_MeshBuffer_SceneNode::restore_original_texture()
                 buffer->getMaterial().setTexture(0, texture);
         }
     }
+
+    //called by caller
+    //geoNode()->getMeshNode()->copyMaterials();
 }
 
 IMeshBuffer* Reflected_MeshBuffer_SceneNode::get_mesh_buffer()
@@ -598,7 +631,7 @@ Reflected_MeshBuffer_Sky_SceneNode::Reflected_MeshBuffer_Sky_SceneNode(USceneNod
 
 Reflected_MeshBuffer_Sky_SceneNode::~Reflected_MeshBuffer_Sky_SceneNode()
 {
-    gs_coordinator->set_skyox_dirty();
+    
 }
 
 void Reflected_MeshBuffer_Sky_SceneNode::set_connected(bool b)
@@ -619,9 +652,28 @@ void Reflected_MeshBuffer_Sky_SceneNode::set_connected(bool b)
 
 void Reflected_MeshBuffer_Sky_SceneNode::postEdit()
 {
-    gs_coordinator->set_skyox_dirty();
-
     Reflected_MeshBuffer_SceneNode::postEdit();
+}
+
+void Reflected_MeshBuffer_Sky_SceneNode::connect_sky_sceneNode(MySkybox_SceneNode* node_regular, MySkybox_SceneNode* node_underwater)
+{
+    polyfold* pf = geo_scene->geoNode()->get_total_geometry();
+
+    for (int f_i = 0; f_i < pf->faces.size(); f_i++)
+    {
+        if (pf->faces[f_i].uid == this->get_uid())
+        {
+            MeshBuffer_Chunk chunk = geo_scene->geoNode()->final_meshnode_interface.get_mesh_buffer_by_face(f_i);
+
+            IMeshBuffer* buffer = chunk.buffer;
+
+            node_regular->attach_to_buffer(buffer);
+            node_underwater->attach_to_buffer(buffer);
+        }
+    }
+
+    //called by caller
+    //geoNode()->getMeshNode()->copyMaterials();
 }
 
 Reflected_MeshBuffer_Water_SceneNode::Reflected_MeshBuffer_Water_SceneNode(USceneNode* parent, geometry_scene* geo_scene, irr::scene::ISceneManager* smgr, int id, const core::vector3df& pos) :
@@ -630,6 +682,42 @@ Reflected_MeshBuffer_Water_SceneNode::Reflected_MeshBuffer_Water_SceneNode(UScen
     m_texture = device->getVideoDriver()->getTexture("color_square_icon_nogood.png");
     Buffer->Material.setTexture(0, m_texture);
 }
+
+Reflected_MeshBuffer_Water_SceneNode::~Reflected_MeshBuffer_Water_SceneNode()
+{
+    //gs_coordinator->set_skyox_dirty();
+}
+
+void Reflected_MeshBuffer_Water_SceneNode::postEdit()
+{
+    //gs_coordinator->set_skyox_dirty();
+
+    Reflected_MeshBuffer_SceneNode::postEdit();
+}
+
+void Reflected_MeshBuffer_Water_SceneNode::connect_water_sceneNode(WaterSurface_SceneNode* node)
+{
+    polyfold* pf = geo_scene->geoNode()->get_total_geometry();
+
+    for (int f_i = 0; f_i < pf->faces.size(); f_i++)
+    {
+        if (pf->faces[f_i].uid == this->get_uid())
+        {
+            MeshBuffer_Chunk chunk = geo_scene->geoNode()->final_meshnode_interface.get_mesh_buffer_by_face(f_i);
+
+            IMeshBuffer* buffer = chunk.buffer;
+
+            node->attach_to_buffer(buffer);
+            node->set_z_depth(this->getAbsolutePosition().Y);
+
+            return;
+        }
+    }
+
+    //called by caller
+    //geoNode()->getMeshNode()->copyMaterials();
+}
+
 
 void Reflected_MeshBuffer_Water_SceneNode::set_connected(bool b)
 {
@@ -763,13 +851,3 @@ REFLECT_STRUCT2_BEGIN(Reflected_MeshBuffer_Water_SceneNode)
     INHERIT_FROM(Reflected_MeshBuffer_SceneNode)
     REFLECT_STRUCT2_MEMBER(is_connected)
 REFLECT_STRUCT2_END()
-
-REFLECT_STRUCT2_BEGIN(Reflected_PointNode)
-    ALIAS("Point Node")
-    INHERIT_FROM(Reflected_Sprite_SceneNode)
-REFLECT_STRUCT2_END()
-
-
-
-
-

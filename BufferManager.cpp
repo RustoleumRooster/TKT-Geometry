@@ -141,7 +141,7 @@ void MeshNode_Interface_Final::generate_mesh_node(GeometryStack* geo_scene)
 
     this->m_mesh = new scene::SMesh;
 
-    refresh_material_groups(geo_scene);
+    //refresh_material_groups(geo_scene);
 
     this->generate_mesh_buffer(geo_scene, m_mesh);
 
@@ -172,6 +172,7 @@ CMeshSceneNode* MeshNode_Interface::addMeshSceneNode(ISceneNode* parent, scene::
     if(this->m_mesh && smgr0)
     {
         CMeshSceneNode* mesh_node = new scene::CMeshSceneNode(this->m_mesh,parent,smgr0,747);
+        mesh_node->drop();
         mesh_node->SetBox(geo_scene->get_total_geometry()->bbox);
         mesh_node->setVisible(true);
         return mesh_node;

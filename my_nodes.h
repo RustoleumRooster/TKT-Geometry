@@ -11,21 +11,6 @@ using namespace irr;
 
 class geometry_scene;
 
-class PlaneShaderCallBack : public video::IShaderConstantSetCallBack
-{
-public:
-
-    virtual void OnSetConstants(video::IMaterialRendererServices* services, s32 userData) override;
-};
-
-class SkyShaderCallBack : public video::IShaderConstantSetCallBack
-{
-public:
-
-    virtual void OnSetConstants(video::IMaterialRendererServices* services, s32 userData) override;
-};
-
-
 class VanillaShaderCallBack : public video::IShaderConstantSetCallBack
 {
 public:
@@ -57,7 +42,6 @@ public:
     virtual video::ITexture* get_image(int n) { return my_rtt2; };
 
     void attach_to_buffer(scene::IMeshBuffer*);
-    //void detach_all();
 
     static void load_shaders();
 
@@ -65,11 +49,8 @@ public:
 
     core::aabbox3d<f32> my_box;
 
-    //static s32 skyShaderType;
     static s32 xblurShaderType;
     static s32 yblurShaderType;
-    //static s32 skyPPShaderType;
-   // static s32 planeMaterialType;
     static s32 projectionShaderType;
 
     geometry_scene* geo_scene = NULL;
@@ -78,14 +59,11 @@ public:
     video::ITexture* my_rtt = NULL;
 
     //two blur textures
-    video::ITexture* my_rtt2 = 0;
-    video::ITexture* my_rtt3 = 0;
-
-    //scene::ICameraSceneNode* my_camera = NULL;
+    video::ITexture* my_rtt2 = NULL;
+    video::ITexture* my_rtt3 = NULL;
 
     bool WaterReflectionPass = false;
 
-    //TwoTriangleSceneNode* cloudLayerNode = NULL;
     TwoTriangleSceneNode* blurNode = NULL;
 
     scene::ICameraSceneNode* my_camera = NULL;
@@ -99,7 +77,6 @@ public:
     WaterSurface_SceneNode(USceneNode* parent, irr::scene::ISceneManager* smgr, int id, const core::vector3df& pos, const core::vector3df rotation, geometry_scene*);
     ~WaterSurface_SceneNode();
 
-    //virtual scene::ICameraSceneNode* getCamera();
     virtual void resizeView(core::dimension2du newsize) override;
 
     virtual void render() override;
@@ -116,7 +93,11 @@ public:
     video::ITexture* getRTT2() { return my_rtt2; }
 
     void attach_to_buffer(scene::IMeshBuffer*);
-    //void detach_all();
+    void set_z_depth(f32 z) { my_z_depth = z; }
+
+    void getReflectedCamera(scene::ICameraSceneNode* camera, f32 z, const scene::ICameraSceneNode* src);
+
+    void setSkybox(MySkybox_SceneNode* sky) { my_skybox = sky; }
 
 private:
     core::aabbox3d<f32> my_box;
@@ -126,16 +107,39 @@ private:
     video::ITexture* my_rtt = NULL;
     video::ITexture* my_rtt2 = NULL;
     scene::ICameraSceneNode* my_camera = NULL;
+    MySkybox_SceneNode* my_skybox = NULL;
 
-    // TwoTriangleSceneNode* render_node = NULL;
 
     geometry_scene* geo_scene = NULL;
 
     std::vector<int> hide_faces;
     std::vector<scene::IMeshBuffer*> buffers;
+
+    f32 my_z_depth = 0.0;
 };
 
+//=================================================================================================
+// RenderSky_SceneNode: Reflected_SkyNode creates this node in each scene that uses the skybox. Its 
+// render() function calls Reflected_SkyNode to render()
+//
 
+class RenderSky_SceneNode : public scene::ISceneNode
+{
+public:
+    RenderSky_SceneNode(USceneNode* parent, irr::scene::ISceneManager* smgr, int id, const core::vector3df& pos, const core::vector3df rotation, geometry_scene*);
+    ~RenderSky_SceneNode();
+
+    virtual void render() override;
+    virtual const core::aabbox3d<f32>& getBoundingBox() const override { return my_box; }
+    virtual void OnRegisterSceneNode() override;
+
+    void set_skynode(MySkybox_SceneNode* sky) { my_skybox = sky; }
+
+private:
+    core::aabbox3d<f32> my_box;
+
+    MySkybox_SceneNode* my_skybox = NULL;
+};
 
 
 

@@ -50,7 +50,7 @@ public:
     core::vector3df getSelectedVertex();
     void delete_selected_brushes();
 
-    void setSelectedFaces(std::vector<int>);
+    void setSelectedFaces(std::vector<int>, bool force = false);
     void setSelectedFaces_ShiftAdd(int new_sel);
     std::vector<int> getSelectedFaces();
     //std::vector<int> getSurfaceFromFace(int);
@@ -102,6 +102,7 @@ public:
 
     //===============Reflected Scene Node Stuff
     void buildSceneGraph(bool addObjects, int light_mode, bool finalscene = false);
+    void beginScene();
     void rebuildSceneGraph();
 
     void addSceneLight(core::vector3df pos);
@@ -191,6 +192,8 @@ private:
     friend class SceneCoordinator;
 };
 
+class MySkybox_SceneNode;
+
 class SceneCoordinator
 {
     struct metadata
@@ -208,17 +211,17 @@ public:
     void swap_scene(int);
     void add_scene();
 
-    void set_skyox_dirty();
-    void cleanup_after_scene_nodes_added_deleted();
     void rebuild_dirty_meshbuffers();
 
     ISceneManager* current_smgr();
     void CopyAllMaterials();
     void SetAllFinalMeshDirty();
 
+    void connect_skybox(geometry_scene*);
+
 private:
 
-    void connect_skybox();
+    
 
     bool write_metadata(std::string fname);
     bool read_metadata(std::string fname, metadata&);
