@@ -1,7 +1,9 @@
 # TKT-Geometry by Rustoleum Rooster aka Rusty Rooster
-Code is copyright 2022-2024. Version 0.9
+Code is copyright 2022-2025. Version 0.9
 
 TKT is a full featured level editor built on the Irrlicht 3D game engine, intended to provide a way to easily create maps for Irrlicht games. The philosphy behind TKT is that every game should have a level editor which is closely integrated with the engine and with the game's own functionality. TKT encompasses geometry and physical level design, lighting and lightmaps, as well as the ability to create complex scenes with models, actors, effects, factories, etc, and can be extended to support new kinds of materials and game logic.
+
+![Screenshot](/screenshots/Screenshot(43).png)
 
 # Features
 1. Create and edit geometry using constructive solid geometry (CSG). Brushes can be added and subtracted to create arbitrary geometry. Brushes can be primitives such as cubes, spheres, etc, or more complex brushes can be created by intersecting or clipping against existing geometry. Brushes can be moved, rotated, or vertex edited and the geometry can be rebuilt around it, so that it's easy to make changes.
@@ -14,12 +16,19 @@ TKT is a full featured level editor built on the Irrlicht 3D game engine, intend
 
 5. Easily support custom Nodes using the built in Reflection system.
 
-6. Create lightmaps. Lightmap creation uses Vulkan. Currently only "ambient occlusion" lighting is supported. (Vulkan code not uploaded to github yet).
+6. Create lightmaps. Lightmap creation uses Vulkan. (Under development)
 
 7. Export level geometry, triangulated meshes, and nodes to binary files, which are easily imported into any other program by using the Reflection system.
 
-8. Optimizations for high-poly geometry significantly speed up processing of high-poly objects without affecting normal, low-poly use cases.
+8. Optimizations for high-poly geometry speeds up processing of high-poly objects.
+   
+9. Support skyboxes and water reflections (as an example of implementing custom shader-materials)
 
+![Screenshot](/screenshots/Screenshot(54).png)
+
+![Screenshot](/screenshots/Screenshot(29).png)
+
+![Screenshot](/screenshots/Screenshot(53).png)
 
 # Build Requirements
 
