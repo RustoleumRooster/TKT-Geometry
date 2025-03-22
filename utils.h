@@ -142,8 +142,6 @@ public:
 
 	virtual bool OnEvent(const SEvent& event);
 
-    static void LoadProject(SceneCoordinator* sc, io::path folder);
-
 private:
 	SceneCoordinator* scene_coordinator = NULL;
 	io::IFileSystem* FileSystem = NULL;

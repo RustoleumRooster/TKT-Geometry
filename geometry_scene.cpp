@@ -16,8 +16,10 @@
 #include "CMeshSceneNode.h"
 #include "initialization.h"
 #include "utils.h"
+#include <sstream>
 
 extern SceneCoordinator* gs_coordinator;
+extern IrrlichtDevice* device;
 
 #define TIME_HEADER() auto startTime = std::chrono::high_resolution_clock::now();\
     auto timeZero = startTime;\
@@ -37,6 +39,460 @@ extern SceneCoordinator* gs_coordinator;
 
 using namespace irr;
 using namespace std;
+
+
+//================================================================
+// Geometry Scene File IO
+//
+
+class SceneCoordinator;
+
+Geometry_Scene_File_IO::Geometry_Scene_File_IO(io::IFileSystem* fs) 
+    : FileSystem(fs)
+{
+}
+
+void Geometry_Scene_File_IO::WriteToFiles(SceneCoordinator* sc)
+{
+    WriteMetadata(sc, "meta.dat");
+
+    sc->current_scene()->save_gui_state();
+
+    for (int i = 0; i < sc->scenes.size(); i++)
+    {
+        std::stringstream nodes_name;
+        nodes_name << "nodes" << i << ".dat";
+
+        std::stringstream texture_name;
+        texture_name << "textures" << i << ".dat";
+
+        std::stringstream serial_name;
+        serial_name << "refl_serial" << i << ".dat";
+
+        SerializeSceneNodesToFile(sc->scenes[i], nodes_name.str().c_str());
+        WriteTextureNames(sc->scenes[i], texture_name.str().c_str());
+        SerializeGeometryToFile(sc->scenes[i], serial_name.str().c_str());
+    }
+}
+
+void Geometry_Scene_File_IO::ReadFromFiles(SceneCoordinator* sc)
+{
+    metadata data;
+
+    scene::ISceneManager* smgr = device->getSceneManager();
+    IEventReceiver* receiver = device->getEventReceiver();
+    video::IVideoDriver* driver = device->getVideoDriver();
+
+    if (ReadMetadata("meta.dat", data))
+    {
+        //delete all existing scenes
+        sc->clear();
+
+        for (int i = 0; i < data.n_scenes; i++)
+        {
+            geometry_scene* scene0 = new geometry_scene();
+
+            if(i==0)
+                scene0->initialize(smgr, driver, (MyEventReceiver*)receiver);
+            else
+            {
+                scene::ISceneManager* new_smgr = smgr->createNewSceneManager();
+                scene0->initialize(new_smgr, driver, (MyEventReceiver*)receiver);
+            }
+
+            scene0->set_type(GEO_SOLID);
+            
+            //======== Deserialize ========
+            std::stringstream nodes_name;
+            nodes_name << "nodes" << i << ".dat";
+
+            std::stringstream texture_name;
+            texture_name << "textures" << i << ".dat";
+
+            std::stringstream serial_name;
+            serial_name << "refl_serial" << i << ".dat";
+
+            DeserializeGeometryFromFile(scene0, serial_name.str().c_str(), texture_name.str().c_str());
+            DeserializeSceneNodesFromFile(scene0, nodes_name.str().c_str());
+            //==============================
+
+            scene0->geoNode()->set_originals();
+            scene0->geoNode()->build_total_geometry();
+            scene0->geoNode()->generate_meshes();
+
+            sc->scenes.push_back(reflect::pointer<geometry_scene>{scene0});
+        }
+
+        //point all tools and GUI to the new main scene
+        initialize_set_scene(sc->scenes[0]);
+
+        for (geometry_scene* scene : sc->scenes)
+        {
+            for (ISceneNode* n : scene->editor_nodes->getChildren())
+            {
+                Reflected_SceneNode* sn = (Reflected_SceneNode*)n;
+                sn->preEdit();
+                sn->postEdit();
+            }
+        }
+
+        gui::IGUIEnvironment* env = device->getGUIEnvironment();
+        gui::IGUIElement* root = env->getRootGUIElement();
+        CameraQuad* quad = (CameraQuad*)root->getElementFromId(GUI_ID_CAMERA_QUAD, true);
+
+        if (quad)
+            quad->set_scene(sc->scenes[0]);
+
+        //load the saved GUI state
+        sc->current_scene()->restore_gui_state();
+    }
+}
+
+void Geometry_Scene_File_IO::AutoLoad(SceneCoordinator* sc, io::path p)
+{
+    io::path restore_path = FileSystem->getWorkingDirectory();
+
+    FileSystem->changeWorkingDirectoryTo(p);
+
+    ReadFromFiles(sc);
+
+    FileSystem->changeWorkingDirectoryTo(restore_path);
+}
+
+bool Geometry_Scene_File_IO::WriteMetadata(SceneCoordinator* sc, std::string fname)
+{
+    ofstream wf(fname, ios::out | ios::binary);
+
+    if (!wf)
+    {
+        cout << "Cannot open file\n";
+        return false;
+    }
+
+    int e = sc->scenes.size();
+    wf.write((char*)&e, sizeof(int));
+
+    wf.close();
+    if (!wf.good())
+    {
+        cout << "error writing file\n";
+        return false;
+    }
+    return true;
+}
+
+bool Geometry_Scene_File_IO::ReadMetadata(std::string fname, metadata& data)
+{
+    ifstream rf(fname.c_str(), ios::in | ios::binary);
+
+    if (!rf)
+    {
+        cout << "Cannot open file\n";
+        return false;
+    }
+
+    rf.read((char*)&data.n_scenes, sizeof(int));
+
+    rf.close();
+    if (!rf.good())
+    {
+        cout << "error reading file\n";
+        return false;
+    }
+    return true;
+}
+
+bool Geometry_Scene_File_IO::WriteTextureNames(geometry_scene* geo_scene, std::string fname)
+{
+    ofstream wf(fname, ios::out | ios::binary);
+
+    if (!wf)
+    {
+        cout << "Cannot open file\n";
+        return false;
+    }
+
+    std::vector<video::ITexture*> textures_used;
+    std::vector<std::wstring> texture_paths;
+
+    video::IVideoDriver* driver = device->getVideoDriver();
+    GeometryStack* geometry_stack = geo_scene->geometry_stack;
+
+    for (int i = 1; i < geometry_stack->elements.size(); i++)
+    {
+        for (int f_i = 0; f_i < geometry_stack->elements[i].brush.faces.size(); f_i++)
+        {
+            video::ITexture* tex_j = driver->getTexture(geometry_stack->elements[i].brush.faces[f_i].texture_name.c_str());
+
+            bool b = false;
+            for (int j = 0; j < textures_used.size(); j++)
+            {
+                if (tex_j == textures_used[j])
+                {
+                    geometry_stack->elements[i].brush.faces[f_i].texture_index = j;
+                    b = true;
+                }
+            }
+            if (!b)
+            {
+                textures_used.push_back(tex_j);
+                texture_paths.push_back(geometry_stack->elements[i].brush.faces[f_i].texture_name.c_str());
+                geometry_stack->elements[i].brush.faces[f_i].texture_index = texture_paths.size() - 1;
+
+            }
+        }
+    }
+
+    wf << textures_used.size() << "\n";
+
+    for (int i = 0; i < textures_used.size(); i++)
+    {
+        std::string str(texture_paths[i].begin(), texture_paths[i].end());
+        wf << str.c_str() << "\n";
+    }
+
+    wf.close();
+    return true;
+}
+
+bool Geometry_Scene_File_IO::ReadTextures(io::path fname, std::vector<std::wstring>& texture_paths)
+{
+    ifstream rf(fname.c_str(), ios::in | ios::binary);
+
+    if (!rf)
+    {
+        cout << "Cannot open file\n";
+        return false;
+    }
+
+    std::string line;
+
+    int n_textures;
+    getline(rf, line);
+    n_textures = core::strtoul10(line.c_str());
+
+    for (int i = 0; i < n_textures; i++)
+    {
+        getline(rf, line);
+        std::wstring str(line.begin(), line.end());
+        texture_paths.push_back(str.c_str());
+    }
+
+    rf.close();
+    return true;
+}
+
+bool Geometry_Scene_File_IO::SerializeGeometryToFile(geometry_scene* geo_scene, std::string fname)
+{
+    ofstream wf(fname, ios::out | ios::binary);
+
+    if (!wf)
+    {
+        cout << "Cannot open file\n";
+        return false;
+    }
+
+    reflect::TypeDescriptor_Struct* typeDescriptor = (reflect::TypeDescriptor_Struct*)reflect::TypeResolver<geometry_scene>::get();
+
+    typeDescriptor->serialize(wf, geo_scene);
+
+    wf.close();
+    if (!wf.good())
+    {
+        cout << "error writing file\n";
+        return false;
+    }
+    return true;
+}
+
+bool Geometry_Scene_File_IO::DeserializeGeometryFromFile(geometry_scene* geo_scene, io::path fname, io::path tex_fname)
+{
+    ifstream rf(fname.c_str(), ios::in | ios::binary);
+
+    if (!rf)
+    {
+        cout << "Cannot open file\n";
+        return false;
+    }
+
+    std::vector<std::wstring> texture_paths;
+    if (ReadTextures(tex_fname, texture_paths) == false)
+        return false;
+
+    reflect::TypeDescriptor_Struct* typeDescriptor = (reflect::TypeDescriptor_Struct*)reflect::TypeResolver<geometry_scene>::get();
+
+    typeDescriptor->deserialize(rf, geo_scene);
+
+    GeometryStack* geometry_stack = geo_scene->geometry_stack;
+    geometry_stack->initialize(geo_scene);
+
+    for (int i = 1; i < geometry_stack->elements.size(); i++)
+        for (poly_face& face : geometry_stack->elements[i].brush.faces)
+        {
+            if (face.texture_index < texture_paths.size())
+                face.texture_name = texture_paths[face.texture_index].c_str();
+            else
+                face.texture_name = "wall.bmp";
+        }
+
+    rf.close();
+    if (!rf.good())
+    {
+        cout << "error reading file\n";
+        return false;
+    }
+
+    for (int i = 0; i < geometry_stack->elements.size(); i++)
+    {
+
+        //Brushes
+        geometry_stack->elements[i].brush.reduce_edges_vertices();
+        geometry_stack->elements[i].brush.recalc_bbox();
+
+        for (int f_i = 0; f_i < geometry_stack->elements[i].brush.faces.size(); f_i++)
+        {
+            for (int p_i = 0; p_i < geometry_stack->elements[i].brush.faces[f_i].loops.size(); p_i++)
+                geometry_stack->elements[i].brush.calc_loop_bbox(f_i, p_i);
+        }
+
+        for (poly_face& f : geometry_stack->elements[i].brush.faces)
+        {
+            geometry_stack->elements[i].brush.calc_center(f);
+        }
+
+        //Geometry
+        geometry_stack->elements[i].geometry.reduce_edges_vertices();
+        geometry_stack->elements[i].geometry.recalc_bbox();
+
+        for (int f_i = 0; f_i < geometry_stack->elements[i].geometry.faces.size(); f_i++)
+        {
+            for (int p_i = 0; p_i < geometry_stack->elements[i].geometry.faces[f_i].loops.size(); p_i++)
+                geometry_stack->elements[i].geometry.calc_loop_bbox(f_i, p_i);
+        }
+
+        for (poly_face& f : geometry_stack->elements[i].geometry.faces)
+        {
+            geometry_stack->elements[i].geometry.calc_center(f);
+        }
+
+    }
+
+    return true;
+}
+
+bool Geometry_Scene_File_IO::SerializeSceneNodesToFile(geometry_scene* geo_scene, std::string fname)
+{
+    ofstream wf(fname, ios::out | ios::binary);
+
+    if (!wf)
+    {
+        cout << "Cannot open file\n";
+        return false;
+    }
+
+    wf << "38\n";
+
+    int e = geo_scene->editor_nodes->getChildren().size();
+    wf.write((char*)&e, sizeof(int));
+
+    for (ISceneNode* it : geo_scene->editor_nodes->getChildren())
+    {
+        Reflected_SceneNode* node = (Reflected_SceneNode*)it;
+        node->preEdit();
+        reflect::TypeDescriptor_Struct* td = node->GetDynamicReflection();
+        wf << node->GetDynamicReflection()->name << '\0';
+
+        while (td)
+        {
+            td->serialize(wf, node);
+            td = td->inherited_type;
+        }
+    }
+
+    wf.close();
+    if (!wf.good())
+    {
+        cout << "error writing file\n";
+        return false;
+    }
+    return true;
+}
+
+bool Geometry_Scene_File_IO::DeserializeSceneNodesFromFile(geometry_scene* geo_scene, io::path fname)
+{
+    ifstream rf(fname.c_str(), ios::in | ios::binary);
+
+    if (!rf)
+    {
+        cout << "Cannot open file\n";
+        return false;
+    }
+    std::string line;
+
+    int magic;
+    getline(rf, line);
+    magic = core::strtoul10(line.c_str());
+
+    if (magic != 38)
+    {
+        std::cout << fname.c_str() << " is not a valid node file\n";
+        rf.close();
+        return false;
+    }
+
+    core::list<scene::ISceneNode*> child_list = geo_scene->editor_nodes->getChildren();
+
+    core::list<scene::ISceneNode*>::Iterator it = child_list.begin();
+    for (; it != child_list.end(); ++it)
+    {
+        geo_scene->editor_nodes->removeChild(*it);
+    }
+
+    int n_nodes;
+    rf.read((char*)&n_nodes, sizeof(int));
+
+    for (int i = 0; i < n_nodes; i++)
+    {
+        getline(rf, line, '\0');
+        reflect::TypeDescriptor_Struct* typeDescriptor = Reflected_SceneNode_Factory::getNodeTypeDescriptorByName(line);
+        if (typeDescriptor)
+        {
+            Reflected_SceneNode* new_node = Reflected_SceneNode_Factory::CreateNodeByTypeName(typeDescriptor->name, geo_scene->editor_nodes, geo_scene, geo_scene->smgr);
+            if (new_node)
+            {
+                reflect::TypeDescriptor_Struct* td = typeDescriptor;
+                while (td)
+                {
+                    td->deserialize(rf, new_node);
+                    td = td->inherited_type;
+
+                }
+                new_node->drop();
+                new_node->postEdit(); //this gets called twice for each node but it's probably OK
+            }
+            else
+            {
+                std::cout << "*could not create node*\n";
+                rf.close();
+                return false;
+            }
+        }
+        else
+        {
+            std::cout << "*could not find type descriptor*\n";
+            rf.close();
+            return false;
+        }
+    }
+
+    rf.close();
+    if (!rf.good())
+    {
+        cout << "error reading file\n";
+        return false;
+    }
+    return true;
+}
 
 //================================================================
 // Scene Coordinator
@@ -114,6 +570,30 @@ void SceneCoordinator::add_scene()
 void SceneCoordinator::connect_skybox(geometry_scene* scene)
 {
     m_skybox_scene = scene;
+}
+
+void SceneCoordinator::clear()
+{
+    //delete all geometry scenes
+    for (int i = 0; i < this->scenes.size(); i++)
+    {
+        if (this->scenes[i] != NULL)
+        {
+            if (i > 0)
+            {
+                //Let the geometry scene clean up the geometry stack
+                this->scenes[i]->geoNode()->grab();
+                this->scenes[i]->get_smgr()->drop();
+            }
+
+            delete this->scenes[i];
+        }
+    }
+
+    //std::cout << smgr->getRootSceneNode()->getChildren().getSize() << "nodes in smgr\n";
+
+    this->scenes.clear();
+    this->scene_no = 0;
 }
 
 void SceneCoordinator::rebuild_dirty_meshbuffers()
@@ -211,8 +691,13 @@ geometry_scene::~geometry_scene()
     if (editor_nodes)
         editor_nodes->remove();
 
-    if(geometry_stack != NULL)
-        geometry_stack->remove();
+    if (geometry_stack != NULL)
+    {
+        if (smgr)
+            geometry_stack->remove();
+        else
+            geometry_stack->drop();
+    }
 }
 
 void geometry_scene::enable()

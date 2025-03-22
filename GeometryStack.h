@@ -66,8 +66,8 @@ public:
 
 
     void initialize(ISceneNode* parent, scene::ISceneManager* smgr_, MyEventReceiver* receiver);
-
     void initialize(scene::ISceneManager* smgr_, MyEventReceiver* receiver);
+    void initialize(geometry_scene*);
 
     ~GeometryStack();
 
@@ -148,7 +148,7 @@ private:
 
     friend class Open_Geometry_File;
     friend class geometry_scene;
-
+    friend class Geometry_Scene_File_IO;
    
 };
 

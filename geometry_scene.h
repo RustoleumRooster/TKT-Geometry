@@ -23,6 +23,36 @@ struct scene_selection
     std::vector<Reflected_SceneNode*> scene_nodes;
 };
 
+class Geometry_Scene_File_IO
+{
+    struct metadata
+    {
+        int n_scenes;
+    };
+
+public:
+    Geometry_Scene_File_IO(io::IFileSystem*);
+
+    void WriteToFiles(SceneCoordinator*);
+    void ReadFromFiles(SceneCoordinator*);
+    void AutoLoad(SceneCoordinator*, io::path);
+
+private:
+
+    bool WriteMetadata(SceneCoordinator* sc, std::string fname);
+    bool ReadMetadata(std::string fname, metadata&);
+    bool WriteTextureNames(geometry_scene*, std::string fname);
+    bool ReadTextures(io::path fname, std::vector<std::wstring>&);
+
+    bool SerializeGeometryToFile(geometry_scene*, std::string fname);
+    bool DeserializeGeometryFromFile(geometry_scene*, io::path fname, io::path tex_fname);
+
+    bool SerializeSceneNodesToFile(geometry_scene*, std::string fname);
+    bool DeserializeSceneNodesFromFile(geometry_scene*, io::path);
+
+    io::IFileSystem* FileSystem = NULL;
+};
+
 class geometry_scene : public irr::IEventReceiver
 {
 public:
@@ -65,18 +95,6 @@ public:
 
     bool progressive_build_enabled() {return this->progressive_build;}
     void toggle_progressive_build() {this->progressive_build = !this->progressive_build;}
-
-    //==============Read and Write to file
-    bool WriteTextures(std::string fname);
-    bool ReadTextures(io::path fname, std::vector<std::wstring>&);
-
-    bool Write(std::string fname);
-    bool Read(io::path fname, io::path tex_fname);
-
-    bool WriteSceneNodesToFile(std::string fname);
-    bool ReadSceneNodesFromFile(io::path);
-
-    bool ExportFinalMesh(std::string fname);
 
     //==============Helper Functions for UI
     void setDragVec(core::vector3df vec) {
@@ -128,9 +146,14 @@ public:
 
     void loadLightmapTextures();
 
+
+    //==deprecated
     void save_selection();
     scene_selection get_saved_selection();
     std::vector<u64> get_saved_selection_uids();
+    //==
+
+
     Reflected_SceneNode* get_reflected_node_by_uid(u64);
 
     std::vector<u64> get_reflected_node_uids_by_type(const char* node_type_name);
@@ -142,9 +165,6 @@ public:
     void setFinalMeshDirty() { geometry_stack->final_mesh_dirty = true; }
 
     ISceneManager* get_smgr() { return smgr; }
-
-    void write_files(int append_no);
-    void read_files(int append_no);
 
     const std::string& name() { return scene_name; }
     void rename(const std::string& new_name);
@@ -190,6 +210,8 @@ private:
 
     friend class Open_Geometry_File;
     friend class SceneCoordinator;
+    friend class Geometry_Scene_File_IO;
+    friend class GeometryStack;
 };
 
 class MySkybox_SceneNode;
@@ -219,12 +241,14 @@ public:
 
     void connect_skybox(geometry_scene*);
 
+    void clear();
+
 private:
 
     
 
-    bool write_metadata(std::string fname);
-    bool read_metadata(std::string fname, metadata&);
+    //bool write_metadata(std::string fname);
+    //bool read_metadata(std::string fname, metadata&);
 
     int scene_no = 0;
    
@@ -245,6 +269,9 @@ private:
     friend class Reflected_SkyNode;
 
     REFLECT()
+
+    friend class Geometry_Scene_File_IO;
+    
 };
 
 

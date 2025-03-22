@@ -158,9 +158,9 @@ int main()
     core::rect<s32> windowsize_0 = driver->getViewPort();
 
     cout << "Loading Project\n";
-    Open_Geometry_File::LoadProject(gs_coordinator, "../projects/test01");
 
-    //===============================================================
+    Geometry_Scene_File_IO file_io(device->getFileSystem());
+    file_io.AutoLoad(gs_coordinator, "../projects/test01");
 
     /*
     clip_results results;

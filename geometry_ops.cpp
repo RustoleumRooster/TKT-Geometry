@@ -101,6 +101,10 @@ void GeometryStack::initialize(ISceneNode* parent, scene::ISceneManager* smgr, M
     this->setAutomaticCulling(scene::EAC_OFF);
 }
 
+void GeometryStack::initialize(geometry_scene* geo_scene)
+{
+    initialize(geo_scene->smgr->getRootSceneNode(), geo_scene->smgr, geo_scene->event_receiver);
+}
 
 void GeometryStack::initialize(scene::ISceneManager* smgr, MyEventReceiver* receiver)
 {
@@ -110,6 +114,7 @@ void GeometryStack::initialize(scene::ISceneManager* smgr, MyEventReceiver* rece
 
 GeometryStack::~GeometryStack()
 {
+    std::cout << "GeometryStack, going out of scope!\n";
 }
 
 void GeometryStack::OnRegisterSceneNode()
@@ -779,9 +784,10 @@ void GeometryStack::clear_scene()
 
     this->build_progress = 0;
 
-    if (this->getMeshNode())
+    if (this->my_MeshNode)
     {
-        this->getMeshNode()->remove();
+        this->my_MeshNode->remove();
+        this->my_MeshNode = NULL;
     }
 
     this->rebuild_geometry();
