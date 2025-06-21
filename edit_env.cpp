@@ -27,6 +27,8 @@
 #include "RenderTargetsTool.h"
 #include "SceneTool.h"
 
+#include <sstream>
+
 extern IrrlichtDevice* device;
 using namespace irr;
 using namespace core;
@@ -123,6 +125,13 @@ void do_toggle_progressive_build()
     }
 }
 
+void do_file_save()
+{
+    Save_Geometry_File* fsave = new Save_Geometry_File(gs_coordinator, false);
+
+    fsave->SaveCurrentProject();
+}
+
 void do_file_save_as()
 {
     Save_Geometry_File* fsave = new Save_Geometry_File(gs_coordinator);
@@ -197,6 +206,7 @@ void OnMenuItemSelected(IGUIContextMenu* menu)
     case GUI_ID_VIEWPORT_2D_RIGHTCLICK_MENU_ITEM_DELETE_BRUSH:
     case GUI_ID_VIEWPORT_2D_RIGHTCLICK_MENU_ITEM_MAKE_RED_BRUSH:
     case GUI_ID_VIEWPORT_2D_RIGHTCLICK_MENU_ITEM_NODE_PROPERTIES:
+    case GUI_ID_VIEWPORT_2D_RIGHTCLICK_MENU_ITEM_SAVE_NODE_SELECTION:
         //3D
     case GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_GRID_TOGGLE:
     case GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_VIEW_BRUSHES:
@@ -265,6 +275,11 @@ void OnMenuItemSelected(IGUIContextMenu* menu)
     case GUI_ID_MENU_FILE_SAVE_AS:
         {
             do_file_save_as();
+            break;
+        }
+    case GUI_ID_MENU_FILE_SAVE:
+        {
+            do_file_save();
             break;
         }
     case GUI_ID_MENU_VIEW_TEXTURES:
@@ -414,11 +429,21 @@ bool MyEventReceiver::OnEvent(const SEvent& event)
                     case GUI_ID_BUTTON_LIGHTS:
                     {
                         VulkanApp vk;
-                        if (System_Soft_Light::verify_inputs(g_scene))
+                        //if (System_Soft_Light::verify_inputs(g_scene))
                         {
+                            std::stringstream ss;
 
-                            vk.run_amb_occlusion(g_scene);
-                            Lightmaps_Tool::get_manager()->loadLightmapTextures(g_scene->geoNode());
+                            if (File_Open_Tool::get_base()->ProjectPathLoaded())
+                            {
+                                io::path p = File_Open_Tool::get_base()->GetCurrentProjectPath();
+
+                                ss << p.c_str();
+                                ss << "/lightmap_" << g_scene->get_unique_id() << "_";
+
+                                vk.run_amb_occlusion(g_scene, ss.str());
+
+                                Lightmaps_Tool::get_manager()->loadLightmapTextures(g_scene);
+                            }
                         }
                     }
                         break;
@@ -682,6 +707,7 @@ void GUI_layout::menu_layout()
     submenu = menu->getSubMenu(0);
     submenu->addItem(L"New Scene", GUI_ID_MENU_FILE_NEW, true, false);
     submenu->addItem(L"Open", GUI_ID_MENU_FILE_OPEN, true, false);
+    submenu->addItem(L"Save", GUI_ID_MENU_FILE_SAVE, true, false);
     submenu->addItem(L"Save As", GUI_ID_MENU_FILE_SAVE_AS, true, false);
 
     menu->addItem(L"Editor", -1, true, true);

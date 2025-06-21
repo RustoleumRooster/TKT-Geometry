@@ -146,14 +146,6 @@ public:
 
     void loadLightmapTextures();
 
-
-    //==deprecated
-    void save_selection();
-    scene_selection get_saved_selection();
-    std::vector<u64> get_saved_selection_uids();
-    //==
-
-
     Reflected_SceneNode* get_reflected_node_by_uid(u64);
 
     std::vector<u64> get_reflected_node_uids_by_type(const char* node_type_name);
@@ -172,6 +164,7 @@ public:
     void save_gui_state();
     void restore_gui_state();
     void InitializeEmptyScene();
+    int get_unique_id() { return scene_unique_inc_id; }
     
 private:
     
@@ -182,7 +175,7 @@ private:
     std::vector<int> selected_faces;
     std::vector<Reflected_SceneNode*> selected_scene_nodes;
 
-    scene_selection saved_selection;
+    //scene_selection saved_selection;
 
     scene::ISceneManager* smgr=NULL;
     video::IVideoDriver* driver=NULL;
@@ -197,6 +190,8 @@ private:
     std::string scene_name;
 
     GUI_state_struct saved_gui_state;
+
+    int scene_unique_inc_id=0;
 
     LineHolder intersections_graph;
 
@@ -244,15 +239,13 @@ public:
     void clear();
 
 private:
-
-    
-
     //bool write_metadata(std::string fname);
     //bool read_metadata(std::string fname, metadata&);
 
     int scene_no = 0;
-   
+    
     std::vector<reflect::pointer<geometry_scene>> scenes;
+    int unique_id_incrementer = 0;
 
     bool skybox_dirty = false;
 

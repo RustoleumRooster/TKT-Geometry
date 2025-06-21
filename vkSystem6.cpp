@@ -531,7 +531,7 @@ void System_Amb_Occlusion::writeDrawLines(LineHolder& graph)
 	graph.lines = m_graph.lines;
 }
 
-void System_Amb_Occlusion::executeComputeShader() 
+void System_Amb_Occlusion::executeComputeShader(std::string filename_base)
 {
 	for (int i = 0; i < lightmaps_info.size(); i++)
 	{
@@ -658,7 +658,8 @@ void System_Amb_Occlusion::executeComputeShader()
 		stagingBuffer.readFromBuffer(pixels);
 
 		std::stringstream ss;
-		ss << "../projects/export/lightmap_" << image_count << ".bmp";
+		//ss << "../projects/export/lightmap_" << image_count << ".bmp";
+		ss << filename_base.c_str() << image_count << ".bmp";
 		image_count++;
 
 		generateBitmapImage(pixels, width, width, ss.str().c_str());

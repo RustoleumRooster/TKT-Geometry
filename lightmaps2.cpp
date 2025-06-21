@@ -11,6 +11,7 @@
 #include <sstream>
 #include "edit_env.h"
 #include "CMeshSceneNode.h"
+#include "file_open.h"
 
 using namespace irr;
 using namespace core;
@@ -441,8 +442,9 @@ Lightmap_Manager::Lightmap_Manager()
 	event_receiver = receiver;
 }
 
-void Lightmap_Manager::loadLightmapTextures(GeometryStack* geo_node)
+void Lightmap_Manager::loadLightmapTextures(geometry_scene* geo_scene)
 {
+	GeometryStack* geo_node = geo_scene->geoNode();
 	std::vector<TextureMaterial> material_groups = geo_node->final_meshnode_interface.getMaterialsUsed();
 
 	SEvent event;
@@ -467,7 +469,13 @@ void Lightmap_Manager::loadLightmapTextures(GeometryStack* geo_node)
 		}
 
 		std::stringstream ss;
-		ss << "../projects/export/lightmap_" << inc << ".bmp";
+
+		io::path p = File_Open_Tool::get_base()->GetCurrentProjectPath();
+
+		ss << p.c_str();
+		ss << "/lightmap_" << geo_scene->get_unique_id() << "_" << inc << ".bmp";
+
+		//ss << "../projects/export/lightmap_" << inc << ".bmp";
 		video::ITexture* tex = device->getVideoDriver()->getTexture(ss.str().c_str());
 
 		lightmap_textures.push_back(tex);

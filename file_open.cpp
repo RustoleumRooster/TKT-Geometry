@@ -466,6 +466,17 @@ void File_Open_Base::setFileBaseNameW(core::stringw str)
     FileBaseNameW = str;
 }
 
+void File_Open_Base::SetCurrentProjectPath(io::path p)
+{
+    current_project_path = p;
+    project_path_loaded = true;
+}
+
+io::path File_Open_Base::GetCurrentProjectPath()
+{
+    return current_project_path;
+}
+
 core::stringw File_Open_Base::getFileBaseNameW()
 {
     return FileBaseNameW;

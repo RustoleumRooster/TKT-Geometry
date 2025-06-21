@@ -67,7 +67,7 @@ public:
 	bool run_soft_light(geometry_scene* geo_scene);
 	bool run_multipass_light(geometry_scene* geo_scene);
 	bool run_test_mc(geometry_scene* geo_scene);
-	bool run_amb_occlusion(geometry_scene* geo_scene);
+	bool run_amb_occlusion(geometry_scene* geo_scene, std::string filename_base);
 
 
 private:

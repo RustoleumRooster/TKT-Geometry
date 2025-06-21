@@ -656,6 +656,7 @@ void TestPanel_2D::right_click(core::vector2di pos)
             txt += std::wstring(L" properties");
 
         menu->addItem(txt.c_str(),GUI_ID_VIEWPORT_2D_RIGHTCLICK_MENU_ITEM_NODE_PROPERTIES,true,false,false,false);
+        menu->addItem(L"Save selection", GUI_ID_VIEWPORT_2D_RIGHTCLICK_MENU_ITEM_SAVE_NODE_SELECTION, true, false, false, false);
         ContextMenuOwner = this->m_viewPanel;
         }
     }
@@ -706,6 +707,9 @@ void TestPanel_2D::OnMenuItemSelected(IGUIContextMenu* menu)
         break;
     case GUI_ID_VIEWPORT_2D_RIGHTCLICK_MENU_ITEM_NODE_PROPERTIES:
         NodeProperties_Tool::show();
+        break;
+    case GUI_ID_VIEWPORT_2D_RIGHTCLICK_MENU_ITEM_SAVE_NODE_SELECTION:
+        //geo_scene->save_selection();
         break;
     default:
         break;

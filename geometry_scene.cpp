@@ -18,6 +18,8 @@
 #include "utils.h"
 #include <sstream>
 
+#include "file_open.h"
+
 extern SceneCoordinator* gs_coordinator;
 extern IrrlichtDevice* device;
 
@@ -153,6 +155,8 @@ void Geometry_Scene_File_IO::AutoLoad(SceneCoordinator* sc, io::path p)
     io::path restore_path = FileSystem->getWorkingDirectory();
 
     FileSystem->changeWorkingDirectoryTo(p);
+
+    File_Open_Tool::get_base()->SetCurrentProjectPath(p);
 
     ReadFromFiles(sc);
 
@@ -505,6 +509,9 @@ SceneCoordinator::SceneCoordinator(scene::ISceneManager* smgr, video::IVideoDriv
     scene0->initialize(smgr, driver, receiver);
     scene0->set_type(GEO_SOLID);
     scene0->rename("Main Scene");
+    scene0->scene_unique_inc_id = 0;
+
+    unique_id_incrementer = 1;
 
     scenes.push_back(reflect::pointer<geometry_scene>{scene0});
 }
@@ -563,6 +570,9 @@ void SceneCoordinator::add_scene()
     scene->geoNode()->rebuild_geometry();
     scene->disable();
     scene->rename("new scene");
+
+    scene->scene_unique_inc_id = unique_id_incrementer;
+    unique_id_incrementer++;
 
     scenes.push_back(reflect::pointer<geometry_scene>{scene});
 }
@@ -1243,25 +1253,7 @@ void geometry_scene::setRenderType(bool brushes, bool geo, bool loops, bool tria
 void geometry_scene::loadLightmapTextures()
 {
     if(geometry_stack)
-    Lightmaps_Tool::get_manager()->loadLightmapTextures(geometry_stack);
-}
-
-void geometry_scene::save_selection()
-{
-    saved_selection.brushes = getBrushSelection();
-    saved_selection.faces = getSelectedFaces();
-    saved_selection.scene_nodes = getSelectedNodes();
-}
-
-vector<u64> geometry_scene::get_saved_selection_uids()
-{
-    vector<u64> ret;
-    for (Reflected_SceneNode* node : saved_selection.scene_nodes)
-    {
-        ret.push_back(node->UID());
-    }
-    cout << ret.size() << " nodes in selection\n";
-    return ret;
+        Lightmaps_Tool::get_manager()->loadLightmapTextures(this);
 }
 
 Reflected_SceneNode* geometry_scene::get_reflected_node_by_uid(u64 uid)
@@ -1642,8 +1634,10 @@ REFLECT_STRUCT_BEGIN(geometry_scene)
     REFLECT_STRUCT_MEMBER(geometry_stack)
     REFLECT_STRUCT_MEMBER(scene_name)
     REFLECT_STRUCT_MEMBER(saved_gui_state)
+    REFLECT_STRUCT_MEMBER(scene_unique_inc_id)
 REFLECT_STRUCT_END()
 
 REFLECT_STRUCT_BEGIN(SceneCoordinator)
     REFLECT_STRUCT_MEMBER(scenes)
+    REFLECT_STRUCT_MEMBER(unique_id_incrementer)
 REFLECT_STRUCT_END()

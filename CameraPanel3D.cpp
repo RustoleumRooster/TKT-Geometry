@@ -1155,7 +1155,7 @@ void TestPanel_3D::SetViewStyle(s32 vtype)
         }
 
         if(geo_scene->geoNode()->elements.size() > 1)
-            Lightmaps_Tool::get_manager()->loadLightmapTextures(geo_scene->geoNode());
+            Lightmaps_Tool::get_manager()->loadLightmapTextures(geo_scene);
 
         geo_scene->setSelectedFaces(std::vector<int>{}, true);
 
@@ -1189,7 +1189,7 @@ void TestPanel_3D::SetViewStyle(s32 vtype)
         }
 
         if (geo_scene->geoNode()->elements.size() > 1)
-            Lightmaps_Tool::get_manager()->loadLightmapTextures(geo_scene->geoNode());
+            Lightmaps_Tool::get_manager()->loadLightmapTextures(geo_scene);
 
         gs_coordinator->CopyAllMaterials();
 

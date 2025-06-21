@@ -103,7 +103,14 @@ public:
     core::stringw getFileBaseNameW();
     void setFileBaseNameW(core::stringw);
 
+    void SetCurrentProjectPath(io::path);
+    io::path GetCurrentProjectPath();
+    bool ProjectPathLoaded() { return project_path_loaded; }
+
 private:
+
+    io::path current_project_path;
+    bool project_path_loaded = false;
 
     io::path FileName;
     core::stringw FileNameW;

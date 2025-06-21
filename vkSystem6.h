@@ -68,7 +68,7 @@ public:
 		createEdgeBuffer();
 	}
 	
-	void executeComputeShader();
+	void executeComputeShader(std::string filename_base);
 	void createLightmapImages();
 	VkImageView getImageView(int n) { return lightmapImageViews[n]; }
 

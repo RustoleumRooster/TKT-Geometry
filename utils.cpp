@@ -425,6 +425,8 @@ bool Open_Geometry_File::OnEvent(const SEvent& event)
 
             FileSystem->changeWorkingDirectoryTo(p);
 
+            File_Open_Tool::get_base()->SetCurrentProjectPath(p);
+
             Geometry_Scene_File_IO file_io(FileSystem);
             file_io.ReadFromFiles(scene_coordinator);
 
@@ -484,6 +486,8 @@ bool Save_Geometry_File::OnEvent(const SEvent& event)
             Geometry_Scene_File_IO file_io(FileSystem);
             file_io.WriteToFiles(scene_coordinator);
 
+            File_Open_Tool::get_base()->SetCurrentProjectPath(p);
+
             FileSystem->changeWorkingDirectoryTo(restore_path);
             return true;
         }
@@ -499,6 +503,21 @@ bool Save_Geometry_File::OnEvent(const SEvent& event)
         }
     }
     return false;
+}
+
+void Save_Geometry_File::SaveCurrentProject()
+{
+    io::path restore_path = FileSystem->getWorkingDirectory();
+    io::path p = File_Open_Tool::get_base()->GetCurrentProjectPath();
+
+    std::cout << " >>>>> writing files to " << p.c_str() << "\n";
+
+    FileSystem->changeWorkingDirectoryTo(p);
+
+    Geometry_Scene_File_IO file_io(FileSystem);
+    file_io.WriteToFiles(scene_coordinator);
+
+    FileSystem->changeWorkingDirectoryTo(restore_path);
 }
 
 REFLECT_STRUCT_BEGIN(camera_info_struct)

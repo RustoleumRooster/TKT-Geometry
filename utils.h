@@ -156,6 +156,8 @@ public:
 	virtual bool OnEvent(const SEvent& event);
     bool Export(io::path fname);
 
+    void SaveCurrentProject();
+
 private:
 
     bool export_model(io::path fname);

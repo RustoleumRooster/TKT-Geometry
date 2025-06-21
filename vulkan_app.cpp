@@ -79,14 +79,14 @@ bool VulkanApp::run_multipass_light(geometry_scene* geo_scene) {
 	return true;
 }
 
-bool VulkanApp::run_amb_occlusion(geometry_scene* geo_scene)
+bool VulkanApp::run_amb_occlusion(geometry_scene* geo_scene, std::string filename_base)
 {
 	initVulkan();
 
 	system_amb_occlusion = new System_Amb_Occlusion(m_device, uniformBuffers);
 	system_amb_occlusion->loadModel(&geo_scene->geoNode()->final_meshnode_interface);
 	system_amb_occlusion->initialize_step2(m_DescriptorPool);
-	system_amb_occlusion->executeComputeShader();
+	system_amb_occlusion->executeComputeShader(filename_base);
 	vkDeviceWaitIdle(m_device->getDevice());
 
 	system_amb_occlusion->writeDrawLines(geo_scene->special_graph);
