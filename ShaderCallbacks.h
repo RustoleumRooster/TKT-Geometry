@@ -327,42 +327,6 @@ public:
 	static video::ITexture* texture2;
 };
 
-void CloudsShaderCallBack::OnSetConstants(video::IMaterialRendererServices* services,
-	s32 userData)
-{
-	video::IVideoDriver* driver = services->getVideoDriver();
 
-
-	//Projection and WorldView matrices
-
-	core::matrix4 Proj = driver->getTransform(video::ETS_PROJECTION);
-
-	services->setPixelShaderConstant("P", Proj.pointer(), 16);
-
-	core::matrix4 MV = driver->getTransform(video::ETS_VIEW);
-	core::matrix4 World = driver->getTransform(video::ETS_WORLD);
-	MV *= World;
-
-	services->setPixelShaderConstant("MV", MV.pointer(), 16);
-
-	core::vector3df pos = device->getSceneManager()->getActiveCamera()->getAbsolutePosition();
-
-	services->setVertexShaderConstant("mCamPos", reinterpret_cast<f32*>(&pos), 3);
-
-	services->setPixelShaderConstant("Time", reinterpret_cast<f32*>(&g_time), 1);
-
-	s32 TextureLayerID = 0;
-
-	services->setPixelShaderConstant("myTexture", &TextureLayerID, 1);
-
-	TextureLayerID = 1;
-
-	services->setPixelShaderConstant("myTexture2", &TextureLayerID, 1);
-
-	TextureLayerID = 2;
-
-	services->setPixelShaderConstant("myTexture3", &TextureLayerID, 1);
-
-}
 
 #endif

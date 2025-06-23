@@ -622,6 +622,10 @@ u64 Reflected_MeshBuffer_SceneNode::get_uid()
     return face_uid;
 }
 
+//=================================================
+//Reflected_MeshBuffer_Sky_SceneNode
+//
+
 Reflected_MeshBuffer_Sky_SceneNode::Reflected_MeshBuffer_Sky_SceneNode(USceneNode* parent, geometry_scene* geo_scene, irr::scene::ISceneManager* smgr, int id, const core::vector3df& pos) :
     Reflected_MeshBuffer_SceneNode(parent,geo_scene,smgr,id,pos)
 {
@@ -676,6 +680,10 @@ void Reflected_MeshBuffer_Sky_SceneNode::connect_sky_sceneNode(MySkybox_SceneNod
     //geoNode()->getMeshNode()->copyMaterials();
 }
 
+//=================================================
+//Reflected_MeshBuffer_Water_SceneNode
+//
+
 Reflected_MeshBuffer_Water_SceneNode::Reflected_MeshBuffer_Water_SceneNode(USceneNode* parent, geometry_scene* geo_scene, irr::scene::ISceneManager* smgr, int id, const core::vector3df& pos) :
     Reflected_MeshBuffer_SceneNode(parent, geo_scene, smgr, id, pos)
 {
@@ -718,7 +726,6 @@ void Reflected_MeshBuffer_Water_SceneNode::connect_water_sceneNode(WaterSurface_
     //geoNode()->getMeshNode()->copyMaterials();
 }
 
-
 void Reflected_MeshBuffer_Water_SceneNode::set_connected(bool b)
 {
     this->is_connected = b;
@@ -734,6 +741,7 @@ void Reflected_MeshBuffer_Water_SceneNode::set_connected(bool b)
         Buffer->Material.setTexture(0, m_texture);
     }
 }
+
 
 //
 //============================================================================

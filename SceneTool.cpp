@@ -211,7 +211,7 @@ bool Scene_Instances_Widget::OnEvent(const SEvent& event)
 		{
 			FormField* field = my_widget->form->getFieldFromId(id);
 
-			std::cout << id << " id\n";
+			//std::cout << id << " id\n";
 			editing_element_id = id;
 
 			if (field)
@@ -251,7 +251,7 @@ bool Scene_Instances_Widget::OnEvent(const SEvent& event)
 			{
 				if (f->my_ID == editing_element_id)
 				{
-					std::cout << "found it ! " << f->my_ID << "\n";
+					//std::cout << "found it ! " << f->my_ID << "\n";
 					Environment->setFocus( f->getStaticElement(0));
 				}
 				f = f->next;
@@ -265,7 +265,7 @@ bool Scene_Instances_Widget::OnEvent(const SEvent& event)
 			if (event.GUIEvent.Element &&
 				(event.GUIEvent.Element->getType() == gui::EGUIET_EDIT_BOX))
 			{
-				std::cout << "rename success!\n";
+				//std::cout << "rename success!\n";
 
 				my_widget->write_by_field();
 

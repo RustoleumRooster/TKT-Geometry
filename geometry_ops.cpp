@@ -114,7 +114,7 @@ void GeometryStack::initialize(scene::ISceneManager* smgr, MyEventReceiver* rece
 
 GeometryStack::~GeometryStack()
 {
-    std::cout << "GeometryStack, going out of scope!\n";
+   // std::cout << "GeometryStack, going out of scope!\n";
 }
 
 void GeometryStack::OnRegisterSceneNode()
@@ -178,7 +178,9 @@ void GeometryStack::render()
 
     if (render_brushes)
     {
-        for (int e_i = 1; e_i < this->elements.size(); e_i++)
+        //changed e_i=0 to 1, even though this is normally the red brush,
+        //because in the UV editor, there is no red brush
+        for (int e_i = 0; e_i < this->elements.size(); e_i++)
         {
             geo_element* geo = &this->elements[e_i];
 
@@ -596,7 +598,7 @@ void GeometryStack::rebuild_geometry(bool only_build_new_geometry)
                 }
                 else //Neither Convex or Concave, ie plane geometry
                 {
-                    std::cout << "Plane Geometry\n";
+                    std::cout << "utilizing Plane Geometry\n";
                     this->elements[i].geometry = this->elements[i].brush;
                     clip_poly_accelerated_single(this->elements[i].geometry, combo, GEO_ADD, this->base_type, results, nograph);
                 }
@@ -611,7 +613,7 @@ void GeometryStack::rebuild_geometry(bool only_build_new_geometry)
             }
             else
             {
-                this->elements[i].geometry = no_poly;
+                //this->elements[i].geometry = no_poly;
             }
         }
     }// semisolid brushes
@@ -773,6 +775,11 @@ void GeometryStack::clip_active_brush_plane_geometry()
 
     clip_poly_accelerated_single(cube, pf2, GEO_ADD, base_type, results, nograph);
 
+    for (const poly_vert& v : pf2.control_vertices)
+    {
+        cube.control_vertices.push_back(v);
+    }
+
     this->elements[0].brush = cube;
 }
 
@@ -886,6 +893,35 @@ std::vector<int> GeometryStack::getSurfaceFromFace(int b_i)
 
 }
 
+void  GeometryStack::GetGeometryLoopLines(LineHolder& lines0, LineHolder& lines1)
+{
+    for (const geo_element& el : elements)
+    {
+        const polyfold& pf = el.geometry;
+
+        for (const poly_face& face : pf.faces)
+        {
+            for (const poly_loop& p : face.loops)
+            {
+                LineHolder& line = (p.depth % 2 == 0) ? lines0 : lines1;
+                int v0, v1;
+
+                for (int i = 0; i < p.vertices.size() -1; i++)
+                {
+                    v0 = p.vertices[i];
+                    v1 = p.vertices[i + 1];
+                    line.lines.push_back(core::line3df(pf.vertices[v0].V, pf.vertices[v1].V));
+                }
+
+                v0 = p.vertices[p.vertices.size()-1];
+                v1 = p.vertices[0];
+                line.lines.push_back(core::line3df(pf.vertices[v0].V, pf.vertices[v1].V));
+            }
+        }
+    }
+
+}
+
 void GeometryStack::buildSceneNode(bool finalMesh, int light_mode)
 {
     video::IVideoDriver* driver = device->getVideoDriver();
@@ -938,6 +974,9 @@ void GeometryStack::buildSceneNode(bool finalMesh, int light_mode)
         my_MeshNode->copyMaterials();
     }
 
+    if (render_triangles)
+        my_MeshNode->setWireFrame(true);
+
    // if(final_meshnode_interface.getMaterialsUsed().size() > 0)
    //     Lightmaps_Tool::get_manager()->loadLightmapTextures(this);
 
@@ -983,7 +1022,7 @@ void geo_element::draw_brush_vertices(const core::matrix4& trans, core::dimensio
     video::ITexture* med_circle;
     video::ITexture* small_circle;
 
-    if (this->type == GEO_ADD)
+    if (this->type == GEO_ADD || this->type == GEO_SEMISOLID )
     {
         med_circle = med_circle_tex_add_selected;
         small_circle = small_circle_tex_add_selected;

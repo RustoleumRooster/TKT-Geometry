@@ -156,7 +156,9 @@ void Geometry_Scene_File_IO::AutoLoad(SceneCoordinator* sc, io::path p)
 
     FileSystem->changeWorkingDirectoryTo(p);
 
-    File_Open_Tool::get_base()->SetCurrentProjectPath(p);
+    io::path project_path = FileSystem->getAbsolutePath(FileSystem->getWorkingDirectory());
+    
+    File_Open_Tool::get_base()->SetCurrentProjectPath(project_path);
 
     ReadFromFiles(sc);
 

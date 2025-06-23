@@ -1108,7 +1108,6 @@ void TestPanel_3D::SetViewStyle(s32 vtype)
 {
     this->view_style = vtype;
 
-
     scene::CMeshSceneNode* mesh_node;
     if (this->override_mesh_node == NULL)
         mesh_node = this->geo_scene->getMeshNode();
@@ -1122,6 +1121,8 @@ void TestPanel_3D::SetViewStyle(s32 vtype)
 
         geo_scene->setRenderType(false, true, true, false);
 
+        geo_scene->geoNode()->GetGeometryLoopLines(graph, graph2);
+
         if (geo_scene->getSelectedFaces().size() > 0)
         {
             geo_scene->setSelectedFaces(std::vector<int>{});
@@ -1131,10 +1132,10 @@ void TestPanel_3D::SetViewStyle(s32 vtype)
     case PANEL3D_VIEW_TRIANGLES:
         bShowGeometry = true;
 
-        geo_scene->buildSceneGraph(false, this->lighting_type, false);
-       
         geo_scene->setRenderType(false, true, false, true);
 
+        geo_scene->buildSceneGraph(false, this->lighting_type, false);
+       
         if (geo_scene->getSelectedFaces().size() > 0)
         {
             geo_scene->setSelectedFaces(std::vector<int>{});
@@ -1144,9 +1145,9 @@ void TestPanel_3D::SetViewStyle(s32 vtype)
     case PANEL3D_VIEW_RENDER:
         bShowGeometry = true;
 
-        geo_scene->buildSceneGraph(true, this->lighting_type, false);
-
         geo_scene->setRenderType(false, true, false, false);
+
+        geo_scene->buildSceneGraph(true, this->lighting_type, false);
 
         if (gs_coordinator->skybox_scene() && gs_coordinator->skybox_scene() != geo_scene)
         {
@@ -1178,9 +1179,9 @@ void TestPanel_3D::SetViewStyle(s32 vtype)
             gs_coordinator->skybox_scene()->setRenderType(false, true, false, false);
         }
 
-        geo_scene->buildSceneGraph(false, this->lighting_type, true);
-       
         geo_scene->setRenderType(false, true, false, false);
+
+        geo_scene->buildSceneGraph(false, this->lighting_type, true);
 
         geo_scene->beginScene();
         if (gs_coordinator->skybox_scene() && gs_coordinator->skybox_scene() != geo_scene)
@@ -1213,7 +1214,22 @@ void TestPanel_3D::render()
 
     if (view_style == PANEL3D_VIEW_LOOPS)
     {
+        video::SMaterial someMaterial;
+        someMaterial.Lighting = false;
+        someMaterial.Thickness = 1.0;
+        someMaterial.MaterialType = video::EMT_SOLID;
 
+        driver->setMaterial(someMaterial);
+
+        for (const core::line3df& aline : graph.lines)
+        {
+            driver->draw3DLine(aline.start, aline.end, video::SColor(200, 128, 255, 255));
+        }
+        for (const core::line3df& aline : graph2.lines)
+        {
+            driver->draw3DLine(aline.start, aline.end, video::SColor(128, 255, 0, 255));
+        }
+        /*
         for (const core::line3df& aline : graph2.lines)
         {
             driver->draw3DLine(aline.start, aline.end, video::SColor(255, 96, 128, 96));
@@ -1241,7 +1257,7 @@ void TestPanel_3D::render()
             driver->draw3DLine(v + core::vector3df(0, len, 0), v - core::vector3df(0, len, 0), video::SColor(255, 96, 128, 96));
             driver->draw3DLine(v + core::vector3df(0, 0, len), v - core::vector3df(0, 0, len), video::SColor(255, 96, 128, 96));
         }
-        
+        */
     }
     else
         smgr->drawAll();

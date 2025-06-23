@@ -10,6 +10,7 @@
 #include "CMeshSceneNode.h"
 #include "material_groups.h"
 #include "my_nodes.h"
+#include "ShaderCallbacks.h"
 
 using namespace irr;
 using namespace video;
@@ -379,9 +380,14 @@ void Reflected_SkyNode::onSceneInit()
 
     for (geometry_scene* a_geo_scene : gs_coordinator->scenes)
     {
+        if (a_geo_scene->IsEditNode())
+            continue;
+
         std::vector<Reflected_MeshBuffer_Sky_SceneNode*> buffer_nodes;
 
-        resolve_uid_references<Reflected_MeshBuffer_Sky_SceneNode>(a_geo_scene, target, buffer_nodes);
+        //TODO: find a better way of doing this
+        //resolve_uid_references<Reflected_MeshBuffer_Sky_SceneNode>(a_geo_scene, target, buffer_nodes);
+        resolve_match_all_references<Reflected_MeshBuffer_Sky_SceneNode>(a_geo_scene, buffer_nodes);
 
         if (buffer_nodes.size() > 0)
         {
@@ -397,7 +403,8 @@ void Reflected_SkyNode::onSceneInit()
 
         std::vector<Reflected_WaterSurfaceNode*> waterNodes;
 
-        resolve_uid_references<Reflected_WaterSurfaceNode>(a_geo_scene, target, waterNodes);
+        //resolve_uid_references<Reflected_WaterSurfaceNode>(a_geo_scene, target, waterNodes);
+        resolve_match_all_references<Reflected_WaterSurfaceNode>(a_geo_scene, waterNodes);
 
         for (Reflected_WaterSurfaceNode* n : waterNodes)
         {
@@ -466,6 +473,37 @@ void Reflected_SkyNode::endScene()
 // Clouds Meshbuffer Node
 //
 
+void CloudsShaderCallBack::OnSetConstants(video::IMaterialRendererServices* services,
+    s32 userData)
+{
+    video::IVideoDriver* driver = services->getVideoDriver();
+
+    core::matrix4 Proj = driver->getTransform(video::ETS_PROJECTION);
+    services->setPixelShaderConstant("P", Proj.pointer(), 16);
+
+    core::matrix4 MV = driver->getTransform(video::ETS_VIEW);
+    core::matrix4 World = driver->getTransform(video::ETS_WORLD);
+    MV *= World;
+
+    services->setPixelShaderConstant("MV", MV.pointer(), 16);
+
+    scene::ICameraSceneNode* cam = device->getSceneManager()->getActiveCamera();
+    core::vector3df pos = device->getSceneManager()->getActiveCamera()->getAbsolutePosition();
+
+    services->setVertexShaderConstant("mCamPos", reinterpret_cast<f32*>(&pos), 3);
+    services->setPixelShaderConstant("Time", reinterpret_cast<f32*>(&g_time), 1);
+
+    s32 TextureLayerID = 0;
+    services->setPixelShaderConstant("myTexture", &TextureLayerID, 1);
+
+    TextureLayerID = 1;
+    services->setPixelShaderConstant("myTexture2", &TextureLayerID, 1);
+
+    TextureLayerID = 2;
+    services->setPixelShaderConstant("myTexture3", &TextureLayerID, 1);
+
+}
+
 Reflected_MeshBuffer_Clouds_SceneNode::Reflected_MeshBuffer_Clouds_SceneNode(USceneNode* parent, geometry_scene* geo_scene, irr::scene::ISceneManager* smgr, int id, const core::vector3df& pos)
     :Reflected_MeshBuffer_SceneNode(parent, geo_scene, smgr, id, pos)
 {
@@ -480,8 +518,31 @@ Reflected_MeshBuffer_Clouds_SceneNode::~Reflected_MeshBuffer_Clouds_SceneNode()
 
 bool Reflected_MeshBuffer_Clouds_SceneNode::addSelfToScene(USceneNode* parent, irr::scene::ISceneManager* smgr, geometry_scene* geo_scene)
 {
-    std::cout << "Clouds are here !!!\n";
     return false;
+}
+
+void Reflected_MeshBuffer_Clouds_SceneNode::onSceneInit()
+{
+    polyfold* pf = geo_scene->geoNode()->get_total_geometry();
+
+    for (int f_i = 0; f_i < pf->faces.size(); f_i++)
+    {
+        if (pf->faces[f_i].uid == this->get_uid())
+        {
+            MeshBuffer_Chunk chunk = geo_scene->geoNode()->final_meshnode_interface.get_mesh_buffer_by_face(f_i);
+
+            IMeshBuffer* buffer = chunk.buffer;
+
+            buffer->getMaterial().setTexture(0, CloudsShaderCallBack::texture0);
+            buffer->getMaterial().setTexture(1, CloudsShaderCallBack::texture1);
+            buffer->getMaterial().setTexture(2, CloudsShaderCallBack::texture2);
+
+            Material_Groups_Base* material_groups_base = Material_Groups_Tool::get_base();
+
+            E_MATERIAL_TYPE cloud_material = (E_MATERIAL_TYPE)material_groups_base->Material_Clouds_Type;
+            buffer->getMaterial().MaterialType = cloud_material;
+        }
+    }
 }
 
 REFLECT_STRUCT2_BEGIN(Reflected_MeshBuffer_Clouds_SceneNode)

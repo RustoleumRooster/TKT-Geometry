@@ -788,6 +788,8 @@ void TestPanel_2D::SetMeshNodesVisible()
     if(geo_scene->getMeshNode())
         geo_scene->getMeshNode()->setVisible(false);
 
+    geo_scene->ActualNodes()->setVisible(false);
+
     geo_scene->setRenderType(bShowBrushes, false, false, false);
 }
 

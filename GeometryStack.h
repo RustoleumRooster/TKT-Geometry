@@ -103,6 +103,7 @@ public:
     triangle_holder* get_triangles_for_face(int f_i);
 
     void setRenderType(bool brushes, bool geo, bool loops, bool triangles);
+    void GetGeometryLoopLines(LineHolder&,LineHolder&);
 
     bool renderGeometry() { return render_geometry; }
 

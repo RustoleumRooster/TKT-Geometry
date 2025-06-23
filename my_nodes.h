@@ -84,7 +84,7 @@ public:
     virtual const core::aabbox3d<f32>& getBoundingBox() const override { return my_box; }
 
     virtual int get_image_count() override { return 1; }
-    virtual video::ITexture* get_image(int n) { return my_rtt; };
+    virtual video::ITexture* get_image(int n);
 
     void set_material(s32 material_type) { render_material = (video::E_MATERIAL_TYPE)material_type; }
     void set_underwater_material(s32 material_type) { underwater_material = (video::E_MATERIAL_TYPE)material_type; }

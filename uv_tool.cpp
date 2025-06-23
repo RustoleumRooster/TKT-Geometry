@@ -52,6 +52,7 @@ UV_Editor_Panel::UV_Editor_Panel(IGUIEnvironment* environment, video::IVideoDriv
 
     geo_scene = new geometry_scene(device->getVideoDriver(), (MyEventReceiver*)device->getEventReceiver());
     geo_scene->geoNode()->setRenderType(true, false, false, false);
+    //geo_scene->geoNode()->setVisible(false);
 }
 
 UV_Editor_Panel::~UV_Editor_Panel()
@@ -60,10 +61,15 @@ UV_Editor_Panel::~UV_Editor_Panel()
         delete geo_scene;
 }
 
-void UV_Editor_Panel::Initialize(geometry_scene* geo_scene)
+void UV_Editor_Panel::Initialize(geometry_scene* real_geo_scene)
 {
-    smgr = geo_scene->get_smgr();
-    real_g_scene = geo_scene;
+    //Unfortunate Name Collisions :(
+    //Be careful !!!
+
+    smgr = real_geo_scene->get_smgr();
+    real_g_scene = real_geo_scene;
+
+    geo_scene->geoNode()->initialize(real_geo_scene->get_smgr(), (MyEventReceiver*)device->getEventReceiver());
 }
 
 void UV_Editor_Panel::resize(core::dimension2d<u32> new_size)
@@ -274,7 +280,7 @@ bool UV_Editor_Panel::OnEvent(const SEvent& event)
                 }
                 else
                 {
-                    
+                    geo_scene->setBrushSelection(std::vector<int>{});
                     geo_scene->geoNode()->elements.clear();
                     if (geo_scene)
                     {

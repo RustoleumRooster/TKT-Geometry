@@ -220,6 +220,9 @@ public:
     template<typename T>
     static void resolve_uid_references(geometry_scene* a_geo_scene, reflect::uid_reference& uid_ref, std::vector<T*>& ptr_ref);
 
+    template<typename T>
+    static void resolve_match_all_references(geometry_scene* a_geo_scene, std::vector<T*>& ptr_ref);
+
     void connect_input(Reflected_SceneNode*);
     void disconnect(Reflected_SceneNode*);
 
@@ -390,6 +393,22 @@ void Reflected_SceneNode::resolve_uid_references(geometry_scene* a_geo_scene, re
                     ptr_ref.push_back(t_node);
             }
         }
+    }
+}
+
+template<typename T>
+void Reflected_SceneNode::resolve_match_all_references(geometry_scene* a_geo_scene, std::vector<T*>& ptr_ref)
+{
+    core::list<scene::ISceneNode*> child_list = a_geo_scene->EditorNodes()->getChildren();
+
+    for (scene::ISceneNode* inode : child_list)
+    {
+        Reflected_SceneNode* node = (Reflected_SceneNode*)inode;
+
+        T* t_node = dynamic_cast<T*>(node);
+
+        if (t_node != NULL)
+            ptr_ref.push_back(t_node);
     }
 }
 

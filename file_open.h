@@ -106,6 +106,7 @@ public:
     void SetCurrentProjectPath(io::path);
     io::path GetCurrentProjectPath();
     bool ProjectPathLoaded() { return project_path_loaded; }
+    void ResetProjectPath() { project_path_loaded = false; }
 
 private:
 

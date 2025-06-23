@@ -116,6 +116,7 @@ public:
     ~Reflected_MeshBuffer_Clouds_SceneNode();
 
     virtual bool addSelfToScene(USceneNode* parent, irr::scene::ISceneManager* smgr, geometry_scene* geo_scene) override;
+    virtual void onSceneInit() override;
 
     REFLECT2()
 };

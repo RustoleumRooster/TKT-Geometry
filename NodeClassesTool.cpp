@@ -368,6 +368,8 @@ void Node_Classes_Base::build_struct()
 					nc.selected = nc.typeDescriptor == selected_type;
 					nc.placeable = ((reflect::TypeDescriptor_SN_Struct*)nc.typeDescriptor)->placeable;
 					res->sub_classes.push_back(nc);
+
+					//std::cout << nc.typeDescriptor->alias << "\n";
 					
 					std::vector<reflect::TypeDescriptor_Struct*> new_classes;
 					for (int i = 0; i < all_classes.size(); i++)

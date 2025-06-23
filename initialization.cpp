@@ -211,7 +211,7 @@ void initialize_materials(geometry_scene* scene)
 
         materialType_clouds = gpu->addHighLevelShaderMaterialFromFiles(
             "vert_shader_default.txt", "vertexMain", video::EVST_VS_1_1,
-            "frag_shader_clouds", "pixelMain", video::EPST_PS_1_1,
+            "frag_shader_clouds.txt", "pixelMain", video::EPST_PS_1_1,
             mc10, video::EMT_SOLID, 0);
             
 

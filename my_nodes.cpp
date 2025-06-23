@@ -91,8 +91,16 @@ void WaterSurface_SceneNode::resizeView(core::dimension2du new_size)
 
     geo_scene->getMeshNode()->copyMaterials();
 
+    //uncomment to use the Render Tool View
     //Render_Tool::connect_image(this);
 }
+
+//for use with Render_Tool
+video::ITexture* WaterSurface_SceneNode::get_image(int n) 
+{ 
+    return my_rtt2; 
+}
+
 
 void WaterSurface_SceneNode::getReflectedCamera(ICameraSceneNode* camera, f32 z, const ICameraSceneNode* src)
 {
@@ -175,20 +183,20 @@ void WaterSurface_SceneNode::render()
     SceneManager->setActiveCamera(fp_camera);
 
     fp_camera->render();
-    geo_scene->getMeshNode()->render();
-
 
     global_clipping_plane[0] = 0.0;
     global_clipping_plane[1] = -1.0;
     global_clipping_plane[2] = 0.0;
     global_clipping_plane[3] = this->my_z_depth;
 
-    geo_scene->getMeshNode()->render();
-
     video::SMaterial some_material;
     some_material.MaterialType = underwater_material;
 
-    geo_scene->getMeshNode()->render_with_material(some_material);
+    //TODO: material not working
+    //geo_scene->getMeshNode()->render_with_material(some_material);
+
+    //just render geometry using the normal lightmaps+clipping material 
+    geo_scene->getMeshNode()->render();
 
 
     //================
@@ -346,6 +354,7 @@ MySkybox_SceneNode::~MySkybox_SceneNode()
 
     //if (cloudLayerNode)
     //    delete cloudLayerNode;
+    //std::cout << "Skynode going out of scope... << " << this << "\n";
 
     if (blurNode)
         delete blurNode;
@@ -385,7 +394,7 @@ void MySkybox_SceneNode::resizeView(core::dimension2du new_size)
         my_rtt3 = NULL;
     }
 
-    my_rtt2 = driver->addRenderTargetTexture(new_size, "RTT_02", irr::video::ECF_A8R8G8B8);
+    my_rtt2 = driver->addRenderTargetTexture(half_size, "RTT_02", irr::video::ECF_A8R8G8B8);
 
     for (IMeshBuffer* buffer : buffers)
     {
@@ -396,6 +405,9 @@ void MySkybox_SceneNode::resizeView(core::dimension2du new_size)
     }
 
     gs_coordinator->CopyAllMaterials();
+
+    //uncomment to use the Render Tool View
+    //Render_Tool::connect_image(this);
 }
 
 void getReflectedCameraAngleOnly(ICameraSceneNode* camera, f32 z, const ICameraSceneNode* src)
@@ -424,12 +436,19 @@ void MySkybox_SceneNode::render()
 
     my_camera->setTarget(t_pos);
     my_camera->render();
+    device->getSceneManager()->setActiveCamera(my_camera);
+
+    vector3df pos = my_camera->getAbsolutePosition();
 
     IVideoDriver* driver = SceneManager->getVideoDriver();
 
     driver->setRenderTarget(my_rtt2, true, true, video::SColor(255, 0, 0, 0));
 
+    
+
     geo_scene->getMeshNode()->render();
+
+    device->getSceneManager()->setActiveCamera(fp_camera);
 
     /*
     //1) down sample to my_rtt2s

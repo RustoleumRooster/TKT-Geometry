@@ -108,6 +108,8 @@ void do_new_scene()
     {
         g_scene->clear_scene();
     }
+
+    File_Open_Tool::get_base()->ResetProjectPath();
 }
 
 void do_toggle_progressive_build()
@@ -125,16 +127,22 @@ void do_toggle_progressive_build()
     }
 }
 
-void do_file_save()
-{
-    Save_Geometry_File* fsave = new Save_Geometry_File(gs_coordinator, false);
-
-    fsave->SaveCurrentProject();
-}
-
 void do_file_save_as()
 {
     Save_Geometry_File* fsave = new Save_Geometry_File(gs_coordinator);
+}
+
+void do_file_save()
+{
+    if (File_Open_Tool::get_base()->ProjectPathLoaded())
+    {
+        Save_Geometry_File* fsave = new Save_Geometry_File(gs_coordinator, false);
+        fsave->SaveCurrentProject();
+    }
+    else
+    {
+        do_file_save_as();
+    }
 }
 
 void do_file_open()
