@@ -87,11 +87,16 @@ scene::ICameraSceneNode* TestPanel_2D::getCamera()
     return this->camera;
 }
 
+void TestPanel_2D::resetCamera()
+{
+    this->setAxis(m_axis);
+    this->resize(core::dimension2du{});
+}
+
 f32 TestPanel_2D::getViewScaling()
 {
     return ((f32)this->viewSize.Width / this->Texture->getOriginalSize().Width);
 }
-
 
 void TestPanel_2D::setAxis(int axis)
 {
@@ -665,6 +670,7 @@ void TestPanel_2D::right_click(core::vector2di pos)
         gui::IGUIContextMenu* menu = environment->addContextMenu(core::rect<s32>(pos,core::vector2di(256,256)),0,-1);
         menu->addItem(L"View  ",-1,true,true,false,false);
         menu->addItem(L"Grid  ",GUI_ID_VIEWPORT_2D_RIGHTCLICK_MENU_ITEM_GRID_TOGGLE,true,false,true,true);
+        menu->addItem(L"Camera ", -1, true, true, false, false);
         menu->setItemChecked(1,this->bShowGrid);
 
         gui::IGUIContextMenu* submenu;
@@ -674,6 +680,10 @@ void TestPanel_2D::right_click(core::vector2di pos)
 
         submenu->setItemChecked(0,this->bShowBrushes);
         submenu->setItemChecked(1,this->bShowGeometry);
+
+        submenu = menu->getSubMenu(2);
+        submenu->addItem(L"Reset", GUI_ID_VIEWPORT_2D_RIGHTCLICK_MENU_ITEM_CAMERA_RESET, true, false, false, false);
+
         ContextMenuOwner = m_viewPanel;
     }
 }
@@ -701,6 +711,9 @@ void TestPanel_2D::OnMenuItemSelected(IGUIContextMenu* menu)
         break;
     case GUI_ID_VIEWPORT_2D_RIGHTCLICK_MENU_ITEM_VIEW_GEOMETRY:
         this->toggle_showGeometry();
+        break;
+    case GUI_ID_VIEWPORT_2D_RIGHTCLICK_MENU_ITEM_CAMERA_RESET:
+        this->resetCamera();
         break;
     case GUI_ID_VIEWPORT_2D_RIGHTCLICK_MENU_ITEM_DELETE_BRUSH:
         this->delete_selected_brushes();

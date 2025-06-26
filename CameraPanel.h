@@ -190,7 +190,7 @@ public:
     virtual void setImage(video::ITexture* image);
     virtual video::ITexture* getImage() const;
 
-   
+    virtual void resetCamera() = 0;
 
     virtual scene::ICameraSceneNode* getCamera() {return NULL;}
     virtual void Initialize(geometry_scene* geo_scene);
@@ -309,6 +309,7 @@ public:
 
     virtual bool OnEvent(const SEvent& event);
     virtual scene::ICameraSceneNode* getCamera();
+    virtual void resetCamera();
 
     virtual void OnMenuItemSelected(gui::IGUIContextMenu* menu);
     void SetViewStyle(s32);
@@ -367,6 +368,8 @@ public:
 
     virtual bool OnEvent(const SEvent& event);
     virtual scene::ICameraSceneNode* getCamera();
+    virtual void resetCamera();
+
     virtual void setAxis(int);
     virtual void setImage(video::ITexture* image);
     virtual void drawGrid(video::IVideoDriver* driver, const video::SMaterial material);

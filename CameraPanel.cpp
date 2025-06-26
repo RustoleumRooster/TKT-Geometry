@@ -631,7 +631,7 @@ bool TestPanel::click_hits_poly(polyfold* brush, core::vector2di v)
     return false;
 }
 
-std::vector<int>  TestPanel::click_hits_poly_brushes(core::vector2di v)
+std::vector<int> TestPanel::click_hits_poly_brushes(core::vector2di v)
 {
     std::vector<int> ret;
     if(this->geo_scene == NULL) return ret;
@@ -729,7 +729,6 @@ void TestPanel::disconnect_panel()
     Texture = NULL;
     m_viewPanel = NULL;
 }
-
 
 void RenderList::add(RenderTarget* vp)
 {

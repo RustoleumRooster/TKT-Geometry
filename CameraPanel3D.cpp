@@ -90,6 +90,14 @@ scene::ICameraSceneNode* TestPanel_3D::getCamera()
     return this->camera;
 }
 
+void TestPanel_3D::resetCamera()
+{
+    this->camera->setPosition(core::vector3df(-300, 400, -300));
+    this->camera->setTarget(core::vector3df(0, 0, 0));
+    this->camera->setAspectRatio((f32)getImage()->getOriginalSize().Width / (f32)getImage()->getOriginalSize().Height);
+    this->camera->updateAbsolutePosition();
+}
+
 void TestPanel_3D::SetDynamicLight(bool b)
 {
     if (b)
@@ -925,7 +933,8 @@ void TestPanel_3D::right_click(core::vector2di pos)
         menu->addItem(L"View  ", -1, true, true, false, false);
         menu->addItem(L"Grid  ", GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_GRID_TOGGLE, true, false, true, true);
         menu->addItem(L"Fullscreen ", GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_FULLSCREEN_TOGGLE, true, false, true, true);
-        menu->addItem(L"Build Lighting ", GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_TEST, true, false, false, true);
+        //menu->addItem(L"Build Lighting ", GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_TEST, true, false, false, true);
+        menu->addItem(L"Camera  ", -1, true, true, false, false);
 
         menu->setItemChecked(1, this->bShowGrid);
         menu->setItemChecked(2, this->bFullscreen);
@@ -967,6 +976,9 @@ void TestPanel_3D::right_click(core::vector2di pos)
             submenu->setItemEnabled(9, false);
             submenu->setItemEnabled(10, false);
         }
+
+        submenu = menu->getSubMenu(3);
+        submenu->addItem(L"Reset", GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_CAMERA_RESET, true, false, false, false);
 
         ContextMenuOwner = this->m_viewPanel;
     }
@@ -1025,6 +1037,9 @@ void TestPanel_3D::OnMenuItemSelected(IGUIContextMenu* menu)
             this->lighting_type = LIGHTING_LIGHT_ONLY;
             this->SetViewStyle(this->view_style);
         }
+        break;
+    case GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_CAMERA_RESET:
+        resetCamera();
         break;
     case GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_SET_TEXTURE:
         if (this->geo_scene)
