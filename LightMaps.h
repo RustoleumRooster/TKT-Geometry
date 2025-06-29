@@ -4,11 +4,14 @@
 #include <irrlicht.h>
 #include <vector>
 #include "BufferManager.h"
+#include <iterator>
 
 class GeometryStack;
 class geometry_scene;
 
 void lightmaps_divideMaterialGroups(GeometryStack* geo_scene, std::vector<TextureMaterial>& material_groups);
+void calc_lightmap_uvs(GeometryStack* geo_node, Lightmap_Block b);
+void initialize_lightmap_block(GeometryStack* geo_node, int f_i, std::back_insert_iterator<std::vector<Lightmap_Block>> ret, int reduce);
 
 class Lightmap_Manager
 {

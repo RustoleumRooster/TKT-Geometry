@@ -150,17 +150,9 @@ struct texture_block2
 	}
 };
 
-struct lm_block
-{
-	std::vector<int> faces;
-	u32 width = 128;
-	u32 height = 128;
-	bool bFlipped = false;
-	int bounding_verts_index0 = 0;
-};
 
 template<typename out_Type>
-bool lightmaps_fill(MeshNode_Interface* mesh_node, std::vector<lm_block>::iterator& blocks_it, std::vector<lm_block>::iterator blocks_end, out_Type out, const TextureMaterial& copy_from)
+bool lightmaps_fill(MeshNode_Interface_Edit* mesh_node, std::vector<Lightmap_Block>::iterator& blocks_it, std::vector<Lightmap_Block>::iterator blocks_end, out_Type out, const TextureMaterial& copy_from)
 {
 	texture_block2 new_block(256);
 	texture_block2 face_block(128);
@@ -202,7 +194,8 @@ bool lightmaps_fill(MeshNode_Interface* mesh_node, std::vector<lm_block>::iterat
 		m.setTranslation(vector3df((f32)(face_block.coords.UpperLeftCorner.X + 0.5) / (f32)block_width,
 			(f32)(face_block.coords.UpperLeftCorner.Y + 0.5) / (f32)block_height, 0));
 
-		
+		copy_raw_lightmap_uvs_to_mesh(mesh_node, blocks_it->faces);
+
 		if (blocks_it->bFlipped)
 		{
 			apply_transform_to_uvs(mesh_node, blocks_it->faces, MAP_UVS_LIGHTMAP, flip_mat);
@@ -225,8 +218,7 @@ bool lightmaps_fill(MeshNode_Interface* mesh_node, std::vector<lm_block>::iterat
 	return true;
 }
 
-template<typename back_type>
-void initialize_block(GeometryStack* geo_node, int f_i, back_type ret, int reduce)
+void initialize_lightmap_block(GeometryStack* geo_node, int f_i, std::back_insert_iterator<std::vector<Lightmap_Block>> ret, int reduce)
 {
 	polyfold* pf = geo_node->get_total_geometry();
 
@@ -237,21 +229,21 @@ void initialize_block(GeometryStack* geo_node, int f_i, back_type ret, int reduc
 
 	if (pf->faces[f_i].loops.size() > 0 && pf->faces[f_i].temp_b == false)
 	{
-		lm_block b;
+		Lightmap_Block b;
 
 		surface_group& sfg = *pf->getFaceSurfaceGroup(f_i);
 		int sfg_i = pf->getFaceSurfaceGroupNo(f_i);
 
 		switch (sfg.type)
 		{
-			case SURFACE_GROUP_CYLINDER:
-			case SURFACE_GROUP_DOME:
-			case SURFACE_GROUP_SPHERE:
-				surface = geo_node->getSurfaceFromFace(f_i);
-				break;
-			default:
-				surface = vector<int>{ f_i };
-				break;
+		case SURFACE_GROUP_CYLINDER:
+		case SURFACE_GROUP_DOME:
+		case SURFACE_GROUP_SPHERE:
+			surface = geo_node->getSurfaceFromFace(f_i);
+			break;
+		default:
+			surface = vector<int>{ f_i };
+			break;
 		}
 
 		for (int f_j : surface)
@@ -261,106 +253,85 @@ void initialize_block(GeometryStack* geo_node, int f_i, back_type ret, int reduc
 
 		switch (sfg.type)
 		{
-			case SURFACE_GROUP_STANDARD:
-			case SURFACE_GROUP_CUSTOM_UVS_BRUSH:
-			case SURFACE_GROUP_CUSTOM_UVS_GEOMETRY:
+		case SURFACE_GROUP_STANDARD:
+		case SURFACE_GROUP_CUSTOM_UVS_BRUSH:
+		case SURFACE_GROUP_CUSTOM_UVS_GEOMETRY:
+		{
+			pf->calc_tangent(f_i);
+
+			poly_face* f = &pf->faces[f_i];
+			b.width = reduce_dimension_base2(f->bbox2d.getWidth(), reduce);
+			b.height = reduce_dimension_base2(f->bbox2d.getHeight(), reduce);
+			b.bounding_verts_index0 = 1;
+
+			rectf new_box;
+			new_box.UpperLeftCorner.X = f->bbox2d.LowerRightCorner.Y;
+			new_box.UpperLeftCorner.Y = f->bbox2d.UpperLeftCorner.X;
+			new_box.LowerRightCorner.X = f->bbox2d.UpperLeftCorner.Y;
+			new_box.LowerRightCorner.Y = f->bbox2d.LowerRightCorner.X;
+
+			f->bbox2d = new_box;
+			f->m_tangent = f->m_normal.crossProduct(f->m_tangent);
+
+			b.faces = vector<int>{ f_i };
+
+		} break;
+
+		case SURFACE_GROUP_CYLINDER:
+		{
+			b.width = reduce_dimension_base2(sfg.radius * 2 * 3.1459 * 2, reduce);
+			b.height = reduce_dimension_base2(sfg.height, reduce);
+			b.faces = surface;
+
+			for (int b_i : surface)
 			{
-				map_face_to_uvs mapper;
-
-				pf->calc_tangent(f_i);
-
-				poly_face* f = &pf->faces[f_i];
-				b.width = reduce_dimension_base2(f->bbox2d.getWidth(), reduce);
-				b.height = reduce_dimension_base2(f->bbox2d.getHeight(), reduce);
-				b.bounding_verts_index0 = 1;
-				
-				rectf new_box;
-				new_box.UpperLeftCorner.X = f->bbox2d.LowerRightCorner.Y;
-				new_box.UpperLeftCorner.Y = f->bbox2d.UpperLeftCorner.X;
-				new_box.LowerRightCorner.X = f->bbox2d.UpperLeftCorner.Y;
-				new_box.LowerRightCorner.Y = f->bbox2d.LowerRightCorner.X;
-
-				f->bbox2d = new_box;
-				f->m_tangent = f->m_normal.crossProduct(f->m_tangent);
-				
-				mapper.init(&geo_node->get_total_geometry()->faces[f_i], 0,b.width,b.height);
-
-				map_uvs(geo_node, &geo_node->edit_meshnode_interface, vector<int>{ f_i }, mapper, MAP_UVS_LIGHTMAP);
-
-				b.faces = vector<int>{ f_i };
-
-			} break;
-
-			case SURFACE_GROUP_CYLINDER:
-			{
-				map_sphere_to_uv mapper;
-
-				b.width = reduce_dimension_base2(sfg.radius * 2 * 3.1459 * 2, reduce);
-				b.height = reduce_dimension_base2(sfg.height, reduce);
-				b.faces = surface;
-
-				mapper.init(&sfg, pf, surface, sfg_i, b.width, b.height, true);
-
-				for (int b_i : surface)
+				pf->calc_tangent(b_i);
+				if (b.height > b.width)
 				{
-					pf->calc_tangent(b_i);
-					if (b.height > b.width)
-					{
-						poly_face* f = &pf->faces[b_i];
-						rectf new_box;
-						new_box.UpperLeftCorner.X = f->bbox2d.LowerRightCorner.Y;
-						new_box.UpperLeftCorner.Y = f->bbox2d.UpperLeftCorner.X;
-						new_box.LowerRightCorner.X = f->bbox2d.UpperLeftCorner.Y;
-						new_box.LowerRightCorner.Y = f->bbox2d.LowerRightCorner.X;
+					poly_face* f = &pf->faces[b_i];
+					rectf new_box;
+					new_box.UpperLeftCorner.X = f->bbox2d.LowerRightCorner.Y;
+					new_box.UpperLeftCorner.Y = f->bbox2d.UpperLeftCorner.X;
+					new_box.LowerRightCorner.X = f->bbox2d.UpperLeftCorner.Y;
+					new_box.LowerRightCorner.Y = f->bbox2d.LowerRightCorner.X;
 
-						f->bbox2d = new_box;
-						f->m_tangent = f->m_normal.crossProduct(f->m_tangent);
-						f->m_tangent *= -1;
-					}
+					f->bbox2d = new_box;
+					f->m_tangent = f->m_normal.crossProduct(f->m_tangent);
+					f->m_tangent *= -1;
 				}
+			}
+		} break;
+		case SURFACE_GROUP_DOME:
+		case SURFACE_GROUP_SPHERE:
+		{
+			b.width = reduce_dimension_base2(sfg.radius * 2 * 3.1459 * 2, reduce);
+			b.height = b.width;
+			b.faces = surface;
 
-				map_uvs(geo_node, &geo_node->edit_meshnode_interface, surface, mapper, MAP_UVS_LIGHTMAP);
-
-			} break;
-			case SURFACE_GROUP_DOME:
-			case SURFACE_GROUP_SPHERE:
+			for (int b_i : surface)
 			{
+				pf->calc_tangent(b_i);
 
-				map_sphere_to_uv mapper;
-
-				b.width = reduce_dimension_base2(sfg.radius * 2 * 3.1459 * 2, reduce);
-				b.height = b.width;
-				b.faces = surface;
-
-				mapper.init(&sfg, pf, surface, sfg_i, b.width, b.height, false);
-
-				for (int b_i : surface)
+				if (b.height > b.width)
 				{
-					pf->calc_tangent(b_i);
+					poly_face* f = &pf->faces[b_i];
+					rectf new_box;
+					new_box.UpperLeftCorner.X = f->bbox2d.LowerRightCorner.Y;
+					new_box.UpperLeftCorner.Y = f->bbox2d.UpperLeftCorner.X;
+					new_box.LowerRightCorner.X = f->bbox2d.UpperLeftCorner.Y;
+					new_box.LowerRightCorner.Y = f->bbox2d.LowerRightCorner.X;
 
-					if (b.height > b.width)
-					{
-						poly_face* f = &pf->faces[b_i];
-						rectf new_box;
-						new_box.UpperLeftCorner.X = f->bbox2d.LowerRightCorner.Y;
-						new_box.UpperLeftCorner.Y = f->bbox2d.UpperLeftCorner.X;
-						new_box.LowerRightCorner.X = f->bbox2d.UpperLeftCorner.Y;
-						new_box.LowerRightCorner.Y = f->bbox2d.LowerRightCorner.X;
-
-						f->bbox2d = new_box;
-						f->m_tangent = f->m_normal.crossProduct(f->m_tangent);
-						f->m_tangent *= -1;
-					}
+					f->bbox2d = new_box;
+					f->m_tangent = f->m_normal.crossProduct(f->m_tangent);
+					f->m_tangent *= -1;
 				}
-
-				map_uvs(geo_node, &geo_node->edit_meshnode_interface, surface, mapper, MAP_UVS_LIGHTMAP);
-
-			} break;
-			default:
-			{
-				std::cout << "error, unknown surface type...\n";
-				return;
-			}break;
+			}
+		} break;
+		default:
+		{
+			std::cout << "error, unknown surface type...\n";
+			return;
+		}break;
 		}
 
 		if (b.height > b.width)
@@ -371,6 +342,66 @@ void initialize_block(GeometryStack* geo_node, int f_i, back_type ret, int reduc
 
 		*ret = b;
 		++ret;
+	}
+}
+
+void calc_lightmap_uvs(GeometryStack* geo_node, Lightmap_Block b)
+{
+	polyfold* pf = geo_node->get_total_geometry();
+
+	matrix4 m_translate;
+	matrix4 m_scale;
+
+	int f_i = b.faces[0];
+	surface_group& sfg = *pf->getFaceSurfaceGroup(f_i);
+	int sfg_i = pf->getFaceSurfaceGroupNo(f_i);
+
+	for (int f_j : b.faces)
+	{
+		pf->faces[f_j].temp_b = true;
+	}
+
+	switch (sfg.type)
+	{
+		case SURFACE_GROUP_STANDARD:
+		case SURFACE_GROUP_CUSTOM_UVS_BRUSH:
+		case SURFACE_GROUP_CUSTOM_UVS_GEOMETRY:
+		{
+			map_face_to_uvs mapper;
+
+			mapper.init(&geo_node->get_total_geometry()->faces[f_i], 0, b.width, b.height);
+
+			map_uvs(geo_node, &geo_node->edit_meshnode_interface, vector<int>{ f_i }, mapper, MAP_UVS_LIGHTMAP);
+
+			b.faces = vector<int>{ f_i };
+
+		} break;
+
+		case SURFACE_GROUP_CYLINDER:
+		{
+			map_sphere_to_uv mapper;
+
+			mapper.init(&sfg, pf, b.faces, sfg_i, b.width, b.height, true);
+
+			map_uvs(geo_node, &geo_node->edit_meshnode_interface, b.faces, mapper, MAP_UVS_LIGHTMAP);
+
+		} break;
+		case SURFACE_GROUP_DOME:
+		case SURFACE_GROUP_SPHERE:
+		{
+
+			map_sphere_to_uv mapper;
+
+			mapper.init(&sfg, pf, b.faces, sfg_i, b.width, b.height, false);
+
+			map_uvs(geo_node, &geo_node->edit_meshnode_interface, b.faces, mapper, MAP_UVS_LIGHTMAP);
+
+		} break;
+		default:
+		{
+			std::cout << "error, unknown surface type...\n";
+			return;
+		}break;
 	}
 }
 
@@ -398,19 +429,8 @@ void lightmaps_divideMaterialGroups(GeometryStack* geo_scene, std::vector<Textur
 			continue;
 		}
 		
-		std::vector<lm_block> mg_blocks;
-		auto mg_blocks_back = std::back_inserter(mg_blocks);
-
-		for (int f_i : in_it->faces)
-		{
-			if (geo_scene->get_total_geometry()->faces[f_i].temp_b == true)
-				continue;
-
-			initialize_block(geo_scene, f_i, mg_blocks_back,1);
-		}
-
-		std::sort(mg_blocks.begin(), mg_blocks.end(),
-			[&](lm_block& b_a, lm_block& b_b)
+		std::sort(in_it->blocks.begin(), in_it->blocks.end(),
+			[&](Lightmap_Block& b_a, Lightmap_Block& b_b)
 			{
 				if (b_a.width == b_b.width)
 				{
@@ -420,8 +440,8 @@ void lightmaps_divideMaterialGroups(GeometryStack* geo_scene, std::vector<Textur
 					return b_a.width > b_b.width;
 			});
 
-		auto blocks_it = mg_blocks.begin();
-		auto blocks_end = mg_blocks.end();
+		auto blocks_it = in_it->blocks.begin();
+		auto blocks_end = in_it->blocks.end();
 
 		while (!lightmaps_fill(&geo_scene->edit_meshnode_interface, blocks_it, blocks_end, ret_back, *in_it))
 		{

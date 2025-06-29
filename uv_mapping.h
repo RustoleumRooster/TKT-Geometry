@@ -336,7 +336,7 @@ enum {
 };
 
 template<class map_type>
-void map_uvs(GeometryStack* geo_node, MeshNode_Interface* mesh_node, const std::vector<int>& surface, map_type& mapper, int uv_type)
+void map_uvs(GeometryStack* geo_node, MeshNode_Interface_Edit* mesh_node, const std::vector<int>& surface, map_type& mapper, int uv_type)
 {
 	polyfold* pf = geo_node->get_total_geometry();
 
@@ -345,6 +345,7 @@ void map_uvs(GeometryStack* geo_node, MeshNode_Interface* mesh_node, const std::
 	for (int b_i : surface)
 	{
 		MeshBuffer_Chunk chunk = mesh_node->get_mesh_buffer_by_face(b_i);
+		std::vector<core::vector2df>& lightmap_raw_uvs = *mesh_node->get_lightmap_raw_uvs_by_face(b_i);
 
 		if (chunk.buffer)
 		{
@@ -360,6 +361,10 @@ void map_uvs(GeometryStack* geo_node, MeshNode_Interface* mesh_node, const std::
 
 				mapper.calc(vtx, b_i);
 
+				lightmap_raw_uvs[idx0] = vtx[0]->TCoords2;
+				lightmap_raw_uvs[idx1] = vtx[1]->TCoords2;
+				lightmap_raw_uvs[idx2] = vtx[2]->TCoords2;
+
 				//std::cout << " " << vtx[0]->TCoords2.X << "," << vtx[0]->TCoords2.Y << "  ";
 				//std::cout << " " << vtx[1]->TCoords2.X << "," << vtx[1]->TCoords2.Y << "  ";
 				//std::cout << " " << vtx[2]->TCoords2.X << "," << vtx[2]->TCoords2.Y << "\n";
@@ -369,5 +374,6 @@ void map_uvs(GeometryStack* geo_node, MeshNode_Interface* mesh_node, const std::
 }
 
 void apply_transform_to_uvs(MeshNode_Interface* mesh_node, const std::vector<int>& surface, int uv_type, matrix4 mat);
+void copy_raw_lightmap_uvs_to_mesh(MeshNode_Interface_Edit*, const std::vector<int>& surface);
 
 #endif

@@ -91,6 +91,50 @@ void MeshNode_Interface_Final::refresh_material_groups(GeometryStack* geo_scene)
             mat.has_lightmap = false;
         }
     }
+}
+
+void MeshNode_Interface_Final::generate_lightmap_info(GeometryStack* geo_scene)
+{
+    polyfold* pf = geo_scene->get_total_geometry();
+
+    for (int f_i = 0; f_i < pf->faces.size(); f_i++)
+    {
+        pf->faces[f_i].temp_b = false;
+    }
+
+    for (int i = 0; i < materials_used.size(); i++)
+    {
+        if (!materials_used[i].has_lightmap)
+            continue;
+
+        auto lightmap_blocks_back = std::back_inserter(materials_used[i].blocks);
+
+        for (int j = 0; j < materials_used[i].faces.size(); j++)
+        {
+            int f_i = materials_used[i].faces[j];
+
+            if (geo_scene->get_total_geometry()->faces[f_i].temp_b == true)
+                continue;
+
+            initialize_lightmap_block(geo_scene, f_i, lightmap_blocks_back, 1);
+        }
+    }
+
+    for (int f_i = 0; f_i < pf->faces.size(); f_i++)
+    {
+        pf->faces[f_i].temp_b = false;
+    }
+
+    for (int i = 0; i < materials_used.size(); i++)
+    {
+        if (!materials_used[i].has_lightmap)
+            continue;
+
+        for (int j = 0; j < materials_used[i].blocks.size(); j++)
+        {
+            calc_lightmap_uvs(geo_scene, materials_used[i].blocks[j]);
+        }
+    }
 
     lightmaps_divideMaterialGroups(geo_scene, materials_used);
 
@@ -102,24 +146,28 @@ void MeshNode_Interface_Final::refresh_material_groups(GeometryStack* geo_scene)
         {
             int f_i = materials_used[i].faces[j];
 
-            geo_scene->get_total_geometry()->faces[f_i].get3DBoundingQuad(&materials_used[i].records[j].bounding_verts[0],0);
-            
+            geo_scene->get_total_geometry()->faces[f_i].get3DBoundingQuad(&materials_used[i].records[j].bounding_verts[0], 0);
         }
     }
-    
-    /*
-    for (int i = 0; i < materials_used.size(); i++)
-    {
-        std::cout << i << ": " << materials_used[i].texture->getName().getPath().c_str() << " ";
-        std::cout << materials_used[i].records.size() << " records, LM \n";
-        for (int j = 0; j < materials_used[i].records.size(); j++)
-        {
-            std::cout <<" "<< materials_used[i].records[j].face << ": ";
-            std::cout <<" "<< materials_used[i].records[j].block.UpperLeftCorner.X << "/" << materials_used[i].records[j].block.LowerRightCorner.X << "\n";
-        }
-       // std::cout << materials_used[i].lightmap_size << "x" << materials_used[i].lightmap_size << "\n";
-    }*/
 
+    for (TextureMaterial& tm : materials_used)
+    {
+        tm.n_faces = tm.faces.size();
+
+        int n_triangles = 0;
+
+        if (tm.faces.size() > 0)
+        {
+            MeshBuffer_Chunk chunk = get_mesh_buffer_by_face(tm.faces[0]);
+
+            if (chunk.buffer)
+                n_triangles = chunk.buffer->getIndexCount() / 3;
+        }
+
+        tm.n_triangles = n_triangles;
+    }
+
+    copy_lightmap_uvs(geo_scene);
 }
 
 void MeshNode_Interface_Edit::generate_mesh_node(GeometryStack* geo_scene)
@@ -145,26 +193,7 @@ void MeshNode_Interface_Final::generate_mesh_node(GeometryStack* geo_scene)
 
     this->generate_mesh_buffer(geo_scene, m_mesh);
 
-    for (TextureMaterial& tm : materials_used)
-    {
-        tm.n_faces = tm.faces.size();
-
-        int n_triangles = 0;
-
-        if(tm.faces.size() > 0)
-        {
-            MeshBuffer_Chunk chunk = get_mesh_buffer_by_face(tm.faces[0]);
-
-            if (chunk.buffer)
-                n_triangles = chunk.buffer->getIndexCount() / 3;
-        }
-
-        tm.n_triangles = n_triangles;
-    }
-
     this->generate_uvs(geo_scene);
-
-    copy_lightmap_uvs(geo_scene);
 }
 
 CMeshSceneNode* MeshNode_Interface::addMeshSceneNode(ISceneNode* parent, scene::ISceneManager* smgr0,GeometryStack* geo_scene)
@@ -191,6 +220,7 @@ void MeshNode_Interface_Edit::generate_mesh_buffer(GeometryStack* geo_scene, SMe
     LineHolder nograph;
 
     face_to_mb_buffer.clear();
+    lightmap_raw_uvs.clear();
 
     polyfold* pf = geo_scene->get_total_geometry();
 
@@ -219,6 +249,9 @@ void MeshNode_Interface_Edit::generate_mesh_buffer(GeometryStack* geo_scene, SMe
 
         i_count += buffer->getIndexCount();
         v_count += buffer->getVertexCount();
+
+        lightmap_raw_uvs.push_back(std::vector<core::vector2df>{});
+        lightmap_raw_uvs[lightmap_raw_uvs.size() - 1].resize(buffer->getVertexCount());
 
         //pf.faces[f_i].temp_b = false;
     }
@@ -540,6 +573,19 @@ MeshBuffer_Chunk MeshNode_Interface_Edit::get_mesh_buffer_by_face(int i)
     return ret;
 }
 
+std::vector<core::vector2df>* MeshNode_Interface_Edit::get_lightmap_raw_uvs_by_face(int f_i)
+{
+    if (f_i < face_to_mb_buffer.size())
+    {
+        int idx = face_to_mb_buffer[f_i];
+        if (idx != -1)
+        {
+            return &lightmap_raw_uvs[idx];
+        }
+    }
+
+    return NULL;
+}
 
 MeshBuffer_Chunk MeshNode_Interface_Final::get_mesh_buffer_by_face(int i)
 {
@@ -593,7 +639,6 @@ public:
         th = geo_scene->get_triangles_for_face(f_i);
     }
 };
-
 
 class trianglizer_sphere : public trianglizer_base
 {

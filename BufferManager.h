@@ -18,6 +18,15 @@ namespace irr
 class MyEventReceiver;
 class TexturePicker;
 
+struct Lightmap_Block
+{
+    std::vector<int> faces;
+    u32 width = 128;
+    u32 height = 128;
+    bool bFlipped = false;
+    int bounding_verts_index0 = 0;
+};
+
 struct MeshBuffer_Chunk
 {
     scene::IMeshBuffer* buffer;
@@ -43,6 +52,7 @@ struct TextureMaterial
 
     std::vector<int> faces;
     std::vector<lightmap_record> records;
+    std::vector<Lightmap_Block> blocks;
 };
 
 
@@ -100,10 +110,13 @@ public:
     virtual MeshBuffer_Chunk get_mesh_buffer_by_face(int f_i);
     int get_buffer_index_by_face(int i);
 
+    std::vector<core::vector2df>* get_lightmap_raw_uvs_by_face(int f_i);
 protected:
 
     virtual void generate_mesh_buffer(GeometryStack* geo_scene,scene::SMesh*);
     std::vector<int> face_to_mb_buffer;
+
+    std::vector<std::vector<core::vector2df>> lightmap_raw_uvs;
 
     friend class GeometryStack;
 };
@@ -114,6 +127,7 @@ public:
 
     
     void generate_mesh_node(GeometryStack* geo_scene);
+    void generate_lightmap_info(GeometryStack* geo_scene);
 
     virtual  MeshBuffer_Chunk get_mesh_buffer_by_face(int f_i);
     int get_buffer_index_by_face(int f_i);

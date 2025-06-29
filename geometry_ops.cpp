@@ -834,6 +834,7 @@ void GeometryStack::recalculate_final_meshbuffer()
         std::cout << "recalculating meshbuffers\n";
         final_meshnode_interface.refresh_material_groups(this);
         final_meshnode_interface.generate_mesh_node(this);
+        final_meshnode_interface.generate_lightmap_info(this);
         final_mesh_dirty = false;
     }
 }
@@ -995,6 +996,8 @@ void GeometryStack::generate_meshes()
 
     final_meshnode_interface.refresh_material_groups(this);
     final_meshnode_interface.generate_mesh_node(this);
+    final_meshnode_interface.generate_lightmap_info(this);
+
 }
 
 poly_face* GeometryStack::get_original_brush_face(int f_i)

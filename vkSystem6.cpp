@@ -50,7 +50,6 @@ typedef CMeshBuffer<video::S3DVertex2TCoords> mesh_buffer_type;
 
 void System_Amb_Occlusion::loadModel(MeshNode_Interface_Final* meshnode)
 {
-
 	writeLightmapsInfo(meshnode->getMaterialsUsed(), lightmaps_info, meshnode);
 
 	createLightmapImages();
@@ -307,6 +306,14 @@ void System_Amb_Occlusion::createLightmapImages()
 {
 	for (int i = 0; i < lightmaps_info.size(); i++)
 	{
+		if (lightmaps_info[i].has_lightmap_coords == false)
+		{
+			lightmapImages.push_back(NULL);
+			lightmapsMemory.push_back(NULL);
+			lightmapImageViews.push_back(NULL);
+			continue;
+		}
+
 		VkDeviceSize lm_size = lightmaps_info[i].size;
 
 		VkImage img;
