@@ -145,8 +145,10 @@ bool UV_Editor_Panel::OnEvent(const SEvent& event)
 
                 if (selection.size() > 0)
                 {
-                    int brush_j = real_geo_node->get_total_geometry()->faces[selection[0]].original_brush;
-                    int face_j = real_geo_node->get_total_geometry()->faces[selection[0]].original_face;
+                    polyfold* pf = real_geo_node->get_total_geometry();
+
+                    int brush_j = real_geo_node->get_element_index_by_id(pf->faces[selection[0]].element_id);
+                    int face_j = pf->faces[selection[0]].face_id;
 
                     poly_face* f = &real_geo_node->elements[brush_j].brush.faces[face_j];
 
@@ -164,8 +166,6 @@ bool UV_Editor_Panel::OnEvent(const SEvent& event)
                     
                     geo_scene->geoNode()->elements.clear();
 
-                    polyfold* pf = real_geo_node->get_total_geometry();
-
                     first_texcoord = true;
 
                     faces_shown = selection.size();
@@ -178,8 +178,9 @@ bool UV_Editor_Panel::OnEvent(const SEvent& event)
 
                     for (int f_i : selection)
                     {
-                        int og_brush = pf->faces[f_i].original_brush;
-                        int og_face = pf->faces[f_i].original_face;
+                        int og_brush = real_geo_node->get_element_index_by_id(pf->faces[f_i].element_id);
+                        int og_face = pf->faces[f_i].face_id;
+
                         int og_sfg = real_geo_node->elements[og_brush].geometry.faces[og_face].surface_group;
 
                         surface_group* sfg = &real_geo_node->elements[og_brush].geometry.surface_groups[og_sfg];
@@ -223,7 +224,7 @@ bool UV_Editor_Panel::OnEvent(const SEvent& event)
                         delete my_image;
                     my_image = NULL;
 
-                    core::stringw texname = real_geo_node->get_original_brush_face(selection[0])->texture_name;
+                    core::stringw texname = real_geo_node->face_texture_by_n(selection[0]);
                     video::ITexture* my_texture = device->getVideoDriver()->getTexture(texname);
 
                     my_image = new TextureImage(my_texture, true);
@@ -300,8 +301,9 @@ void UV_Editor_Panel::make_face(polyfold* pf_0, int f_no, video::ITexture* face_
 {
     MeshBuffer_Chunk chunk = real_g_scene->geoNode()->edit_meshnode_interface.get_mesh_buffer_by_face(f_no);
 
-    int original_face = pf_0->faces[f_no].original_face;
-    int original_brush = pf_0->faces[f_no].original_brush;
+    int original_brush = real_g_scene->geoNode()->get_element_index_by_id(pf_0->faces[f_no].element_id);
+    int original_face = pf_0->faces[f_no].face_id;
+
     int original_sfg = real_g_scene->geoNode()->elements[original_brush].geometry.faces[original_face].surface_group;
 
     polyfold* uv_poly = NULL;

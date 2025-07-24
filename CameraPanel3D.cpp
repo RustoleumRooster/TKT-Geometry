@@ -628,7 +628,7 @@ bool TestPanel_3D::get_click_face(int x, int y, click_brush_info& ret)
             f32 d = hitvec.getDistanceFrom(cam_pos);
             if (d<dist && d > near_dist &&
                 (geo_node->get_total_geometry()->faces[j].m_normal.dotProduct(cam_pos - hitvec) > 0 ||
-                    Material_Groups_Tool::get_base()->material_groups[geo_node->get_total_geometry()->faces[j].material_group].two_sided == true
+                    Material_Groups_Tool::get_base()->material_groups[geo_node->surface_by_n(j)->material_group].two_sided == true
                     )
                 &&
                 (hitvec - cam_pos).dotProduct(this->getCamera()->getTarget() - cam_pos) > 0)

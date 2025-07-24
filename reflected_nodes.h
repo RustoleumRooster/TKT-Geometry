@@ -323,10 +323,16 @@ public:
     IMeshBuffer* get_mesh_buffer();
     void restore_original_texture();
 
-    void set_uid(u64);
-    u64 get_uid();
-private:
-    u64 face_uid;
+    //void set_uid(u64);
+    //u64 get_uid();
+
+    void set_face(int element, int face);
+    int get_element_id() { return element_id; }
+    int get_face_id() { return face_id; }
+protected:
+    //u64 face_uid;
+    int element_id;
+    int face_id;
 
 public:
     REFLECT2()

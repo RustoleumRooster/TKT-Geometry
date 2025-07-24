@@ -20,6 +20,7 @@ public:
     ~RenderTargetPanel();
 
     virtual scene::ICameraSceneNode* getCamera();
+    virtual void resetCamera();
     virtual void Initialize(scene::ISceneManager* smgr, geometry_scene* geo_scene);
     virtual void render();
     virtual void resize(core::dimension2d<u32> new_size);

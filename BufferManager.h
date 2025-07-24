@@ -3,6 +3,8 @@
 
 #include <irrlicht.h>
 #include <vector>
+#include "Reflection.h"
+#include "csg_classes.h" //only for face_index
 
 using namespace irr;
 
@@ -21,10 +23,15 @@ class TexturePicker;
 struct Lightmap_Block
 {
     std::vector<int> faces;
+    int element_id;
+    int surface_no;
     u32 width = 128;
     u32 height = 128;
     bool bFlipped = false;
+    bool bOverrideSize = false;
     int bounding_verts_index0 = 0;
+
+    REFLECT()
 };
 
 struct MeshBuffer_Chunk
@@ -50,11 +57,12 @@ struct TextureMaterial
     bool has_lightmap = false;
     int lightmap_size;
 
-    std::vector<int> faces;
-    std::vector<lightmap_record> records;
+    std::vector<int> faces;                     //unique to entire scene
+    std::vector<face_index> my_faces;           //local to element
+    std::vector<std::pair<int, int>> surfaces;  //pair: element no, surface no
+    std::vector<lightmap_record> records;       //used for communicating with compute shaders
     std::vector<Lightmap_Block> blocks;
 };
-
 
 class MeshNode_Interface
 {
@@ -83,22 +91,23 @@ public:
 
     std::vector<TextureMaterial> getMaterialsUsed(){return materials_used;}
 
+    int get_material_group_by_face(int f_i);
+
 protected:
     
     virtual void generate_mesh_buffer(GeometryStack* geo_scene,scene::SMesh*)=0;
     void generate_uvs(GeometryStack* geo_scene);
 
-
     scene::SMesh* m_mesh = NULL;
 
     std::vector<TextureMaterial> materials_used;
-    //std::vector<int> mg_to_reference_face;
 
     scene::ISceneManager* smgr=NULL;
     video::IVideoDriver* driver=NULL;
     TexturePicker* texture_picker=NULL;
     MyEventReceiver* event_receiver=NULL;
 
+    std::vector<int> face_to_material;
 
     friend class GeometryStack;
 };
@@ -107,14 +116,22 @@ class MeshNode_Interface_Edit : public MeshNode_Interface
 {
 public:
     void generate_mesh_node(GeometryStack* geo_scene);
+    void generate_lightmap_info(GeometryStack* geo_scene);
     virtual MeshBuffer_Chunk get_mesh_buffer_by_face(int f_i);
     int get_buffer_index_by_face(int i);
 
+    void resize_lightmap_block(GeometryStack* geo_scene, core::vector2di, Lightmap_Block&);
+
     std::vector<core::vector2df>* get_lightmap_raw_uvs_by_face(int f_i);
+    int get_lm_block_by_face(int f_i);
+    Lightmap_Block& get_lm_block(int i, int j);
+
+    void refresh_material_groups(GeometryStack* geo_scene);
 protected:
 
     virtual void generate_mesh_buffer(GeometryStack* geo_scene,scene::SMesh*);
     std::vector<int> face_to_mb_buffer;
+    std::vector<int> face_to_lm_block;
 
     std::vector<std::vector<core::vector2df>> lightmap_raw_uvs;
 
@@ -125,16 +142,14 @@ class MeshNode_Interface_Final : public MeshNode_Interface
 {
 public:
 
-    
     void generate_mesh_node(GeometryStack* geo_scene);
     void generate_lightmap_info(GeometryStack* geo_scene);
 
     virtual  MeshBuffer_Chunk get_mesh_buffer_by_face(int f_i);
     int get_buffer_index_by_face(int f_i);
-  // int get_material_reference_face(int material_group){return mg_to_reference_face[material_group];}
 
 protected:
-    void refresh_material_groups(GeometryStack* geo_scene);
+
     virtual void generate_mesh_buffer(GeometryStack* geo_scene,scene::SMesh*);
     void copy_lightmap_uvs(GeometryStack* geo_scene);
 
@@ -144,7 +159,5 @@ protected:
 
     friend class GeometryStack;
 };
-
-
 
 #endif

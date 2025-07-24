@@ -343,13 +343,13 @@ void polyfold::translate(core::matrix4 MAT)
             this->calc_loop_bbox(f_i,p_i);
         }
 }
-
+/*
 void polyfold::generate_uids()
 {
     this->uid = random_number();
     for (poly_face& f : faces)
         f.uid = random_number();
-}
+}*/
 
 void polyfold::make_convex()
     {
@@ -1345,6 +1345,62 @@ bool polyfold::getSurfaceVectors(int f_i,core::vector3df &a, core::vector3df &b)
     return true;
 }
 
+
+
+
+std::vector<int> polyfold::getConnectedSurfaceFromFace(int f_i)
+{
+    std::vector<int> surface;
+
+    surface_group* sfg = getFaceSurfaceGroup(f_i);
+
+    switch (sfg->type)
+    {
+    case SURFACE_GROUP_CYLINDER:
+    case SURFACE_GROUP_DOME:
+    case SURFACE_GROUP_SPHERE:
+        surface = getSurfaceFromFace(f_i);
+        break;
+    default:
+        surface = std::vector<int>{ f_i };
+        break;
+    }
+
+    return surface;
+}
+
+face_index polyfold::index_face(int f_i)
+{
+    return face_index{ faces[f_i].element_id, faces[f_i].face_id };
+}
+
+/*
+poly_face* polyfold::get_original_brush_face(int f_i)
+{
+    //int brush_j = total_geometry.faces[f_i].original_brush;
+    //int face_j = total_geometry.faces[f_i].original_face;
+    int element_id = total_geometry.faces[f_i].element_id;
+    int face_j = total_geometry.faces[f_i].face_id;
+
+    //poly_face* f = &elements[brush_j].brush.faces[face_j];
+    poly_face* f = &get_element_by_id(element_id).brush.faces[face_j];
+
+    return f;
+}
+
+
+polyfold* polyfold::get_original_brush(int f_i)
+{
+    //int brush_j = total_geometry.faces[f_i].original_brush;
+    int element_id = total_geometry.faces[f_i].element_id;
+
+    //polyfold* pf = &elements[brush_j].brush;
+    polyfold* pf = &get_element_by_id(element_id).brush;
+
+    return pf;
+}
+*/
+
 void polyfold::addDrawLinesEdges(LineHolder& graph) const
 {
     for (int e_i=0;e_i<edges.size();e_i++)
@@ -1398,10 +1454,13 @@ REFLECT_STRUCT_BEGIN(poly_face)
     REFLECT_STRUCT_MEMBER(loops)
     REFLECT_STRUCT_MEMBER(m_normal)
     //REFLECT_STRUCT_MEMBER(m_center)
-    REFLECT_STRUCT_MEMBER(uid)
-    REFLECT_STRUCT_MEMBER(texture_index)
+    //REFLECT_STRUCT_MEMBER(uid)
+    //REFLECT_STRUCT_MEMBER(texture_index)
+    REFLECT_STRUCT_MEMBER(face_id)
+    REFLECT_STRUCT_MEMBER(element_id)
     REFLECT_STRUCT_MEMBER(surface_group)
-    REFLECT_STRUCT_MEMBER(material_group)
+    //REFLECT_STRUCT_MEMBER(material_group)
+    REFLECT_STRUCT_MEMBER(surface_no)
     REFLECT_STRUCT_MEMBER(uv_origin)
     REFLECT_STRUCT_MEMBER(bFlippedNormal)
     REFLECT_STRUCT_MEMBER(uv_mat)
@@ -1414,6 +1473,6 @@ REFLECT_STRUCT_BEGIN(polyfold)
     REFLECT_STRUCT_MEMBER(control_vertices)
     REFLECT_STRUCT_MEMBER(faces)
     REFLECT_STRUCT_MEMBER(surface_groups)
-    REFLECT_STRUCT_MEMBER(uid)
+    //REFLECT_STRUCT_MEMBER(uid)
     REFLECT_STRUCT_MEMBER(topology)
 REFLECT_STRUCT_END()

@@ -50,7 +50,8 @@ void GeometryFactory::CreatePlane(EditPlaneWindow* win)
 
     core::matrix4 M;
     M.setTranslation(g_scene->geoNode()->elements[0].brush.vertices[0].V);
-    g_scene->geoNode()->elements[0].brush = make_poly_plane(plane.length,plane.width);
+    g_scene->geoNode()->elements[0] = make_poly_plane(plane.length,plane.width);
+    g_scene->geoNode()->elements[0].type = GEO_RED;
     g_scene->geoNode()->elements[0].brush.translate(M);
 }
 
@@ -60,7 +61,8 @@ void GeometryFactory::CreateCube(EditCubeWindow* win)
 
     core::matrix4 M;
     M.setTranslation(g_scene->geoNode()->elements[0].brush.vertices[0].V);
-    g_scene->geoNode()->elements[0].brush = make_poly_cube(cube.height,cube.length,cube.width);
+    g_scene->geoNode()->elements[0] = make_poly_cube(cube.height,cube.length,cube.width);
+    g_scene->geoNode()->elements[0].type = GEO_RED;
     g_scene->geoNode()->elements[0].brush.translate(M);
 }
 
@@ -70,7 +72,8 @@ void GeometryFactory::CreateCylinder(EditCylinderWindow* win)
 
     core::matrix4 M;
     
-    g_scene->geoNode()->elements[0].brush = make_cylinder(cylinder.height,cylinder.radius,cylinder.nSides,cylinder.radius_type.value);
+    g_scene->geoNode()->elements[0] = make_cylinder(cylinder.height,cylinder.radius,cylinder.nSides,cylinder.radius_type.value);
+    g_scene->geoNode()->elements[0].type = GEO_RED;
     if (cylinder.align_to_side)
     {
         M.setRotationRadians(vector3df(0,PI / cylinder.nSides,0));
@@ -86,7 +89,8 @@ void GeometryFactory::CreateSphere(EditSphereWindow* win)
 
     core::matrix4 M;
     M.setTranslation(g_scene->geoNode()->elements[0].brush.vertices[0].V);
-    g_scene->geoNode()->elements[0].brush = make_sphere(sphere.radius,sphere.nSides,sphere.nZenSides,sphere.simplify);
+    g_scene->geoNode()->elements[0] = make_sphere(sphere.radius,sphere.nSides,sphere.nZenSides,sphere.simplify);
+    g_scene->geoNode()->elements[0].type = GEO_RED;
     g_scene->geoNode()->elements[0].brush.translate(M);
 }
 
@@ -97,7 +101,8 @@ void GeometryFactory::CreateCone(EditConeWindow* win)
 
     core::matrix4 M;
     M.setTranslation(g_scene->geoNode()->elements[0].brush.vertices[0].V);
-    g_scene->geoNode()->elements[0].brush = make_cone(cone.height,cone.radius,cone.nSides);
+    g_scene->geoNode()->elements[0] = make_cone(cone.height,cone.radius,cone.nSides);
+    g_scene->geoNode()->elements[0].type = GEO_RED;
     g_scene->geoNode()->elements[0].brush.translate(M);
 }
 

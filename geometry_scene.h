@@ -88,6 +88,9 @@ public:
     void selectionChanged();
     surface_group getFaceSurfaceGroup(int);
 
+    std::vector<std::pair<int, int>> getSelectedBlocks(); //Lightmap Blocks
+    void setSelectedBlocks(std::vector<std::pair<int, int>>);
+
     std::vector<Reflected_SceneNode*> editor_node_ptrs_from_uid(const std::vector<u64>& selection);
     MeshBuffer_Chunk get_face_buffer_by_uid(u64);
 
@@ -278,11 +281,11 @@ void clip_poly_single(polyfold& pf, polyfold& pf2, int rule, int base_type, clip
 
 //void clip_poly7(polyfold& pf, polyfold& pf2, int rule, int base_type, clip_results& results, LineHolder& graph);
 
-polyfold make_poly_cube(int,int,int);
-polyfold make_poly_plane(int,int);
-polyfold make_cylinder(int height, int radius, int faces, int radius_type);
-polyfold make_sphere(int radius, int faces, int zen_faces, bool simplify);
-polyfold make_cone(int height, int radius, int faces);
+geo_element make_poly_cube(int,int,int);
+geo_element make_poly_plane(int,int);
+geo_element make_cylinder(int height, int radius, int faces, int radius_type);
+geo_element make_sphere(int radius, int faces, int zen_faces, bool simplify);
+geo_element make_cone(int height, int radius, int faces);
 
 
 #endif

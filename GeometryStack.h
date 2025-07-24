@@ -11,23 +11,49 @@
 
 using namespace irr;
 
+struct lightmap_info_struct
+{
+    u32 width = 128;
+    u32 height = 128;
+    bool bFlipped = false;
+    bool bOverrideSize = false;
+
+    REFLECT()
+};
+
+struct poly_surface
+{
+    std::vector<int> my_faces;
+    core::stringw texture_name;
+    int material_group;
+    int surface_type;
+    int texture_index; //for serialization only
+    int face_index_offset; //set when building geometry
+    lightmap_info_struct lightmap_info;
+
+    REFLECT()
+};
+
 class geo_element
 {
 public:
     int type = 0;
     int selected_vertex = 0;
+    int element_id = -1; //unique incrementing ID
     bool control_vertex_selected = false;
     bool bSelected = false;
 
     polyfold brush;
     polyfold geometry;
 
+    std::vector<poly_surface> surfaces;
+    std::vector<int> reverse_index;
+
     bool has_geometry();
     void draw_brush(video::IVideoDriver* driver);
     void draw_geometry(video::IVideoDriver* driver, const video::SMaterial material);
     void draw_brush_vertices(const core::matrix4& trans, core::dimension2du view_dim, bool bDrawSelectedVertex, video::IVideoDriver* driver);
     video::SColor getColor();
-    //bool isDeleted(){return bDeleted;}
 
     REFLECT()
 
@@ -45,10 +71,6 @@ public:
     core::vector3df position() const {
         return brush.bbox.getCenter();
     }
-
-private:
-    //bool bDeleted=false;
-
 };
 
 
@@ -57,7 +79,6 @@ class MyEventReceiver;
 class Node_Classes_Base;
 class Material_Groups_Base;
 class TexturePicker_Base;
-
 
 class GeometryStack : public USceneNode
 {
@@ -76,10 +97,10 @@ public:
 
     void set_type(int);
 
-    void add(polyfold);
-    void subtract(polyfold);
-    void add_semisolid(polyfold);
-    void add_plane(polyfold);
+    void add();
+    void subtract();
+    void add_semisolid();
+    void add_plane();
     void rebuild_geometry(bool = false);
     void clear_scene();
 
@@ -90,10 +111,7 @@ public:
     polyfold get_intersecting_geometry(const polyfold& pf);
     void build_intersecting_target(const polyfold& pf, polyfold& out);
     polyfold* get_total_geometry();
-    std::vector<int> getSurfaceFromFace(int);
-
-    poly_face* get_original_brush_face(int f_i);
-    polyfold* get_original_brush(int f_i);
+    
 
     void buildSceneNode(bool finalMesh, int light_mode);
     scene::CMeshSceneNode* getMeshNode() { return my_MeshNode; }
@@ -106,12 +124,33 @@ public:
     void GetGeometryLoopLines(LineHolder&,LineHolder&);
 
     bool renderGeometry() { return render_geometry; }
+    geo_element* get_element_by_id(int);
+    int get_element_index_by_id(int);
+
+    poly_face* get_brush_face(face_index);
+    poly_face* get_geometry_face(face_index);
+    polyfold* get_brush(face_index);
+    polyfold* get_geometry(face_index);
+    int get_element_index(face_index);
+
+    int n_faces();
+    poly_face* brush_face_by_n(int);
+    poly_face* geo_face_by_n(int);
+    polyfold* brush_by_n(int);
+    polyfold* geo_by_n(int);
+    geo_element* element_by_n(int);
+    int element_id_by_n(int);
+    int face_no_by_n(int);
+    core::stringw face_texture_by_n(int);
+    poly_surface* surface_by_n(int);
+
+    void make_index_lists();
 
     MeshNode_Interface_Edit edit_meshnode_interface;
     MeshNode_Interface_Final final_meshnode_interface;
 
     std::vector<geo_element> elements;
-
+    
     REFLECT()
 
 private:
@@ -119,7 +158,6 @@ private:
     void trianglize_total_geometry();
     void generate_meshes();
     void build_total_geometry();
-    void set_originals();
 
     int base_type = GEO_SOLID;
 
@@ -144,8 +182,14 @@ private:
     bool render_triangles = false;
     bool render_active_brush = true;
     int selected_brush_vertex_editing = 0;
+    int element_id_incrementer = 0;
 
     LineHolder loops_graph;
+
+    int n_total_faces = 0;
+    std::vector<int> element_id_by_face_n;
+    std::vector<int> face_j_by_face_n;
+    std::vector<int> element_by_element_id;
 
     friend class Open_Geometry_File;
     friend class geometry_scene;

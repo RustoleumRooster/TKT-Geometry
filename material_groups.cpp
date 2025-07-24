@@ -134,14 +134,14 @@ bool Material_Groups_Widget::OnEvent(const SEvent& event)
                 {
                     int b_i = g_scene->getSelectedFaces()[0];
 
-                    int brush_j = geo_node->get_total_geometry()->faces[b_i].original_brush;
-                    int face_j = geo_node->get_total_geometry()->faces[b_i].original_face;
+                    int face_j = geo_node->get_total_geometry()->faces[b_i].face_id;
+                    geo_element* element = geo_node->get_element_by_id(geo_node->get_total_geometry()->faces[b_i].element_id);
 
-                    poly_face* f = &geo_node->elements[brush_j].brush.faces[face_j];
+                    poly_face* f = &element->brush.faces[face_j];
 
-                    if ((geo_node->elements[brush_j].brush.surface_groups[f->surface_group].type == SURFACE_GROUP_CYLINDER ||
-                        geo_node->elements[brush_j].brush.surface_groups[f->surface_group].type == SURFACE_GROUP_SPHERE ||
-                        geo_node->elements[brush_j].brush.surface_groups[f->surface_group].type == SURFACE_GROUP_DOME
+                    if ((element->brush.surface_groups[f->surface_group].type == SURFACE_GROUP_CYLINDER ||
+                        element->brush.surface_groups[f->surface_group].type == SURFACE_GROUP_SPHERE ||
+                        element->brush.surface_groups[f->surface_group].type == SURFACE_GROUP_DOME
                         )
                         && !dont_sg_select)
                     {
@@ -150,13 +150,13 @@ bool Material_Groups_Widget::OnEvent(const SEvent& event)
                     }
                     dont_sg_select = false;
 
-                    int mg0 = geo_node->get_total_geometry()->faces[b_i].material_group;
+                    int mg0 = geo_node->surface_by_n(b_i)->material_group;
 
                     bool b = true;
 
                     for (int f_i : g_scene->getSelectedFaces())
                     {
-                        int mg1 = geo_node->get_total_geometry()->faces[f_i].material_group;
+                        int mg1 = geo_node->surface_by_n(f_i)->material_group;
                         if (mg0 != mg1)
                             b = false;
                     }

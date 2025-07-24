@@ -178,7 +178,7 @@ void GeometryStack::render()
 
     if (render_brushes)
     {
-        //changed e_i=0 to 1, even though this is normally the red brush,
+        //changed e_i=1 to 0, even though this is normally the red brush,
         //because in the UV editor, there is no red brush
         for (int e_i = 0; e_i < this->elements.size(); e_i++)
         {
@@ -222,13 +222,14 @@ void GeometryStack::build_total_geometry()
     combine_polyfolds(polies, combo);
 
     this->total_geometry = combo;
+    this->total_geometry.geometry_stack = this;
 
     if (this->base_type == GEO_EMPTY)
         this->total_geometry.topology = TOP_CONVEX;
     else if (this->base_type == GEO_SOLID)
         this->total_geometry.topology = TOP_CONCAVE;
 }
-
+/*
 void GeometryStack::set_originals()
 {
     for (int i = 1; i < this->elements.size(); i++)
@@ -236,37 +237,42 @@ void GeometryStack::set_originals()
         for (int j = 0; j < this->elements[i].brush.faces.size() && j < this->elements[i].geometry.faces.size(); j++)
         {
             this->elements[i].geometry.faces[j].texture_name = this->elements[i].brush.faces[j].texture_name;
-            this->elements[i].geometry.faces[j].original_brush = i;
-            this->elements[i].geometry.faces[j].original_face = j;
         }
     }
-}
+}*/
 
 bool geo_element::has_geometry()
 {
     return this->geometry.edges.size() > 2;
 }
 
-void GeometryStack::add(polyfold pf)
+void GeometryStack::add()
 {
     //this->WriteGeometryToFile("backup.pol");
 
-    geo_element geo;
-    geo.brush = pf;
+    geo_element geo = elements[0];
+    const polyfold& pf = geo.brush;
     geo.type = GEO_ADD;
 
-    geo.brush.generate_uids();
-
+    for (poly_face& face : geo.brush.faces)
     {
-        video::ITexture* tex = TexturePicker_Tool::getCurrentTexture();
-        io::path path = tex->getName();
-
-        for (poly_face& face : geo.brush.faces)
-        {
-            face.texture_name = path;
-            face.material_group = new_geometry_material_group;
-        }
+        //face.texture_name = path;
+        //face.material_group = new_geometry_material_group;
+        face.element_id = element_id_incrementer;
     }
+
+    video::ITexture* tex = TexturePicker_Tool::getCurrentTexture();
+    io::path path = tex->getName();
+
+    for (poly_surface& s : geo.surfaces)
+    {
+        s.texture_name = path;
+        s.material_group = new_geometry_material_group;
+    }
+    geo.reverse_index.resize(pf.faces.size());
+
+    geo.element_id = element_id_incrementer;
+    element_id_incrementer++;
 
     this->elements.push_back(geo);
 
@@ -274,29 +280,36 @@ void GeometryStack::add(polyfold pf)
         this->rebuild_geometry(true);
 }
 
-void GeometryStack::add_plane(polyfold pf)
+void GeometryStack::add_plane()
 {
     //this->WriteGeometryToFile("backup.pol");
 
-    geo_element geo;
-    geo.brush = pf;
+    geo_element geo = elements[0];
+    const polyfold& pf = geo.brush;
     geo.type = GEO_SEMISOLID;
-
-    geo.brush.generate_uids();
-
-    {
-        video::ITexture* tex = TexturePicker_Tool::getCurrentTexture();
-        io::path path = tex->getName();
-
-        for (poly_face& face : geo.brush.faces)
-        {
-            face.texture_name = path;
-            face.material_group = new_geometry_material_group;
-        }
-    }
 
     for (poly_face& face : geo.brush.faces)
-        face.material_group = 1;
+    {
+        //face.texture_name = path;
+        //face.material_group = new_geometry_material_group;
+        face.element_id = element_id_incrementer;
+    }
+
+    video::ITexture* tex = TexturePicker_Tool::getCurrentTexture();
+    io::path path = tex->getName();
+
+    for (poly_surface& s : geo.surfaces)
+    {
+        s.texture_name = path;
+        s.material_group = new_geometry_material_group;
+    }
+    geo.reverse_index.resize(pf.faces.size());
+
+    //for (poly_face& face : geo.brush.faces)
+    //    face.material_group = 1; ?????
+
+    geo.element_id = element_id_incrementer;
+    element_id_incrementer++;
 
     this->elements.push_back(geo);
 
@@ -304,26 +317,35 @@ void GeometryStack::add_plane(polyfold pf)
         this->rebuild_geometry(true);
 }
 
-void GeometryStack::add_semisolid(polyfold pf)
+void GeometryStack::add_semisolid()
 {
     //this->WriteGeometryToFile("backup.pol");
 
-    geo_element geo;
-    geo.brush = pf;
+    geo_element geo = elements[0];
+    const polyfold& pf = geo.brush;
     geo.type = GEO_SEMISOLID;
 
-    geo.brush.generate_uids();
+    //geo.brush.generate_uids();
 
+    for (poly_face& face : geo.brush.faces)
     {
-        video::ITexture* tex = TexturePicker_Tool::getCurrentTexture();
-        io::path path = tex->getName();
-
-        for (poly_face& face : geo.brush.faces)
-        {
-            face.texture_name = path;
-            face.material_group = new_geometry_material_group;
-        }
+        //face.material_group = new_geometry_material_group;
+        face.element_id = element_id_incrementer;
     }
+
+
+    video::ITexture* tex = TexturePicker_Tool::getCurrentTexture();
+    io::path path = tex->getName();
+
+    for (poly_surface& s : geo.surfaces)
+    {
+        s.texture_name = path;
+        s.material_group = new_geometry_material_group;
+    }
+    geo.reverse_index.resize(pf.faces.size());
+
+    geo.element_id = element_id_incrementer;
+    element_id_incrementer++;
 
     this->elements.push_back(geo);
 
@@ -331,26 +353,33 @@ void GeometryStack::add_semisolid(polyfold pf)
         this->rebuild_geometry(true);
 }
 
-void GeometryStack::subtract(polyfold pf)
+void GeometryStack::subtract()
 {
     //this->WriteGeometryToFile("backup.pol");
 
-    geo_element geo;
-    geo.brush = pf;
+    geo_element geo = elements[0];
+    const polyfold& pf = geo.brush;
     geo.type = GEO_SUBTRACT;
 
-    geo.brush.generate_uids();
-
+    for (poly_face& face : geo.brush.faces)
     {
-        video::ITexture* tex = TexturePicker_Tool::getCurrentTexture();
-        io::path path = tex->getName();
-
-        for (poly_face& face : geo.brush.faces)
-        {
-            face.texture_name = path;
-            face.material_group = new_geometry_material_group;
-        }
+        //face.material_group = new_geometry_material_group;
+        face.element_id = element_id_incrementer;
     }
+
+    video::ITexture* tex = TexturePicker_Tool::getCurrentTexture();
+    io::path path = tex->getName();
+
+    //geo.texture_names.assign(pf.faces.size(), path);
+    for (poly_surface& s : geo.surfaces)
+    {
+        s.texture_name = path;
+        s.material_group = new_geometry_material_group;
+    }
+    geo.reverse_index.resize(pf.faces.size());
+
+    geo.element_id = element_id_incrementer;
+    element_id_incrementer++;
 
     this->elements.push_back(geo);
 
@@ -373,12 +402,6 @@ void GeometryStack::build_intersecting_target(const polyfold& pf, polyfold& out)
             (this->elements[j].type == GEO_SUBTRACT || this->elements[j].type == GEO_ADD) &&
             BoxIntersectsWithBox(pf.bbox, this->elements[j].brush.bbox))
         {
-            for (int f_j = 0; f_j < this->elements[j].geometry.faces.size(); f_j++)
-            {
-                //this->elements[j].geometry.faces[f_j].original_brush = j;
-                //this->elements[j].geometry.faces[f_j].original_face = this->elements[j].geometry.faces[f_j].surface_group;
-            }
-
             polies.push_back(&elements[j].geometry);
 
             num++;
@@ -430,12 +453,6 @@ void GeometryStack::rebuild_geometry(bool only_build_new_geometry)
                 (this->elements[j].type == GEO_SUBTRACT || this->elements[j].type == GEO_ADD) &&
                 BoxIntersectsWithBox(this->elements[i].brush.bbox, this->elements[j].brush.bbox))
             {
-                for (int f_j = 0; f_j < this->elements[j].geometry.faces.size(); f_j++)
-                {
-                    this->elements[j].geometry.faces[f_j].original_brush = j;
-                    this->elements[j].geometry.faces[f_j].original_face = this->elements[j].geometry.faces[f_j].surface_group;
-                }
-
                 touched_brushes.push_back(j);
 
                 polies.push_back(&elements[j].geometry);
@@ -530,7 +547,7 @@ void GeometryStack::rebuild_geometry(bool only_build_new_geometry)
 
                 for (int jj = 0; jj < combo.faces.size(); jj++)
                 {
-                    if (combo.faces[jj].original_brush == j)
+                    if (get_element_index_by_id(combo.faces[jj].element_id) == j)
                     {
                         this->elements[j].geometry.faces.push_back(combo.faces[jj]);
                     }
@@ -538,7 +555,7 @@ void GeometryStack::rebuild_geometry(bool only_build_new_geometry)
 
                 for (int jj = 0; jj < this->elements[j].geometry.faces.size(); jj++)
                 {
-                    this->elements[j].geometry.faces[jj].surface_group = this->elements[j].geometry.faces[jj].original_face;
+                    this->elements[j].geometry.faces[jj].surface_group = this->elements[j].brush.faces[jj].surface_group;
                 }
 
                 this->elements[j].geometry.reduce_edges_vertices();
@@ -554,7 +571,6 @@ void GeometryStack::rebuild_geometry(bool only_build_new_geometry)
         std::vector<polyfold*> polies;
         polyfold combo;
 
-        std::vector<int> touched_brushes;
         int num = 0;
         for (int j = 1; j < i; j++)
         {
@@ -562,13 +578,6 @@ void GeometryStack::rebuild_geometry(bool only_build_new_geometry)
                 (this->elements[j].type == GEO_SUBTRACT || this->elements[j].type == GEO_ADD) &&
                 BoxIntersectsWithBox(this->elements[i].brush.bbox, this->elements[j].brush.bbox))
             {
-                for (int f_j = 0; f_j < this->elements[j].geometry.faces.size(); f_j++)
-                {
-                    this->elements[j].geometry.faces[f_j].original_brush = j;
-                    this->elements[j].geometry.faces[f_j].original_face = this->elements[j].geometry.faces[f_j].surface_group;
-                }
-                touched_brushes.push_back(j);
-
                 polies.push_back(&elements[j].geometry);
                 num++;
             }
@@ -618,15 +627,14 @@ void GeometryStack::rebuild_geometry(bool only_build_new_geometry)
         }
     }// semisolid brushes
 
+    /*
     for (int i = 1; i < this->elements.size(); i++)
     {
         for (int j = 0; j < this->elements[i].brush.faces.size() && j < this->elements[i].geometry.faces.size(); j++)
         {
             this->elements[i].geometry.faces[j].texture_name = this->elements[i].brush.faces[j].texture_name;
-            this->elements[i].geometry.faces[j].original_brush = i;
-            this->elements[i].geometry.faces[j].original_face = j;
         }
-    }
+    }*/
 
     this->build_progress = this->elements.size() - 1;
 
@@ -637,6 +645,8 @@ void GeometryStack::rebuild_geometry(bool only_build_new_geometry)
     build_total_geometry();
 
     INC_TIMER(build_total_geometry_time)
+
+    make_index_lists();
 
     START_TIMER()
 
@@ -654,6 +664,42 @@ void GeometryStack::rebuild_geometry(bool only_build_new_geometry)
     event.EventType = EET_USER_EVENT;
     event.UserEvent.UserData1 = USER_EVENT_GEOMETRY_REBUILT;
     event_receiver->OnEvent(event);
+}
+
+void GeometryStack::make_index_lists()
+{
+    n_total_faces = 0;
+    for (int i = 1; i < elements.size(); i++)
+    {
+        n_total_faces += elements[i].brush.faces.size();
+    }
+
+    element_id_by_face_n.resize(n_total_faces);
+    face_j_by_face_n.resize(n_total_faces);
+
+    int cc = 0;
+    for (int i = 1; i < elements.size(); i++)
+    {
+        for (int j = 0; j < elements[i].surfaces.size(); j++)
+        {
+            elements[i].surfaces[j].face_index_offset = cc;
+        }
+
+        for (int j = 0; j < elements[i].brush.faces.size(); j++)
+        {
+            element_id_by_face_n[cc] = elements[i].element_id;
+            face_j_by_face_n[cc] = j;
+            elements[i].reverse_index[j] = cc;
+            cc++;
+        }
+    }
+
+    element_by_element_id.assign(element_id_incrementer, -1);
+    for (int i = 1; i < elements.size(); i++)
+    {
+        int j = elements[i].element_id;
+        element_by_element_id[j] = i;
+    }
 }
 
 
@@ -803,7 +849,7 @@ void GeometryStack::clear_scene()
 polyfold GeometryStack::get_intersecting_geometry(const polyfold& pf)
 {
     polyfold combo;
-    std::vector<int> touched_brushes;
+
     int num = 0;
     std::vector<polyfold*> polies;
     for (int j = 1; j < this->elements.size(); j++)
@@ -811,12 +857,6 @@ polyfold GeometryStack::get_intersecting_geometry(const polyfold& pf)
         if (this->elements[j].has_geometry() &&
             BoxIntersectsWithBox(pf.bbox, this->elements[j].brush.bbox))
         {
-            for (int f_j = 0; f_j < this->elements[j].geometry.faces.size(); f_j++)
-            {
-                this->elements[j].geometry.faces[f_j].original_brush = j;
-                this->elements[j].geometry.faces[f_j].original_face = this->elements[j].geometry.faces[f_j].surface_group;
-            }
-            touched_brushes.push_back(j);
 
             polies.push_back(&elements[j].geometry);
             num++;
@@ -832,7 +872,10 @@ void GeometryStack::recalculate_final_meshbuffer()
     if (final_mesh_dirty)
     {
         std::cout << "recalculating meshbuffers\n";
-        final_meshnode_interface.refresh_material_groups(this);
+        //final_meshnode_interface.refresh_material_groups(this);
+        edit_meshnode_interface.refresh_material_groups(this);
+        edit_meshnode_interface.generate_lightmap_info(this);
+
         final_meshnode_interface.generate_mesh_node(this);
         final_meshnode_interface.generate_lightmap_info(this);
         final_mesh_dirty = false;
@@ -871,27 +914,108 @@ void GeometryStack::trianglize_total_geometry()
     }
 }
 
-std::vector<int> GeometryStack::getSurfaceFromFace(int b_i)
+geo_element* GeometryStack::get_element_by_id(int id)
 {
-    int brush_j = get_total_geometry()->faces[b_i].original_brush;
-    int face_j = get_total_geometry()->faces[b_i].original_face;
-
-    poly_face* f = &elements[brush_j].brush.faces[face_j];
-    std::vector<int> sel;
-    int sg = f->surface_group;
-    for (int i = 0; i < get_total_geometry()->faces.size(); i++)
+    for (geo_element& el : elements)
     {
-        if (get_total_geometry()->faces[i].original_brush == brush_j)
-        {
-            int face_i = get_total_geometry()->faces[i].original_face;
-
-            if (elements[brush_j].brush.faces[face_i].surface_group == sg &&
-                elements[brush_j].geometry.faces[face_i].loops.size() > 0)
-                sel.push_back(i);
-        }
+        if (el.element_id == id)
+            return &el;
     }
-    return sel;
+}
 
+int GeometryStack::get_element_index_by_id(int id)
+{
+    for (int i = 0; i < elements.size(); i++)
+    {
+        if (elements[i].element_id == id)
+            return i;
+    }
+
+    return -1;
+}
+
+poly_face* GeometryStack::get_brush_face(face_index idx)
+{
+    return &get_element_by_id(idx.brush)->brush.faces[idx.face];
+}
+
+poly_face* GeometryStack::get_geometry_face(face_index idx)
+{
+    return &get_element_by_id(idx.brush)->geometry.faces[idx.face];
+}
+
+polyfold* GeometryStack::get_brush(face_index idx)
+{
+    return &get_element_by_id(idx.brush)->brush;
+}
+
+polyfold* GeometryStack::get_geometry(face_index idx)
+{
+    return &get_element_by_id(idx.brush)->geometry;
+}
+
+int GeometryStack::get_element_index(face_index idx)
+{
+    return get_element_index_by_id(idx.brush);
+}
+
+int GeometryStack::n_faces()
+{
+    return n_total_faces;
+}
+poly_face* GeometryStack::brush_face_by_n(int n)
+{
+    int i = element_id_by_face_n[n];
+    int j = face_j_by_face_n[n];
+    return &elements[element_by_element_id[i]].brush.faces[j];
+}
+poly_face* GeometryStack::geo_face_by_n(int n)
+{
+    int i = element_id_by_face_n[n];
+    int j = face_j_by_face_n[n];
+    return &elements[element_by_element_id[i]].geometry.faces[j];
+}
+polyfold* GeometryStack::brush_by_n(int n)
+{
+    int i = element_id_by_face_n[n];
+    return &elements[element_by_element_id[i]].brush;
+}
+polyfold* GeometryStack::geo_by_n(int n)
+{
+    int i = element_id_by_face_n[n];
+    return &elements[element_by_element_id[i]].geometry;
+}
+
+int GeometryStack::element_id_by_n(int n)
+{
+    return element_id_by_face_n[n];
+}
+
+int GeometryStack::face_no_by_n(int n)
+{
+    return face_j_by_face_n[n];
+}
+
+geo_element* GeometryStack::element_by_n(int n)
+{
+    int i = element_id_by_face_n[n];
+    return &elements[element_by_element_id[i]];
+}
+
+core::stringw GeometryStack::face_texture_by_n(int n)
+{
+    int i = element_id_by_face_n[n];
+    int j = face_j_by_face_n[n];
+    int surface_no = elements[element_by_element_id[i]].brush.faces[j].surface_no;
+    return elements[element_by_element_id[i]].surfaces[surface_no].texture_name;
+}
+
+poly_surface* GeometryStack::surface_by_n(int n)
+{
+    int i = element_id_by_face_n[n];
+    int j = face_j_by_face_n[n];
+    int surface_no = elements[element_by_element_id[i]].brush.faces[j].surface_no;
+    return &elements[element_by_element_id[i]].surfaces[surface_no];
 }
 
 void  GeometryStack::GetGeometryLoopLines(LineHolder& lines0, LineHolder& lines1)
@@ -945,8 +1069,10 @@ void GeometryStack::buildSceneNode(bool finalMesh, int light_mode)
         for (int i = 0; i < my_MeshNode->getMesh()->getMeshBufferCount(); i++)
         {
             scene::IMeshBuffer* buffer = my_MeshNode->getMesh()->getMeshBuffer(i);
-            int f_i = final_meshnode_interface.getMaterialsUsed()[i].faces[0];
-            Material_Groups_Tool::apply_material_to_buffer(buffer, pf->faces[f_i].material_group, light_mode, false, true);
+            //int f_i = final_meshnode_interface.getMaterialsUsed()[i].faces[0];
+            //Material_Groups_Tool::apply_material_to_buffer(buffer, pf->faces[f_i].material_group, light_mode, false, true);
+            int mg = final_meshnode_interface.getMaterialsUsed()[i].materialGroup;
+            Material_Groups_Tool::apply_material_to_buffer(buffer, mg, light_mode, false, true);
 
         }
 
@@ -964,9 +1090,11 @@ void GeometryStack::buildSceneNode(bool finalMesh, int light_mode)
                 int buffer_index = edit_meshnode_interface.get_buffer_index_by_face(f_i);
                 scene::IMeshBuffer* buffer = this->my_MeshNode->getMesh()->getMeshBuffer(buffer_index);
 
-                Material_Groups_Tool::apply_material_to_buffer(buffer, pf->faces[f_i].material_group, light_mode, false, false);
+                //Material_Groups_Tool::apply_material_to_buffer(buffer, pf->faces[f_i].material_group, light_mode, false, false);
+                Material_Groups_Tool::apply_material_to_buffer(buffer, surface_by_n(f_i)->material_group, light_mode, false, false);
 
-                video::ITexture* tex_j = driver->getTexture(pf->faces[f_i].texture_name.c_str());
+               // video::ITexture* tex_j = driver->getTexture(pf->faces[f_i].texture_name.c_str());
+                video::ITexture* tex_j = driver->getTexture(face_texture_by_n(f_i).c_str());
 
                 buffer->getMaterial().setTexture(0, tex_j);
             }
@@ -993,32 +1121,37 @@ void GeometryStack::generate_meshes()
     trianglize_total_geometry();
 
     edit_meshnode_interface.generate_mesh_node(this);
-
-    final_meshnode_interface.refresh_material_groups(this);
     final_meshnode_interface.generate_mesh_node(this);
     final_meshnode_interface.generate_lightmap_info(this);
 
 }
 
-poly_face* GeometryStack::get_original_brush_face(int f_i)
+//This function temporarily located in this file
+std::vector<int> polyfold::getSurfaceFromFace(int f_i)
 {
-    int brush_j = total_geometry.faces[f_i].original_brush;
-    int face_j = total_geometry.faces[f_i].original_face;
+    face_index f = index_face(f_i);
+    geo_element* element = geometry_stack->get_element_by_id(f.brush);
 
-    poly_face* f = &elements[brush_j].brush.faces[face_j];
+    int sg = element->brush.faces[f.face].surface_group;
 
-    return f;
+    std::vector<int> sel;
+
+    for (int i = 0; i < faces.size(); i++)
+    {
+
+        if (faces[i].element_id == f.brush)
+        {
+
+            int face_i = faces[i].face_id;
+
+            if (element->brush.faces[face_i].surface_group == sg &&
+                element->geometry.faces[face_i].loops.size() > 0)
+                sel.push_back(i);
+        }
+    }
+    return sel;
 }
 
-
-polyfold* GeometryStack::get_original_brush(int f_i)
-{
-    int brush_j = total_geometry.faces[f_i].original_brush;
-
-    polyfold* pf = &elements[brush_j].brush;
-
-    return pf;
-}
 
 void geo_element::draw_brush_vertices(const core::matrix4& trans, core::dimension2du view_dim, bool bDrawSelectedVertex, video::IVideoDriver* driver)
 {
@@ -1101,16 +1234,35 @@ void geo_element::draw_brush_vertices(const core::matrix4& trans, core::dimensio
     }
 }
 
+REFLECT_STRUCT_BEGIN(lightmap_info_struct)
+    REFLECT_STRUCT_MEMBER(width)
+    REFLECT_STRUCT_MEMBER(height)
+    REFLECT_STRUCT_MEMBER(bFlipped)
+    REFLECT_STRUCT_MEMBER(bOverrideSize)
+REFLECT_STRUCT_END()
 
-
+REFLECT_STRUCT_BEGIN(poly_surface)
+    REFLECT_STRUCT_MEMBER(my_faces)
+    REFLECT_STRUCT_MEMBER(material_group)
+    REFLECT_STRUCT_MEMBER(surface_type)
+    REFLECT_STRUCT_MEMBER(texture_index)
+    REFLECT_STRUCT_MEMBER(face_index_offset)
+    REFLECT_STRUCT_MEMBER(lightmap_info)
+REFLECT_STRUCT_END()
 
 REFLECT_STRUCT_BEGIN(geo_element)
     REFLECT_STRUCT_MEMBER(type)
+    REFLECT_STRUCT_MEMBER(element_id)
     REFLECT_STRUCT_MEMBER(brush)
     REFLECT_STRUCT_MEMBER(geometry)
+    REFLECT_STRUCT_MEMBER(surfaces)
+    REFLECT_STRUCT_MEMBER(reverse_index)
 REFLECT_STRUCT_END()
 
 REFLECT_STRUCT_BEGIN(GeometryStack)
     REFLECT_STRUCT_MEMBER(base_type)
     REFLECT_STRUCT_MEMBER(elements)
+    REFLECT_STRUCT_MEMBER(element_id_incrementer)
 REFLECT_STRUCT_END()
+
+

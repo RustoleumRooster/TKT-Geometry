@@ -1,5 +1,6 @@
 #include <iostream>
 #include "csg_classes.h"
+#include "GeometryStack.h"
 #include <algorithm>
 
 using namespace irr;
@@ -39,6 +40,8 @@ void do_primitive_calculations(polyfold& pf)
 {
     for(int f_i=0;f_i<pf.faces.size();f_i++)
     {
+        pf.faces[f_i].face_id = f_i;
+
         for(int e_i:pf.faces[f_i].edges)
         {
             pf.faces[f_i].addVertex(pf.edges[e_i].v0);
@@ -81,9 +84,10 @@ void do_primitive_calculations(polyfold& pf)
     pf.topology = TOP_CONVEX;
 }
 
-polyfold make_poly_cube(int height,int length,int width)
+geo_element make_poly_cube(int height,int length,int width)
 {
-    polyfold pf;
+    geo_element geo;
+    polyfold& pf = geo.brush;
 
     pf.vertices.push_back(poly_vert(0,0,0)); //0
     pf.vertices.push_back(poly_vert(length,0,0));
@@ -172,12 +176,21 @@ polyfold make_poly_cube(int height,int length,int width)
         face.uv_origin=pf.vertices[face.vertices[0]].V;
     }
 
-    return pf;
+    geo.surfaces.resize(pf.faces.size());
+
+    for (int i = 0; i < pf.faces.size(); i++)
+    {
+        geo.surfaces[i].my_faces.push_back(i);
+        pf.faces[i].surface_no = i;
+    }
+
+    return geo;
 }
 
-polyfold make_poly_plane(int length, int width)
+geo_element make_poly_plane(int length, int width)
 {
-    polyfold pf;
+    geo_element geo;
+    polyfold& pf = geo.brush;
 
     pf.vertices.push_back(poly_vert(0,0,0));
     pf.vertices.push_back(poly_vert(length,0,0));
@@ -223,13 +236,24 @@ polyfold make_poly_plane(int length, int width)
 
     pf.faces[0].surface_group=0;
 
-    return pf;
+    geo.surfaces.resize(pf.faces.size());
+
+    for (int i = 0; i < pf.faces.size(); i++)
+    {
+        geo.surfaces[i].surface_type = SURFACE_GROUP_STANDARD;
+        geo.surfaces[i].my_faces.push_back(i);
+        pf.faces[i].surface_no = i;
+    }
+
+    return geo;
 }
 
-polyfold make_cylinder(int height, int length, int faces, int radius_type)
+geo_element make_cylinder(int height, int length, int faces, int radius_type)
 {
     f32 pi = 3.141592653;
-    polyfold pf;
+
+    geo_element geo;
+    polyfold& pf = geo.brush;
 
     f32 radius;
 
@@ -351,13 +375,33 @@ polyfold make_cylinder(int height, int length, int faces, int radius_type)
 
     pf.control_vertices.push_back(poly_vert(0, 0, 0));
 
-    return pf;
+    geo.surfaces.resize(3);
+
+    geo.surfaces[0].surface_type = SURFACE_GROUP_STANDARD;
+    geo.surfaces[1].surface_type = SURFACE_GROUP_STANDARD;
+    geo.surfaces[2].surface_type = SURFACE_GROUP_CYLINDER;
+
+    geo.surfaces[0].my_faces.push_back(0);
+    geo.surfaces[1].my_faces.push_back(1);
+
+    pf.faces[0].surface_no = 0;
+    pf.faces[1].surface_no = 1;
+
+    for (int i = 2; i < pf.faces.size(); i++)
+    {
+        geo.surfaces[2].my_faces.push_back(i);
+        pf.faces[i].surface_no = 2;
+    }
+
+    return geo;
 }
 
-polyfold make_cone(int height, int radius, int faces)
+geo_element make_cone(int height, int radius, int faces)
 {
     f32 pi = 3.141592653;
-    polyfold pf;
+
+    geo_element geo;
+    polyfold& pf = geo.brush;
 
     for(int i=0;i<faces;i++)
     {
@@ -427,7 +471,7 @@ polyfold make_cone(int height, int radius, int faces)
 
     //pf.faces[0].surface_group=0;
 
-    return pf;
+    return geo;
 }
 
 int num_rad_points(int radius, int faces, int zen_faces, int zen_j, bool simplify)
@@ -462,10 +506,12 @@ core::vector3df get_sphere_point(int radius, int faces, int zen_faces, int zen_j
 
 
 
-polyfold make_sphere(int radius, int rad_faces, int zen_faces, bool simplify)
+geo_element make_sphere(int radius, int rad_faces, int zen_faces, bool simplify)
 {
     f32 pi = 3.141592653;
-    polyfold pf;
+
+    geo_element geo;
+    polyfold& pf = geo.brush;
 
     int n_zen_points = zen_faces;
     int n_f=0;
@@ -801,7 +847,7 @@ polyfold make_sphere(int radius, int rad_faces, int zen_faces, bool simplify)
         }
     }
 
-    return pf;
+    return geo;
 
 }
 

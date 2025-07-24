@@ -57,7 +57,12 @@ void initialize_tools(geometry_scene* scene, gui::IGUIEnvironment* gui, multi_to
     Material_Buffers_Base* material_buffers_base = new Material_Buffers_Base(L"Mesh Buffers", GUI_ID_MAT_BUFFERS_BASE, gui, tool_panel);
     material_buffers_base->set_scene(scene);
     material_buffers_base->initialize();
-    Material_Buffers_Tool::initialize(material_buffers_base, tool_panel);
+
+    Lightmap_Resize_Base* Lightmap_Resize_base = new Lightmap_Resize_Base(L"Lightmap Resize", GUI_ID_MAT_LM_RESIZE_BASE, gui, tool_panel);
+    Lightmap_Resize_base->set_scene(scene);
+    Lightmap_Resize_base->initialize();
+
+    Material_Buffers_Tool::initialize(material_buffers_base, Lightmap_Resize_base, tool_panel);
 
     /*
     std::cout << "\nReflection:\n";
@@ -105,6 +110,8 @@ void initialize_set_scene(geometry_scene* scene)
     //Geo_Settings_Tool::initialize(geo_settings_base, tool_panel);
 
     Material_Buffers_Tool::get_base()->set_scene(scene);
+    Material_Buffers_Tool::get_base2()->set_scene(scene);
+
     Node_Classes_Tool::get_base()->set_scene(scene);
     Node_Instances_Tool::get_base()->set_scene(scene);
     File_Open_Tool::get_base()->set_scene(scene);

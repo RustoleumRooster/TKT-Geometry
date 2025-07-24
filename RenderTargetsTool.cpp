@@ -34,6 +34,10 @@ scene::ICameraSceneNode* RenderTargetPanel::getCamera()
     return NULL;
 }
 
+void RenderTargetPanel::resetCamera()
+{
+}
+
 void RenderTargetPanel::Initialize(scene::ISceneManager* smgr, geometry_scene* geo_scene)
 {
     //smgr2 = smgr->createNewSceneManager();

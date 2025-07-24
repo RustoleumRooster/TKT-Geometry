@@ -121,7 +121,7 @@ void calculate_meshbuffer_uvs_cylinder(GeometryStack* g_scene, int e_i, int f_i,
 
 void calculate_meshbuffer_uvs_cylinder(GeometryStack* g_scene, int e_i, int f_i, scene::IMeshBuffer* buffer, int v_start, int v_end)
 {
-    polyfold* brush = &g_scene->elements[e_i].brush;
+    polyfold* brush = &g_scene->get_element_by_id(e_i)->brush;
 
     poly_face* face = &brush->faces[f_i];
 

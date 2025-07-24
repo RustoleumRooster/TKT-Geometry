@@ -184,6 +184,7 @@ public:
     virtual int getNumIds(){return 2;}
     virtual int getButtonType() {return FORM_FIELD_NO_BUTTON;}
     virtual bool clickButton(s32 id, reflected_tool_base*) { return false; } /*Only return true if this will cause panel to unshow*/
+    virtual void clickButton(s32 id) {}
     virtual void copy(void*, void*) {}
     virtual int getWidth(int column);
 
@@ -383,6 +384,52 @@ class UID_Reference_StaticField : public UID_Reference_FormField
 public:
     virtual int addWidget(Reflected_GUI_Edit_Form* win, int ID, int ypos);
   //  virtual void readValue(void* obj);
+};
+
+//
+// Power2 Form Field
+//
+
+class Pwr2_FormField : public FormField
+{
+public:
+    virtual int addWidget(Reflected_GUI_Edit_Form* win, int ID, int ypos) = 0;
+    virtual void readValue(void* obj);
+    virtual void writeValue(void* obj) {}
+    virtual int getHeight();
+    virtual int getButtonType() { return FORM_FIELD_BUTTON; }
+   // virtual bool clickButton(s32 id, reflected_tool_base*) override;
+    virtual void clickButton(s32 id) override;
+    virtual int getNumIds() override { return 4; }
+
+    int ypos_ = 0;
+
+    virtual void copy(void* obj, void* obj2) {
+        *get(obj) = *get(obj2);
+    }
+
+    virtual bool is_equal(void* a, void* b) {
+        return *get(a) == *get(b);
+    }
+
+    int* get(void* obj_) { return (int*)((char*)obj_ + offset); }
+
+    unsigned my_no=2;
+};
+
+class Pwr2_EditField : public Pwr2_FormField
+{
+public:
+    virtual void setActive(int);
+    virtual int addWidget(Reflected_GUI_Edit_Form* win, int ID, int ypos);
+    virtual void writeValue(void* obj);
+};
+
+class Pwr2_StaticField : public Pwr2_FormField
+{
+public:
+    virtual int addWidget(Reflected_GUI_Edit_Form* win, int ID, int ypos);
+    //  virtual void readValue(void* obj);
 };
 
 

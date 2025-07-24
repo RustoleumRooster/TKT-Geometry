@@ -336,16 +336,14 @@ enum {
 };
 
 template<class map_type>
-void map_uvs(GeometryStack* geo_node, MeshNode_Interface_Edit* mesh_node, const std::vector<int>& surface, map_type& mapper, int uv_type)
+void map_uvs(MeshNode_Interface_Edit* mesh_node, int offset, const std::vector<int>& surface, map_type& mapper, int uv_type)
 {
-	polyfold* pf = geo_node->get_total_geometry();
-
 	video::S3DVertex2TCoords* vtx[3];
 
 	for (int b_i : surface)
 	{
-		MeshBuffer_Chunk chunk = mesh_node->get_mesh_buffer_by_face(b_i);
-		std::vector<core::vector2df>& lightmap_raw_uvs = *mesh_node->get_lightmap_raw_uvs_by_face(b_i);
+		MeshBuffer_Chunk chunk = mesh_node->get_mesh_buffer_by_face(offset + b_i);
+		std::vector<core::vector2df>& lightmap_raw_uvs = *mesh_node->get_lightmap_raw_uvs_by_face(offset + b_i);
 
 		if (chunk.buffer)
 		{

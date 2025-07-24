@@ -549,7 +549,7 @@ void Reflected_Model_SceneNode::setUnlit(bool unlit)
 //
 
 Reflected_MeshBuffer_SceneNode::Reflected_MeshBuffer_SceneNode(USceneNode* parent, geometry_scene* geo_scene, irr::scene::ISceneManager* smgr, int id, const core::vector3df& pos) :
-    Reflected_Sprite_SceneNode(parent, geo_scene, smgr, id, pos), face_uid(0)
+    Reflected_Sprite_SceneNode(parent, geo_scene, smgr, id, pos), element_id(0), face_id(0)
 {
     m_texture = device->getVideoDriver()->getTexture("color_square_icon.png");
     Buffer->Material.setTexture(0, m_texture);
@@ -571,14 +571,16 @@ void Reflected_MeshBuffer_SceneNode::restore_original_texture()
 
     for (int f_i = 0; f_i < pf->faces.size(); f_i++)
     {
-        if (pf->faces[f_i].uid == this->face_uid)
+        //if (pf->faces[f_i].uid == this->face_uid)
+        if (pf->faces[f_i].element_id == this->element_id &&
+            pf->faces[f_i].face_id == this->face_id)
         {
-            int brush_i = pf->faces[f_i].original_brush;
-            int face_i = pf->faces[f_i].original_face;
+            int face_i = pf->faces[f_i].face_id;
+            //geo_element* element = geo_scene->geoNode()->get_element_by_id(pf->faces[f_i].element_id);
 
-            const core::stringw& texture_name = geo_scene->geoNode()->elements[brush_i].brush.faces[face_i].texture_name;
+            poly_surface* surface = geo_scene->geoNode()->surface_by_n(face_i);
 
-            video::ITexture* texture = device->getVideoDriver()->getTexture(texture_name);
+            video::ITexture* texture = device->getVideoDriver()->getTexture(surface->texture_name.c_str());
             
             MeshBuffer_Chunk chunk = geo_scene->geoNode()->final_meshnode_interface.get_mesh_buffer_by_face(f_i);
 
@@ -586,6 +588,8 @@ void Reflected_MeshBuffer_SceneNode::restore_original_texture()
 
             if (buffer)
                 buffer->getMaterial().setTexture(0, texture);
+
+            //TODO: copy materials ?????
         }
     }
 
@@ -599,7 +603,9 @@ IMeshBuffer* Reflected_MeshBuffer_SceneNode::get_mesh_buffer()
 
     for (int f_i = 0; f_i < pf->faces.size(); f_i++)
     {
-        if (pf->faces[f_i].uid == get_uid())
+       // if (pf->faces[f_i].uid == get_uid())
+        if (pf->faces[f_i].element_id == this->element_id &&
+            pf->faces[f_i].face_id == this->face_id)
         {
             MeshBuffer_Chunk chunk = geo_scene->geoNode()->final_meshnode_interface.get_mesh_buffer_by_face(f_i);
 
@@ -612,6 +618,13 @@ IMeshBuffer* Reflected_MeshBuffer_SceneNode::get_mesh_buffer()
     return NULL;
 }
 
+void Reflected_MeshBuffer_SceneNode::set_face(int element, int face)
+{
+    face_id = face;
+    element_id = element;
+}
+
+/*
 void Reflected_MeshBuffer_SceneNode::set_uid(u64 uid)
 {
     face_uid = uid;
@@ -621,6 +634,7 @@ u64 Reflected_MeshBuffer_SceneNode::get_uid()
 {
     return face_uid;
 }
+*/
 
 //=================================================
 //Reflected_MeshBuffer_Sky_SceneNode
@@ -665,7 +679,9 @@ void Reflected_MeshBuffer_Sky_SceneNode::connect_sky_sceneNode(MySkybox_SceneNod
 
     for (int f_i = 0; f_i < pf->faces.size(); f_i++)
     {
-        if (pf->faces[f_i].uid == this->get_uid())
+        //if (pf->faces[f_i].uid == this->get_uid())
+        if (pf->faces[f_i].element_id == this->element_id &&
+            pf->faces[f_i].face_id == this->face_id)
         {
             MeshBuffer_Chunk chunk = geo_scene->geoNode()->final_meshnode_interface.get_mesh_buffer_by_face(f_i);
 
@@ -709,7 +725,9 @@ void Reflected_MeshBuffer_Water_SceneNode::connect_water_sceneNode(WaterSurface_
 
     for (int f_i = 0; f_i < pf->faces.size(); f_i++)
     {
-        if (pf->faces[f_i].uid == this->get_uid())
+        //if (pf->faces[f_i].uid == this->get_uid())
+        if (pf->faces[f_i].element_id == this->element_id &&
+            pf->faces[f_i].face_id == this->face_id)
         {
             MeshBuffer_Chunk chunk = geo_scene->geoNode()->final_meshnode_interface.get_mesh_buffer_by_face(f_i);
 
@@ -843,7 +861,9 @@ REFLECT_STRUCT2_BEGIN(Reflected_MeshBuffer_SceneNode)
     ALIAS("Mesh Buffer")
     PLACEABLE(false)
     INHERIT_FROM(Reflected_Sprite_SceneNode)
-    REFLECT_STRUCT2_MEMBER(face_uid)
+    //REFLECT_STRUCT2_MEMBER(face_uid)
+    REFLECT_STRUCT2_MEMBER(element_id)
+    REFLECT_STRUCT2_MEMBER(face_id)
 REFLECT_STRUCT2_END()
 
 REFLECT_STRUCT2_BEGIN(Reflected_MeshBuffer_Sky_SceneNode)

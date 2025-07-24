@@ -527,7 +527,9 @@ void Reflected_MeshBuffer_Clouds_SceneNode::onSceneInit()
 
     for (int f_i = 0; f_i < pf->faces.size(); f_i++)
     {
-        if (pf->faces[f_i].uid == this->get_uid())
+        //if (pf->faces[f_i].uid == this->get_uid())
+        if (pf->faces[f_i].element_id == this->element_id &&
+            pf->faces[f_i].face_id == this->face_id)
         {
             MeshBuffer_Chunk chunk = geo_scene->geoNode()->final_meshnode_interface.get_mesh_buffer_by_face(f_i);
 

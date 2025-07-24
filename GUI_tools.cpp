@@ -217,6 +217,9 @@ bool Reflected_Widget_EditArea::OnEvent(const SEvent& event)
 
                         field->writeValue(temp_object);
 
+                        field->setActive(CELL_STATUS_MODIFIED);
+                        m_typeDesc->getTreeNode(field->tree_pos)->modified = true;
+
                         refresh();
                         if (Parent)
                         {
@@ -240,14 +243,6 @@ bool Reflected_Widget_EditArea::OnEvent(const SEvent& event)
                     
                     m_typeDesc->getTreeNode(field->tree_pos)->modified = true;
 
-                    int f_c = 0;
-
-                    FormField* f = form->edit_fields;
-                    while (f)
-                    {
-                        f_c++;
-                        f = f->next;
-                    }
                     field->writeValue(temp_object);
                 }
             } break;
@@ -493,7 +488,7 @@ void multi_tool_panel::do_layout()
         tool_header* header = new tool_header(Environment,this,ID+1+i,header_rect);
         header->tool_no=i;
         header->setText(my_tools[i]->getName());
-        my_headers.push_back(header);
+        my_headers.push_back(header); 
     }
 
     updateClientRect();

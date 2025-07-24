@@ -169,6 +169,7 @@ struct EmptyStruct
 
 #define FLAG_NON_EDITABLE 1
 #define FLAG_NON_COLLAPSABLE 2
+#define FLAG_UINT_WIDGET_POWER2 4
 
 struct Member {
          struct Attribute {
@@ -827,8 +828,7 @@ struct TypeDescriptor_U32 : TypeDescriptor {
         std::cout << "u32{" << *(const unsigned int*)obj << "}";
     }
 
-    virtual void addFormWidget(Reflected_GUI_Edit_Form*, TypeDescriptor_Struct*, std::vector<int> tree, size_t offset, bool bVisible, bool bEditable, int tab) override
-    {}
+    virtual void addFormWidget(Reflected_GUI_Edit_Form*, TypeDescriptor_Struct*, std::vector<int> tree, size_t offset, bool bVisible, bool bEditable, int tab) override;
 
     virtual bool isEqual(void* obj, void* obj2) {
         return *(const unsigned int*)obj == *(const unsigned int*)obj2;

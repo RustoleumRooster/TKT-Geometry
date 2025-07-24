@@ -19,6 +19,7 @@ using namespace gui;
 
 
 Material_Buffers_Base* Material_Buffers_Tool::base = NULL;
+Lightmap_Resize_Base* Material_Buffers_Tool::base2 = NULL;
 multi_tool_panel* Material_Buffers_Tool::panel = NULL;
 
 extern IrrlichtDevice* device;
@@ -36,6 +37,266 @@ extern irr::video::ITexture* med_circle_tex_sub_selected;
 extern irr::video::ITexture* med_circle_tex_sub_not_selected;
 extern irr::video::ITexture* med_circle_tex_red_selected;
 extern irr::video::ITexture* med_circle_tex_red_not_selected;
+
+//======================================================
+// Lightmap Resize Widget 
+//
+
+Lightmap_Resize_Widget::Lightmap_Resize_Widget(gui::IGUIEnvironment* env, gui::IGUIElement* parent, geometry_scene* g_scene_, Lightmap_Resize_Base* base_, s32 id, core::rect<s32> rect)
+    : gui::IGUIElement(gui::EGUIET_ELEMENT, env, parent, id, rect), my_base(base_), g_scene(g_scene_), my_ID(id)
+{
+   // MyEventReceiver* receiver = (MyEventReceiver*)device->getEventReceiver();
+   // receiver->Register(this);
+}
+
+Lightmap_Resize_Widget::~Lightmap_Resize_Widget()
+{
+    //if (my_widget)
+    //    my_widget->remove();
+
+   // MyEventReceiver* receiver = (MyEventReceiver*)device->getEventReceiver();
+   // receiver->UnRegister(this);
+}
+
+void Lightmap_Resize_Widget::show()
+{
+    IGUIElement::setRelativePosition(core::position2di(0, my_base->getWidgetHeight()));
+
+    core::rect<s32> pr(0, 0, getRelativePosition().getWidth(), getRelativePosition().getHeight());
+    edit_panel = new gui::IGUIElement(gui::EGUIET_ELEMENT, Environment, this, -1, pr);
+
+    OK_BUTTON_ID = my_ID + 1;
+
+    my_widget = new Reflected_Widget_EditArea(Environment, edit_panel, g_scene, my_base, my_ID + 2, pr);
+
+    my_widget->show(true, my_base->getObj());
+
+    int ypos = my_widget->getEditAreaHeight() + 8;
+    core::rect<s32> br = core::rect<s32>(getRelativePosition().getWidth() - 80, ypos, getRelativePosition().getWidth() - 8, ypos + 36);
+
+    my_button = new Flat_Button(Environment, this, OK_BUTTON_ID, br);
+    my_button->setText(L"Apply");
+
+    my_widget->drop();
+    edit_panel->drop();
+}
+
+void Lightmap_Resize_Widget::onRefresh()
+{
+    if (my_button)
+        my_button->remove();
+
+    int ypos = my_widget->getEditAreaHeight() + 8;
+    core::rect<s32> br = core::rect<s32>(getRelativePosition().getWidth() - 80, ypos, getRelativePosition().getWidth() - 8, ypos + 36);
+
+    my_button = new Flat_Button(Environment, this, OK_BUTTON_ID, br);
+    my_button->setText(L"Apply");
+}
+
+void Lightmap_Resize_Widget::click_OK()
+{
+    my_widget->write_by_field();
+    my_base->ApplyResize();
+}
+
+bool Lightmap_Resize_Widget::OnEvent(const SEvent& event)
+{
+    if (event.EventType == EET_USER_EVENT)
+    {
+        if (event.UserEvent.UserData1 == USER_EVENT_REFLECTED_FORM_REFRESHED)
+        {
+            onRefresh();
+            return true;
+        }
+        else if (event.UserEvent.UserData1 == USER_EVENT_SELECTION_CHANGED)
+        {
+            if (my_widget)
+            {
+                my_widget->remove();
+            }
+
+            //core::rect<s32> pr(0, 0, getRelativePosition().getWidth(), getRelativePosition().getHeight());
+            //pr.UpperLeftCorner.Y += my_base->getWidgetHeight();
+            //DesiredRect = pr;
+            IGUIElement::setRelativePosition(core::position2di(0, my_base->getWidgetHeight()));
+            //IGUIElement::updateAbsolutePosition();
+
+            //pr.UpperLeftCorner.Y += 64;// my_base->getWidgetHeight();
+
+            my_widget = new Reflected_Widget_EditArea(Environment, edit_panel, g_scene, my_base, my_ID + 2, 
+                core::rect<s32> (0, 0, getRelativePosition().getWidth(), getRelativePosition().getHeight()));
+
+            my_widget->show(true, my_base->getObj());
+            my_widget->drop();
+
+            onRefresh();
+
+            return true;
+        }
+    }
+    else if (event.EventType == EET_GUI_EVENT)
+    {
+        s32 id = event.GUIEvent.Caller->getID();
+
+        if (event.GUIEvent.EventType == EGET_BUTTON_CLICKED)
+        {
+            if (event.GUIEvent.Caller == my_button)
+            {
+                click_OK();
+                return true;
+            }
+        }
+    }
+
+    return IGUIElement::OnEvent(event);
+}
+
+//======================================================
+// Lightmap Resize Base
+//
+
+Lightmap_Resize_Base::Lightmap_Resize_Base(std::wstring name, int my_id, gui::IGUIEnvironment* env, multi_tool_panel* panel) :
+    simple_reflected_tool_base(name, my_id, env, panel) 
+{
+}
+
+Lightmap_Resize_Base::~Lightmap_Resize_Base()
+{
+}
+
+void Lightmap_Resize_Base::show() //not called directly
+{
+    core::rect<s32> client_rect(core::vector2di(0, 0),
+        core::dimension2du(this->panel->getClientRect()->getAbsolutePosition().getWidth(),
+            this->panel->getClientRect()->getAbsolutePosition().getHeight()));
+
+    //core::rect<s32> client_rect = getWidgetRect();
+
+    Lightmap_Resize_Widget* widget = new Lightmap_Resize_Widget(env, this->panel->getClientRect(), g_scene, this, GUI_ID_GEO_SETTINGS_BASE, client_rect);
+
+    widget->show();
+    widget->drop();
+}
+
+void Lightmap_Resize_Base::widget_closing(Reflected_Widget_EditArea*)
+{
+}
+
+reflect::TypeDescriptor_Struct* Lightmap_Resize_Base::getTypeDescriptor()
+{
+    return simple_reflected_tool_base::getTypeDescriptor();
+
+    //return (reflect::TypeDescriptor_Struct*)reflect::TypeResolver<Lightmap_Block>::get();
+}
+
+void Lightmap_Resize_Base::post_edit()
+{
+}
+
+void Lightmap_Resize_Base::write_obj_by_field(reflect::TypeDescriptor_Struct* flat_tD, std::vector<int> tree_pos, void* obj)
+{
+
+    reflect::Member* m = flat_tD->getTreeNode(tree_pos);
+    reflect::TypeDescriptor_Struct* tD = (reflect::TypeDescriptor_Struct*)reflect::TypeResolver<Lightmap_Block>::get();
+
+    if (m->modified)
+    {
+        size_t offset_from = flat_tD->getTreeNodeOffset(tree_pos);
+        size_t offset_to = tD->getTreeNodeOffset(tree_pos);
+
+        for (std::pair<int, int> idx : g_scene->getSelectedBlocks())
+        {
+            Lightmap_Block* block = &g_scene->geoNode()->edit_meshnode_interface.get_lm_block(idx.first, idx.second);
+
+            m->type->copy((char*)block + offset_to, (char*)obj + offset_from);
+
+            block->bOverrideSize = true;
+            int a = 0;
+        }
+
+        m->modified = false;
+    }
+}
+
+void Lightmap_Resize_Base::save_expanded_status(reflect::TypeDescriptor_Struct* flat_typeDescriptor, std::vector<int> tree_pos)
+{
+}
+
+void Lightmap_Resize_Base::init_member(reflect::TypeDescriptor_Struct* tD, std::vector<int> tree_pos)
+{
+    reflect::Member* m = tD->getTreeNode(tree_pos);
+    size_t offset = tD->getTreeNodeOffset(tree_pos);
+
+    if (g_scene->getSelectedBlocks().size() > 1)
+    {
+        std::pair<int, int> idx0 = g_scene->getSelectedBlocks()[0];
+        Lightmap_Block* block0 = &g_scene->geoNode()->edit_meshnode_interface.get_lm_block(idx0.first, idx0.second);
+
+        bool b = true;
+
+        if (m->modified)
+            m->readwrite = true;
+        else
+        {
+            for (std::pair<int,int> idx : g_scene->getSelectedBlocks())
+            {
+                Lightmap_Block* block = &g_scene->geoNode()->edit_meshnode_interface.get_lm_block(idx.first, idx.second);
+
+                if (m->type->isEqual((char*)block + offset, (char*)block0 + offset) == false)
+                {
+                    b = false;
+                }
+            }
+            m->readwrite = b;
+        }
+    }
+    else if (g_scene->getSelectedBlocks().size() == 1)
+    {
+        m->readwrite = true;
+    }
+}
+
+void* Lightmap_Resize_Base::getObj()
+{
+    if (g_scene->getSelectedBlocks().size() > 0)
+    {
+        std::pair<int, int> idx = g_scene->getSelectedBlocks()[0];
+        Lightmap_Block* block = &g_scene->geoNode()->edit_meshnode_interface.get_lm_block(idx.first, idx.second);
+        return block;
+    }
+    return NULL;
+}
+
+s32 Lightmap_Resize_Base::getWidgetHeight()
+{
+    s32 ypos = Material_Buffers_Tool::get_base()->getWidgetHeight();
+    //ypos += 8;
+
+    return ypos;
+}
+
+
+void Lightmap_Resize_Base::initialize()
+{
+    m_typeDescriptor = (reflect::TypeDescriptor_Struct*)reflect::TypeResolver<Lightmap_Block>::get();
+}
+
+void Lightmap_Resize_Base::ApplyResize()
+{
+   for(TextureMaterial& mg : g_scene->geoNode()->edit_meshnode_interface.getMaterialsUsed())
+    {
+       for (Lightmap_Block& block : mg.blocks)
+       {
+           if (block.bOverrideSize == true)
+           {
+               geo_element* e = g_scene->geoNode()->get_element_by_id(block.element_id);
+               e->surfaces[block.surface_no].lightmap_info.bOverrideSize = true;
+               e->surfaces[block.surface_no].lightmap_info.height = block.height;
+               e->surfaces[block.surface_no].lightmap_info.width = block.width;
+           }
+       }
+    }
+}
 
 
 //======================================================
@@ -158,7 +419,7 @@ void LM_Viewer_Panel::showMaterialGroup(int mg_n)
 
                 vector<video::ITexture*>& lm_textures = Lightmaps_Tool::get_manager()->lightmap_textures;
 
-                if (mg_n < lm_textures.size())
+                if (mg_n < lm_textures.size() && lm_textures[mg_n] != NULL)
                 {
                     my_image = new TextureImage(lm_textures[mg_n]);
                 }
@@ -212,6 +473,8 @@ bool LM_Viewer_Panel::OnEvent(const SEvent& event)
                     }
                 }
 
+                
+
                 if (geo_scene->getSelectedFaces().size() != 0)
                 {
                     /*
@@ -250,21 +513,59 @@ bool LM_Viewer_Panel::OnEvent(const SEvent& event)
     return TestPanel_2D::OnEvent(event);
 }
 
+void LM_Viewer_Panel::left_click(core::vector2di pos)
+{
+    vector<int> selection = std::vector<int>{};
+    //GeometryStack* geo_node = uv_scene->geoNode();
+
+    geo_scene->setBrushSelection(std::vector<int>{});
+
+    for (int i = 0; i < uv_scene->elements.size(); i++)
+    {
+        if (click_hits_poly(&uv_scene->elements[i].brush, core::vector2di(clickx, clicky)))
+        {
+            std::vector<int> selection;
+            selection = geo_scene->geoNode()->get_total_geometry()->getConnectedSurfaceFromFace(faces[i]);
+            geo_scene->setSelectedFaces(selection);
+
+            for (int i = 0; i < faces.size(); i++)
+            {
+                uv_scene->elements[i].bSelected = false;
+                for (int f_j : selection)
+                {
+                    if (f_j == faces[i] && i < uv_scene->elements.size())
+                    {
+                        uv_scene->elements[i].bSelected = true;
+                    }
+                }
+            }
+
+            geo_scene->selectionChanged();
+          
+            break;
+        }
+    }
+}
+
 void LM_Viewer_Panel::make_face(polyfold* pf_0, int f_no, video::ITexture* face_texture2)
 {
     MeshBuffer_Chunk chunk = geo_scene->geoNode()->edit_meshnode_interface.get_mesh_buffer_by_face(f_no);
 
     my_face_no = f_no;
 
-    original_face = pf_0->faces[f_no].original_face;
-    original_brush = pf_0->faces[f_no].original_brush;
+    //original_face = pf_0->faces[f_no].original_face;
+    original_face = pf_0->faces[f_no].face_id;
+    //original_brush = pf_0->faces[f_no].original_brush;
+    original_brush = geo_scene->geoNode()->get_element_index_by_id(pf_0->faces[f_no].element_id);
+
+    geo_element* element = geo_scene->geoNode()->get_element_by_id(pf_0->faces[f_no].element_id);
 
     polyfold uv_poly;
 
     scene::IMeshBuffer* buffer = chunk.buffer;
     if (buffer)
     {
-        polyfold* source_brush = &geo_scene->geoNode()->elements[original_brush].brush;
+        polyfold* source_brush = &element->brush;
 
         u32 n_points = source_brush->vertices.size();
         vertex_index.assign(n_points, -1);
@@ -287,7 +588,7 @@ void LM_Viewer_Panel::make_face(polyfold* pf_0, int f_no, video::ITexture* face_
 
         if (use_geometry_brush)
         {
-            source_brush = &geo_scene->geoNode()->elements[original_brush].geometry;
+            source_brush = &element->geometry;
 
             n_points = source_brush->vertices.size();
             vertex_index.assign(n_points, -1);
@@ -457,10 +758,10 @@ void LM_Viewer_Panel::render()
 void LM_Viewer_Panel::OnMenuItemSelected(IGUIContextMenu* menu)
 {
 }
-
+/*
 void LM_Viewer_Panel::left_click(core::vector2di pos)
 {
-    /*
+    
     std::vector<int> old_sel_faces = geo_scene->getSelectedFaces();
     std::vector<Reflected_SceneNode*> old_sel_nodes = geo_scene->getSelectedNodes();
     std::vector<int> old_sel_brushes = geo_scene->getBrushSelection();
@@ -481,9 +782,9 @@ void LM_Viewer_Panel::left_click(core::vector2di pos)
         return;
     }
 
-    geo_scene->selectionChanged();*/
+    geo_scene->selectionChanged();
 }
-
+*/
 
 void LM_Viewer_Panel::right_click(core::vector2di pos)
 {/*
@@ -657,6 +958,7 @@ void Material_Buffers_Widget::show()
 
     core::rect<s32> pr2(0, ypos, getRelativePosition().getWidth(), ypos + 120);
 
+    //Options
     options_form = new Reflected_GUI_Edit_Form(Environment, edit_panel, g_scene, my_ID + 3, pr2);
     reflect::TypeDescriptor_Struct* options_td = (reflect::TypeDescriptor_Struct*)reflect::TypeResolver<mb_tool_options_struct>::get();
 
@@ -664,16 +966,45 @@ void Material_Buffers_Widget::show()
     options_form->ShowWidgets(my_ID + 4);
     options_form->read(my_base->getOptions());
 
-    ypos += my_widget->getFormsHeight();
-    core::rect<s32> br = core::rect<s32>(getRelativePosition().getWidth() - 80, ypos, getRelativePosition().getWidth() - 8, ypos + 36);
+    ypos += options_form->getTotalHeight();
 
-    my_button = new Flat_Button(Environment, this, OK_BUTTON_ID, br);
-    my_button->setText(L"Ok");
+    //Adjust Lightmap Dimensions
+    /*
+    if (g_scene->getSelectedFaces().size() > 0)
+    {
+        core::rect<s32> pr3(0, ypos, getRelativePosition().getWidth(), ypos + 64);
+
+        dimensions_form = new Reflected_GUI_Edit_Form(Environment, edit_panel, g_scene, my_ID + 5, pr3);
+        reflect::TypeDescriptor_Struct* dimensions_td = (reflect::TypeDescriptor_Struct*)reflect::TypeResolver<mb_lightmap_dim_struct>::get();
+        dimensions_td->addFormWidget(dimensions_form, NULL, vector<int>{0}, 0, true, true, 0);
+        dimensions_form->ShowWidgets(my_ID + 6);
+
+        dimensions_form->read(my_base->getLMDimensionStruct());
+
+        ypos += dimensions_form->getTotalHeight() + 8;
+    }*/
+
+    ypos += 24;
+
+    //core::rect<s32> br = core::rect<s32>(getRelativePosition().getWidth() - 80, ypos, getRelativePosition().getWidth() - 8, ypos + 36);
+
+    core::rect<s32> header_rect(core::vector2di(0, ypos), core::vector2di(getRelativePosition().getWidth(), ypos + 24));
+    header = new mini_header(Environment, this, -1, header_rect);
+    header->setText(L"Resize Lightmaps");
+
+    ypos += 24;
+
+    //total_height = ypos;
+    my_base->setWidgetHeight(ypos);
+
+   // my_button = new Flat_Button(Environment, this, OK_BUTTON_ID, br);
+  //  my_button->setText(L"Ok");
 
     edit_panel->drop();
     my_widget->drop();
 
 }
+
 
 void Material_Buffers_Widget::onRefresh()
 {
@@ -691,9 +1022,28 @@ void Material_Buffers_Widget::onRefresh()
     options_form->ShowWidgets(my_ID + 4);
     options_form->read(my_base->getOptions());
 
-    ypos += options_form->getTotalHeight() + 8;
+    ypos += options_form->getTotalHeight();
+
+    //Display LM dimension tools
+    /*
+    if(dimensions_form)
+        dimensions_form->remove();
+    
+    if (g_scene->getSelectedFaces().size() > 0)
+    {
+        core::rect<s32> pr3(0, ypos, getRelativePosition().getWidth(), ypos + 64);
+
+        dimensions_form = new Reflected_GUI_Edit_Form(Environment, edit_panel, g_scene, my_ID + 5, pr3);
+        reflect::TypeDescriptor_Struct* dimensions_td = (reflect::TypeDescriptor_Struct*)reflect::TypeResolver<mb_lightmap_dim_struct>::get();
+        dimensions_td->addFormWidget(dimensions_form, NULL, vector<int>{0}, 0, true, true, 0);
+        dimensions_form->ShowWidgets(my_ID + 6);
+        dimensions_form->read(my_base->getLMDimensionStruct());
+
+        ypos += dimensions_form->getTotalHeight() + 8;
+    }*/
 
     //Button
+    /*
     if (my_button)
         my_button->remove();
 
@@ -701,8 +1051,10 @@ void Material_Buffers_Widget::onRefresh()
 
     my_button = new Flat_Button(Environment, this, OK_BUTTON_ID, br);
     my_button->setText(L"Ok");
+    */
 
     //Text
+
     if (my_text)
         my_text->remove();
 
@@ -712,8 +1064,17 @@ void Material_Buffers_Widget::onRefresh()
     ss << my_base->GetSelectedString().c_str();
     my_text = Environment->addStaticText(ss.str().c_str(), tr, false, false, this);
 
-    ypos += 32;
+    ypos += 24;
 
+    if (header)
+        header->remove();
+
+    core::rect<s32> header_rect(core::vector2di(0, ypos), core::vector2di(getRelativePosition().getWidth(), ypos + 24));
+    header = new mini_header(Environment, this, -1, header_rect);
+    header->setText(L"Resize Lightmaps");
+
+    ypos += 24;
+    /*
     //Image
     if (my_image)
         my_image->remove();
@@ -727,7 +1088,13 @@ void Material_Buffers_Widget::onRefresh()
         my_image = Environment->addImage(ir, this, -1);
         my_image->setScaleImage(true);
         my_image->setImage(texture);
+        ypos += 128;
     }
+    else
+        my_image = NULL;
+        */
+    //total_height = ypos;
+    my_base->setWidgetHeight(ypos);
 }
 
 bool Material_Buffers_Widget::OnEvent(const SEvent& event)
@@ -737,7 +1104,81 @@ bool Material_Buffers_Widget::OnEvent(const SEvent& event)
         if (event.UserEvent.UserData1 == USER_EVENT_REFLECTED_FORM_REFRESHED)
         {
             onRefresh();
+
+            if (sub_widget)
+            {
+                SEvent event;
+                event.EventType = EET_USER_EVENT;
+                event.UserEvent.UserData1 = USER_EVENT_SELECTION_CHANGED; // force redraw
+                sub_widget->OnEvent(event);
+            }
+
             return true;
+        }
+        else if (event.UserEvent.UserData1 == USER_EVENT_MATERIAL_GROUP_SELECTION_CHANGED)
+        {
+            int sel = g_scene->get_selected_material_group();
+            my_base->select(sel);
+
+            my_widget->refresh();
+            onRefresh();
+
+            if (sub_widget)
+            {
+                SEvent event;
+                event.EventType = EET_USER_EVENT;
+                event.UserEvent.UserData1 = USER_EVENT_MATERIAL_GROUP_SELECTION_CHANGED;
+                sub_widget->OnEvent(event);
+            }
+
+            return true;
+        }
+        else if (event.UserEvent.UserData1 == USER_EVENT_SELECTION_CHANGED)
+        {
+            if (g_scene->getSelectedFaces().size() > 0)
+            {
+                //if(g_scene->getSelectedFaces().size() > 1)
+                vector<int> surface = g_scene->geoNode()->get_total_geometry()->getConnectedSurfaceFromFace(g_scene->getSelectedFaces()[0]);
+
+                if(surface.size()>1)
+                    g_scene->setSelectedFaces(surface);
+
+                int f_i = g_scene->getSelectedFaces()[0];
+                int mg = g_scene->geoNode()->final_meshnode_interface.get_material_group_by_face(f_i);
+
+                int mg2 = g_scene->geoNode()->edit_meshnode_interface.get_material_group_by_face(f_i);
+                int lm_block_i = g_scene->geoNode()->edit_meshnode_interface.get_lm_block_by_face(f_i);
+
+                if (mg2 != -1 && lm_block_i != -1)
+                {
+                    Lightmap_Block& block = g_scene->geoNode()->edit_meshnode_interface.get_lm_block(mg2, lm_block_i);
+                    //my_base->set_lm_dims(block.width, block.height);
+                }
+
+                if (mg != g_scene->get_selected_material_group())
+                {
+                    g_scene->set_selected_material_group(mg);
+
+                    MyEventReceiver* event_receiver = (MyEventReceiver*)device->getEventReceiver();
+                    SEvent event;
+                    event.EventType = EET_USER_EVENT;
+                    event.UserEvent.UserData1 = USER_EVENT_MATERIAL_GROUP_SELECTION_CHANGED;
+                    event_receiver->OnEvent(event);
+                }
+                else
+                {
+                    my_widget->refresh();
+                    onRefresh();
+                }
+            }
+
+            if (sub_widget)
+            {
+                SEvent event;
+                event.EventType = EET_USER_EVENT;
+                event.UserEvent.UserData1 = USER_EVENT_SELECTION_CHANGED;
+                sub_widget->OnEvent(event);
+            }
         }
     }
     else if (event.EventType == EET_GUI_EVENT)
@@ -770,10 +1211,10 @@ bool Material_Buffers_Widget::OnEvent(const SEvent& event)
 
                         m->type->copy(&sel, (char*)((char*)my_widget->temp_object) + offset);
 
-                        my_base->select(sel);
+                        //my_base->select(sel);
 
-                        my_widget->refresh();
-                        onRefresh();
+                        //my_widget->refresh();
+                        //onRefresh();
 
                         g_scene->set_selected_material_group(sel);
 
@@ -856,6 +1297,29 @@ void Material_Buffers_Base::show()
 
     widget->show();
     widget->drop();
+    
+    //======================
+    //Lightmap Resize Widget
+
+    core::rect<s32> sub_rect(core::vector2di(0, 0),
+        core::dimension2du(this->panel->getClientRect()->getAbsolutePosition().getWidth(),
+            this->panel->getClientRect()->getAbsolutePosition().getHeight()));
+
+    //sub_rect.UpperLeftCorner.Y += getWidgetHeight();
+
+    if (sub_rect.UpperLeftCorner.Y < sub_rect.LowerRightCorner.Y)
+    {
+        Lightmap_Resize_Widget* widget2 = new Lightmap_Resize_Widget(env, this->panel->getClientRect(), g_scene, Material_Buffers_Tool::get_base2(), GUI_ID_MAT_LM_RESIZE_BASE, sub_rect);
+
+        widget2->show();
+        widget2->drop();
+
+        widget->sub_widget = widget2;
+    }
+}
+
+void Material_Buffers_Base::refresh()
+{
 }
 
 void Material_Buffers_Base::select(int sel)
@@ -960,9 +1424,40 @@ video::ITexture* Material_Buffers_Base::GetSelectedTexture()
     return nullptr;
 }
 
+mini_header::mini_header(gui::IGUIEnvironment* env, gui::IGUIElement* parent, s32 id, core::rect<s32> rect)
+    :gui::IGUIElement(gui::EGUIET_ELEMENT, env, parent, id, rect)
+{
+
+}
+
+void mini_header::setText(std::wstring txt)
+{
+    if (my_text)
+        my_text->remove();
+    my_text = Environment->addStaticText(txt.c_str(), core::rect<s32>(core::vector2di(0 + 4, 0 + 2), core::vector2di(200, 24)), false, false, this, -1);
+}
+
+void mini_header::draw()
+{
+    gui::IGUISkin* skin = Environment->getSkin();
+    skin->draw2DRectangle(this, video::SColor(255, 32, 32, 48), getAbsolutePosition());
+
+    gui::IGUIElement::draw();
+}
+
+s32 Material_Buffers_Base::getWidgetHeight()
+{
+    return widget_total_height;
+}
+
+void Material_Buffers_Base::setWidgetHeight(s32 h)
+{
+    widget_total_height = h;
+}
+
 REFLECT_STRUCT_BEGIN(mb_tool_options_struct)
-REFLECT_STRUCT_MEMBER(show_uv_view)
-REFLECT_STRUCT_MEMBER(show_triangles)
-REFLECT_STRUCT_MEMBER(show_lightmap)
+    REFLECT_STRUCT_MEMBER(show_uv_view)
+    REFLECT_STRUCT_MEMBER(show_triangles)
+    REFLECT_STRUCT_MEMBER(show_lightmap)
 REFLECT_STRUCT_END()
 

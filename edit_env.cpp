@@ -44,7 +44,7 @@ void do_add_geometry()
 
     if(g_scene)
     {
-        g_scene->geoNode()->add(g_scene->geoNode()->elements[0].brush);
+        g_scene->geoNode()->add();
     }
 }
 
@@ -54,7 +54,7 @@ void do_subtract_geometry()
 
     if(g_scene)
     {
-        g_scene->geoNode()->subtract(g_scene->geoNode()->elements[0].brush);
+        g_scene->geoNode()->subtract();
     }
 }
 
@@ -65,7 +65,7 @@ void do_add_semisolid_geometry()
 
     if(g_scene)
     {
-        g_scene->geoNode()->add_semisolid(g_scene->geoNode()->elements[0].brush);
+        g_scene->geoNode()->add_semisolid();
     }
 }
 
@@ -195,7 +195,7 @@ void do_add_plane_test()
 
     if(g_scene)
     {
-        g_scene->geoNode()->add_plane(g_scene->geoNode()->elements[0].brush);
+        g_scene->geoNode()->add_plane();
     }
 }
 
@@ -435,7 +435,9 @@ bool MyEventReceiver::OnEvent(const SEvent& event)
                     case GUI_ID_BUTTON_TEXTURES:
                         Render_Tool::show();
                         break;
-
+                    case GUI_ID_BUTTON_TEST:
+                        //g_scene->recalculate_all_meshes();
+                        break;
                     case GUI_ID_BUTTON_LIGHTS:
                     {
                         VulkanApp vk;

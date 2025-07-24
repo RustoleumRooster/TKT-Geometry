@@ -57,12 +57,16 @@ void Texture_Adjust_Window::refresh()
     bool bShowCombobox = false;
 
     GeometryStack* geo_node = g_scene->geoNode();
+    polyfold* pf = geo_node->get_total_geometry();
 
     if(editable && this->g_scene->getSelectedFaces().size() > 0 )
     {
         int b_i = this->g_scene->getSelectedFaces()[0];
-        int brush_j = geo_node->get_total_geometry()->faces[b_i].original_brush;
-        int face_j = geo_node->get_total_geometry()->faces[b_i].original_face;
+        //int brush_j = geo_node->get_total_geometry()->faces[b_i].original_brush;
+        //int face_j = geo_node->get_total_geometry()->faces[b_i].original_face;
+
+        int brush_j = geo_node->get_element_index_by_id(pf->faces[b_i].element_id);
+        int face_j = pf->faces[b_i].face_id;
 
         poly_face* f = &geo_node->elements[brush_j].brush.faces[face_j];
 
@@ -160,11 +164,14 @@ void  Texture_Adjust_Window::click_OK()
     this->form->write(&tex_struct);
 
     GeometryStack* geo_node = g_scene->geoNode();
+    polyfold* pf = geo_node->get_total_geometry();
 
     for(int b_i: selection)
     {
-        int brush_j = geo_node->get_total_geometry()->faces[b_i].original_brush;
-        int face_j = geo_node->get_total_geometry()->faces[b_i].original_face;
+        //int brush_j = geo_node->get_total_geometry()->faces[b_i].original_brush;
+        //int face_j = geo_node->get_total_geometry()->faces[b_i].original_face;
+        int brush_j = geo_node->get_element_index_by_id(pf->faces[b_i].element_id);
+        int face_j = pf->faces[b_i].face_id;
 
         poly_face* f = &geo_node->elements[brush_j].brush.faces[face_j];
 
@@ -207,14 +214,17 @@ void Texture_Adjust_Window::click_Align()
 {
     GeometryStack* geo_node = g_scene->geoNode();
 
+    polyfold* pf = geo_node->get_total_geometry();
+
     if (g_scene->getSelectedFaces().size() > 1)
     {
-        polyfold* pf = geo_node->get_total_geometry();
-
         int f_0 = g_scene->getSelectedFaces()[0];
 
-        int brush_0 = pf->faces[f_0].original_brush;
-        int face_0 = pf->faces[f_0].original_face;
+        //int brush_0 = pf->faces[f_0].original_brush;
+        //int face_0 = pf->faces[f_0].original_face;
+
+        int brush_0 = geo_node->get_element_index_by_id(pf->faces[f_0].element_id);
+        int face_0 = pf->faces[f_0].face_id;
 
         int sg_type = g_scene->getFaceSurfaceGroup(f_0).type;
 
@@ -226,8 +236,10 @@ void Texture_Adjust_Window::click_Align()
             {
                 int f_i = g_scene->getSelectedFaces()[i];
 
-                int brush_i = geo_node->get_total_geometry()->faces[f_i].original_brush;
-                int face_i = geo_node->get_total_geometry()->faces[f_i].original_face;
+                //int brush_i = geo_node->get_total_geometry()->faces[f_i].original_brush;
+                //int face_i = geo_node->get_total_geometry()->faces[f_i].original_face;
+                int brush_i = geo_node->get_element_index_by_id(pf->faces[f_i].element_id);
+                int face_i = pf->faces[f_i].face_id;
 
                 geo_node->elements[brush_i].brush.faces[face_i].uv_origin = v0;
 
@@ -246,8 +258,11 @@ void Texture_Adjust_Window::click_Align()
             {
                 int f_i = g_scene->getSelectedFaces()[i];
 
-                int brush_i = geo_node->get_total_geometry()->faces[f_i].original_brush;
-                int face_i = geo_node->get_total_geometry()->faces[f_i].original_face;
+                //int brush_i = geo_node->get_total_geometry()->faces[f_i].original_brush;
+                //int face_i = geo_node->get_total_geometry()->faces[f_i].original_face;
+
+                int brush_i = geo_node->get_element_index_by_id(pf->faces[f_i].element_id);
+                int face_i = pf->faces[f_i].face_id;
 
                 int sg_i = geo_node->elements[brush_i].brush.faces[face_i].surface_group;
 
@@ -266,6 +281,7 @@ bool Texture_Adjust_Window::OnEvent(const SEvent& event)
 {
     MyEventReceiver* receiver = (MyEventReceiver*)device->getEventReceiver();
     GeometryStack* geo_node = g_scene->geoNode();
+    polyfold* pf = geo_node->get_total_geometry();
 
     if(event.EventType == irr::EET_USER_EVENT)
     {
@@ -284,8 +300,11 @@ bool Texture_Adjust_Window::OnEvent(const SEvent& event)
 
                     int b_i = g_scene->getSelectedFaces()[0];
 
-                    int brush_j = geo_node->get_total_geometry()->faces[b_i].original_brush;
-                    int face_j = geo_node->get_total_geometry()->faces[b_i].original_face;
+                    //int brush_j = geo_node->get_total_geometry()->faces[b_i].original_brush;
+                    //int face_j = geo_node->get_total_geometry()->faces[b_i].original_face;
+                    
+                    int brush_j = geo_node->get_element_index_by_id(pf->faces[b_i].element_id);
+                    int face_j = pf->faces[b_i].face_id;
 
                     poly_face* f = &geo_node->elements[brush_j].brush.faces[face_j];
 
@@ -333,8 +352,12 @@ bool Texture_Adjust_Window::OnEvent(const SEvent& event)
                     std::vector<int> selection = this->g_scene->getSelectedFaces();
                     for(int b_i: selection)
                     {
-                        int brush_j = geo_node->get_total_geometry()->faces[b_i].original_brush;
-                        int face_j = geo_node->get_total_geometry()->faces[b_i].original_face;
+                        //int brush_j = geo_node->get_total_geometry()->faces[b_i].original_brush;
+                        //int face_j = geo_node->get_total_geometry()->faces[b_i].original_face;
+
+                        int brush_j = geo_node->get_element_index_by_id(pf->faces[b_i].element_id);
+                        int face_j = pf->faces[b_i].face_id;
+
                         poly_face* f = &geo_node->elements[brush_j].brush.faces[face_j];
                         f->uv_mat0 = f->uv_mat;
                     }
@@ -347,18 +370,21 @@ bool Texture_Adjust_Window::OnEvent(const SEvent& event)
                     if(selection.size() > 0)
                     {
                         int b_0 = selection[0];
-                        int brush_0 = geo_node->get_total_geometry()->faces[b_0].original_brush;
-                        int face_0 = geo_node->get_total_geometry()->faces[b_0].original_face;
+                        polyfold* pf = geo_node->get_total_geometry();
 
-                        poly_face* f0 = &geo_node->elements[brush_0].brush.faces[face_0];
-                        int sg = geo_node->elements[brush_0].brush.surface_groups[ f0->surface_group ].type;
+                        geo_element* element0 = geo_node->get_element_by_id(pf->faces[b_0].element_id);
+                        int face_0 = pf->faces[b_0].face_id;
+
+
+                        poly_face* f0 = &element0->brush.faces[face_0];
+                        int sg = element0->brush.surface_groups[ f0->surface_group ].type;
 
                         if(sg == SURFACE_GROUP_CYLINDER)
                         {
 
                             core::vector3df iV;
                             core::vector3df jV;
-                            geo_node->elements[brush_0].brush.getSurfaceVectors(face_0,iV,jV);
+                            element0->brush.getSurfaceVectors(face_0,iV,jV);
 
                             f32 snap_dist = tex_struct.snap_dist;
                             f32 X_ = snap_dist * (int)(drag.dotProduct(iV)/256 / snap_dist);
@@ -369,8 +395,12 @@ bool Texture_Adjust_Window::OnEvent(const SEvent& event)
 
                             for(int b_i: selection)
                             {
-                                int brush_j = geo_node->get_total_geometry()->faces[b_i].original_brush;
-                                int face_j = geo_node->get_total_geometry()->faces[b_i].original_face;
+                                //int brush_j = geo_node->get_total_geometry()->faces[b_i].original_brush;
+                                //int face_j = geo_node->get_total_geometry()->faces[b_i].original_face;
+
+                                int brush_j = geo_node->get_element_index_by_id(pf->faces[b_i].element_id);
+                                int face_j = pf->faces[b_i].face_id;
+
 
                                 poly_face* f = &geo_node->elements[brush_j].brush.faces[face_j];
 
@@ -398,10 +428,14 @@ bool Texture_Adjust_Window::OnEvent(const SEvent& event)
                             for(int b_i: selection)
                             {
 
-                                int brush_j = geo_node->get_total_geometry()->faces[b_i].original_brush;
-                                int face_j = geo_node->get_total_geometry()->faces[b_i].original_face;
+                                //int brush_j = geo_node->get_total_geometry()->faces[b_i].original_brush;
+                                //int face_j = geo_node->get_total_geometry()->faces[b_i].original_face;
+
+                                int brush_j = geo_node->get_element_index_by_id(pf->faces[b_i].element_id);
+                                int face_j = pf->faces[b_i].face_id;
 
                                 poly_face* f = &geo_node->elements[brush_j].brush.faces[face_j];
+
 
                                 core::vector3df iV;
                                 core::vector3df jV;
@@ -445,8 +479,12 @@ bool Texture_Adjust_Window::OnEvent(const SEvent& event)
                     {
                         int b_i = g_scene->getSelectedFaces()[0];
 
-                        int brush_j = geo_node->get_total_geometry()->faces[b_i].original_brush;
-                        int face_j = geo_node->get_total_geometry()->faces[b_i].original_face;
+                        //int brush_j = geo_node->get_total_geometry()->faces[b_i].original_brush;
+                        //int face_j = geo_node->get_total_geometry()->faces[b_i].original_face;
+                        polyfold* pf = geo_node->get_total_geometry();
+
+                        int brush_j = geo_node->get_element_index_by_id(pf->faces[b_i].element_id);
+                        int face_j = pf->faces[b_i].face_id;
 
                         poly_face* f = &geo_node->elements[brush_j].brush.faces[face_j];
 

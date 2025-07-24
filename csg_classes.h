@@ -147,6 +147,12 @@ public:
     REFLECT()
 };
 
+struct face_index
+{
+    int brush;
+    int face;
+};
+
 class poly_face
 {
     public:
@@ -157,19 +163,12 @@ class poly_face
     core::vector3df m_center = core::vector3df(0,0,0); // not reflected
     core::vector3df m_tangent = core::vector3df(0, 0, 0); //not reflected
     core::rectf bbox2d; //not reflected
-    u64 uid;
 
-    //std::string texture_name;
-    core::stringw texture_name;
-    int texture_index;    //for serialization only
-    int lightmap_index = -1;
-    int lightmap_res = 128; //deprecated
-    //dimension2du lightmap_dim; //not reflected
-
-    int original_face=0;
-    int original_brush=0;
+    int face_id = 0;
+    int element_id = 0;
     int surface_group=0;
-    int material_group=0;
+    int surface_no = 0;
+
     core::vector3df uv_origin = core::vector3df(0,0,0);
     bool bFlippedNormal=false; //To be removed. Only retained for compatability
     int topo_group = 0;
@@ -193,19 +192,15 @@ class poly_face
     void copy_properties(const poly_face& other)
     {
         m_normal = other.m_normal;
-        //bFlippedNormal = other.bFlippedNormal;
         m_center = other.m_center;
-        texture_name = other.texture_name;
-        original_brush = other.original_brush;
-        original_face = other.original_face;
+        element_id = other.element_id;
+        face_id = other.face_id;
         surface_group = other.surface_group;
-        //surface_group = other.surface_group + n_surface_groups;
-        material_group = other.material_group;
+        surface_no = other.surface_no;
         uv_origin = other.uv_origin;
         uv_mat = other.uv_mat;
         column = other.column;
         row = other.row;
-        uid = other.uid;
     }
 
     core::matrix4 get2Dmat() const;
@@ -239,7 +234,6 @@ class poly_face
     void flip_normal()
     {
         m_normal*=-1;
-        //bFlippedNormal=!bFlippedNormal;
     }
 
     template<typename T>
@@ -253,6 +247,11 @@ class poly_face
     }
     core::vector3df position(const poly_vert* verts) const {
         return m_center;
+    }
+
+    face_index get_index()
+    {
+        return face_index{ element_id, face_id };
     }
 
     REFLECT()
@@ -324,6 +323,8 @@ struct poly_intersection_info
     std::vector<BVH_intersection_struct> edges_faces;
 };
 
+class GeometryStack;
+
 class polyfold
 {
     public:
@@ -334,7 +335,7 @@ class polyfold
     std::vector<poly_vert> control_vertices;
     std::vector<surface_group> surface_groups;
     core::aabbox3df bbox;
-    u64 uid;
+    //u64 uid;
 
     BVH_structure_pf<poly_face> faces_BVH;
     BVH_structure_pf<poly_edge> edges_BVH;
@@ -342,6 +343,8 @@ class polyfold
 
     int topology = -1; //0 concave, 1 convex, -1 unknown
     int n_mesh_buffers=0;
+
+    GeometryStack* geometry_stack = NULL;
 
     void draw(video::IVideoDriver* driver, const video::SMaterial material, bool);
     poly_vert getVertex(int,int,int) const;
@@ -352,7 +355,7 @@ class polyfold
     void calc_normal(int f_i);
     void calc_tangent(int f_i);
 
-    void generate_uids();
+    //void generate_uids();
 
     void recalc_bbox();
     void recalc_bbox_and_loops();
@@ -390,8 +393,6 @@ class polyfold
     void addDrawLinesEdgesByIndex(std::vector<u16> edges_i, LineHolder& graph) const;
     void addDrawLinesFacesByIndex(std::vector<u16> faces_i, LineHolder& graph) const;
 
-    //void deDupeVertices();
-
     //========================================
     // Trianglize
     void trianglize(int face_i, triangle_holder&, scene::SMeshBuffer*, LineHolder &graph, LineHolder&);
@@ -399,8 +400,6 @@ class polyfold
     //========================================
     // Helpful functions for clipping
     bool bisect_edge(int e_i,int v_i, int g1, int g2);
-    //bool apply_topology_groups(polyfold&, int default_group, LineHolder& graph);
-    //void propagate_topo_group(int e_i, int v0);
     void remove_empty_faces();
 
     template<bool bAccelerate>
@@ -496,6 +495,13 @@ class polyfold
     void rotate(core::matrix4 MAT);
     void translate(core::matrix4 MAT);
 
+    //========================================
+    // Total Geometry functions 
+
+    std::vector<int> getSurfaceFromFace(int);
+    std::vector<int> getConnectedSurfaceFromFace(int);
+    face_index index_face(int f_i);
+
     void operator=(const polyfold& other)
     {
         edges = other.edges;
@@ -506,7 +512,7 @@ class polyfold
         topology = other.topology;
         bbox = other.bbox;
         faces_BVH = other.faces_BVH;
-        uid = other.uid;
+        //uid = other.uid;
     }
 
     REFLECT()

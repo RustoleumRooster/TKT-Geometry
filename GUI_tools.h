@@ -59,6 +59,7 @@ class multi_tool_panel : public gui::IGUIElement
 public:
 
     multi_tool_panel(gui::IGUIEnvironment* env, gui::IGUIElement* parent,s32 id,core::rect<s32> rect);
+    //TODO - destructor ?
 
     void resize(core::rect<s32> rect);
 
@@ -108,10 +109,6 @@ public:
     virtual std::wstring getName(){return name;}
     virtual void setName(std::wstring txt);
     virtual int getID() {return my_ID;}
-    virtual bool OnEvent(const SEvent& event) {
-        return false;
-    }
-    
 
 protected:
     gui::IGUIEnvironment* env = NULL;

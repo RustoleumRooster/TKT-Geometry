@@ -125,22 +125,72 @@ namespace reflect
         win->addEditField(f);
     }
 
+    void TypeDescriptor_U32::addFormWidget(Reflected_GUI_Edit_Form* win, TypeDescriptor_Struct* type_struct, std::vector<int> tree, size_t offset_base, bool bVisible, bool bEditable, int tab)
+    {
+        int m_i = tree[tree.size() - 1];
+        std::string name = type_struct->members[m_i].name;
+        size_t offset = type_struct->members[m_i].offset + offset_base;
+
+        if (type_struct->members[m_i].flags & FLAG_UINT_WIDGET_POWER2)
+        {
+            Pwr2_FormField* f;
+
+            if (bEditable)
+                f = new Pwr2_EditField();
+            else
+                f = new Pwr2_StaticField();
+
+            f->init(name, tree, offset, tab, bVisible);
+
+            win->addEditField(f);
+        }
+        else
+        {
+            Int_FormField* f;
+
+            if (bEditable)
+                f = new Int_EditField();
+            else
+                f = new Int_StaticField();
+
+            f->init(name, tree, offset, tab, bVisible);
+
+            win->addEditField(f);
+        }
+    }
+
     void TypeDescriptor_Int::addFormWidget(Reflected_GUI_Edit_Form* win, TypeDescriptor_Struct* type_struct, std::vector<int> tree, size_t offset_base, bool bVisible, bool bEditable, int tab)
     {
         int m_i = tree[tree.size()-1];
         std::string name = type_struct->members[m_i].name;
         size_t offset = type_struct->members[m_i].offset+offset_base;
 
-        Int_FormField* f;
+        if (type_struct->members[m_i].flags & FLAG_UINT_WIDGET_POWER2)
+        {
+            Pwr2_FormField* f;
 
-        if(bEditable)
-            f = new Int_EditField();
+            if (bEditable)
+                f = new Pwr2_EditField();
+            else
+                f = new Pwr2_StaticField();
+
+            f->init(name, tree, offset, tab, bVisible);
+
+            win->addEditField(f);
+        }
         else
-            f = new Int_StaticField();
+        {
+            Int_FormField* f;
 
-        f->init(name, tree, offset, tab, bVisible);
+            if (bEditable)
+                f = new Int_EditField();
+            else
+                f = new Int_StaticField();
 
-        win->addEditField(f);
+            f->init(name, tree, offset, tab, bVisible);
+
+            win->addEditField(f);
+        }
     }
 
     void TypeDescriptor_Byte::addFormWidget(Reflected_GUI_Edit_Form* win, TypeDescriptor_Struct* type_struct, std::vector<int> tree, size_t offset_base, bool bVisible, bool bEditable, int tab)
@@ -365,6 +415,23 @@ Reflected_GUI_Edit_Form::~Reflected_GUI_Edit_Form()
 
 bool Reflected_GUI_Edit_Form::OnEvent(const SEvent& event)
 {
+    if (event.EventType == EET_GUI_EVENT)
+    {
+        s32 id = event.GUIEvent.Caller->getID();
+
+        switch (event.GUIEvent.EventType)
+        {
+        case EGET_BUTTON_CLICKED:
+            {
+                FormField* field = getFieldFromId(id);
+
+                if (field)
+                {
+                    field->clickButton(id);
+                }
+            }
+        }
+    }
 	return gui::IGUIElement::OnEvent(event);
 }
 
@@ -1307,6 +1374,122 @@ int UID_Reference_StaticField::addWidget(Reflected_GUI_Edit_Form* win, int ID, i
     END_WIDGET()
 }
 
+//
+// Power 2
+//
+
+void Pwr2_EditField::setActive(int status)
+{
+    if (bVisible) {
+
+        cell_background* cell = owner->getCellPanel(my_row, 1);
+        if (cell)
+            cell->setStatus(status);
+    }
+}
+
+int Pwr2_EditField::addWidget(Reflected_GUI_Edit_Form* win, int ID, int row)
+{
+    BEGIN_WIDGET()
+
+    addStaticTextLabel(text, row, tab, ID);
+
+    addStaticTextCell("0", row, 1, ID + 1);
+
+    core::recti r = win->getCell(row, 2);
+
+    core::recti r0 = r;
+    core::recti r1 = r;
+
+    u32 midpoint = r.UpperLeftCorner.X + (r.LowerRightCorner.X - r.UpperLeftCorner.X) * 0.5;
+
+    r0.LowerRightCorner.X = midpoint;
+    r1.UpperLeftCorner.X = midpoint;
+
+    env->addButton(r0, win, ID + 2, L"-");
+    env->addButton(r1, win, ID + 3, L"+");
+
+    END_WIDGET()
+}
+
+unsigned get_dimension_base2(unsigned dim, int n = 1)
+{
+    double log_width = log2(dim);
+    u16 lwi = static_cast<u16>(floor(log_width));
+    lwi += n;
+    lwi = lwi > 1 ? lwi : 1;
+    lwi = lwi > 10 ? 10 : lwi;
+
+    return exp2(lwi);
+}
+
+void Pwr2_FormField::clickButton(s32 id)
+{
+    if (this->owner && this->owner->g_scene && bVisible)
+    {
+        if (id == my_ID + 2)
+        {
+            gui::IGUIElement* editbox = (gui::IGUIElement*)(owner->getElementFromId(bInline ? my_ID : my_ID + 1, true));
+            if (editbox)
+            {
+                my_no = get_dimension_base2(my_no, -1);
+                std::wstringstream ss;
+                ss << my_no;
+                editbox->setText(ss.str().c_str());
+            }
+        }
+        else if (id == my_ID + 3)
+        {
+            gui::IGUIElement* editbox = (gui::IGUIElement*)(owner->getElementFromId(bInline ? my_ID : my_ID + 1, true));
+            if (editbox)
+            {
+                my_no = get_dimension_base2(my_no, 1);
+                std::wstringstream ss;
+                ss << my_no;
+                editbox->setText(ss.str().c_str());
+            }
+        }
+    }
+}
+
+void Pwr2_FormField::readValue(void* obj)
+{
+    if (this->owner && obj && bVisible)
+    {
+        gui::IGUIElement* editbox = (gui::IGUIElement*)(owner->getElementFromId(bInline ? my_ID : my_ID + 1, true));
+        if (editbox)
+        {
+            my_no = *get(obj);
+            std::wstringstream ss;
+            ss << my_no;
+            editbox->setText(ss.str().c_str());
+        }
+    }
+}
+
+void Pwr2_EditField::writeValue(void* obj)
+{
+    if (this->owner && obj && bVisible)
+    {
+        {
+            *get(obj) = my_no;
+        }
+    }
+}
+
+int Pwr2_FormField::getHeight()
+{
+    return 1;
+}
+
+int Pwr2_StaticField::addWidget(Reflected_GUI_Edit_Form* win, int ID, int row)
+{
+    BEGIN_WIDGET()
+
+        addStaticTextLabel(text, row, tab, ID);
+
+    END_WIDGET()
+}
 
 //
 //  Color
