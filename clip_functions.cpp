@@ -5,6 +5,7 @@
 #include "clip_functions.h"
 #include "clip_functions3.h"
 #include "tolerances.h"
+#include "GeometryStack.h"
 
 using namespace irr;
 
@@ -440,17 +441,50 @@ bool is_identical_loop(const polyfold& pf, const poly_loop& loop_a, const polyfo
     return false;
 }
 
-void polyfold::remove_empty_faces()
+void polyfold::remove_empty_faces(std::vector<poly_surface>& surfaces)
 {
+    for (int i=0;i<surfaces.size();i++)
+    {
+        surfaces[i].my_faces.clear();
+    }
+
     std::vector<poly_face> new_faces;
+    int c = 0;
     for(int f_i=0;f_i<this->faces.size();f_i++)
     {
         if(this->faces[f_i].loops.size() > 0)
         {
             new_faces.push_back(this->faces[f_i]);
+            poly_face& new_face = new_faces.back();
+
+            new_face.face_id = c;
+            surfaces[new_face.surface_no].my_faces.push_back(c);
+            
+            c++;
         }
     }
+
     this->faces = new_faces;
+
+    std::vector<poly_surface> new_surfaces;
+
+    for (int i = 0; i < surfaces.size(); i++)
+    {
+        if (surfaces[i].my_faces.size() > 0)
+        {
+            new_surfaces.push_back(surfaces[i]);
+        }
+    }
+
+    for (int i = 0; i < new_surfaces.size(); i++)
+    {
+        for (int f_i : new_surfaces[i].my_faces)
+        {
+            this->faces[f_i].surface_no = i;
+        }
+    }
+
+    surfaces = new_surfaces;
 }
 
 void polyfold::sort_loops_inner(int f_i)

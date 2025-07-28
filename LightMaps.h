@@ -9,7 +9,8 @@
 class GeometryStack;
 class geometry_scene;
 
-void lightmaps_divideMaterialGroups(GeometryStack* geo_scene, std::vector<TextureMaterial>& material_groups);
+void layout_lightmaps(GeometryStack* geo_scene, std::vector<TextureMaterial>& material_groups);
+void split_material_groups(GeometryStack* geo_scene, std::vector<TextureMaterial>& material_groups);
 void calc_lightmap_uvs(GeometryStack* geo_node, Lightmap_Block b);
 void initialize_lightmap_block(GeometryStack* geo_node, int element_id, int surface_no, std::back_insert_iterator<std::vector<Lightmap_Block>> ret, int reduce);
 

@@ -213,6 +213,10 @@ void MeshNode_Interface_Final::generate_mesh_node(GeometryStack* geo_scene)
 
     this->materials_used = geo_scene->edit_meshnode_interface.getMaterialsUsed();
 
+    //This step splits material groups into smaller groups according to what can fit onto a single lightmap.
+    //Needs to be done before generating the mesh buffer
+    split_material_groups(geo_scene, materials_used);
+
     this->generate_mesh_buffer(geo_scene, m_mesh);
 
     this->generate_uvs(geo_scene);
@@ -222,7 +226,7 @@ void MeshNode_Interface_Final::generate_lightmap_info(GeometryStack* geo_scene)
 {
     polyfold* pf = geo_scene->get_total_geometry();
 
-    lightmaps_divideMaterialGroups(geo_scene, materials_used);
+    layout_lightmaps(geo_scene, materials_used);
 
     for (TextureMaterial& tm : materials_used)
     {

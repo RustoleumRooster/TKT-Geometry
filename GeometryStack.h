@@ -34,6 +34,8 @@ struct poly_surface
     REFLECT()
 };
 
+void combine_polyfolds(const std::vector<polyfold*>& polies, const std::vector<std::vector<poly_surface>>& surfaces, polyfold& res, std::vector<poly_surface>&);
+
 class geo_element
 {
 public:

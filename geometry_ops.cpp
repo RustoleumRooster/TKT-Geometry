@@ -17,6 +17,8 @@
 
 #include "clip_functions.h"
 
+using namespace std;
+
 extern IrrlichtDevice* device;
 extern TestPanel* Active_Camera_Window;
 
@@ -739,7 +741,7 @@ void GeometryStack::intersect_active_brush()
     {
         polyfold res;
         combine_polyfolds(std::vector<polyfold*>{&pf2, & cube}, res);
-        res.remove_empty_faces();
+       // res.remove_empty_faces(&this->elements[0]);
         this->elements[0].brush = res;
         this->elements[0].brush.topology = TOP_CONVEX;
     }
@@ -765,6 +767,8 @@ void GeometryStack::clip_active_brush()
     LineHolder nograph;
 
     std::vector<polyfold*> polies;
+    std::vector<geo_element*> geos;
+
     int num = 0;
     for (int j = 1; j < this->elements.size(); j++)
     {
@@ -773,10 +777,18 @@ void GeometryStack::clip_active_brush()
             BoxIntersectsWithBox(cube.bbox, this->elements[j].brush.bbox))
         {
             polies.push_back(&elements[j].geometry);
+            geos.push_back(&elements[j]);
             num++;
         }
     }
-    combine_polyfolds(polies, pf2);
+    std::vector<std::vector<poly_surface>> surfaces;
+
+    for (geo_element* e : geos)
+            surfaces.push_back(e->surfaces);
+
+    std::vector<poly_surface> new_surfaces;
+
+    combine_polyfolds(polies,surfaces,pf2,new_surfaces);
 
     clip_poly_accelerated(cube, pf2, GEO_ADD, base_type, results, nograph);
 
@@ -786,10 +798,17 @@ void GeometryStack::clip_active_brush()
     }
     else
     {
+        std::vector<std::vector<poly_surface>> surfaces2;
+        surfaces2.push_back(new_surfaces);
+        surfaces2.push_back(this->elements[0].surfaces);
+        std::vector<poly_surface> new_surfaces2;
+
         polyfold res;
-        combine_polyfolds(std::vector<polyfold*>{&pf2, & cube}, res);
-        res.remove_empty_faces();
+        combine_polyfolds(std::vector<polyfold*>{&pf2, & cube}, surfaces2, res, new_surfaces2);
+
+        res.remove_empty_faces(new_surfaces2);
         this->elements[0].brush = res;
+        this->elements[0].surfaces = new_surfaces2;
         this->elements[0].brush.topology = TOP_CONCAVE;
     }
 }
@@ -1234,10 +1253,99 @@ void geo_element::draw_brush_vertices(const core::matrix4& trans, core::dimensio
     }
 }
 
+void combine_polyfolds(const std::vector<polyfold*>& polies, const vector<vector<poly_surface>>& surfaces, polyfold& res, vector<poly_surface>& out_surfaces)
+{
+    int n_surface_groups = 0;
+    int n_surfaces = 0;
+
+    for (int j = 0; j < polies.size(); j++)
+    {
+        const polyfold& pf = *polies[j];
+
+        for (int s_i = 0; s_i < pf.surface_groups.size(); s_i++)
+            res.surface_groups.push_back(pf.surface_groups[s_i]);
+
+        for (const poly_vert& vert : polies[j]->control_vertices)
+            res.control_vertices.push_back(vert);
+
+        for (int f_i = 0; f_i < pf.faces.size(); f_i++)
+        {
+            res.faces.push_back(poly_face());
+            poly_face& f = res.faces[res.faces.size() - 1];
+            f.copy_properties(pf.faces[f_i]);
+            f.surface_group = pf.faces[f_i].surface_group + n_surface_groups;
+            f.surface_no = pf.faces[f_i].surface_no + n_surfaces;
+
+            for (const poly_loop& loop : pf.faces[f_i].loops)
+            {
+                f.loops.push_back(poly_loop());
+                poly_loop& new_loop = f.loops[f.loops.size() - 1];
+
+                for (int v_i : loop.vertices)
+                {
+                    int v = res.get_point_or_add(pf.vertices[v_i].V);
+                    new_loop.vertices.push_back(v);
+                    f.addVertex(v);
+                }
+
+                std::vector<int> tempv = loop.vertices;
+                tempv.push_back(tempv[0]);
+
+                for (int i = 0; i < tempv.size() - 1; i++)
+                {
+                    core::vector3df v0 = pf.vertices[tempv[i]].V;
+                    core::vector3df v1 = pf.vertices[tempv[i + 1]].V;
+                    int new_e = res.get_edge_or_add(res.get_point_or_add(v0), res.get_point_or_add(v1), 0);
+                    f.addEdge(new_e);
+                }
+
+                new_loop.type = loop.type;
+                new_loop.topo_group = loop.topo_group;
+
+                new_loop.depth = loop.depth;
+                new_loop.direction = loop.direction;
+                res.calc_loop_bbox(f, new_loop);
+            }
+        }
+
+        n_surface_groups += pf.surface_groups.size();
+        n_surfaces += surfaces[j].size();
+
+        res.bbox.addInternalBox(pf.bbox);
+    }
+
+    int cc = 0;
+    for (int j = 0; j < surfaces.size(); j++)
+    {
+        const std::vector<poly_surface>& vs = surfaces[j];
+
+        for (int i = 0; i < vs.size(); i++)
+        {
+            out_surfaces.push_back(vs[i]);
+            poly_surface& s = out_surfaces.back();
+
+            s.my_faces.clear();
+
+            for (int f_i = 0; f_i < res.faces.size(); f_i++)
+            {
+                if (res.faces[f_i].surface_no == cc)
+                    s.my_faces.push_back(f_i);
+            }
+            cc++;
+        }
+    }
+
+    res.build_edges_BVH();
+
+}
+
 REFLECT_STRUCT_BEGIN(lightmap_info_struct)
     REFLECT_STRUCT_MEMBER(width)
+        REFLECT_STRUCT_MEMBER_FLAG(FLAG_UINT_WIDGET_POWER2)
     REFLECT_STRUCT_MEMBER(height)
+        REFLECT_STRUCT_MEMBER_FLAG(FLAG_UINT_WIDGET_POWER2)
     REFLECT_STRUCT_MEMBER(bFlipped)
+        REFLECT_STRUCT_MEMBER_FLAG(FLAG_NON_EDITABLE)
     REFLECT_STRUCT_MEMBER(bOverrideSize)
 REFLECT_STRUCT_END()
 

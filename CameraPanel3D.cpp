@@ -55,11 +55,14 @@ TestPanel_3D::~TestPanel_3D()
 }
 
 void TestPanel_3D::AddGraph(LineHolder& graph4)
-{/*
+{
+    this->graph.lines.clear();
+    this->graph.points.clear();
+
     for (vector3df v : graph4.points)
         this->graph.points.push_back(v);
     for (line3df lv : graph4.lines)
-        this->graph.lines.push_back(lv);*/
+        this->graph.lines.push_back(lv);
 }
 
 
@@ -1136,7 +1139,14 @@ void TestPanel_3D::SetViewStyle(s32 vtype)
 
         geo_scene->setRenderType(false, true, true, false);
 
+        this->graph.lines.clear();
+        this->graph.points.clear();
+        this->graph2.lines.clear();
+        this->graph2.points.clear();
+
         geo_scene->geoNode()->GetGeometryLoopLines(graph, graph2);
+       
+        geo_scene->drawGraph(this->graph2);
 
         if (geo_scene->getSelectedFaces().size() > 0)
         {
@@ -1150,6 +1160,11 @@ void TestPanel_3D::SetViewStyle(s32 vtype)
         geo_scene->setRenderType(false, true, false, true);
 
         geo_scene->buildSceneGraph(false, this->lighting_type, false);
+
+        this->graph.lines.clear();
+        this->graph.points.clear();
+
+       
        
         if (geo_scene->getSelectedFaces().size() > 0)
         {
@@ -1226,8 +1241,23 @@ void TestPanel_3D::render()
     driver->setRenderTarget(getImage(), true, true, video::SColor(255, 16, 16, 16));
     
     getCamera()->render();
+    if (view_style == PANEL3D_VIEW_TRIANGLES)
+    {
+        /*video::SMaterial someMaterial;
+        someMaterial.Lighting = false;
+        someMaterial.Thickness = 1.0;
+        someMaterial.MaterialType = video::EMT_SOLID;
 
-    if (view_style == PANEL3D_VIEW_LOOPS)
+        driver->setMaterial(someMaterial);
+
+        for (const core::line3df& aline : graph.lines)
+        {
+            driver->draw3DLine(aline.start, aline.end, video::SColor(128, 255, 0, 255));
+        }
+        */
+        smgr->drawAll();
+    }
+    else if (view_style == PANEL3D_VIEW_LOOPS)
     {
         video::SMaterial someMaterial;
         someMaterial.Lighting = false;

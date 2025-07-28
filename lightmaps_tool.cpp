@@ -197,13 +197,24 @@ void Lightmap_Resize_Base::write_obj_by_field(reflect::TypeDescriptor_Struct* fl
 {
 
     reflect::Member* m = flat_tD->getTreeNode(tree_pos);
-    reflect::TypeDescriptor_Struct* tD = (reflect::TypeDescriptor_Struct*)reflect::TypeResolver<Lightmap_Block>::get();
+    reflect::TypeDescriptor_Struct* tD = (reflect::TypeDescriptor_Struct*)reflect::TypeResolver<lightmap_info_struct>::get();
 
     if (m->modified)
     {
         size_t offset_from = flat_tD->getTreeNodeOffset(tree_pos);
         size_t offset_to = tD->getTreeNodeOffset(tree_pos);
 
+        if (g_scene->getSelectedFaces().size() > 0)
+        {
+            int f_i = g_scene->getSelectedFaces()[0];
+            poly_surface* surface = g_scene->geoNode()->surface_by_n(f_i);
+            lightmap_info_struct* lm_info = &surface->lightmap_info;
+
+            m->type->copy((char*)lm_info + offset_to, (char*)obj + offset_from);
+
+            lm_info->bOverrideSize = true;
+        }
+        /*
         for (std::pair<int, int> idx : g_scene->getSelectedBlocks())
         {
             Lightmap_Block* block = &g_scene->geoNode()->edit_meshnode_interface.get_lm_block(idx.first, idx.second);
@@ -212,7 +223,7 @@ void Lightmap_Resize_Base::write_obj_by_field(reflect::TypeDescriptor_Struct* fl
 
             block->bOverrideSize = true;
             int a = 0;
-        }
+        }*/
 
         m->modified = false;
     }
@@ -226,9 +237,9 @@ void Lightmap_Resize_Base::init_member(reflect::TypeDescriptor_Struct* tD, std::
 {
     reflect::Member* m = tD->getTreeNode(tree_pos);
     size_t offset = tD->getTreeNodeOffset(tree_pos);
-
-    if (g_scene->getSelectedBlocks().size() > 1)
-    {
+    
+    if (g_scene->getSelectedFaces().size() > 1)
+    {/*
         std::pair<int, int> idx0 = g_scene->getSelectedBlocks()[0];
         Lightmap_Block* block0 = &g_scene->geoNode()->edit_meshnode_interface.get_lm_block(idx0.first, idx0.second);
 
@@ -248,9 +259,9 @@ void Lightmap_Resize_Base::init_member(reflect::TypeDescriptor_Struct* tD, std::
                 }
             }
             m->readwrite = b;
-        }
+        }*/
     }
-    else if (g_scene->getSelectedBlocks().size() == 1)
+    else if (g_scene->getSelectedFaces().size() == 1)
     {
         m->readwrite = true;
     }
@@ -258,11 +269,18 @@ void Lightmap_Resize_Base::init_member(reflect::TypeDescriptor_Struct* tD, std::
 
 void* Lightmap_Resize_Base::getObj()
 {
-    if (g_scene->getSelectedBlocks().size() > 0)
+   // if (g_scene->getSelectedBlocks().size() > 0)
+
+    if(g_scene->getSelectedFaces().size() > 0)
     {
-        std::pair<int, int> idx = g_scene->getSelectedBlocks()[0];
-        Lightmap_Block* block = &g_scene->geoNode()->edit_meshnode_interface.get_lm_block(idx.first, idx.second);
-        return block;
+        int f_i = g_scene->getSelectedFaces()[0];
+        poly_surface* surface = g_scene->geoNode()->surface_by_n(f_i);
+        //std::pair<int, int> idx = g_scene->getSelectedBlocks()[0];
+        //Lightmap_Block* block = &g_scene->geoNode()->edit_meshnode_interface.get_lm_block(idx.first, idx.second);
+        //Lightmap_Block* block = &g_scene->geoNode()->elements[idx.first].
+
+        lightmap_info_struct* ret = &surface->lightmap_info;
+        return ret;
     }
     return NULL;
 }
@@ -278,7 +296,7 @@ s32 Lightmap_Resize_Base::getWidgetHeight()
 
 void Lightmap_Resize_Base::initialize()
 {
-    m_typeDescriptor = (reflect::TypeDescriptor_Struct*)reflect::TypeResolver<Lightmap_Block>::get();
+    m_typeDescriptor = (reflect::TypeDescriptor_Struct*)reflect::TypeResolver<lightmap_info_struct>::get();
 }
 
 void Lightmap_Resize_Base::ApplyResize()
@@ -419,9 +437,10 @@ void LM_Viewer_Panel::showMaterialGroup(int mg_n)
 
                 vector<video::ITexture*>& lm_textures = Lightmaps_Tool::get_manager()->lightmap_textures;
 
-                if (mg_n < lm_textures.size() && lm_textures[mg_n] != NULL)
+                if (mat_groups[mg_n].lightmap_no < lm_textures.size() && mat_groups[mg_n].has_lightmap
+                    && lm_textures[mat_groups[mg_n].lightmap_no] != NULL)
                 {
-                    my_image = new TextureImage(lm_textures[mg_n]);
+                    my_image = new TextureImage(lm_textures[mat_groups[mg_n].lightmap_no]);
                 }
             }
         }
@@ -559,7 +578,7 @@ void LM_Viewer_Panel::make_face(polyfold* pf_0, int f_no, video::ITexture* face_
     original_brush = geo_scene->geoNode()->get_element_index_by_id(pf_0->faces[f_no].element_id);
 
     geo_element* element = geo_scene->geoNode()->get_element_by_id(pf_0->faces[f_no].element_id);
-
+    //cout << f_no << ": " << original_brush << "/" << original_face << "\n";
     polyfold uv_poly;
 
     scene::IMeshBuffer* buffer = chunk.buffer;
@@ -603,6 +622,10 @@ void LM_Viewer_Panel::make_face(polyfold* pf_0, int f_no, video::ITexture* face_
             video::S3DVertex2TCoords* vtx0 = &((video::S3DVertex2TCoords*)buffer->getVertices())[v0];
             video::S3DVertex2TCoords* vtx1 = &((video::S3DVertex2TCoords*)buffer->getVertices())[v1];
             video::S3DVertex2TCoords* vtx2 = &((video::S3DVertex2TCoords*)buffer->getVertices())[v2];
+
+            //cout << vtx0->TCoords2.X << "," << vtx0->TCoords2.Y << "\n";
+            //cout << vtx1->TCoords2.X << "," << vtx1->TCoords2.Y << "\n";
+            //cout << vtx2->TCoords2.X << "," << vtx2->TCoords2.Y << "\n";
 
             core::vector3df pos(0, 0, 0);
 

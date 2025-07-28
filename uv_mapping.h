@@ -357,6 +357,8 @@ void map_uvs(MeshNode_Interface_Edit* mesh_node, int offset, const std::vector<i
 				vtx[1] = &((video::S3DVertex2TCoords*)chunk.buffer->getVertices())[idx1];
 				vtx[2] = &((video::S3DVertex2TCoords*)chunk.buffer->getVertices())[idx2];
 
+				//=========================================
+				//Actual calculations done here
 				mapper.calc(vtx, b_i);
 
 				lightmap_raw_uvs[idx0] = vtx[0]->TCoords2;

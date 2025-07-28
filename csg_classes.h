@@ -324,6 +324,8 @@ struct poly_intersection_info
 };
 
 class GeometryStack;
+class geo_element;
+class poly_surface;
 
 class polyfold
 {
@@ -400,7 +402,7 @@ class polyfold
     //========================================
     // Helpful functions for clipping
     bool bisect_edge(int e_i,int v_i, int g1, int g2);
-    void remove_empty_faces();
+    void remove_empty_faces(std::vector<poly_surface>& surfaces);
 
     template<bool bAccelerate>
     void finalize_clipped_poly(const polyfold& pf, LineHolder& graph);
@@ -523,6 +525,7 @@ bool BoxIntersectsWithBox(const core::aabbox3d<f32>& A, const core::aabbox3d<f32
 void combine_polyfolds_accelerated(const std::vector<polyfold*>& polies, polyfold& res);
 void combine_polyfolds_linear(const std::vector<polyfold*>& polies, polyfold& res);
 void combine_polyfolds(const std::vector<polyfold*>& polies, polyfold& res);
+
 
 bool line_intersects_plane(const core::plane3df&, const core::vector3df& v0, const core::vector3df& v1, core::vector3df& ipoint);
 void sort_inline_vertices(polyfold& pf);

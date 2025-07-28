@@ -29,7 +29,7 @@ struct Lightmap_Block
     u32 height = 128;
     bool bFlipped = false;
     bool bOverrideSize = false;
-    int bounding_verts_index0 = 0;
+    //int bounding_verts_index0 = 0;
 
     REFLECT()
 };
@@ -56,6 +56,7 @@ struct TextureMaterial
 
     bool has_lightmap = false;
     int lightmap_size;
+    int lightmap_no;
 
     std::vector<int> faces;                     //unique to entire scene
     std::vector<face_index> my_faces;           //local to element
