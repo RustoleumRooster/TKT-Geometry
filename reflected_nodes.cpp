@@ -222,6 +222,16 @@ void Reflected_SceneNode::draw_arrow(video::IVideoDriver* driver, core::vector3d
     driver->draw3DLine(v0,v1,video::SColor(128,255,255,255));
 }
 
+vector3df Reflected_SceneNode::get_direction_vector()
+{
+    vector3df z = vector3df(0, 0, 1);
+    matrix4 M;
+    M.setRotationDegrees(getRotation());
+    M.rotateVect(z);
+
+    return z;
+}
+
 void Reflected_SceneNode::translate(core::matrix4 M)
 {
     core::vector3df p = this->getPosition();

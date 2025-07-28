@@ -452,7 +452,8 @@ bool MyEventReceiver::OnEvent(const SEvent& event)
                                 ss << p.c_str();
                                 ss << "/lightmap_" << g_scene->get_unique_id() << "_";
 
-                                vk.run_amb_occlusion(g_scene, ss.str());
+                                //vk.run_amb_occlusion(g_scene, ss.str());
+                                vk.run_sunlight(g_scene, ss.str());
 
                                 Lightmaps_Tool::get_manager()->loadLightmapTextures(g_scene);
                             }

@@ -96,6 +96,24 @@ bool VulkanApp::run_amb_occlusion(geometry_scene* geo_scene, std::string filenam
 	return true;
 }
 
+bool VulkanApp::run_sunlight(geometry_scene* geo_scene, std::string filename_base)
+{
+	initVulkan();
+
+	system_sunlight = new System_Sunlight(m_device, uniformBuffers);
+	system_sunlight->loadModel(&geo_scene->geoNode()->final_meshnode_interface);
+	system_sunlight->loadSun(geo_scene);
+	system_sunlight->initialize_step2(m_DescriptorPool);
+	system_sunlight->executeComputeShader(filename_base);
+	vkDeviceWaitIdle(m_device->getDevice());
+
+	system_sunlight->writeDrawLines(geo_scene->special_graph);
+
+	cleanup();
+
+	return true;
+}
+
  void VulkanApp::createDescriptorPool() {
 
 	 std::vector<VkDescriptorPoolSize> poolSizes{};

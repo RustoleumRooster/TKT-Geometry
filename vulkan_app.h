@@ -29,6 +29,7 @@
 #include "vkComputePipeline.h"
 #include "vkSystem5.h"
 #include "vkSystem6.h"
+#include "vkSystem7.h"
 #include "vkCompute_PointLight.h"
 #include "vkCompute_TestMC.h"
 #include "vkCompute_SoftLight.h"
@@ -55,7 +56,7 @@ public:
 		system5 = new System5(m_device, uniformBuffers);
 		system5->loadModel(meshnode);
 		system5->initialize_step2(m_DescriptorPool);
-		system5->executeComputeShader();
+		system5->executeComputeShader(std::string()); //fixme
 		vkDeviceWaitIdle(m_device->getDevice());
 
 		//system5->writeDrawLines(graph);
@@ -68,6 +69,7 @@ public:
 	bool run_multipass_light(geometry_scene* geo_scene);
 	bool run_test_mc(geometry_scene* geo_scene);
 	bool run_amb_occlusion(geometry_scene* geo_scene, std::string filename_base);
+	bool run_sunlight(geometry_scene* geo_scene, std::string filename_base);
 
 
 private:
@@ -149,6 +151,13 @@ private:
 			system_amb_occlusion = NULL;
 		}
 
+		if (system_sunlight)
+		{
+			system_sunlight->cleanup();
+			delete system_sunlight;
+			system_sunlight = NULL;
+		}
+
 
 		m_device->cleanup();
 
@@ -171,6 +180,7 @@ private:
 	System_Amb_Occlusion* system_amb_occlusion = NULL;
 	System_Soft_Light* system_soft_light = NULL;
 	System_Light_Multipass* system_multipass_light = NULL;
+	System_Sunlight* system_sunlight = NULL;
 
 	std::vector<VkBuffer> uniformBuffers;
 	std::vector<VkDeviceMemory> uniformBuffersMemory;

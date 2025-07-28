@@ -189,6 +189,7 @@ public:
     void draw_arrow(video::IVideoDriver* driver, core::vector3df v, core::vector3df rot);
     void draw_box(video::IVideoDriver* driver, core::aabbox3df b);
     void draw_inputs(video::IVideoDriver* driver);
+    core::vector3df get_direction_vector();
 
     //Render to the node selection RTT
     virtual void render_special(video::SMaterial& material) {}

@@ -95,6 +95,7 @@ struct LightMaps_Info_Struct
 {
     u16 size;
     u16 type;
+    u16 lightmap_no;
     std::vector<int> faces;
     std::vector<reflect::vector2u> lightmap_block_UL;
     std::vector<reflect::vector2u> lightmap_block_BR;
