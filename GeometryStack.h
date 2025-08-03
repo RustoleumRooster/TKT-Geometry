@@ -8,6 +8,8 @@
 #include "USceneNode.h"
 #include "BufferManager.h"
 #include "reflected_nodes.h"
+#include "soa.h"
+#include "LightMaps.h"
 
 using namespace irr;
 
@@ -152,17 +154,25 @@ public:
     MeshNode_Interface_Final final_meshnode_interface;
 
     std::vector<geo_element> elements;
+
+    Lightmap_Configuration lightmap_config;
     
     REFLECT()
 
 private:
 
     void trianglize_total_geometry();
+    void fill_geometry_triangles();
     void generate_meshes();
     void build_total_geometry();
 
     int base_type = GEO_SOLID;
 
+    //not used yet
+    soa_struct<vector3df> geometry_triangles_vertices;
+    soa_struct<u16> geometry_triangles_indices;
+
+    //to be replaced
     std::vector<triangle_holder> total_geometry_triangles;
 
     int build_progress = 0;

@@ -97,13 +97,13 @@ struct LightMaps_Info_Struct
     u16 type;
     u16 lightmap_no;
     std::vector<int> faces;
-    std::vector<reflect::vector2u> lightmap_block_UL;
-    std::vector<reflect::vector2u> lightmap_block_BR;
+    //std::vector<reflect::vector2u> lightmap_block_UL;
+    //std::vector<reflect::vector2u> lightmap_block_BR;
 
     //not reflected
     std::vector<u16> first_triangle;
     std::vector<u16> n_triangles;
-    std::vector<bounding_quad> quads;
+    //std::vector<bounding_quad> quads;
 
     bool has_lightmap_coords;
 

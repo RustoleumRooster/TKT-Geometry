@@ -301,9 +301,9 @@ void Lightmap_Resize_Base::initialize()
 
 void Lightmap_Resize_Base::ApplyResize()
 {
-   for(TextureMaterial& mg : g_scene->geoNode()->edit_meshnode_interface.getMaterialsUsed())
+   for(const TextureMaterial& mg : g_scene->geoNode()->edit_meshnode_interface.get_materials_used())
     {
-       for (Lightmap_Block& block : mg.blocks)
+       for (const Lightmap_Block& block : mg.blocks)
        {
            if (block.bOverrideSize == true)
            {
@@ -404,16 +404,21 @@ void LM_Viewer_Panel::showMaterialGroup(int mg_n)
 
         polyfold* pf = geo_scene->geoNode()->get_total_geometry();
 
-        const vector<TextureMaterial>& mat_groups = geo_scene->geoNode()->final_meshnode_interface.getMaterialsUsed();
+        const vector<TextureMaterial>& mat_groups = geo_scene->geoNode()->final_meshnode_interface.get_materials_used();
 
         if (mg_n < mat_groups.size())
         {
             current_mat_group = mg_n;
 
             for (int f_i : mat_groups[mg_n].faces)
+            for (const Lightmap_Block& b : mat_groups[mg_n].blocks)
             {
-                make_face(pf, f_i, NULL);
-                faces.push_back(f_i);
+                int offset = geo_scene->geoNode()->get_element_by_id(b.element_id)->surfaces[b.surface_no].face_index_offset;
+                for (int f_i : b.faces)
+                {
+                    make_face(pf, f_i + offset, NULL);
+                    faces.push_back(f_i);
+                }
             }
 
             vector<int> selection = geo_scene->getSelectedFaces();
@@ -1170,7 +1175,7 @@ bool Material_Buffers_Widget::OnEvent(const SEvent& event)
                 int mg = g_scene->geoNode()->final_meshnode_interface.get_material_group_by_face(f_i);
 
                 int mg2 = g_scene->geoNode()->edit_meshnode_interface.get_material_group_by_face(f_i);
-                int lm_block_i = g_scene->geoNode()->edit_meshnode_interface.get_lm_block_by_face(f_i);
+                int lm_block_i = -1;// g_scene->geoNode()->edit_meshnode_interface.get_lm_block_by_face(f_i);
 
                 if (mg2 != -1 && lm_block_i != -1)
                 {
@@ -1295,7 +1300,7 @@ void Material_Buffers_Base::show()
 {
     refresh_panel_view();
 
-    std::vector<TextureMaterial> materials = g_scene->geoNode()->final_meshnode_interface.getMaterialsUsed();
+    const std::vector<TextureMaterial>& materials = g_scene->geoNode()->final_meshnode_interface.get_materials_used();
     m_struct.nBuffers = materials.size();
 
     m_struct.material_groups.clear();

@@ -9,7 +9,7 @@ void apply_transform_to_uvs(MeshNode_Interface* mesh_node, const std::vector<int
 {
 	for (int b_i : surface)
 	{
-		MeshBuffer_Chunk chunk = mesh_node->get_mesh_buffer_by_face(b_i);
+		MeshBuffer_Chunk chunk = mesh_node->get_mesh_buffer(b_i);
 
 		if (chunk.buffer)
 		{
@@ -56,6 +56,7 @@ void apply_transform_to_uvs(MeshNode_Interface* mesh_node, const std::vector<int
 
 					vtx->TCoords2.set(V4[0], V4[1]);
 
+					//cout << b_i <<":  "<< vtx->TCoords2.X << "," << vtx->TCoords2.Y << "\n";
 				}
 			}
 		}
@@ -68,25 +69,28 @@ void copy_raw_lightmap_uvs_to_mesh(MeshNode_Interface_Edit* mesh_node, const std
 
 	for (int b_i : surface)
 	{
-		MeshBuffer_Chunk chunk = mesh_node->get_mesh_buffer_by_face(b_i);
-		std::vector<core::vector2df>& lightmap_raw_uvs = *mesh_node->get_lightmap_raw_uvs_by_face(b_i);
+		MeshBuffer_Chunk chunk = mesh_node->get_mesh_buffer(b_i);
+		int offset = mesh_node->indices.offset[b_i];
+		int len = mesh_node->indices.len[b_i];
 
-		if (chunk.buffer)
+		int j = chunk.begin_i;
+		for (int i = offset; i < offset + len && j < chunk.end_i; i += 3, j += 3)
 		{
-			for (int i = chunk.begin_i; i < chunk.end_i; i += 3)
-			{
-				u16 idx0 = chunk.buffer->getIndices()[i];
-				u16 idx1 = chunk.buffer->getIndices()[i + 1];
-				u16 idx2 = chunk.buffer->getIndices()[i + 2];
+				u16 idx0 = chunk.buffer->getIndices()[j];
+				u16 idx1 = chunk.buffer->getIndices()[j + 1];
+				u16 idx2 = chunk.buffer->getIndices()[j + 2];
 
 				vtx[0] = &((video::S3DVertex2TCoords*)chunk.buffer->getVertices())[idx0];
 				vtx[1] = &((video::S3DVertex2TCoords*)chunk.buffer->getVertices())[idx1];
 				vtx[2] = &((video::S3DVertex2TCoords*)chunk.buffer->getVertices())[idx2];
 
-				vtx[0]->TCoords2 = lightmap_raw_uvs[idx0];
-				vtx[1]->TCoords2 = lightmap_raw_uvs[idx1];
-				vtx[2]->TCoords2 = lightmap_raw_uvs[idx2];
-			}
+				idx0 = mesh_node->indices.data[i];
+				idx1 = mesh_node->indices.data[i+1];
+				idx2 = mesh_node->indices.data[i+2];
+
+				vtx[0]->TCoords2 = mesh_node->lm_raw_uvs.data1[idx0];
+				vtx[1]->TCoords2 = mesh_node->lm_raw_uvs.data1[idx1];
+				vtx[2]->TCoords2 = mesh_node->lm_raw_uvs.data1[idx2];
 		}
 	}
 }

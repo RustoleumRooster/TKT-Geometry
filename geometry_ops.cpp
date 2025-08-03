@@ -81,7 +81,9 @@ void print_geometry_ops_timers()
 #define printvec(v) v.X<<","<<v.Y<<","<<v.Z
 
 GeometryStack::GeometryStack()
-    : USceneNode(NULL, NULL, -1, vector3df(0, 0, 0))
+    : USceneNode(NULL, NULL, -1, vector3df(0, 0, 0)),
+    edit_meshnode_interface(this),
+    final_meshnode_interface(this)
 {
 }
 
@@ -101,6 +103,7 @@ void GeometryStack::initialize(ISceneNode* parent, scene::ISceneManager* smgr, M
     this->edit_meshnode_interface.init(smgr, device->getVideoDriver(), event_receiver);
     this->final_meshnode_interface.init(smgr, device->getVideoDriver(), event_receiver);
     this->setAutomaticCulling(scene::EAC_OFF);
+    lightmap_config.initialize(this);
 }
 
 void GeometryStack::initialize(geometry_scene* geo_scene)
@@ -892,11 +895,11 @@ void GeometryStack::recalculate_final_meshbuffer()
     {
         std::cout << "recalculating meshbuffers\n";
         //final_meshnode_interface.refresh_material_groups(this);
-        edit_meshnode_interface.refresh_material_groups(this);
-        edit_meshnode_interface.generate_lightmap_info(this);
+        edit_meshnode_interface.refresh_material_groups();
+        edit_meshnode_interface.generate_lightmap_info();
 
-        final_meshnode_interface.generate_mesh_node(this);
-        final_meshnode_interface.generate_lightmap_info(this);
+        final_meshnode_interface.generate_mesh_node();
+        final_meshnode_interface.generate_lightmap_info();
         final_mesh_dirty = false;
     }
 }
@@ -930,6 +933,70 @@ void GeometryStack::trianglize_total_geometry()
         {
             pf->trianglize(i, total_geometry_triangles[i], NULL, nograph, nograph);
         }
+    }
+
+    fill_geometry_triangles();
+    /*
+    for (int i = 0; i < pf->faces.size(); i++)
+    {
+        for (int j = 0; j < total_geometry_triangles[i].triangles.size(); j++)
+        {
+            cout << total_geometry_triangles[i].triangles[j].A << ",";
+            cout << total_geometry_triangles[i].triangles[j].B << ",";
+            cout << total_geometry_triangles[i].triangles[j].C << "\n";
+        }
+        cout << "\n";
+
+        u16 offset = geometry_triangles_indices.offset[i];
+
+        for (int j = 0; j < geometry_triangles_indices.len[i]; j++)
+        {
+            cout << geometry_triangles_indices.data[offset + j] << ",";
+
+        }
+        cout << "----\n\n";
+    }
+    int a = 0;
+    */
+}
+
+void GeometryStack::fill_geometry_triangles()
+{
+    u32 n = total_geometry_triangles.size();
+
+    {
+        u32(*length)(std::vector<triangle_holder>*, u32);
+        vector3df(*item)(std::vector<triangle_holder>*, u32, u32);
+
+        length = [](std::vector<triangle_holder>* src, u32 index) -> u32 {
+            return src->data()[index].vertices.size();
+            };
+
+        item = [](std::vector<triangle_holder>* src, u32 i, u32 j) -> vector3df {
+            return src->data()[i].vertices[j];
+            };
+
+        geometry_triangles_vertices.fill_data(&total_geometry_triangles, n, length, item);
+    }
+
+    {
+        u32(*length)(std::vector<triangle_holder>*, u32);
+        u16(*item)(std::vector<triangle_holder>*, u32, u32);
+
+        length = [](std::vector<triangle_holder>* src, u32 index) -> u32 {
+            return src->data()[index].triangles.size()*3;
+            };
+
+        item = [](std::vector<triangle_holder>* src, u32 i, u32 j) -> u16 {
+            switch (j % 3)
+                {
+                case 0: return src->data()[i].triangles[j / 3].A;
+                case 1: return src->data()[i].triangles[j / 3].B;
+                case 2: return src->data()[i].triangles[j / 3].C;
+                }
+            };
+
+        geometry_triangles_indices.fill_data(&total_geometry_triangles, n, length, item);
     }
 }
 
@@ -1090,7 +1157,7 @@ void GeometryStack::buildSceneNode(bool finalMesh, int light_mode)
             scene::IMeshBuffer* buffer = my_MeshNode->getMesh()->getMeshBuffer(i);
             //int f_i = final_meshnode_interface.getMaterialsUsed()[i].faces[0];
             //Material_Groups_Tool::apply_material_to_buffer(buffer, pf->faces[f_i].material_group, light_mode, false, true);
-            int mg = final_meshnode_interface.getMaterialsUsed()[i].materialGroup;
+            int mg = final_meshnode_interface.get_materials_used()[i].materialGroup;
             Material_Groups_Tool::apply_material_to_buffer(buffer, mg, light_mode, false, true);
 
         }
@@ -1139,9 +1206,9 @@ void GeometryStack::generate_meshes()
 {
     trianglize_total_geometry();
 
-    edit_meshnode_interface.generate_mesh_node(this);
-    final_meshnode_interface.generate_mesh_node(this);
-    final_meshnode_interface.generate_lightmap_info(this);
+    edit_meshnode_interface.generate_mesh_node();
+    final_meshnode_interface.generate_mesh_node();
+    final_meshnode_interface.generate_lightmap_info();
 
 }
 

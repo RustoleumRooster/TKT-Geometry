@@ -27,7 +27,7 @@ void writeLightmapsInfo(const vector<TextureMaterial>& materials_used, std::vect
         dest[i].faces.resize(n_faces);
         dest[i].first_triangle.resize(n_faces);
         dest[i].n_triangles.resize(n_faces);
-        dest[i].quads.resize(n_faces);
+       // dest[i].quads.resize(n_faces);
         dest[i].type = (u16)materials_used[i].materialGroup;
         dest[i].has_lightmap_coords = materials_used[i].has_lightmap;
         dest[i].lightmap_no = materials_used[i].lightmap_no;
@@ -39,17 +39,17 @@ void writeLightmapsInfo(const vector<TextureMaterial>& materials_used, std::vect
             int f_i = materials_used[i].faces[j];
             dest[i].faces[j] = f_i;
 
-            MeshBuffer_Chunk chunk = meshnode->get_mesh_buffer_by_face(f_i);
+            MeshBuffer_Chunk chunk = meshnode->get_mesh_buffer(f_i);
 
             dest[i].first_triangle[j] = chunk.begin_i / 3;
             dest[i].n_triangles[j] = (chunk.end_i - chunk.begin_i) / 3;
             
             //cout << " " << j << ", zero = " << dest[i].first_triangle[j] << ", len is " << dest[i].n_triangles[j] << "\n";
 
-            dest[i].quads[j].verts[0] = materials_used[i].records[j].bounding_verts[0];
-            dest[i].quads[j].verts[1] = materials_used[i].records[j].bounding_verts[1];
-            dest[i].quads[j].verts[2] = materials_used[i].records[j].bounding_verts[2];
-            dest[i].quads[j].verts[3] = materials_used[i].records[j].bounding_verts[3];
+           // dest[i].quads[j].verts[0] = materials_used[i].records[j].bounding_verts[0];
+           // dest[i].quads[j].verts[1] = materials_used[i].records[j].bounding_verts[1];
+           // dest[i].quads[j].verts[2] = materials_used[i].records[j].bounding_verts[2];
+           // dest[i].quads[j].verts[3] = materials_used[i].records[j].bounding_verts[3];
         }
     }
     

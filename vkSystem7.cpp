@@ -52,7 +52,7 @@ typedef CMeshBuffer<video::S3DVertex2TCoords> mesh_buffer_type;
 
 void System_Sunlight::loadModel(MeshNode_Interface_Final* meshnode)
 {
-	writeLightmapsInfo(meshnode->getMaterialsUsed(), lightmaps_info, meshnode);
+	writeLightmapsInfo(meshnode->get_materials_used(), lightmaps_info, meshnode);
 
 	vector<bool> include_materials;
 	include_materials.resize(lightmaps_info.size());

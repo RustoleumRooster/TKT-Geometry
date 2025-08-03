@@ -50,7 +50,7 @@ typedef CMeshBuffer<video::S3DVertex2TCoords> mesh_buffer_type;
 
 void System_Amb_Occlusion::loadModel(MeshNode_Interface_Final* meshnode)
 {
-	writeLightmapsInfo(meshnode->getMaterialsUsed(), lightmaps_info, meshnode);
+	writeLightmapsInfo(meshnode->get_materials_used(), lightmaps_info, meshnode);
 
 	createLightmapImages();
 
@@ -60,6 +60,7 @@ void System_Amb_Occlusion::loadModel(MeshNode_Interface_Final* meshnode)
 	for (int i = 0; i < lightmaps_info.size(); i++)
 	{
 		include_materials[i] = lightmaps_info[i].has_lightmap_coords;
+		//include_materials[i] = true;
 	}
 	
 	fill_vertex_struct(meshnode->getMesh(), vertices_soa, include_materials);
@@ -72,6 +73,10 @@ void System_Amb_Occlusion::loadModel(MeshNode_Interface_Final* meshnode)
 			indices_soa.data[indices_soa.offset[i] + j].x += vertices_soa.offset[i];
 		}
 	}
+
+	//for (int i = 0; i < indices_soa.data.size(); i++)
+	//	std::cout << indices_soa.data[i].x << ", ";
+	//std::cout << "\n\n";
 
 	n_indices = indices_soa.data.size();
 	n_vertices = vertices_soa.data0.size();
@@ -101,12 +106,13 @@ void System_Amb_Occlusion::loadModel(MeshNode_Interface_Final* meshnode)
 			for (int j = 0; j < std::min(2u,my_bvh.nodes[i].n_prims); j++)
 			{
 				my_bvh.nodes[i].packing[j] = static_cast<f32> (my_bvh.indices[my_bvh.nodes[i].first_prim + j]);
+				//std::cout << my_bvh.nodes[i].packing[j] << ", ";
 			}
 		}
 		else
 			my_bvh.nodes[i].n_prims = 0;
 	}
-
+	//std::cout << "\n\n";
 	//==========================================================
 	// Store references to the adjacent triangles for each edge, in order to properly calculate the lighting at the edges
 	//

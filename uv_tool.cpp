@@ -460,8 +460,8 @@ void UV_Editor_Panel::make_custom_surface_group()
 
         for (int i=0; i<faces.size(); i++)
         {
-            real_g_scene->geoNode()->edit_meshnode_interface.recalc_uvs_for_face_custom(real_g_scene->geoNode(), brush_j, brush_faces_index[p_i][i], faces_index[p_i][i]);
-            real_g_scene->geoNode()->final_meshnode_interface.recalc_uvs_for_face_custom(real_g_scene->geoNode(), brush_j, brush_faces_index[p_i][i], faces_index[p_i][i]);
+            real_g_scene->geoNode()->edit_meshnode_interface.recalc_uvs_for_face_custom(brush_j, brush_faces_index[p_i][i], faces_index[p_i][i]);
+            real_g_scene->geoNode()->final_meshnode_interface.recalc_uvs_for_face_custom(brush_j, brush_faces_index[p_i][i], faces_index[p_i][i]);
         }
        
     }

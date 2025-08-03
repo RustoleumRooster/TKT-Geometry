@@ -17,6 +17,9 @@ struct soa_struct
 
 	template<typename AOS>
 	void fill_data(AOS*, u32 n, u32(*length)(AOS*, u32), T(*item)(AOS*, u32, u32));
+
+	template<typename AOS>
+	void fill_data(AOS*, u32 n, u32(*length)(AOS*, u32), T(*item)(AOS*, u32, u32), const vector<bool>& include);
 };
 
 template<typename T, typename M>
@@ -32,6 +35,9 @@ struct soa_struct_2
 
 	template<typename AOS>
 	void fill_data(AOS* src, u32 n, u32(*length)(AOS*, u32), T(*item0)(AOS*, u32, u32), M(*item1)(AOS*, u32, u32));
+
+	template<typename AOS>
+	void fill_data(AOS* src, u32 n, u32(*length)(AOS*, u32), T(*item0)(AOS*, u32, u32), M(*item1)(AOS*, u32, u32), const vector<bool>& include);
 };
 
 
@@ -86,6 +92,80 @@ inline void soa_struct_2<T, M>::fill_data(AOS* src, u32 n, u32(*length)(AOS*, u3
 
 	for (u32 i = 0; i < n; i++)
 		for (u32 j = 0; j < length(src, i); j++)
+		{
+			data0[c] = item0(src, i, j);
+			data1[c] = item1(src, i, j);
+			c++;
+		}
+}
+
+template<typename T>
+template<typename AOS>
+inline void soa_struct<T>::fill_data(AOS* src, u32 n, u32(*length)(AOS*, u32), T(*item)(AOS*, u32, u32), const vector<bool>& include)
+{
+	u32 size = 0;
+
+	offset.resize(n);
+	len.resize(n);
+
+	for (u32 i = 0; i < n; i++)
+	{
+		offset[i] = size;
+		if (include[i])
+		{
+			len[i] = length(src, i);
+			size += length(src, i);
+		}
+		else
+		{
+			len[i] = 0;
+		}
+	}
+
+	data.resize(size);
+
+	u32 c = 0;
+
+	for (u32 i = 0; i < n; i++)
+	{
+		for (u32 j = 0; j < len[i]; j++)
+		{
+			data[c] = item(src, i, j);
+			c++;
+		}
+	}
+}
+
+template<typename T, typename M>
+template<typename AOS>
+inline void soa_struct_2<T, M>::fill_data(AOS* src, u32 n, u32(*length)(AOS*, u32), T(*item0)(AOS*, u32, u32), M(*item1)(AOS*, u32, u32), const vector<bool>& include)
+{
+	u32 size = 0;
+
+	offset.resize(n);
+	len.resize(n);
+
+	for (u32 i = 0; i < n; i++)
+	{
+		offset[i] = size;
+		if (include[i])
+		{
+			len[i] = length(src, i);
+			size += length(src, i);
+		}
+		else
+		{
+			len[i] = 0;
+		}
+	}
+
+	data0.resize(size);
+	data1.resize(size);
+
+	u32 c = 0;
+
+	for (u32 i = 0; i < n; i++)
+		for (u32 j = 0; j < len[i]; j++)
 		{
 			data0[c] = item0(src, i, j);
 			data1[c] = item1(src, i, j);

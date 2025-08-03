@@ -1034,7 +1034,7 @@ std::vector<std::pair<int, int>> geometry_scene::getSelectedBlocks()
         }
 
         int i = geometry_stack->edit_meshnode_interface.get_material_group_by_face(f_i);
-        int j = geometry_stack->edit_meshnode_interface.get_lm_block_by_face(f_i);
+        int j = -1;// geometry_stack->edit_meshnode_interface.get_lm_block_by_face(f_i);
 
         ret.push_back(std::pair<int, int>{i, j});
     }

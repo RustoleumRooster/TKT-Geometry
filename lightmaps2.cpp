@@ -31,7 +31,7 @@ Lightmap_Manager::Lightmap_Manager()
 void Lightmap_Manager::loadLightmapTextures(geometry_scene* geo_scene)
 {
 	GeometryStack* geo_node = geo_scene->geoNode();
-	std::vector<TextureMaterial> material_groups = geo_node->final_meshnode_interface.getMaterialsUsed();
+	const std::vector<TextureMaterial>& material_groups = geo_node->final_meshnode_interface.get_materials_used();
 
 	SEvent event;
 	event.EventType = EET_USER_EVENT;
@@ -58,7 +58,6 @@ void Lightmap_Manager::loadLightmapTextures(geometry_scene* geo_scene)
 	{
 		if (material_groups[i].has_lightmap == false)
 		{
-			//lightmap_textures.push_back(NULL);
 			continue;
 		}
 
@@ -69,19 +68,18 @@ void Lightmap_Manager::loadLightmapTextures(geometry_scene* geo_scene)
 		ss << p.c_str();
 		ss << "/lightmap_" << geo_scene->get_unique_id() << "_" << material_groups[i].lightmap_no << ".bmp";
 
-		//ss << "../projects/export/lightmap_" << inc << ".bmp";
 		video::ITexture* tex = device->getVideoDriver()->getTexture(ss.str().c_str());
 
-		//lightmap_textures.push_back(tex);
 		lightmap_textures[material_groups[i].lightmap_no] = tex;
 
 		for (int f_i : material_groups[i].faces)
 		{
 			MeshBuffer_Chunk chunk;
-			chunk = geo_node->final_meshnode_interface.get_mesh_buffer_by_face(f_i);
+
+			chunk = geo_node->final_meshnode_interface.get_mesh_buffer(f_i);
 			chunk.buffer->getMaterial().setTexture(1, tex);
 
-			chunk = geo_node->edit_meshnode_interface.get_mesh_buffer_by_face(f_i);
+			chunk = geo_node->edit_meshnode_interface.get_mesh_buffer(f_i);
 			chunk.buffer->getMaterial().setTexture(1, tex);
 		}
 	}
@@ -359,122 +357,7 @@ struct block_organizer
 	}
 
 };
-/*
-struct texture_block
-{
-	dimension2du dimension;
-	int max_size = 512;
-	int element_id = -1;
-	int surface_no = -1;
-	bool bFlipped = false;
 
-	rect<u16> coords;
-
-	texture_block* column[2] = { NULL,NULL};
-
-	texture_block(int size)
-	{
-		dimension.Width = size;
-		dimension.Height = size;
-		coords.UpperLeftCorner = vector2d<u16>(0, 0);
-		coords.LowerRightCorner = vector2d<u16>(size, size);
-	}
-
-	texture_block(dimension2du dim)
-	{
-		dimension = dim;
-	}
-
-	texture_block(int e, int s, bool flip, dimension2du dim)
-	{
-		dimension = dim;
-		element_id = e;
-		surface_no = s;
-		bFlipped = flip;
-	}
-
-	~texture_block()
-	{
-		for (int i = 0; i < 2; i++)
-			if (column[i])
-				delete column[i];
-	}
-
-	bool hasSubColumns()
-	{
-		return column[0] && column[1];
-	}
-
-	void subdivide(u16 len)
-	{
-		if (hasSubColumns())
-		{
-			std::cout << "error\n";
-			return;
-		}
-		column[0] = new texture_block(dimension2du(len, dimension.Height));
-		column[0]->coords = rect<u16>(coords.UpperLeftCorner,
-			vector2d<u16>(coords.UpperLeftCorner.X + len, coords.LowerRightCorner.Y));
-
-		column[1] = new texture_block(dimension2du(dimension.Width - len, dimension.Height));
-		column[1]->coords = rect<u16>(vector2d<u16>(coords.UpperLeftCorner.X + len, coords.UpperLeftCorner.Y),
-			coords.LowerRightCorner);
-	}
-
-	void dump(int tab, int n)
-	{
-		for (int i = 0; i < tab; i++)
-			std::cout << " ";
-
-		std::cout << n << ": ";
-
-		std::cout << "size=" << dimension.Width << "," << dimension.Height<<"  (";
-		std::cout << coords.UpperLeftCorner.X << "," << coords.UpperLeftCorner.Y << " / ";
-		std::cout << coords.LowerRightCorner.X << "," << coords.LowerRightCorner.Y << ")\n";
-
-		for (int i = 0; i < 2; i++)
-		{
-			if (column[i])
-			{
-				column[i]->dump(tab + 1, i);
-			}
-		}
-	}
-
-	bool try_add(texture_block& r)
-	{
-		if (r.dimension.Width > dimension.Width ||
-			r.dimension.Height > dimension.Height)
-		{
-			return false;
-		}
-
-		if (hasSubColumns())
-		{
-			if (column[0]->try_add(r))
-				return true;
-			else
-				return column[1]->try_add(r);
-		}
-
-		if (r.dimension.Width < dimension.Width)
-		{
-			subdivide(r.dimension.Width);
-
-			return column[0]->try_add(r);
-		}
-
-		r.coords.UpperLeftCorner = coords.UpperLeftCorner;
-		r.coords.LowerRightCorner = vector2d<u16>(coords.UpperLeftCorner.X + r.dimension.Width, 
-			coords.UpperLeftCorner.Y +r.dimension.Height);
-
-		dimension.Height -= r.dimension.Height;
-		coords.UpperLeftCorner.Y += r.dimension.Height;
-
-		return true;
-	}
-};
-*/
 
 void initialize_lightmap_block(GeometryStack* geo_node, int element_id, int surface_no, std::back_insert_iterator<std::vector<Lightmap_Block>> ret, int reduce)
 {
@@ -638,7 +521,7 @@ void calc_lightmap_uvs(GeometryStack* geo_node, Lightmap_Block b)
 {
 	geo_element* element = geo_node->get_element_by_id(b.element_id);
 	polyfold* pf = &geo_node->get_element_by_id(b.element_id)->brush;
-
+	//int(*length)(int) = []();
 
 	int f_i = b.faces[0];
 	surface_group& sfg = *pf->getFaceSurfaceGroup(f_i);
@@ -657,6 +540,7 @@ void calc_lightmap_uvs(GeometryStack* geo_node, Lightmap_Block b)
 
 		mapper.init(&pf->faces[b.faces[0]], 0, b.width, b.height);
 
+		//map_uvs(&geo_node->edit_meshnode_interface, offset, vector<int>{ b.faces[0] }, mapper, MAP_UVS_LIGHTMAP);
 		map_uvs(&geo_node->edit_meshnode_interface, offset, vector<int>{ b.faces[0] }, mapper, MAP_UVS_LIGHTMAP);
 
 	} break;
@@ -696,10 +580,15 @@ void set_lightmap_uvs_to_mesh(GeometryStack* geo_stack, dimension2du lm_dimensio
 	geo_element* e = geo_stack->get_element_by_id(block.element_id);
 	poly_surface* s = &e->surfaces[block.surface_no];
 	
-	std::vector<int> faces = s->my_faces;
+	std::vector<int> faces;
 
-	for (int& f : faces)
-		f += s->face_index_offset;
+	for (int f : s->my_faces)
+	{
+		int f_i = f + s->face_index_offset;
+		int f_j = geo_stack->edit_meshnode_interface.get_buffer_index_by_face(f_i);
+		if (f_j != -1)
+			faces.push_back(f_j);
+	}
 
 	matrix4 flip_mat   (0, 1, 0, 0,
 						1, 0, 0, 0,
@@ -726,132 +615,6 @@ void set_lightmap_uvs_to_mesh(GeometryStack* geo_stack, dimension2du lm_dimensio
 	apply_transform_to_uvs(mesh_node, faces, MAP_UVS_LIGHTMAP, m);
 
 }
-/*
-template<typename out_Type>
-bool lightmaps_fill(GeometryStack* geo_stack, std::vector<Lightmap_Block>::iterator& blocks_it, std::vector<Lightmap_Block>::iterator blocks_end, out_Type out, const TextureMaterial& copy_from)
-{
-	MeshNode_Interface_Edit* mesh_node = &geo_stack->edit_meshnode_interface;
-
-	texture_block new_block(256);
-	texture_block face_block(128);
-
-	TextureMaterial ret;
-
-	ret.materialGroup = copy_from.materialGroup;
-	ret.texture = copy_from.texture;
-
-	auto ret_faces_back = std::back_inserter(ret.my_faces);
-	auto ret_surfaces_back = std::back_inserter(ret.surfaces);
-
-	rect<u16> my_block;
-
-	matrix4 flip_mat   (0, 1, 0, 0,
-						1, 0, 0, 0,
-						0, 0, 0, 0,
-						0, 0, 0, 0);
-	
-	for (; blocks_it != blocks_end; ++blocks_it)
-	{
-		face_block.dimension = dimension2du(blocks_it->width, blocks_it->height);
-
-		if (!new_block.try_add(face_block))
-		{
-			*out = ret;
-			return false;
-		}
-
-		u32 block_height = 256;
-		u32 block_width = 256;
-
-		std::vector<int> faces = blocks_it->faces;
-
-		for (int& f_i : faces)
-			f_i = geo_stack->get_element_by_id(blocks_it->element_id)->reverse_index[f_i];
-
-		matrix4 m;
-
-		f32 x_factor = 1.0f / (f32)block_width;
-		f32 y_factor = 1.0f / (f32)block_height;
-
-		m.setScale(vector3df(x_factor,y_factor,1.0f));
-
-		m.setTranslation(vector3df((f32)(face_block.coords.UpperLeftCorner.X + 0.5) / (f32)block_width,
-			(f32)(face_block.coords.UpperLeftCorner.Y + 0.5) / (f32)block_height, 0));
-
-		copy_raw_lightmap_uvs_to_mesh(mesh_node, faces);
-
-		if (blocks_it->bFlipped)
-		{
-			apply_transform_to_uvs(mesh_node, faces, MAP_UVS_LIGHTMAP, flip_mat);
-		}
-
-		apply_transform_to_uvs(mesh_node, faces, MAP_UVS_LIGHTMAP, m);
-
-		for (int f_j : blocks_it->faces)
-		{
-			*ret_faces_back = face_index{ blocks_it->element_id, f_j };
-			++ret_faces_back;
-		}
-		
-		*ret_surfaces_back = std::pair<int, int>{ blocks_it->element_id, blocks_it->surface_no };
-		++ret_surfaces_back;
-		
-		ret.lightmap_size = new_block.dimension.Width;
-		ret.has_lightmap = true;
-	}
-
-	*out = ret;
-
-	return true;
-}*/
-
-/*
-void lightmaps_divideMaterialGroups(GeometryStack* geo_scene, std::vector<TextureMaterial>& material_groups)
-{
-	std::vector<TextureMaterial> ret;
-	auto ret_back = std::back_inserter(ret);
-
-	auto in_it = material_groups.begin();
-	auto in_end = material_groups.end();
-
-	polyfold* pf = geo_scene->get_total_geometry();
-
-	for (; in_it != in_end; ++in_it)
-	{
-		if (in_it->has_lightmap == false)
-		{
-			*ret_back = *in_it;
-			++ret_back;
-			continue;
-		}
-		
-		std::sort(in_it->blocks.begin(), in_it->blocks.end(),
-			[&](Lightmap_Block& b_a, Lightmap_Block& b_b)
-			{
-				if (b_a.width == b_b.width)
-				{
-					return b_a.height > b_b.height;
-				}
-				else
-					return b_a.width > b_b.width;
-			});
-
-		auto blocks_it = in_it->blocks.begin();
-		auto blocks_end = in_it->blocks.end();
-
-		while (!lightmaps_fill(geo_scene, blocks_it, blocks_end, ret_back, *in_it))
-		{
-			++ret_back;
-		}
-
-		++ret_back;
-	}
-	
-	std::cout << "Created "<<ret.size() << " new material groups\n";
-
-	material_groups = ret;
-}*/
-
 
 
 template<typename ret_type>
@@ -886,7 +649,7 @@ bool add_blocklists(ret_type ret, vector<blocklist>::iterator& it, const vector<
 }
 
 template<typename out_type>
-bool divide_material_groups(GeometryStack* geo_scene, out_type out, vector<Lightmap_Block>::iterator& blocks_it, vector<Lightmap_Block>::iterator& blocks_end, TextureMaterial& copy_from)
+bool divide_material_groups(GeometryStack* geo_scene, out_type out, vector<Lightmap_Block>::iterator& blocks_it, vector<Lightmap_Block>::iterator& blocks_end, const TextureMaterial& copy_from)
 {
 	TextureMaterial ret;
 
@@ -917,7 +680,7 @@ bool divide_material_groups(GeometryStack* geo_scene, out_type out, vector<Light
 		
 		for (int f_j : blocks_it->faces)
 		{
-			*ret_faces_back =  offset + f_j;
+			*ret_faces_back = geo_scene->edit_meshnode_interface.get_buffer_index_by_face(offset + f_j);
 			++ret_faces_back;
 		}
 
@@ -929,16 +692,17 @@ bool divide_material_groups(GeometryStack* geo_scene, out_type out, vector<Light
 	return true;
 }
 
-void split_material_groups(GeometryStack* geo_scene, std::vector<TextureMaterial>& material_groups_in)
+void Lightmap_Configuration::split_material_groups(const std::vector<TextureMaterial>& material_groups_in)
 {
 	if (material_groups_in.size() == 0)
 		return;
 
+	materials.clear();
+
 	auto in_it = material_groups_in.begin();
 	auto in_end = material_groups_in.end();
 
-	vector<TextureMaterial> material_groups;
-	auto materials_back = back_inserter(material_groups);
+	auto materials_back = back_inserter(materials);
 
 	for (; in_it != in_end; ++in_it)
 	{
@@ -965,27 +729,25 @@ void split_material_groups(GeometryStack* geo_scene, std::vector<TextureMaterial
 		auto blocks_it = blocks.begin();
 		auto blocks_end = blocks.end();
 
-		while (!divide_material_groups(geo_scene, materials_back, blocks_it, blocks_end, *in_it))
+		while (!divide_material_groups(geo_node, materials_back, blocks_it, blocks_end, *in_it))
 		{
 			++materials_back;
 		}
 
 		++materials_back;
 	}
-
-	material_groups_in = material_groups;
 }
 
-void layout_lightmaps(GeometryStack* geo_scene, vector<TextureMaterial>& material_groups)
+void Lightmap_Configuration::layout_lightmaps()
 {
-	if (material_groups.size() == 0)
+	if (materials.size() == 0)
 		return;
 	
 	vector<blocklist> blocklists;
 	auto bl_back = back_inserter(blocklists);
 
 	int mg_n = 0;
-	for (TextureMaterial& tm : material_groups)
+	for (const TextureMaterial& tm : materials)
 	{
 		blocklist bl;
 
@@ -995,7 +757,7 @@ void layout_lightmaps(GeometryStack* geo_scene, vector<TextureMaterial>& materia
 			continue;
 		}
 
-		for (Lightmap_Block& lmb : tm.blocks)
+		for (const Lightmap_Block& lmb : tm.blocks)
 		{
 			bl.blocks.push_back(tex_block{ dimension2du(lmb.width, lmb.height), lmb.element_id, lmb.surface_no, lmb.bFlipped });
 		}
@@ -1036,10 +798,7 @@ void layout_lightmaps(GeometryStack* geo_scene, vector<TextureMaterial>& materia
 	for (blocklist& b : bl_combined)
 	{
 		b.calc_size();
-		cout << "size: " << b.size << "\n";
-		//cout << "faces: ";
-		//for (tex_block& tb : b.blocks)
-		//	cout << tb.id << " ";
+		cout << "size: " << b.size << ", ";
 		cout << "material groups: ";
 		for (int n : b.material_groups)
 			cout << n << " ";
@@ -1050,23 +809,16 @@ void layout_lightmaps(GeometryStack* geo_scene, vector<TextureMaterial>& materia
 	{
 		for (int n : bl_combined[i].material_groups)
 		{
-			material_groups[n].lightmap_no = i;
+			materials[n].lightmap_no = i;
 		}
 	}
 
-	for (TextureMaterial& tm : material_groups)
+	for (TextureMaterial& tm : materials)
 		tm.lightmap_size = 256;
-	/*
-	std::sort(material_groups.begin(), material_groups.end(),
-		[&](TextureMaterial& a, TextureMaterial& b)
-		{
-			return a.lightmap_no < b.lightmap_no;
-		});*/
 
 	for (blocklist& b : bl_combined)
 	{
 		for (tex_block& tb : b.blocks)
-			set_lightmap_uvs_to_mesh(geo_scene, dimension2du(256, 256), tb);
+			set_lightmap_uvs_to_mesh(geo_node, dimension2du(256, 256), tb);
 	}
-
 }

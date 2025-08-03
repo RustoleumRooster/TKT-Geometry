@@ -68,6 +68,25 @@ public:
 		V[2]->TCoords2.Y = y0 + (vector3df(V[2]->Pos - verts[0]).dotProduct(v_vec) / y_len * column_height);
 	}
 
+	void calc(vector3df* pos, vector2df* uv, u16* indices) const
+	{
+		u16 x0 = 1;
+		u16 y0 = 1;
+
+		u16 idx0 = indices[0];
+		u16 idx1 = indices[1];
+		u16 idx2 = indices[2];
+
+		uv[idx0].X = x0 + (vector3df(pos[idx0] - verts[0]).dotProduct(u_vec) / x_len * column_width);
+		uv[idx0].Y = y0 + (vector3df(pos[idx0] - verts[0]).dotProduct(v_vec) / y_len * column_height);
+
+		uv[idx1].X = x0 + (vector3df(pos[idx1] - verts[0]).dotProduct(u_vec) / x_len * column_width);
+		uv[idx1].Y = y0 + (vector3df(pos[idx1] - verts[0]).dotProduct(v_vec) / y_len * column_height);
+
+		uv[idx2].X = x0 + (vector3df(pos[idx2] - verts[0]).dotProduct(u_vec) / x_len * column_width);
+		uv[idx2].Y = y0 + (vector3df(pos[idx2] - verts[0]).dotProduct(v_vec) / y_len * column_height);
+	}
+
 };
 
 class map_sphere_to_uv
@@ -225,6 +244,11 @@ public:
 		m_pf = pf;
 	}
 
+	void calc(vector3df* pos, vector2df* uv, u16* indices) const
+	{
+		//TODO
+	}
+
 	void calc(video::S3DVertex2TCoords** V, int f_i)
 	{
 		vector3df face_normal = vector3df(V[2]->Pos - V[0]->Pos).crossProduct(vector3df(V[1]->Pos - V[0]->Pos));
@@ -336,39 +360,25 @@ enum {
 };
 
 template<class map_type>
-void map_uvs(MeshNode_Interface_Edit* mesh_node, int offset, const std::vector<int>& surface, map_type& mapper, int uv_type)
+void map_uvs(MeshNode_Interface_Edit* mesh_node, int surface_offset, const std::vector<int>& surface, map_type& mapper, int uv_type)
 {
-	video::S3DVertex2TCoords* vtx[3];
-
 	for (int b_i : surface)
 	{
-		MeshBuffer_Chunk chunk = mesh_node->get_mesh_buffer_by_face(offset + b_i);
-		std::vector<core::vector2df>& lightmap_raw_uvs = *mesh_node->get_lightmap_raw_uvs_by_face(offset + b_i);
+		int f_j = mesh_node->get_buffer_index_by_face(surface_offset + b_i);
 
-		if (chunk.buffer)
+		int offset = mesh_node->indices.offset[f_j];
+		int len = mesh_node->indices.len[f_j];
+
+		for (int i = offset; i < offset + len; i += 3)
 		{
-			for (int i = chunk.begin_i; i < chunk.end_i; i+=3)
-			{
-				u16 idx0 = chunk.buffer->getIndices()[i];
-				u16 idx1 = chunk.buffer->getIndices()[i+1];
-				u16 idx2 = chunk.buffer->getIndices()[i+2];
 
-				vtx[0] = &((video::S3DVertex2TCoords*)chunk.buffer->getVertices())[idx0];
-				vtx[1] = &((video::S3DVertex2TCoords*)chunk.buffer->getVertices())[idx1];
-				vtx[2] = &((video::S3DVertex2TCoords*)chunk.buffer->getVertices())[idx2];
+			mapper.calc(mesh_node->lm_raw_uvs.data0.data(),		//vertices
+						mesh_node->lm_raw_uvs.data1.data(),		//uvs
+						&mesh_node->indices.data[i]);			//indices
 
-				//=========================================
-				//Actual calculations done here
-				mapper.calc(vtx, b_i);
-
-				lightmap_raw_uvs[idx0] = vtx[0]->TCoords2;
-				lightmap_raw_uvs[idx1] = vtx[1]->TCoords2;
-				lightmap_raw_uvs[idx2] = vtx[2]->TCoords2;
-
-				//std::cout << " " << vtx[0]->TCoords2.X << "," << vtx[0]->TCoords2.Y << "  ";
-				//std::cout << " " << vtx[1]->TCoords2.X << "," << vtx[1]->TCoords2.Y << "  ";
-				//std::cout << " " << vtx[2]->TCoords2.X << "," << vtx[2]->TCoords2.Y << "\n";
-			}
+			//std::cout << " " << vtx[0]->TCoords2.X << "," << vtx[0]->TCoords2.Y << "  ";
+			//std::cout << " " << vtx[1]->TCoords2.X << "," << vtx[1]->TCoords2.Y << "  ";
+			//std::cout << " " << vtx[2]->TCoords2.X << "," << vtx[2]->TCoords2.Y << "\n";
 		}
 	}
 }
