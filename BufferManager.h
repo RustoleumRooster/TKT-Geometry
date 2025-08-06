@@ -44,12 +44,6 @@ struct MeshBuffer_Chunk
 
 struct TextureMaterial
 {
-    struct lightmap_record
-    {
-        core::rect<u16> block;
-        core::vector3df bounding_verts[4];
-    };
-
     video::ITexture* texture;
     int materialGroup;
     int n_faces = 0;
@@ -58,11 +52,11 @@ struct TextureMaterial
     bool has_lightmap = false;
     int lightmap_size;
     int lightmap_no;
+    //int original_material_no;
 
     std::vector<int> faces;                     //unique to entire scene
     std::vector<face_index> my_faces;           //local to element
     std::vector<std::pair<int, int>> surfaces;  //pair: element no, surface no
-   // std::vector<lightmap_record> records;       //used for communicating with compute shaders
     std::vector<Lightmap_Block> blocks;
 };
 
@@ -135,16 +129,11 @@ public:
     void refresh_material_groups();
     virtual const std::vector<TextureMaterial>& get_materials_used() { return materials_used; }
 
-    //================================
-    //structs for holding lightmap uvs
-    soa_struct_2<vector3df, vector2df> lm_raw_uvs;
-    soa_struct<u16> indices;
-
 protected:
 
     virtual void generate_mesh_buffer(scene::SMesh*);
 
-    void initialize_soa_arrays();
+    //void initialize_soa_arrays();
 
     std::vector<int> face_to_mb_buffer;
 
@@ -167,15 +156,26 @@ public:
 
     virtual const std::vector<TextureMaterial>& get_materials_used();
 
+    void copy_lightmap_uvs();
+
+    int get_buffer_index(int);
+    int get_n_triangles(int);
+    int get_first_triangle(int);
+
+    //===========================
+    //This just converts an index on final buffer into an index on the edit buffer, since the order is different
+    std::vector<int> edit_mb_buffer;
+
 protected:
 
     virtual void generate_mesh_buffer(scene::SMesh*);
-    void copy_lightmap_uvs();
 
     std::vector<int> face_to_mb_buffer;
     std::vector<int> face_to_mb_begin;
     std::vector<int> face_to_mb_end;
+    std::vector<int> face_to_mb_faces;
 
+    
     std::vector<int> mb_buffer;
     std::vector<int> mb_begin;
     std::vector<int> mb_end;

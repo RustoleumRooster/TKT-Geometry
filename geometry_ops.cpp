@@ -103,7 +103,6 @@ void GeometryStack::initialize(ISceneNode* parent, scene::ISceneManager* smgr, M
     this->edit_meshnode_interface.init(smgr, device->getVideoDriver(), event_receiver);
     this->final_meshnode_interface.init(smgr, device->getVideoDriver(), event_receiver);
     this->setAutomaticCulling(scene::EAC_OFF);
-    lightmap_config.initialize(this);
 }
 
 void GeometryStack::initialize(geometry_scene* geo_scene)
@@ -1176,10 +1175,8 @@ void GeometryStack::buildSceneNode(bool finalMesh, int light_mode)
                 int buffer_index = edit_meshnode_interface.get_buffer_index_by_face(f_i);
                 scene::IMeshBuffer* buffer = this->my_MeshNode->getMesh()->getMeshBuffer(buffer_index);
 
-                //Material_Groups_Tool::apply_material_to_buffer(buffer, pf->faces[f_i].material_group, light_mode, false, false);
                 Material_Groups_Tool::apply_material_to_buffer(buffer, surface_by_n(f_i)->material_group, light_mode, false, false);
 
-               // video::ITexture* tex_j = driver->getTexture(pf->faces[f_i].texture_name.c_str());
                 video::ITexture* tex_j = driver->getTexture(face_texture_by_n(f_i).c_str());
 
                 buffer->getMaterial().setTexture(0, tex_j);
@@ -1206,10 +1203,39 @@ void GeometryStack::generate_meshes()
 {
     trianglize_total_geometry();
 
+    if (lightmap_configs.size() != 2)
+    {
+        lightmap_configs.resize(2);
+
+        for (Lightmap_Configuration& c : lightmap_configs)
+            c.initialize(this);
+    }
+
     edit_meshnode_interface.generate_mesh_node();
     final_meshnode_interface.generate_mesh_node();
     final_meshnode_interface.generate_lightmap_info();
 
+}
+
+void GeometryStack::set_lightmap_config(int n)
+{
+    if (n != current_lm_config)
+    {
+        lightmap_configs[n].apply_lightmap_uvs_to_mesh();
+        current_lm_config = n;
+    }
+}
+
+
+
+Lightmap_Configuration& GeometryStack::get_lightmap_config()
+{
+    return lightmap_configs[current_lm_config];
+}
+
+Lightmap_Configuration& GeometryStack::get_lightmap_config(int n)
+{
+    return lightmap_configs[n];
 }
 
 //This function temporarily located in this file

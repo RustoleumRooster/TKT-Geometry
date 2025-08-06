@@ -37,6 +37,7 @@
 
 
 class MeshNode_Interface_Final;
+class Lightmap_Configuration;
 
 class VulkanApp {
 public:
@@ -69,7 +70,7 @@ public:
 	bool run_multipass_light(geometry_scene* geo_scene);
 	bool run_test_mc(geometry_scene* geo_scene);
 	bool run_amb_occlusion(geometry_scene* geo_scene, std::string filename_base);
-	bool run_sunlight(geometry_scene* geo_scene, std::string filename_base);
+	bool run_sunlight(geometry_scene* geo_scene, Lightmap_Configuration*, std::string filename_base);
 
 
 private:

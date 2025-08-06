@@ -62,35 +62,3 @@ void apply_transform_to_uvs(MeshNode_Interface* mesh_node, const std::vector<int
 		}
 	}
 }
-
-void copy_raw_lightmap_uvs_to_mesh(MeshNode_Interface_Edit* mesh_node, const std::vector<int>& surface)
-{
-	video::S3DVertex2TCoords* vtx[3];
-
-	for (int b_i : surface)
-	{
-		MeshBuffer_Chunk chunk = mesh_node->get_mesh_buffer(b_i);
-		int offset = mesh_node->indices.offset[b_i];
-		int len = mesh_node->indices.len[b_i];
-
-		int j = chunk.begin_i;
-		for (int i = offset; i < offset + len && j < chunk.end_i; i += 3, j += 3)
-		{
-				u16 idx0 = chunk.buffer->getIndices()[j];
-				u16 idx1 = chunk.buffer->getIndices()[j + 1];
-				u16 idx2 = chunk.buffer->getIndices()[j + 2];
-
-				vtx[0] = &((video::S3DVertex2TCoords*)chunk.buffer->getVertices())[idx0];
-				vtx[1] = &((video::S3DVertex2TCoords*)chunk.buffer->getVertices())[idx1];
-				vtx[2] = &((video::S3DVertex2TCoords*)chunk.buffer->getVertices())[idx2];
-
-				idx0 = mesh_node->indices.data[i];
-				idx1 = mesh_node->indices.data[i+1];
-				idx2 = mesh_node->indices.data[i+2];
-
-				vtx[0]->TCoords2 = mesh_node->lm_raw_uvs.data1[idx0];
-				vtx[1]->TCoords2 = mesh_node->lm_raw_uvs.data1[idx1];
-				vtx[2]->TCoords2 = mesh_node->lm_raw_uvs.data1[idx2];
-		}
-	}
-}

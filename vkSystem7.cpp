@@ -50,12 +50,14 @@ void System_Sunlight::cleanup() {
 
 typedef CMeshBuffer<video::S3DVertex2TCoords> mesh_buffer_type;
 
-void System_Sunlight::loadModel(MeshNode_Interface_Final* meshnode)
+void System_Sunlight::loadModel(MeshNode_Interface_Final* meshnode, Lightmap_Configuration* config)
 {
-	writeLightmapsInfo(meshnode->get_materials_used(), lightmaps_info, meshnode);
+	writeLightmapsInfo(config->get_materials(), lightmaps_info, meshnode);
 
 	vector<bool> include_materials;
 	include_materials.resize(lightmaps_info.size());
+
+	scene::SMesh* mesh = meshnode->getMesh();
 
 	//==========================================================
 	// Possible to exclude some mesh from being included at all
@@ -73,8 +75,8 @@ void System_Sunlight::loadModel(MeshNode_Interface_Final* meshnode)
 
 	createLightmapImages();
 	
-	fill_vertex_struct(meshnode->getMesh(), vertices_soa, include_materials);
-	fill_index_struct(meshnode->getMesh(), indices_soa, include_materials);
+	fill_vertex_struct(mesh, vertices_soa);
+	fill_index_struct(mesh, indices_soa);
 
 	//==========================================================
 	// Store the material type of each triangle
@@ -82,14 +84,29 @@ void System_Sunlight::loadModel(MeshNode_Interface_Final* meshnode)
 
 	vector<u16> triangle_material_type;
 	triangle_material_type.resize(indices_soa.data.size() / 3);
+	
+	for (const TextureMaterial& tm : config->get_materials())
+	{
+		for (int f_i : tm.faces)
+		{
+			int b_offset = indices_soa.offset[meshnode->get_buffer_index(f_i)] / 3;
+			int t_0 = meshnode->get_first_triangle(f_i);
 
+			for (int i = 0; i < meshnode->get_n_triangles(f_i); i++)
+			{
+				triangle_material_type[b_offset + t_0 + i] = tm.materialGroup;
+			}
+		}
+	}
+
+	/*
 	for (int i = 0; i < indices_soa.offset.size(); i++)
 	{
 		for (int j = 0; j < indices_soa.len[i] / 3; j++)
 		{
 			triangle_material_type[(indices_soa.offset[i] / 3) + j] = lightmaps_info[i].type;
 		}
-	}
+	}*/
 
 	for (int i = 0; i < triangle_material_type.size(); i++)
 		cout << triangle_material_type[i] << ", ";
@@ -738,7 +755,7 @@ void System_Sunlight::executeComputeShader(std::string filename_base)
 
 		std::stringstream ss;
 		//ss << "../projects/export/lightmap_" << image_count << ".bmp";
-		ss << filename_base.c_str() << image_count << ".bmp";
+		ss << filename_base.c_str() << "_" << image_count << ".bmp";
 		image_count++;
 
 		generateBitmapImage(pixels, width, width, ss.str().c_str());

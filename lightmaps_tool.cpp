@@ -1172,9 +1172,9 @@ bool Material_Buffers_Widget::OnEvent(const SEvent& event)
                     g_scene->setSelectedFaces(surface);
 
                 int f_i = g_scene->getSelectedFaces()[0];
-                int mg = g_scene->geoNode()->final_meshnode_interface.get_material_group_by_face(f_i);
+                int mg = 0;// g_scene->geoNode()->final_meshnode_interface.get_material_group_by_face(f_i);
 
-                int mg2 = g_scene->geoNode()->edit_meshnode_interface.get_material_group_by_face(f_i);
+                int mg2 = 0;// g_scene->geoNode()->edit_meshnode_interface.get_material_group_by_face(f_i);
                 int lm_block_i = -1;// g_scene->geoNode()->edit_meshnode_interface.get_lm_block_by_face(f_i);
 
                 if (mg2 != -1 && lm_block_i != -1)

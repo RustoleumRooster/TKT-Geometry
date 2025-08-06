@@ -20,7 +20,7 @@ class MyBufferObject;
 class MeshNode_Interface_Final;
 
 
-
+class Lightmap_Configuration;
 
 class System_Sunlight {
 
@@ -56,7 +56,7 @@ public:
 	uint32_t num_lightmaps_used() { return lightmapImages.size(); }
 	void cleanup();
 
-	void loadModel(MeshNode_Interface_Final* meshnode);
+	void loadModel(MeshNode_Interface_Final* meshnode, Lightmap_Configuration*);
 	void loadSun(geometry_scene*);
 
 	void initialize_step2(MyDescriptorPool* descriptorPool)

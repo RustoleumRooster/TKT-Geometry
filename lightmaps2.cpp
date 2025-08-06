@@ -66,7 +66,7 @@ void Lightmap_Manager::loadLightmapTextures(geometry_scene* geo_scene)
 		io::path p = File_Open_Tool::get_base()->GetCurrentProjectPath();
 
 		ss << p.c_str();
-		ss << "/lightmap_" << geo_scene->get_unique_id() << "_" << material_groups[i].lightmap_no << ".bmp";
+		ss << geo_scene->get_lightmap_file_string() << "_" << material_groups[i].lightmap_no << ".bmp";
 
 		video::ITexture* tex = device->getVideoDriver()->getTexture(ss.str().c_str());
 
@@ -79,7 +79,8 @@ void Lightmap_Manager::loadLightmapTextures(geometry_scene* geo_scene)
 			chunk = geo_node->final_meshnode_interface.get_mesh_buffer(f_i);
 			chunk.buffer->getMaterial().setTexture(1, tex);
 
-			chunk = geo_node->edit_meshnode_interface.get_mesh_buffer(f_i);
+			int f_j = geo_node->final_meshnode_interface.edit_mb_buffer[f_i];
+			chunk = geo_node->edit_meshnode_interface.get_mesh_buffer(f_j);
 			chunk.buffer->getMaterial().setTexture(1, tex);
 		}
 	}
@@ -116,56 +117,38 @@ bool is_reducible (f32 dim, int n = 1)
 	return lwi >= 3;
 }
 
-struct  tex_block
+void blocklist::calc_size()
 {
-	dimension2du dimension;
-	int element_id = -1;
-	int surface_no = -1;
-	bool bFlipped = false;
-	rect<u16> coords;
-	int size() { return dimension.Width * dimension.Height; }
-};
+	size = 0;
 
-struct blocklist
-{
-	vector<tex_block> blocks;
-
-	int size = 0;
-	vector<int> material_groups;
-
-	void calc_size()
+	for (tex_block& b : blocks)
 	{
-		size = 0;
+		size += b.dimension.Width * b.dimension.Height;
+	}
+}
 
-		for (tex_block& b : blocks)
+void blocklist::sort()
+{
+	std::sort(blocks.begin(), blocks.end(),
+		[&](tex_block& a, tex_block& b)
 		{
-			size += b.dimension.Width * b.dimension.Height;
-		}
-	}
-
-	void sort()
-	{
-		std::sort(blocks.begin(), blocks.end(),
-			[&](tex_block& a, tex_block& b)
+			if (a.dimension.Width == b.dimension.Width)
 			{
-				if (a.dimension.Width == b.dimension.Width)
-				{
-					return a.dimension.Height > b.dimension.Height;
-				}
-				else
-					return a.dimension.Width > b.dimension.Width;
-			});
-	}
+				return a.dimension.Height > b.dimension.Height;
+			}
+			else
+				return a.dimension.Width > b.dimension.Width;
+		});
+}
 
-	void operator+=(blocklist& other)
-	{
-		for (const tex_block& b : other.blocks)
-			this->blocks.push_back(b);
+void blocklist::operator+=(blocklist& other)
+{
+	for (const tex_block& b : other.blocks)
+		this->blocks.push_back(b);
 
-		for (int n : other.material_groups)
-			this->material_groups.push_back(n);
-	}
-};
+	for (int n : other.material_groups)
+		this->material_groups.push_back(n);
+}
 
 struct block_organizer
 {
@@ -517,7 +500,32 @@ void initialize_lightmap_block(GeometryStack* geo_node, int element_id, int surf
 	}
 }
 
-void calc_lightmap_uvs(GeometryStack* geo_node, Lightmap_Block b)
+void Lightmap_Configuration::calc_lightmap_uvs(const std::vector<TextureMaterial>& material_groups)
+{
+	materials = material_groups;
+
+	for (int i = 0; i < materials.size(); i++)
+	{
+		if (!materials[i].has_lightmap)
+			continue;
+
+		for (int j = 0; j < materials[i].blocks.size(); j++)
+		{
+			Lightmap_Block& b = materials[i].blocks[j];
+
+			if (reduce_power != 0)
+			{
+				b.height = reduce_dimension_base2(b.height, reduce_power);
+				b.width = reduce_dimension_base2(b.width, reduce_power);
+			}
+
+			//to the raw lm uvs array
+			calc_lightmap_uvs(geo_node,b);
+		}
+	}
+}
+
+void Lightmap_Configuration::calc_lightmap_uvs(GeometryStack* geo_node, Lightmap_Block b)
 {
 	geo_element* element = geo_node->get_element_by_id(b.element_id);
 	polyfold* pf = &geo_node->get_element_by_id(b.element_id)->brush;
@@ -573,11 +581,11 @@ void calc_lightmap_uvs(GeometryStack* geo_node, Lightmap_Block b)
 	}
 }
 
-void set_lightmap_uvs_to_mesh(GeometryStack* geo_stack, dimension2du lm_dimension, tex_block& block)
+void Lightmap_Configuration::set_lightmap_uvs_to_mesh(dimension2du lm_dimension, tex_block& block)
 {
-	MeshNode_Interface_Edit* mesh_node = &geo_stack->edit_meshnode_interface;
+	MeshNode_Interface_Edit* mesh_node = &geo_node->edit_meshnode_interface;
 
-	geo_element* e = geo_stack->get_element_by_id(block.element_id);
+	geo_element* e = geo_node->get_element_by_id(block.element_id);
 	poly_surface* s = &e->surfaces[block.surface_no];
 	
 	std::vector<int> faces;
@@ -585,7 +593,7 @@ void set_lightmap_uvs_to_mesh(GeometryStack* geo_stack, dimension2du lm_dimensio
 	for (int f : s->my_faces)
 	{
 		int f_i = f + s->face_index_offset;
-		int f_j = geo_stack->edit_meshnode_interface.get_buffer_index_by_face(f_i);
+		int f_j = geo_node->edit_meshnode_interface.get_buffer_index_by_face(f_i);
 		if (f_j != -1)
 			faces.push_back(f_j);
 	}
@@ -656,6 +664,7 @@ bool divide_material_groups(GeometryStack* geo_scene, out_type out, vector<Light
 	ret.lightmap_size = 256;
 	ret.has_lightmap = true;
 
+	//ret.original_material_no = copy_from.original_material_no;
 	ret.materialGroup = copy_from.materialGroup;
 	ret.texture = copy_from.texture;
 
@@ -680,7 +689,7 @@ bool divide_material_groups(GeometryStack* geo_scene, out_type out, vector<Light
 		
 		for (int f_j : blocks_it->faces)
 		{
-			*ret_faces_back = geo_scene->edit_meshnode_interface.get_buffer_index_by_face(offset + f_j);
+			*ret_faces_back = offset + f_j; // geo_scene->edit_meshnode_interface.get_buffer_index_by_face(offset + f_j);
 			++ret_faces_back;
 		}
 
@@ -692,17 +701,14 @@ bool divide_material_groups(GeometryStack* geo_scene, out_type out, vector<Light
 	return true;
 }
 
-void Lightmap_Configuration::split_material_groups(const std::vector<TextureMaterial>& material_groups_in)
+void Lightmap_Configuration::split_material_groups()
 {
-	if (material_groups_in.size() == 0)
-		return;
+	std::vector<TextureMaterial> new_materials;
 
-	materials.clear();
+	auto in_it = materials.begin();
+	auto in_end = materials.end();
 
-	auto in_it = material_groups_in.begin();
-	auto in_end = material_groups_in.end();
-
-	auto materials_back = back_inserter(materials);
+	auto materials_back = back_inserter(new_materials);
 
 	for (; in_it != in_end; ++in_it)
 	{
@@ -736,6 +742,8 @@ void Lightmap_Configuration::split_material_groups(const std::vector<TextureMate
 
 		++materials_back;
 	}
+
+	materials = new_materials;
 }
 
 void Lightmap_Configuration::layout_lightmaps()
@@ -785,7 +793,7 @@ void Lightmap_Configuration::layout_lightmaps()
 	//=============
 	//Combine
 
-	vector<blocklist> bl_combined;
+	bl_combined.clear();
 
 	auto blc_back = std::back_inserter(bl_combined);
 	vector<blocklist>::iterator& bl_it = blocklists.begin();
@@ -816,9 +824,123 @@ void Lightmap_Configuration::layout_lightmaps()
 	for (TextureMaterial& tm : materials)
 		tm.lightmap_size = 256;
 
+	for (TextureMaterial& tm : materials)
+	{
+		tm.n_faces = tm.faces.size();
+
+		int n_triangles = 0;
+
+		if (tm.faces.size() > 0)
+		{
+			MeshBuffer_Chunk chunk = geo_node->final_meshnode_interface.get_mesh_buffer_by_face(tm.faces[0]);
+
+			if (chunk.buffer)
+				n_triangles = chunk.buffer->getIndexCount() / 3;
+		}
+
+		tm.n_triangles = n_triangles;
+	}
+}
+
+void Lightmap_Configuration::apply_lightmap_uvs_to_mesh()
+{
 	for (blocklist& b : bl_combined)
 	{
 		for (tex_block& tb : b.blocks)
-			set_lightmap_uvs_to_mesh(geo_node, dimension2du(256, 256), tb);
+			set_lightmap_uvs_to_mesh(dimension2du(256, 256), tb);
+	}
+
+	geo_node->final_meshnode_interface.copy_lightmap_uvs();
+}
+
+void Lightmap_Configuration::set_reduction(int p)
+{
+	reduce_power = p;
+}
+
+void Lightmap_Configuration::initialize_soa_arrays(scene::SMesh* mesh)
+{
+	typedef CMeshBuffer<video::S3DVertex2TCoords> mesh_buffer_type;
+
+	u32 n = mesh->getMeshBufferCount();
+
+	//vertices
+	{
+
+		u32(*length)(SMesh*, u32);
+		vector3df(*item0)(SMesh*, u32, u32);
+		vector2df(*item1)(SMesh*, u32, u32);
+
+		length = [](SMesh* mesh_, u32 index) -> u32 {
+			return ((mesh_buffer_type*)mesh_->getMeshBuffer(index))->getVertexCount();
+			};
+
+		item0 = [](SMesh* mesh_, u32 i, u32 j) -> vector3df {
+			return vector3df{ ((mesh_buffer_type*)mesh_->getMeshBuffer(i))->Vertices[j].Pos };
+			};
+
+		item1 = [](SMesh* mesh_, u32 i, u32 j) -> vector2df {
+			return vector2df{ 0,0 };
+			};
+
+		lm_raw_uvs.fill_data(mesh, n, length, item0, item1);
+	}
+
+	//indices
+	{
+		u32(*length)(SMesh*, u32);
+		u16(*item)(SMesh*, u32, u32);
+
+		length = [](SMesh* mesh_, u32 index) -> u32 {
+			return ((mesh_buffer_type*)mesh_->getMeshBuffer(index))->getIndexCount();
+			};
+
+		item = [](SMesh* mesh_, u32 i, u32 j) -> u16 {
+			return u16{ ((mesh_buffer_type*)mesh_->getMeshBuffer(i))->Indices[j] };
+			};
+
+		indices.fill_data(mesh, n, length, item);
+	}
+
+	//correct offsets
+	for (int i = 0; i < lm_raw_uvs.offset.size(); i++)
+	{
+		for (int j = 0; j < indices.len[i]; j++)
+		{
+			indices.data[indices.offset[i] + j] += lm_raw_uvs.offset[i];
+		}
+	}
+}
+
+
+void Lightmap_Configuration::copy_raw_lightmap_uvs_to_mesh(MeshNode_Interface_Edit* mesh_node, const std::vector<int>& surface)
+{
+	video::S3DVertex2TCoords* vtx[3];
+
+	for (int b_i : surface)
+	{
+		MeshBuffer_Chunk chunk = mesh_node->get_mesh_buffer(b_i);
+		int offset = this->indices.offset[b_i];
+		int len = this->indices.len[b_i];
+
+		int j = chunk.begin_i;
+		for (int i = offset; i < offset + len && j < chunk.end_i; i += 3, j += 3)
+		{
+			u16 idx0 = chunk.buffer->getIndices()[j];
+			u16 idx1 = chunk.buffer->getIndices()[j + 1];
+			u16 idx2 = chunk.buffer->getIndices()[j + 2];
+
+			vtx[0] = &((video::S3DVertex2TCoords*)chunk.buffer->getVertices())[idx0];
+			vtx[1] = &((video::S3DVertex2TCoords*)chunk.buffer->getVertices())[idx1];
+			vtx[2] = &((video::S3DVertex2TCoords*)chunk.buffer->getVertices())[idx2];
+
+			idx0 = this->indices.data[i];
+			idx1 = this->indices.data[i + 1];
+			idx2 = this->indices.data[i + 2];
+
+			vtx[0]->TCoords2 = this->lm_raw_uvs.data1[idx0];
+			vtx[1]->TCoords2 = this->lm_raw_uvs.data1[idx1];
+			vtx[2]->TCoords2 = this->lm_raw_uvs.data1[idx2];
+		}
 	}
 }

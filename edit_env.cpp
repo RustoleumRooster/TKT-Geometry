@@ -443,17 +443,27 @@ bool MyEventReceiver::OnEvent(const SEvent& event)
                         VulkanApp vk;
                         //if (System_Soft_Light::verify_inputs(g_scene))
                         {
-                            std::stringstream ss;
+                            
 
                             if (File_Open_Tool::get_base()->ProjectPathLoaded())
                             {
+                                //vk.run_amb_occlusion(g_scene, ss.str());
+
                                 io::path p = File_Open_Tool::get_base()->GetCurrentProjectPath();
 
-                                ss << p.c_str();
-                                ss << "/lightmap_" << g_scene->get_unique_id() << "_";
+                                {
+                                    std::stringstream ss;
+                                    ss << p.c_str();
+                                    ss << g_scene->get_lightmap_file_string(0);
+                                    vk.run_sunlight(g_scene, &g_scene->geoNode()->get_lightmap_config(0), ss.str());
+                                }
 
-                                //vk.run_amb_occlusion(g_scene, ss.str());
-                                vk.run_sunlight(g_scene, ss.str());
+                                {
+                                    std::stringstream ss;
+                                    ss << p.c_str();
+                                    ss << g_scene->get_lightmap_file_string(1);
+                                    vk.run_sunlight(g_scene, &g_scene->geoNode()->get_lightmap_config(1), ss.str());
+                                }
 
                                 Lightmaps_Tool::get_manager()->loadLightmapTextures(g_scene);
                             }

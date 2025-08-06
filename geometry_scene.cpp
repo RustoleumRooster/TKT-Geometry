@@ -747,6 +747,18 @@ void geometry_scene::initialize(scene::ISceneManager* smgr_, video::IVideoDriver
     event_receiver->Register(this);
 }
 
+std::string geometry_scene::get_lightmap_file_string()
+{
+    return get_lightmap_file_string(geoNode()->current_lm_config);
+}
+
+std::string geometry_scene::get_lightmap_file_string(int n)
+{
+    std::stringstream ss;
+    ss << "/lightmap_" << scene_unique_inc_id << "_" << n;
+    return ss.str();
+}
+
 void geometry_scene::visualizeMaterialGroups()
 {
     /*
@@ -1033,7 +1045,7 @@ std::vector<std::pair<int, int>> geometry_scene::getSelectedBlocks()
             pf->faces[f_j].temp_b = true;
         }
 
-        int i = geometry_stack->edit_meshnode_interface.get_material_group_by_face(f_i);
+        int i = 0;// geometry_stack->edit_meshnode_interface.get_material_group_by_face(f_i);
         int j = -1;// geometry_stack->edit_meshnode_interface.get_lm_block_by_face(f_i);
 
         ret.push_back(std::pair<int, int>{i, j});

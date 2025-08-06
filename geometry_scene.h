@@ -168,6 +168,10 @@ public:
     void restore_gui_state();
     void InitializeEmptyScene();
     int get_unique_id() { return scene_unique_inc_id; }
+
+    std::string get_lightmap_file_string();
+    std::string get_lightmap_file_string(int);
+
     
 private:
     

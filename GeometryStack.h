@@ -155,7 +155,9 @@ public:
 
     std::vector<geo_element> elements;
 
-    Lightmap_Configuration lightmap_config;
+    Lightmap_Configuration& get_lightmap_config();
+    Lightmap_Configuration& get_lightmap_config(int);
+    void set_lightmap_config(int);
     
     REFLECT()
 
@@ -167,6 +169,9 @@ private:
     void build_total_geometry();
 
     int base_type = GEO_SOLID;
+
+    int current_lm_config = 0;
+    std::vector<Lightmap_Configuration> lightmap_configs;
 
     //not used yet
     soa_struct<vector3df> geometry_triangles_vertices;

@@ -204,8 +204,8 @@ void  Texture_Adjust_Window::click_OK()
                 geo_node->elements[brush_j].brush.surface_groups[ f->surface_group ].type = SURFACE_GROUP_DOME;
         }
 
-        geo_node->edit_meshnode_interface.recalc_uvs_for_face(geo_node, brush_j, face_j, b_i);
-        geo_node->final_meshnode_interface.recalc_uvs_for_face(geo_node, brush_j, face_j, b_i);
+        geo_node->edit_meshnode_interface.recalc_uvs_for_face(brush_j, face_j, b_i);
+        geo_node->final_meshnode_interface.recalc_uvs_for_face(brush_j, face_j, b_i);
     }
     refresh();
 }
@@ -243,8 +243,8 @@ void Texture_Adjust_Window::click_Align()
 
                 geo_node->elements[brush_i].brush.faces[face_i].uv_origin = v0;
 
-                geo_node->edit_meshnode_interface.recalc_uvs_for_face(geo_node, brush_i, face_i, f_i);
-                geo_node->final_meshnode_interface.recalc_uvs_for_face(geo_node, brush_i, face_i, f_i);
+                geo_node->edit_meshnode_interface.recalc_uvs_for_face(brush_i, face_i, f_i);
+                geo_node->final_meshnode_interface.recalc_uvs_for_face(brush_i, face_i, f_i);
             }
         }
         else if (sg_type == SURFACE_GROUP_CYLINDER)
@@ -270,8 +270,8 @@ void Texture_Adjust_Window::click_Align()
                 geo_node->elements[brush_i].brush.surface_groups[sg_i].vec = v0;
                 geo_node->elements[brush_i].brush.surface_groups[sg_i].vec1 = v1;
 
-                geo_node->edit_meshnode_interface.recalc_uvs_for_face(geo_node, brush_i, face_i, f_i);
-                geo_node->final_meshnode_interface.recalc_uvs_for_face(geo_node, brush_i, face_i, f_i);
+                geo_node->edit_meshnode_interface.recalc_uvs_for_face(brush_i, face_i, f_i);
+                geo_node->final_meshnode_interface.recalc_uvs_for_face(brush_i, face_i, f_i);
             }
         }
     }
@@ -417,8 +417,8 @@ bool Texture_Adjust_Window::OnEvent(const SEvent& event)
 
                                 f->uv_mat.setTranslation(trans);
 
-                                geo_node->edit_meshnode_interface.recalc_uvs_for_face_cylinder(geo_node, brush_j, face_j, b_i);
-                                geo_node->final_meshnode_interface.recalc_uvs_for_face_cylinder(geo_node, brush_j, face_j, b_i);
+                                geo_node->edit_meshnode_interface.recalc_uvs_for_face_cylinder(brush_j, face_j, b_i);
+                                geo_node->final_meshnode_interface.recalc_uvs_for_face_cylinder(brush_j, face_j, b_i);
 
                             }
                         }
@@ -463,14 +463,14 @@ bool Texture_Adjust_Window::OnEvent(const SEvent& event)
 
                                 if (sg == SURFACE_GROUP_STANDARD)
                                 {
-                                    geo_node->edit_meshnode_interface.recalc_uvs_for_face_cube(geo_node, brush_j, face_j, b_i);
-                                    geo_node->final_meshnode_interface.recalc_uvs_for_face_cube(geo_node, brush_j, face_j, b_i);
+                                    geo_node->edit_meshnode_interface.recalc_uvs_for_face_cube(brush_j, face_j, b_i);
+                                    geo_node->final_meshnode_interface.recalc_uvs_for_face_cube(brush_j, face_j, b_i);
                                 }
                                 else if (sg == SURFACE_GROUP_CUSTOM_UVS_BRUSH || 
                                          sg == SURFACE_GROUP_CUSTOM_UVS_GEOMETRY)
                                 {
-                                    geo_node->edit_meshnode_interface.recalc_uvs_for_face_custom(geo_node, brush_j, face_j, b_i);
-                                    geo_node->final_meshnode_interface.recalc_uvs_for_face_custom(geo_node, brush_j, face_j, b_i);
+                                    geo_node->edit_meshnode_interface.recalc_uvs_for_face_custom(brush_j, face_j, b_i);
+                                    geo_node->final_meshnode_interface.recalc_uvs_for_face_custom(brush_j, face_j, b_i);
                                 }
                             }
                         }
