@@ -20,8 +20,9 @@ public:
 	Lightmap_Manager();
 
 	void loadLightmapTextures(geometry_scene* geo_scene);
+	void setLightmapTextures(geometry_scene* geo_scene, const std::vector<video::ITexture*>&);
 
-	std::vector<irr::video::ITexture*> lightmap_textures;
+	//std::vector<irr::video::ITexture*> lightmap_textures;
 	MyEventReceiver* event_receiver = NULL;
 };
 
@@ -66,7 +67,6 @@ struct blocklist
 
 class Lightmap_Configuration
 {
-
 	struct min_lm_block
 	{
 		rect<u16> coords;
@@ -96,6 +96,10 @@ public:
 
 	const std::vector<TextureMaterial>& get_materials(){ return materials; }
 
+	void run_sunlight(geometry_scene* geo_scene);
+	void apply_lightmaps(geometry_scene* geo_scene);
+	const vector<video::ITexture*>& get_textures() { return my_lightmaps; }
+
 	//================================
 	//structs for holding lightmap uvs
 	soa_struct_2<vector3df, vector2df> lm_raw_uvs;
@@ -105,10 +109,17 @@ public:
 	std::vector<min_lm_block> lightmap_blocks;
 	vector<blocklist> bl_combined;
 
+	std::vector<dimension2du> lightmap_dimensions;
+
+	std::vector<video::ITexture*> my_lightmaps;
+
 	GeometryStack* geo_node = NULL;
 
 	int reduce_power = 0;
 };
+
+
+
 
 template<class map_type>
 void Lightmap_Configuration::map_uvs(MeshNode_Interface_Edit* mesh_node, int surface_offset, const std::vector<int>& surface, map_type& mapper, int uv_type)

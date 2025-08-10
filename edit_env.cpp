@@ -20,7 +20,6 @@
 #include "uv_tool.h"
 #include "vtoolbar.h"
 #include "ex_gui_elements.h"
-#include "vulkan_app.h"
 #include "geometry_scene.h"
 #include "LightMaps.h"
 #include "material_groups.h"
@@ -425,11 +424,8 @@ bool MyEventReceiver::OnEvent(const SEvent& event)
                     {
                         do_rebuild();
                         
-                        VulkanApp vk;
-                        if (System_Point_Light::verify_inputs(g_scene))
-                        {
-                            g_scene->loadLightmapTextures();
-                        }
+                        g_scene->loadLightmapTextures();
+
                         break;
                     }
                     case GUI_ID_BUTTON_TEXTURES:
@@ -440,7 +436,6 @@ bool MyEventReceiver::OnEvent(const SEvent& event)
                         break;
                     case GUI_ID_BUTTON_LIGHTS:
                     {
-                        VulkanApp vk;
                         //if (System_Soft_Light::verify_inputs(g_scene))
                         {
                             
@@ -455,17 +450,21 @@ bool MyEventReceiver::OnEvent(const SEvent& event)
                                     std::stringstream ss;
                                     ss << p.c_str();
                                     ss << g_scene->get_lightmap_file_string(0);
-                                    vk.run_sunlight(g_scene, &g_scene->geoNode()->get_lightmap_config(0), ss.str());
+                                    //vk.run_sunlight(g_scene, &g_scene->geoNode()->get_lightmap_config(0), ss.str());
                                 }
-
+                                std::vector<video::ITexture*> new_lightmaps;
                                 {
                                     std::stringstream ss;
                                     ss << p.c_str();
                                     ss << g_scene->get_lightmap_file_string(1);
-                                    vk.run_sunlight(g_scene, &g_scene->geoNode()->get_lightmap_config(1), ss.str());
+                                    //vk.run_sunlight(g_scene, &g_scene->geoNode()->get_lightmap_config(1), ss.str(),new_lightmaps);
                                 }
 
-                                Lightmaps_Tool::get_manager()->loadLightmapTextures(g_scene);
+                                g_scene->geoNode()->get_lightmap_config().run_sunlight(g_scene);
+                                g_scene->geoNode()->get_lightmap_config().apply_lightmaps(g_scene);
+                                
+                                //Lightmaps_Tool::get_manager()->loadLightmapTextures(g_scene);
+                                //Lightmaps_Tool::get_manager()->setLightmapTextures(g_scene, new_lightmaps);
                             }
                         }
                     }

@@ -12,6 +12,7 @@
 #include "edit_env.h"
 #include "CMeshSceneNode.h"
 #include "file_open.h"
+#include "vkModules.h"
 
 using namespace irr;
 using namespace core;
@@ -28,7 +29,7 @@ Lightmap_Manager::Lightmap_Manager()
 	event_receiver = receiver;
 }
 
-void Lightmap_Manager::loadLightmapTextures(geometry_scene* geo_scene)
+void Lightmap_Manager::setLightmapTextures(geometry_scene* geo_scene, const std::vector<video::ITexture*>& new_textures)
 {
 	GeometryStack* geo_node = geo_scene->geoNode();
 	const std::vector<TextureMaterial>& material_groups = geo_node->final_meshnode_interface.get_materials_used();
@@ -38,21 +39,12 @@ void Lightmap_Manager::loadLightmapTextures(geometry_scene* geo_scene)
 	event.UserEvent.UserData1 = USER_EVENT_CLEAR_LIGHTMAP_TEXTURES;
 	event_receiver->OnEvent(event);
 
-	for (video::ITexture* tex : lightmap_textures)
-	{
-		device->getVideoDriver()->removeTexture(tex);
-	}
-
-	lightmap_textures.clear();
-
 	int N_lightmaps = 0;
 	for (int i = 0; i < material_groups.size(); i++)
 	{
 		N_lightmaps = std::max(N_lightmaps, material_groups[i].lightmap_no);
 	}
 	N_lightmaps += 1;
-
-	lightmap_textures.resize(N_lightmaps);
 
 	for (int i = 0; i < material_groups.size(); i++)
 	{
@@ -61,16 +53,7 @@ void Lightmap_Manager::loadLightmapTextures(geometry_scene* geo_scene)
 			continue;
 		}
 
-		std::stringstream ss;
-
-		io::path p = File_Open_Tool::get_base()->GetCurrentProjectPath();
-
-		ss << p.c_str();
-		ss << geo_scene->get_lightmap_file_string() << "_" << material_groups[i].lightmap_no << ".bmp";
-
-		video::ITexture* tex = device->getVideoDriver()->getTexture(ss.str().c_str());
-
-		lightmap_textures[material_groups[i].lightmap_no] = tex;
+		video::ITexture* tex = new_textures[material_groups[i].lightmap_no];
 
 		for (int f_i : material_groups[i].faces)
 		{
@@ -90,6 +73,92 @@ void Lightmap_Manager::loadLightmapTextures(geometry_scene* geo_scene)
 	event.EventType = EET_USER_EVENT;
 	event.UserEvent.UserData1 = USER_EVENT_MATERIAL_GROUP_SELECTION_CHANGED;
 	event_receiver->OnEvent(event);
+}
+
+void Lightmap_Manager::loadLightmapTextures(geometry_scene* geo_scene)
+{
+	
+	return;
+	GeometryStack* geo_node = geo_scene->geoNode();
+	const std::vector<TextureMaterial>& material_groups = geo_node->final_meshnode_interface.get_materials_used();
+
+	SEvent event;
+	event.EventType = EET_USER_EVENT;
+	event.UserEvent.UserData1 = USER_EVENT_CLEAR_LIGHTMAP_TEXTURES;
+	event_receiver->OnEvent(event);
+
+	//for (video::ITexture* tex : lightmap_textures)
+	{
+	//	device->getVideoDriver()->removeTexture(tex);
+	}
+
+	//lightmap_textures.clear();
+
+	int N_lightmaps = 0;
+	for (int i = 0; i < material_groups.size(); i++)
+	{
+		N_lightmaps = std::max(N_lightmaps, material_groups[i].lightmap_no);
+	}
+	N_lightmaps += 1;
+
+	//lightmap_textures.resize(N_lightmaps);
+
+	for (int i = 0; i < material_groups.size(); i++)
+	{
+		if (material_groups[i].has_lightmap == false)
+		{
+			continue;
+		}
+
+		std::stringstream ss;
+
+		io::path p = File_Open_Tool::get_base()->GetCurrentProjectPath();
+
+		ss << p.c_str();
+		ss << geo_scene->get_lightmap_file_string() << "_" << material_groups[i].lightmap_no << ".bmp";
+
+		video::ITexture* tex = device->getVideoDriver()->getTexture(ss.str().c_str());
+
+		//lightmap_textures[material_groups[i].lightmap_no] = tex;
+
+		for (int f_i : material_groups[i].faces)
+		{
+			MeshBuffer_Chunk chunk;
+
+			chunk = geo_node->final_meshnode_interface.get_mesh_buffer(f_i);
+			chunk.buffer->getMaterial().setTexture(1, tex);
+
+			int f_j = geo_node->final_meshnode_interface.edit_mb_buffer[f_i];
+			chunk = geo_node->edit_meshnode_interface.get_mesh_buffer(f_j);
+			chunk.buffer->getMaterial().setTexture(1, tex);
+		}
+	}
+
+	geo_node->getMeshNode()->copyMaterials();
+
+	event.EventType = EET_USER_EVENT;
+	event.UserEvent.UserData1 = USER_EVENT_MATERIAL_GROUP_SELECTION_CHANGED;
+	event_receiver->OnEvent(event);
+	
+}
+
+
+void Lightmap_Configuration::run_sunlight(geometry_scene* geo_scene)
+{
+	for (video::ITexture* tex : my_lightmaps)
+	{
+		device->getVideoDriver()->removeTexture(tex);
+	}
+
+	my_lightmaps.clear();
+
+	Lightmap_Routine(geo_scene, this, my_lightmaps);
+
+}
+
+void Lightmap_Configuration::apply_lightmaps(geometry_scene* geo_scene)
+{
+	Lightmaps_Tool::get_manager()->setLightmapTextures(geo_scene, my_lightmaps);
 }
 
 f32 reduce_dimension_base2(f32 dim, int n = 1)
@@ -812,9 +881,13 @@ void Lightmap_Configuration::layout_lightmaps()
 			cout << n << " ";
 		cout << "\n";
 	}
+
+	lightmap_dimensions.clear();
 	
 	for (int i = 0; i < bl_combined.size(); i++)
 	{
+		lightmap_dimensions.push_back(dimension2du(256, 256));
+
 		for (int n : bl_combined[i].material_groups)
 		{
 			materials[n].lightmap_no = i;

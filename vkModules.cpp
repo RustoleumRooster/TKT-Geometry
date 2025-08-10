@@ -1,0 +1,653 @@
+#include <irrlicht.h>
+#include "LightMaps.h"
+#include "vkModules.h"
+#include "csg_classes.h"
+#include "utils.h"
+#include "geometry_scene.h"
+#include "vkModel.h"
+#include "vkSunlightModule.h"
+#include <vulkan/vulkan.h>
+
+using namespace irr;
+using namespace core;
+using namespace std;
+
+extern IrrlichtDevice* device;
+
+void Lightmap_Routine(geometry_scene* g_scene, Lightmap_Configuration* configuration, std::vector<irr::video::ITexture*>& textures)
+{
+	//==================================
+	// Setup 
+	//
+
+	Geometry_Assets geo_assets(g_scene, configuration);
+
+	Vulkan_App vulkan;
+
+	vulkan.indices_soa = &geo_assets.indices_soa;
+	vulkan.vertices_soa = &geo_assets.vertices_soa;
+	vulkan.bvh = &geo_assets.bvh;
+	vulkan.n_indices = geo_assets.indices_soa.data.size();
+	vulkan.n_vertices = geo_assets.vertices_soa.data0.size();
+	vulkan.n_nodes = geo_assets.bvh.node_count;
+	vulkan.triangle_edges = &geo_assets.triangle_edges;
+	vulkan.initBuffers();
+
+	//==================================
+	// Create images on the GPU
+	//
+
+	Create_Images_Module create_images(&vulkan, configuration);
+	create_images.run();
+
+	//==================================
+	// Run the raytracing program
+	//
+
+	Sunlight_Module sunlight(&vulkan);
+
+	std::vector<Reflected_SceneNode*> sun_nodes = g_scene->get_reflected_nodes_by_type("Reflected_LightSceneNode");
+
+	if (sun_nodes.size() > 0)
+	{
+		sunlight.sun_direction = sun_nodes[0]->get_direction_vector();
+	}
+
+	sunlight.indices_soa = &geo_assets.indices_soa;
+	sunlight.vertices_soa = &geo_assets.vertices_soa;
+	sunlight.n_indices = geo_assets.indices_soa.data.size();
+	sunlight.n_vertices = geo_assets.vertices_soa.data0.size();
+	sunlight.n_nodes = geo_assets.bvh.node_count;
+
+	sunlight.materials = &configuration->get_materials();
+
+	sunlight.lightmapImages = create_images.lightmapImages;
+	sunlight.lightmapImageViews = create_images.lightmapImageViews;
+	sunlight.lightmapsMemory = create_images.lightmapsMemory;
+
+	sunlight.edgeBuffer = vulkan.edgeBuffer;
+	sunlight.edgeBufferMemory = vulkan.edgeBufferMemory;
+	sunlight.indexBuffer = vulkan.indexBuffer;
+	sunlight.indexBufferMemory = vulkan.indexBufferMemory;
+	sunlight.vertexBuffer = vulkan.vertexBuffer;
+	sunlight.vertexBufferMemory = vulkan.vertexBufferMemory;
+	sunlight.nodeBuffer = vulkan.nodeBuffer;
+	sunlight.nodeBufferMemory = vulkan.nodeBufferMemory;
+	sunlight.uvBuffer = vulkan.uvBuffer;
+	sunlight.uvBufferMemory = vulkan.uvBufferMemory;
+
+	sunlight.run();
+
+	//==================================
+	// Edge / Corner correction
+	//
+
+	Lightmap_Edges_Module edges(&vulkan, configuration);
+
+	edges.lightmapImages_in = sunlight.lightmapImages;
+	edges.lightmapImageViews_in = sunlight.lightmapImageViews;
+	edges.lightmapsMemory_in = sunlight.lightmapsMemory;
+
+	edges.run();
+
+	//==================================
+	// Make ITextures from the vulkan images
+	//
+
+	Download_Textures_Module download_textures(&vulkan, device->getVideoDriver(), configuration);
+
+	download_textures.lightmapImages = edges.lightmapImages_out;
+	download_textures.lightmapImageViews = edges.lightmapImageViews_out;
+	download_textures.lightmapsMemory = edges.lightmapsMemory_out;
+
+	download_textures.run();
+
+	textures = download_textures.textures;
+
+	//cleanup
+	edges.destroyImages();
+
+	vulkan.cleanup();
+}
+
+
+void Vulkan_App::initVulkan() 
+{
+	m_device = new MyDevice();
+
+	createDescriptorPool();
+	createCommandBuffers();
+	//createSyncObjects();
+}
+
+void Vulkan_App::initBuffers()
+{
+	createIndexBuffer();
+	createVertexBuffer();
+	createUVBuffer();
+	createEdgeBuffer();
+	createNodeBuffer();
+}
+
+void Vulkan_App::cleanup()
+{
+	vkDestroyBuffer(m_device->getDevice(), indexBuffer, nullptr);
+	vkFreeMemory(m_device->getDevice(), indexBufferMemory, nullptr);
+
+	vkDestroyBuffer(m_device->getDevice(), vertexBuffer, nullptr);
+	vkFreeMemory(m_device->getDevice(), vertexBufferMemory, nullptr);
+
+	vkDestroyBuffer(m_device->getDevice(), uvBuffer, nullptr);
+	vkFreeMemory(m_device->getDevice(), uvBufferMemory, nullptr);
+
+	vkDestroyBuffer(m_device->getDevice(), nodeBuffer, nullptr);
+	vkFreeMemory(m_device->getDevice(), nodeBufferMemory, nullptr);
+
+	vkDestroyBuffer(m_device->getDevice(), edgeBuffer, nullptr);
+	vkFreeMemory(m_device->getDevice(), edgeBufferMemory, nullptr);
+
+	m_DescriptorPool->cleanup();
+	m_device->cleanup();
+}
+
+Vulkan_Module::Vulkan_Module(Vulkan_App* vulkan)
+	: vulkan{ vulkan }
+{
+	m_device = vulkan->m_device;
+	m_DescriptorPool = vulkan->m_DescriptorPool;
+}
+
+void Vulkan_App::createDescriptorPool() {
+
+	std::vector<VkDescriptorPoolSize> poolSizes{};
+	poolSizes.resize(3);
+
+	poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	poolSizes[0].descriptorCount = 1;
+
+
+	poolSizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+	poolSizes[1].descriptorCount = 5;
+
+	poolSizes[2].type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+	poolSizes[2].descriptorCount = 2;
+
+	m_DescriptorPool = new MyDescriptorPool(m_device, 6, VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT, poolSizes);
+}
+
+void Vulkan_App::createCommandBuffers() {
+	commandBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+
+	VkCommandBufferAllocateInfo allocInfo{};
+	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	allocInfo.commandPool = m_device->getCommandPool();
+	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	allocInfo.commandBufferCount = (uint32_t)commandBuffers.size();
+
+	if (vkAllocateCommandBuffers(m_device->getDevice(), &allocInfo, commandBuffers.data()) !=
+		VK_SUCCESS) {
+		throw std::runtime_error("failed to allocate command buffers!");
+	}
+}
+
+
+void Vulkan_App::createIndexBuffer() {
+
+
+	VkDeviceSize bufferSize = sizeof(aligned_uint) * n_indices;
+
+	MyBufferObject stagingBuffer(m_device, sizeof(aligned_uint), n_indices, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+		VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 1);
+
+	stagingBuffer.writeToBuffer((void*)indices_soa->data.data());
+
+	m_device->createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+		VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, indexBuffer,
+		indexBufferMemory);
+
+	m_device->copyBuffer(stagingBuffer.getBuffer(), indexBuffer, bufferSize);
+}
+
+
+void Vulkan_App::createVertexBuffer() {
+
+	VkDeviceSize bufferSize = sizeof(aligned_vec3) * n_vertices;
+
+	MyBufferObject stagingBuffer(m_device, sizeof(aligned_vec3), n_vertices, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+		VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 1);
+
+	stagingBuffer.writeToBuffer((void*)vertices_soa->data0.data());
+
+	m_device->createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+		VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vertexBuffer,
+		vertexBufferMemory);
+
+	m_device->copyBuffer(stagingBuffer.getBuffer(), vertexBuffer, bufferSize);
+}
+
+void Vulkan_App::createUVBuffer()
+{
+	VkDeviceSize bufferSize = sizeof(aligned_vec3) * n_vertices;
+
+	MyBufferObject stagingBuffer(m_device, sizeof(aligned_vec3), n_vertices, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+		VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 1);
+
+	stagingBuffer.writeToBuffer((void*)vertices_soa->data1.data());
+
+	m_device->createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+		VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, uvBuffer,
+		uvBufferMemory);
+
+	m_device->copyBuffer(stagingBuffer.getBuffer(), uvBuffer, bufferSize);
+}
+
+void Vulkan_App::createEdgeBuffer()
+{
+	VkDeviceSize bufferSize = sizeof(aligned_uint) * n_indices;
+
+	MyBufferObject stagingBuffer(m_device, sizeof(aligned_uint), n_indices, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+		VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 1);
+
+	stagingBuffer.writeToBuffer((void*)triangle_edges->data());
+
+	m_device->createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+		VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, edgeBuffer,
+		edgeBufferMemory);
+
+	m_device->copyBuffer(stagingBuffer.getBuffer(), edgeBuffer, bufferSize);
+}
+
+void Vulkan_App::createNodeBuffer()
+{
+	VkDeviceSize bufferSize = sizeof(BVH_node_gpu) * n_nodes;
+
+	MyBufferObject stagingBuffer(m_device, sizeof(BVH_node_gpu), n_nodes, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+		VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 1);
+
+	stagingBuffer.writeToBuffer((void*)bvh->nodes.data());
+
+	m_device->createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+		VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, nodeBuffer,
+		nodeBufferMemory);
+
+	m_device->copyBuffer(stagingBuffer.getBuffer(), nodeBuffer, bufferSize);
+}
+
+void Create_Images_Module::run()
+{
+	createImages();
+}
+
+void Create_Images_Module::createImages()
+{
+	for (int i = 0; i < configuration->lightmap_dimensions.size(); i++)
+	{
+		VkDeviceSize width = configuration->lightmap_dimensions[i].Width;
+		VkDeviceSize height = configuration->lightmap_dimensions[i].Height;
+
+		VkImage img;
+		VkDeviceMemory imgMemory;
+		VkImageView imgView;
+
+		m_device->createImage(width, height, VK_FORMAT_R8G8B8A8_UNORM,
+			VK_IMAGE_TILING_OPTIMAL,
+			VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
+			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, img,
+			imgMemory);
+
+		imgView = m_device->createImageView(img, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT);
+
+		m_device->transitionImageLayout(img, VK_FORMAT_R8G8B8A8_UNORM,
+			VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
+
+		lightmapImages.push_back(img);
+		lightmapsMemory.push_back(imgMemory);
+		lightmapImageViews.push_back(imgView);
+	}
+}
+
+void Create_Images_Module::destroyImages()
+{
+	for (auto& imgView : lightmapImageViews)
+		vkDestroyImageView(m_device->getDevice(), imgView, nullptr);
+
+	for (auto& img : lightmapImages)
+		vkDestroyImage(m_device->getDevice(), img, nullptr);
+
+	for (auto& imgMem : lightmapsMemory)
+		vkFreeMemory(m_device->getDevice(), imgMem, nullptr);
+}
+
+
+Geometry_Assets::Geometry_Assets(geometry_scene* g_scene, Lightmap_Configuration* config)
+{
+	MeshNode_Interface_Final* meshnode = &g_scene->geoNode()->final_meshnode_interface;
+	SMesh* mesh = g_scene->geoNode()->final_meshnode_interface.getMesh();
+
+	fill_vertex_struct(mesh, vertices_soa);
+	fill_index_struct(mesh, indices_soa);
+
+	master_triangle_list.resize(indices_soa.data.size() / 3);
+	for (int i = 0; i < master_triangle_list.size(); i++)
+	{
+		master_triangle_list[i].set((u16)(indices_soa.data[i * 3].x), (u16)(indices_soa.data[(i * 3) + 1].x), (u16)(indices_soa.data[(i * 3) + 2].x));
+	}
+
+	//==========================================================
+	// Store the material type of each triangle
+	//
+
+	vector<u16> triangle_material_type;
+	triangle_material_type.resize(indices_soa.data.size() / 3);
+
+	for (const TextureMaterial& tm : config->get_materials())
+	{
+		for (int f_i : tm.faces)
+		{
+			int b_offset = indices_soa.offset[meshnode->get_buffer_index(f_i)] / 3;
+			int t_0 = meshnode->get_first_triangle(f_i);
+
+			for (int i = 0; i < meshnode->get_n_triangles(f_i); i++)
+			{
+				triangle_material_type[b_offset + t_0 + i] = tm.materialGroup;
+			}
+		}
+	}
+
+	bvh.build(vertices_soa.data0.data(), master_triangle_list.data(), master_triangle_list.size(), NULL);
+
+	for (int i = 0; i < bvh.node_count; i++)
+	{
+		if (bvh.nodes[i].left_node == 0xFFFF && bvh.nodes[i].right_node == 0xFFFF)
+		{
+			if (bvh.nodes[i].n_prims > 2)
+				std::cout << "WARNING: node " << i << " has " << bvh.nodes[i].n_prims << " triangles, max 2\n";
+
+			for (int j = 0; j < std::min(2u, bvh.nodes[i].n_prims); j++)
+			{
+				u32 prim_no = static_cast<f32> (bvh.indices[bvh.nodes[i].first_prim + j]);
+				bvh.nodes[i].packing[j] = prim_no;
+				bvh.nodes[i].packing[j + 2] = static_cast<f32> (triangle_material_type[prim_no]);
+			}
+		}
+		else
+			bvh.nodes[i].n_prims = 0;
+	}
+
+	//==========================================================
+	// Store references to the adjacent triangles for each edge, in order to properly calculate the lighting at the edges
+	//
+
+	triangle_edges.resize(master_triangle_list.size() * 3);
+
+	for (int i = 0; i < master_triangle_list.size(); i++)
+	{
+		for (int j = 0; j < 3; j++)
+		{
+			vector<u16> hits;
+
+			triangle_edge edge;
+			u16 v_0 = master_triangle_list[i].v_i[j];
+			edge.v0 = vertices_soa.data0.operator[](v_0).V;
+
+			u16 v_1 = master_triangle_list[i].v_i[(j + 1) % 3];
+			edge.v1 = vertices_soa.data0.operator[](v_1).V;
+
+			vector3df N = master_triangle_list[i].normal(vertices_soa.data0);
+
+			vector3df edgeTan = vector3df(edge.v1 - edge.v0).crossProduct(N);
+
+			bvh.intersect(edge, hits);
+			bool ok = false;
+
+			for (u16 k : hits)
+			{
+				if (k != i && master_triangle_list[k].find_edge(v_1, v_0, vertices_soa.data0))
+				{
+					//Only consider the adjacent triangles which create a concave angle
+					if (master_triangle_list[k].normal(vertices_soa.data0).crossProduct(N).dotProduct(edgeTan.crossProduct(N)) < -0.001)
+					{
+						triangle_edges[i * 3 + j].x = k;
+					}
+					else
+					{
+						triangle_edges[i * 3 + j].x = 0xFFFF;
+					}
+					ok = true;
+					break;
+				}
+				else if (k != i)
+				{
+					//std::cout << " ???";
+				}
+			}
+
+			if (!ok)
+			{
+				triangle_edges[i * 3 + j].x = 0xFFFF;
+				std::cout << "warning: triangle missing adjacent \n";
+			}
+		}
+	}
+}
+
+void Download_Textures_Module::run()
+{
+	for (int i = 0; i < configuration->lightmap_dimensions.size(); i++)
+	{
+		VkDeviceSize width = configuration->lightmap_dimensions[i].Width;
+		VkDeviceSize height = configuration->lightmap_dimensions[i].Height;
+		VkDeviceSize imgSize = width * height * 4;
+
+		MyBufferObject stagingBuffer(m_device, imgSize, 1, VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+			VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 1);
+
+		m_device->transitionImageLayout(lightmapImages[i], VK_FORMAT_R8G8B8A8_UNORM,
+			VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+
+		m_device->copyImageToBuffer(stagingBuffer.getBuffer(), lightmapImages[i], static_cast<uint32_t>(width), static_cast<uint32_t>(height));
+
+		irr::video::IImage* pImage = driver->createImage(irr::video::ECF_A8R8G8B8, irr::core::dimension2du(width, height));
+
+		irr::u8* imgDataPtr = (irr::u8*)pImage->lock();
+
+		stagingBuffer.readFromBuffer(imgDataPtr);
+
+		pImage->flip(true, false);
+
+		irr::video::ITexture* tex = driver->addTexture(irr::io::path("image name"), pImage);
+		textures.push_back(tex);
+
+		pImage->unlock();
+		pImage->drop();
+
+		m_device->transitionImageLayout(lightmapImages[i], VK_FORMAT_R8G8B8A8_UNORM,
+			VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	}
+}
+
+void Lightmap_Edges_Module::run()
+{
+	createDescriptorSetLayout();
+	createComputePipeline();
+
+	int n_maps = configuration->lightmap_dimensions.size();
+
+	lightmapImages_out.resize(n_maps);
+	lightmapImageViews_out.resize(n_maps);
+	lightmapsMemory_out.resize(n_maps);
+
+	shaderParamsBufferObject = new MyBufferObject(m_device, sizeof(ShaderParamsInfo), 1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+		VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 16);
+
+	for (int i = 0; i < n_maps; i++)
+	{
+		VkDeviceSize width = configuration->lightmap_dimensions[i].Width;
+		VkDeviceSize height = configuration->lightmap_dimensions[i].Height;
+		VkDeviceSize imgSize = width * height * 4;
+
+		m_device->createImage(width, height, VK_FORMAT_R8G8B8A8_UNORM,
+			VK_IMAGE_TILING_OPTIMAL,
+			VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
+			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, lightmapImages_out[i],
+			lightmapsMemory_out[i]);
+
+		lightmapImageViews_out[i] = m_device->createImageView(lightmapImages_out[i], VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT);
+
+		m_device->transitionImageLayout(lightmapImages_out[i], VK_FORMAT_R8G8B8A8_UNORM,
+			VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
+
+
+		ShaderParamsInfo info;
+		info.lightmap_height = height;
+		info.lightmap_width = width;
+
+		shaderParamsBufferObject->writeToBuffer((void*)&info);
+
+		execute(i);
+	}
+
+	delete shaderParamsBufferObject;
+
+	for (auto& imgView : lightmapImageViews_in)
+		vkDestroyImageView(m_device->getDevice(), imgView, nullptr);
+
+	for (auto& img : lightmapImages_in)
+		vkDestroyImage(m_device->getDevice(), img, nullptr);
+
+	for (auto& imgMem : lightmapsMemory_in)
+		vkFreeMemory(m_device->getDevice(), imgMem, nullptr);
+
+	descriptorSetLayout->cleanup();
+	pipeline->cleanup();
+
+	vkDestroyPipelineLayout(m_device->getDevice(), pipelineLayout, nullptr);
+}
+
+void Lightmap_Edges_Module::execute(int n)
+{
+	createDescriptorSets(n);
+
+	std::cout << "executing compute shader ";
+
+	VkCommandBuffer commandBuffer = m_device->beginSingleTimeCommands();
+
+	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE,
+		pipeline->getPipeline());
+
+	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineLayout, 0, 1,
+		&descriptorSets[0], 0, 0);
+
+	uint32_t work_length = 1;
+	uint32_t work_height = 1;
+
+	uint32_t n_WorkGroups_x = 1 + configuration->lightmap_dimensions[n].Width / (32 * work_length);
+	uint32_t n_WorkGroups_y = 1 + configuration->lightmap_dimensions[n].Height / (8 * work_height);
+
+	vkCmdDispatch(commandBuffer, n_WorkGroups_x, n_WorkGroups_y, 1);
+
+	m_device->endSingleTimeCommands(commandBuffer);
+
+	m_DescriptorPool->freeDescriptorsSets(descriptorSets);
+
+	vkDeviceWaitIdle(m_device->getDevice());
+	std::cout << "...execution complete\n";
+}
+
+void Lightmap_Edges_Module::destroyImages()
+{
+	for (auto& imgView : lightmapImageViews_out)
+		vkDestroyImageView(m_device->getDevice(), imgView, nullptr);
+
+	for (auto& img : lightmapImages_out)
+		vkDestroyImage(m_device->getDevice(), img, nullptr);
+
+	for (auto& imgMem : lightmapsMemory_out)
+		vkFreeMemory(m_device->getDevice(), imgMem, nullptr);
+}
+
+
+void Lightmap_Edges_Module::createDescriptorSetLayout()
+{
+	VkDescriptorSetLayoutBinding paramsBufferBinding{};
+	paramsBufferBinding.binding = 0;
+	paramsBufferBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	paramsBufferBinding.descriptorCount = 1;
+	paramsBufferBinding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+	paramsBufferBinding.pImmutableSamplers = nullptr; // Optional
+
+	VkDescriptorSetLayoutBinding samplerLayoutBinding{};
+	samplerLayoutBinding.binding = 1;
+	samplerLayoutBinding.descriptorCount = 1;
+	samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+	samplerLayoutBinding.pImmutableSamplers = nullptr;
+	samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+
+	VkDescriptorSetLayoutBinding imageStorageBinding{};
+	imageStorageBinding.binding = 2;
+	imageStorageBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+	imageStorageBinding.descriptorCount = 1;
+	imageStorageBinding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+	imageStorageBinding.pImmutableSamplers = nullptr; // Optional
+
+	std::vector<VkDescriptorSetLayoutBinding> bindings;
+	bindings.resize(3);
+	bindings = { paramsBufferBinding, samplerLayoutBinding, imageStorageBinding };
+
+	descriptorSetLayout = new MyDescriptorSetLayout(m_device, bindings);
+}
+
+void Lightmap_Edges_Module::createDescriptorSets(int n)
+{
+	MyDescriptorWriter writer(*descriptorSetLayout, *m_DescriptorPool);
+
+	descriptorSets.resize(1);
+
+	VkDescriptorBufferInfo paramsInfo{};
+	paramsInfo.buffer = shaderParamsBufferObject->getBuffer();
+	paramsInfo.offset = 0;
+	paramsInfo.range = sizeof(ShaderParamsInfo);
+
+	VkDescriptorImageInfo imageInfo{};
+	imageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+	imageInfo.imageView = lightmapImageViews_in[n];
+	//imageInfo.sampler = defaultSampler;
+
+	VkDescriptorImageInfo imageStorageInfo{};
+	imageStorageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+	imageStorageInfo.imageView = lightmapImageViews_out[n];
+
+	writer.writeBuffer(0, paramsInfo);
+	writer.writeImage(1, imageInfo);
+	writer.writeImage(2, imageStorageInfo);
+	writer.build(descriptorSets[0]);
+}
+
+void Lightmap_Edges_Module::createComputePipeline()
+{
+	VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
+	pipelineLayoutInfo.sType =
+		VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+	pipelineLayoutInfo.setLayoutCount = 1;
+	pipelineLayoutInfo.pSetLayouts = &(descriptorSetLayout->getDescriptorSetLayout());
+
+	if (vkCreatePipelineLayout(m_device->getDevice(), &pipelineLayoutInfo, nullptr,
+		&pipelineLayout) != VK_SUCCESS) {
+		throw std::runtime_error("failed to create compute pipeline layout!");
+	}
+
+	pipeline = new ComputePipeline(m_device, "shaders/compute_lm_edges.spv", pipelineLayout);
+
+}

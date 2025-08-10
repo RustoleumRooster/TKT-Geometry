@@ -440,7 +440,8 @@ void LM_Viewer_Panel::showMaterialGroup(int mg_n)
                     delete my_image;
                 my_image = NULL;
 
-                vector<video::ITexture*>& lm_textures = Lightmaps_Tool::get_manager()->lightmap_textures;
+                //vector<video::ITexture*>& lm_textures = Lightmaps_Tool::get_manager()->lightmap_textures;
+                const vector<video::ITexture*>& lm_textures = geo_scene->geoNode()->get_lightmap_config().get_textures();
 
                 if (mat_groups[mg_n].lightmap_no < lm_textures.size() && mat_groups[mg_n].has_lightmap
                     && lm_textures[mat_groups[mg_n].lightmap_no] != NULL)

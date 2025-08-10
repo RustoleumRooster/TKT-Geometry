@@ -62,12 +62,12 @@ layout(std140, binding = 5) readonly buffer edgesUBO
 };
 
 //an output buffer for debugging
-layout(std140, binding = 6) buffer hitResults
-{
-	vec3 hits[];
-};
+//layout(std140, binding = 6) buffer hitResults
+//{
+//	vec3 hits[];
+//};
 
-layout(binding = 7, rgba8) uniform image2D imageOut;
+layout(binding = 6, rgba8) uniform image2D imageOut;
 
 //==================================================
 // Random numbers (Tiny Encryption Algorithm)
