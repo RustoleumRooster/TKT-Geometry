@@ -1,0 +1,271 @@
+#version 450
+#extension GL_KHR_shader_subgroup_basic : enable
+#extension GL_KHR_shader_subgroup_arithmetic : enable
+
+
+layout (binding = 0) uniform Params 
+{
+	uint lm_width_0;
+	uint lm_height_0;
+	uint lm_width_1;
+	uint lm_height_1;
+
+	uint vertex_offset; //not used in shader
+	uint index_offset;
+	uint n_indices;
+	uint intensity;
+} params;
+
+layout(std140, binding = 1) readonly buffer indexUBO
+{
+	uint global_indices[];
+};
+
+layout(std140, binding = 2) readonly buffer uvBuffer_0
+{
+	vec3 map_uvs_0[];
+};
+
+layout(std140, binding = 3) readonly buffer uvBuffer_1
+{
+	vec3 map_uvs_1[];
+};
+
+layout(binding = 4) uniform sampler2D imageIn;
+layout(binding = 5, rgba8) uniform image2D imageOut;
+
+
+layout (local_size_x = 32, local_size_y = 4, local_size_z = 1) in;
+
+//==================================================
+// Random numbers (Tiny Encryption Algorithm)
+//
+
+uint[2] tea(uint v[2])
+{
+	uint v0 = v[0];
+	uint v1 = v[1];
+	uint delta = 0x9E3779B9;
+	uint k0 = 0xA341316C;
+	uint k1 = 0xC8013EA4;
+	uint k2 = 0xAD90777D;
+	uint k3 = 0x7E95761E;
+	uint sum = 0;
+
+	for(int i=0;i<6;i++)
+	{
+		sum+=delta;
+		v0+= ((v1<<4) + k0) ^ (v1+sum) ^ ((v1>>5) + k1);
+		v1+= ((v0<<4) + k2) ^ (v0+sum) ^ ((v0>>5) + k3);
+	}
+
+	return uint[2](v0,v1);
+}
+
+float random_to_float01(uint random)
+{
+	uint u = random >> 9 | 0x3F800000;
+	return uintBitsToFloat(u) - 1.0;
+}
+
+//==================================================
+// Shared variables
+//
+
+shared float m0,m1,m2;
+shared bool b0,b1,bNegativeX;
+shared uint i_0;
+shared uint v_0,v_1,v_2;
+shared vec2 w0,w1,w2;
+shared float y0;
+//shared mat4 uv2worldMat;
+shared uint x0[4];
+shared uint x1[4];
+
+uint indexed(uint v_i)
+{
+	return global_indices[v_i];
+}
+
+uint indexed(uint v_i, uint offset)
+{
+	return global_indices[v_i+offset];
+}
+
+float floor_y_value(float y)
+{
+	return (floor(params.lm_height_1 * y)+0.5) / params.lm_height_1;
+}
+
+float floor_x_value(float x)
+{
+	return (floor(params.lm_width_1 * x)+0.5) / params.lm_width_1;
+}
+
+float MajorX(float y)
+{
+	return w0.x + (m0 * (y - w0.y));
+}
+
+float MinorX(float y)
+{
+	if(b0 && b1)
+	{
+		if(bNegativeX)
+		{
+			return max(w0.x + (m1 * (y - w0.y)), w2.x + (m2 * (y - w2.y)));
+		}
+		else
+		{
+			return min(w0.x + (m1 * (y - w0.y)), w2.x + (m2 * (y - w2.y)));
+		}
+	}
+	else if(b0)
+	{
+		return w0.x + (m1 * (y - w0.y));
+	}
+	else if(b1)
+	{
+		return w2.x + (m2 * (y - w2.y));
+	}
+	return 0;
+}
+
+void main()
+{
+	uint ix = gl_LocalInvocationID.x;
+	uint iy = gl_LocalInvocationID.y;
+	uint thread_id = iy * gl_WorkGroupSize.x + ix;
+
+
+	if(gl_WorkGroupID.x * 3 < params.n_indices && ix == 0 && iy == 0)
+	{
+		//========================================================
+		// Assign the vertex in order of increasing y in uv coords 
+		// v0 = least y     v1 = greatest y     v2 = in between
+		//
+		// v0 -> v1 is the major axis
+		// v0 -> v2 and v2 -> v1 are the minor axis
+		//
+		//					* v0
+		//
+		//				* v2
+		//				          * v1
+
+		i_0 = params.index_offset + gl_WorkGroupID.x*3;
+
+		if(map_uvs_1[indexed(i_0)].y < map_uvs_1[indexed(i_0,1)].y)
+			v_0 = 0;
+		else
+			v_0 = 1;
+
+		if(map_uvs_1[indexed(i_0,v_0)].y < map_uvs_1[indexed(i_0,2)].y)
+			v_0 = v_0;
+		else
+			v_0 = 2;
+
+		if(map_uvs_1[indexed(i_0,((v_0+1)%3))].y > map_uvs_1[indexed(i_0,((v_0+2)%3))].y)
+		{
+			v_1 = (v_0+1)%3;
+			v_2 = (v_0+2)%3;
+		}
+		else
+		{
+			v_1 = (v_0+2)%3;
+			v_2 = (v_0+1)%3;
+		}
+
+		v_0 = indexed(i_0,v_0);
+		v_1 = indexed(i_0,v_1);
+		v_2 = indexed(i_0,v_2);
+
+		w0 = vec2(floor_x_value(map_uvs_1[v_0].x),floor_y_value(map_uvs_1[v_0].y));
+		w1 = vec2(floor_x_value(map_uvs_1[v_1].x),floor_y_value(map_uvs_1[v_1].y));
+		w2 = vec2(floor_x_value(map_uvs_1[v_2].x),floor_y_value(map_uvs_1[v_2].y));
+
+		m0 = (w1.x - w0.x) / (w1.y - w0.y);
+		m1 = (w2.x - w0.x) / (w2.y - w0.y);
+		m2 = (w1.x - w2.x) / (w1.y - w2.y);
+
+		b0=false;
+		b1=false;
+
+		if(map_uvs_1[v_2].y > map_uvs_1[v_0].y+0.0001)
+			b0 = true;
+
+		if(map_uvs_1[v_1].y > map_uvs_1[v_2].y+0.0001)
+			b1 = true;
+
+		bNegativeX = false;
+
+		if(MajorX(w2.y) > w2.x)
+			bNegativeX = true;
+	}
+
+	barrier();
+	
+	float ystep = 1.0 / params.lm_height_1;
+
+	int i;
+
+	if(ix == 0 && iy == 0)
+	{
+		y0 = w0.y;
+	}
+
+	barrier();
+
+	while(y0 < w1.y + 0.001)
+	//if(y0 < w1.y + 0.001)
+	{
+
+		barrier();
+
+		if(ix == 0)
+		{
+			if(bNegativeX==false)
+				{
+						x0[iy] = uint(params.lm_width_1 * MajorX(y0 + iy*ystep));
+						x1[iy] = uint(params.lm_width_1 * MinorX(y0 + iy*ystep));
+				}
+			else
+				{
+						x0[iy] = uint(params.lm_width_1 * MinorX(y0 + iy*ystep));
+						x1[iy] = uint(params.lm_width_1 * MajorX(y0 + iy*ystep));
+				}
+		}
+
+		barrier();
+
+		//if(subgroupElect())
+		//{}
+
+		//if(x0 + ix < x1 && uint(params.lm_height_1 * y0) < w1.y + 0.001)
+
+		int i=0;
+
+		if(y0 + iy * ystep < w1.y + 0.001)
+		{
+			while(x0[iy] + i*32 <= x1[iy])
+			{
+				if(x0[iy] + ix + i*32 <= x1[iy])
+					imageStore(imageOut,ivec2(x0[iy] + ix + i*32, uint(params.lm_height_1 * (y0+iy*ystep))),vec4(params.intensity/255.0));
+				i++;
+			}
+		}
+
+		barrier();
+
+		//subgroupBarrier();
+
+		if(ix == 0 && iy == 0)
+		{
+			y0 += (ystep*4.0);
+		}
+
+		barrier();
+	}
+
+	return;
+	
+}

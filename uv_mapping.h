@@ -87,6 +87,29 @@ public:
 		uv[idx2].Y = y0 + (vector3df(pos[idx2] - verts[0]).dotProduct(v_vec) / y_len * column_height);
 	}
 
+	void calc(aligned_vec3* pos, aligned_vec3* uv, aligned_uint* indices) const
+	{
+		u16 x0 = 1;
+		u16 y0 = 1;
+
+		u16 idx0 = indices[0].x;
+		u16 idx1 = indices[1].x;
+		u16 idx2 = indices[2].x;
+
+		uv[idx0].V.X = x0 + (vector3df(pos[idx0].V - verts[0]).dotProduct(u_vec) / x_len * column_width);
+		uv[idx0].V.Y = y0 + (vector3df(pos[idx0].V - verts[0]).dotProduct(v_vec) / y_len * column_height);
+
+		uv[idx1].V.X = x0 + (vector3df(pos[idx1].V - verts[0]).dotProduct(u_vec) / x_len * column_width);
+		uv[idx1].V.Y = y0 + (vector3df(pos[idx1].V - verts[0]).dotProduct(v_vec) / y_len * column_height);
+
+		uv[idx2].V.X = x0 + (vector3df(pos[idx2].V - verts[0]).dotProduct(u_vec) / x_len * column_width);
+		uv[idx2].V.Y = y0 + (vector3df(pos[idx2].V - verts[0]).dotProduct(v_vec) / y_len * column_height);
+		//std::cout << idx0 << "," << idx1 << "," << idx2 << "\n";
+		//std::cout <<"  "<< uv[idx0].V.X << "," << uv[idx0].V.Y << " " <<
+		//	uv[idx1].V.X << "," << uv[idx1].V.Y << " " <<
+		//	uv[idx2].V.X << "," << uv[idx2].V.Y << "\n";
+	}
+
 };
 
 class map_sphere_to_uv
@@ -242,6 +265,10 @@ public:
 		m_uv_height = pixel_height;
 
 		m_pf = pf;
+	}
+
+	void calc(aligned_vec3* pos, aligned_vec3* uv, aligned_uint* indices) const
+	{
 	}
 
 	void calc(vector3df* pos, vector2df* uv, u16* indices) const

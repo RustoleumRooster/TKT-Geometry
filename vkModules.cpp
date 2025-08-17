@@ -4,7 +4,7 @@
 #include "csg_classes.h"
 #include "utils.h"
 #include "geometry_scene.h"
-#include "vkModel.h"
+#include "soa.h"
 #include "vkSunlightModule.h"
 #include <vulkan/vulkan.h>
 
@@ -14,7 +14,77 @@ using namespace std;
 
 extern IrrlichtDevice* device;
 
-void Lightmap_Routine(geometry_scene* g_scene, Lightmap_Configuration* configuration, std::vector<irr::video::ITexture*>& textures)
+
+void Lightmap_Routine2(geometry_scene* g_scene, Lightmap_Configuration* configuration, std::vector<irr::video::ITexture*>& textures, Lightmap_Configuration* configuration1)
+{
+	//==================================
+	// Setup 
+	//
+
+	Geometry_Assets geo_assets(g_scene, configuration);
+
+	Vulkan_App vulkan;
+
+	vulkan.indices_soa = &geo_assets.indices_soa;
+	vulkan.vertices_soa = &geo_assets.vertices_soa;
+	vulkan.bvh = &geo_assets.bvh;
+	vulkan.n_indices = geo_assets.indices_soa.data.size();
+	vulkan.n_vertices = geo_assets.vertices_soa.data0.size();
+	vulkan.n_nodes = geo_assets.bvh.node_count;
+	vulkan.triangle_edges = &geo_assets.triangle_edges;
+	vulkan.initBuffers();
+
+
+	Load_Textures_Module load_textures(&vulkan, device->getVideoDriver(), configuration);
+	load_textures.textures = textures;
+
+	load_textures.run();
+	//load_textures.destroyImages();
+	
+	Copy_Lightmaps_Module copy(&vulkan, configuration, configuration1);
+
+	copy.element_by_element_id = &g_scene->geoNode()->element_by_element_id;
+	copy.surface_index = &geo_assets.surface_index;
+
+	copy.indexBuffer = vulkan.indexBuffer;
+	copy.indexBufferMemory = vulkan.indexBufferMemory;
+	copy.n_indices = vulkan.n_indices;
+
+	copy.lightmapImages_in = load_textures.lightmapImages;
+	copy.lightmapImageViews_in = load_textures.lightmapImageViews;
+	copy.lightmapsMemory_in = load_textures.lightmapsMemory;
+
+	copy.uv_struct_0 = &configuration->lm_raw_uvs.data;
+	copy.uv_struct_1 = &configuration1->lm_raw_uvs.data;
+
+	copy.run();
+	//copy.destroyImages();
+	
+	load_textures.destroyImages();
+
+	//==================================
+	// Make ITextures from the vulkan images
+	//
+
+	Download_Textures_Module download_textures(&vulkan, device->getVideoDriver(), configuration1);
+
+	download_textures.lightmapImages = copy.lightmapImages_out;
+	download_textures.lightmapImageViews = copy.lightmapImageViews_out;
+	download_textures.lightmapsMemory = copy.lightmapsMemory_out;
+	download_textures.bFlip = false;
+
+	download_textures.run();
+
+	textures = download_textures.textures;
+
+	//cleanup
+
+	copy.destroyImages();
+
+	vulkan.cleanup();
+}
+
+void Lightmap_Routine(geometry_scene* g_scene, Lightmap_Configuration* configuration, std::vector<irr::video::ITexture*>& textures, Lightmap_Configuration* configuration1)
 {
 	//==================================
 	// Setup 
@@ -99,6 +169,7 @@ void Lightmap_Routine(geometry_scene* g_scene, Lightmap_Configuration* configura
 	download_textures.lightmapImages = edges.lightmapImages_out;
 	download_textures.lightmapImageViews = edges.lightmapImageViews_out;
 	download_textures.lightmapsMemory = edges.lightmapsMemory_out;
+	download_textures.bFlip = true;
 
 	download_textures.run();
 
@@ -106,7 +177,7 @@ void Lightmap_Routine(geometry_scene* g_scene, Lightmap_Configuration* configura
 
 	//cleanup
 	edges.destroyImages();
-
+	
 	vulkan.cleanup();
 }
 
@@ -160,7 +231,7 @@ Vulkan_Module::Vulkan_Module(Vulkan_App* vulkan)
 void Vulkan_App::createDescriptorPool() {
 
 	std::vector<VkDescriptorPoolSize> poolSizes{};
-	poolSizes.resize(3);
+	poolSizes.resize(4);
 
 	poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	poolSizes[0].descriptorCount = 1;
@@ -171,6 +242,9 @@ void Vulkan_App::createDescriptorPool() {
 
 	poolSizes[2].type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
 	poolSizes[2].descriptorCount = 2;
+
+	poolSizes[3].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	poolSizes[3].descriptorCount = 1;
 
 	m_DescriptorPool = new MyDescriptorPool(m_device, 6, VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT, poolSizes);
 }
@@ -328,6 +402,79 @@ void Create_Images_Module::destroyImages()
 		vkFreeMemory(m_device->getDevice(), imgMem, nullptr);
 }
 
+void Load_Textures_Module::run()
+{
+	createImages();
+}
+
+void Load_Textures_Module::createImages()
+{
+	for (int i = 0; i < configuration->lightmap_dimensions.size(); i++)
+	{
+		VkDeviceSize width = configuration->lightmap_dimensions[i].Width;
+		VkDeviceSize height = configuration->lightmap_dimensions[i].Height;
+		VkDeviceSize imgSize = width * height * 4;
+
+		VkImage img;
+		VkDeviceMemory imgMemory;
+		VkImageView imgView;
+
+		MyBufferObject stagingBuffer(m_device, imgSize, 1, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+			VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 1);
+
+		irr::video::IImage* pImage = driver->createImage(textures[i],core::vector2di(0,0), configuration->lightmap_dimensions[i]);
+		pImage->flip(true, false);
+
+		irr::u8* imgDataPtr = (irr::u8*)pImage->lock();
+
+		stagingBuffer.writeToBuffer(imgDataPtr);
+
+		pImage->unlock();
+		pImage->drop();
+		/*
+		m_device->createImage(width, height, VK_FORMAT_R8G8B8A8_UNORM,
+			VK_IMAGE_TILING_OPTIMAL,
+			VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, img,
+			imgMemory);*/
+
+		m_device->createImage(width, height, VK_FORMAT_R8G8B8A8_UNORM,
+			VK_IMAGE_TILING_OPTIMAL,
+			VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, img,
+			imgMemory);
+
+		m_device->transitionImageLayout(img, VK_FORMAT_R8G8B8A8_UNORM,
+			VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+
+		//VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
+
+		imgView = m_device->createImageView(img, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT);
+
+		lightmapImages.push_back(img);
+		lightmapsMemory.push_back(imgMemory);
+		lightmapImageViews.push_back(imgView);
+
+		m_device->copyBufferToImage(stagingBuffer.getBuffer(), lightmapImages[i], static_cast<uint32_t>(width), static_cast<uint32_t>(height));
+
+		m_device->transitionImageLayout(img, VK_FORMAT_R8G8B8A8_UNORM,
+			VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
+
+	}
+}
+
+void Load_Textures_Module::destroyImages()
+{
+	for (auto& imgView : lightmapImageViews)
+		vkDestroyImageView(m_device->getDevice(), imgView, nullptr);
+
+	for (auto& img : lightmapImages)
+		vkDestroyImage(m_device->getDevice(), img, nullptr);
+
+	for (auto& imgMem : lightmapsMemory)
+		vkFreeMemory(m_device->getDevice(), imgMem, nullptr);
+}
 
 Geometry_Assets::Geometry_Assets(geometry_scene* g_scene, Lightmap_Configuration* config)
 {
@@ -335,7 +482,9 @@ Geometry_Assets::Geometry_Assets(geometry_scene* g_scene, Lightmap_Configuration
 	SMesh* mesh = g_scene->geoNode()->final_meshnode_interface.getMesh();
 
 	fill_vertex_struct(mesh, vertices_soa);
-	fill_index_struct(mesh, indices_soa);
+	fill_index_struct_with_offsets(mesh, indices_soa);
+
+	surface_index = g_scene->geoNode()->final_meshnode_interface.surface_index;
 
 	master_triangle_list.resize(indices_soa.data.size() / 3);
 	for (int i = 0; i < master_triangle_list.size(); i++)
@@ -464,7 +613,8 @@ void Download_Textures_Module::run()
 
 		stagingBuffer.readFromBuffer(imgDataPtr);
 
-		pImage->flip(true, false);
+		if(bFlip)
+			pImage->flip(true, false);
 
 		irr::video::ITexture* tex = driver->addTexture(irr::io::path("image name"), pImage);
 		textures.push_back(tex);
@@ -500,7 +650,7 @@ void Lightmap_Edges_Module::run()
 
 		m_device->createImage(width, height, VK_FORMAT_R8G8B8A8_UNORM,
 			VK_IMAGE_TILING_OPTIMAL,
-			VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
+			VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
 			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, lightmapImages_out[i],
 			lightmapsMemory_out[i]);
 
@@ -650,4 +800,366 @@ void Lightmap_Edges_Module::createComputePipeline()
 
 	pipeline = new ComputePipeline(m_device, "shaders/compute_lm_edges.spv", pipelineLayout);
 
+}
+
+VkSampler Copy_Lightmaps_Module::createDefaultSampler()
+{
+	VkSamplerCreateInfo samplerInfo{};
+	samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+	samplerInfo.magFilter = VK_FILTER_LINEAR;
+	samplerInfo.minFilter = VK_FILTER_LINEAR;
+
+	samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+
+	samplerInfo.anisotropyEnable = VK_TRUE;
+
+	VkPhysicalDeviceProperties properties{};
+	vkGetPhysicalDeviceProperties(m_device->getPhysicalDevice(), &properties);
+	samplerInfo.maxAnisotropy = properties.limits.maxSamplerAnisotropy;
+	samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+	samplerInfo.unnormalizedCoordinates = VK_FALSE;
+	samplerInfo.compareEnable = VK_FALSE;
+	samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+	samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+	samplerInfo.mipLodBias = 0.0f;
+	samplerInfo.minLod = 0.0f;
+	samplerInfo.maxLod = 0.0f;
+
+	VkSampler sampler;
+
+	if (vkCreateSampler(m_device->getDevice(), &samplerInfo, nullptr,
+		&sampler) != VK_SUCCESS) {
+		throw std::runtime_error("failed to create texture sampler!");
+	}
+
+	return sampler;
+}
+
+
+
+void Copy_Lightmaps_Module::createDescriptorSetLayout()
+{
+	VkDescriptorSetLayoutBinding paramsBufferBinding{};
+	paramsBufferBinding.binding = 0;
+	paramsBufferBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	paramsBufferBinding.descriptorCount = 1;
+	paramsBufferBinding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+	paramsBufferBinding.pImmutableSamplers = nullptr; // Optional
+
+	VkDescriptorSetLayoutBinding indexBufferBinding{};
+	indexBufferBinding.binding = 1;
+	indexBufferBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+	indexBufferBinding.descriptorCount = 1;
+	indexBufferBinding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+	indexBufferBinding.pImmutableSamplers = nullptr; // Optional
+
+	VkDescriptorSetLayoutBinding uvBufferBinding0{};
+	uvBufferBinding0.binding = 2;
+	uvBufferBinding0.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+	uvBufferBinding0.descriptorCount = 1;
+	uvBufferBinding0.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+	uvBufferBinding0.pImmutableSamplers = nullptr; // Optional
+
+	VkDescriptorSetLayoutBinding uvBufferBinding1{};
+	uvBufferBinding1.binding = 3;
+	uvBufferBinding1.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+	uvBufferBinding1.descriptorCount = 1;
+	uvBufferBinding1.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+	uvBufferBinding1.pImmutableSamplers = nullptr; // Optional
+
+	VkDescriptorSetLayoutBinding samplerLayoutBinding{};
+	samplerLayoutBinding.binding = 4;
+	samplerLayoutBinding.descriptorCount = 1;
+	samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	samplerLayoutBinding.pImmutableSamplers = nullptr;
+	samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+
+	VkDescriptorSetLayoutBinding imageStorageBinding{};
+	imageStorageBinding.binding = 5;
+	imageStorageBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+	imageStorageBinding.descriptorCount = 1;
+	imageStorageBinding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+	imageStorageBinding.pImmutableSamplers = nullptr; // Optional
+
+	std::vector<VkDescriptorSetLayoutBinding> bindings;
+	bindings.resize(6);
+	bindings = { paramsBufferBinding, indexBufferBinding, uvBufferBinding0, uvBufferBinding1, samplerLayoutBinding, imageStorageBinding };
+
+	descriptorSetLayout = new MyDescriptorSetLayout(m_device, bindings);
+}
+
+void Copy_Lightmaps_Module::createDescriptorSets(int i, int j)
+{
+	MyDescriptorWriter writer(*descriptorSetLayout, *m_DescriptorPool);
+
+	descriptorSets.resize(1);
+
+	VkDescriptorBufferInfo paramsInfo{};
+	paramsInfo.buffer = shaderParamsBufferObject->getBuffer();
+	paramsInfo.offset = 0;
+	paramsInfo.range = sizeof(ShaderParamsInfo);
+
+	VkDescriptorBufferInfo indexBufferInfo{};
+	indexBufferInfo.buffer = indexBuffer;
+	indexBufferInfo.offset = 0;
+	indexBufferInfo.range = sizeof(aligned_uint) * n_indices;
+
+	VkDescriptorBufferInfo uvBufferInfo0{};
+	uvBufferInfo0.buffer = uvBuffer_0;
+	uvBufferInfo0.offset = 0;
+	uvBufferInfo0.range = sizeof(aligned_vec3) * n_vertices;
+
+	VkDescriptorBufferInfo uvBufferInfo1{};
+	uvBufferInfo1.buffer = uvBuffer_1;
+	uvBufferInfo1.offset = 0;
+	uvBufferInfo1.range = sizeof(aligned_vec3) * n_vertices;
+
+	VkDescriptorImageInfo imageInfo{};
+	imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	imageInfo.imageView = lightmapImageViews_in[i];
+	imageInfo.sampler = mySampler;
+
+	VkDescriptorImageInfo imageStorageInfo{};
+	imageStorageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+	imageStorageInfo.imageView = lightmapImageViews_out[j];
+
+	writer.writeBuffer(0, paramsInfo);
+	writer.writeBuffer(1, indexBufferInfo);
+	writer.writeBuffer(2, uvBufferInfo0);
+	writer.writeBuffer(3, uvBufferInfo1);
+	writer.writeImage(4, imageInfo);
+	writer.writeImage(5, imageStorageInfo);
+	writer.build(descriptorSets[0]);
+}
+
+void Copy_Lightmaps_Module::createComputePipeline()
+{
+	VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
+	pipelineLayoutInfo.sType =
+		VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+	pipelineLayoutInfo.setLayoutCount = 1;
+	pipelineLayoutInfo.pSetLayouts = &(descriptorSetLayout->getDescriptorSetLayout());
+
+	if (vkCreatePipelineLayout(m_device->getDevice(), &pipelineLayoutInfo, nullptr,
+		&pipelineLayout) != VK_SUCCESS) {
+		throw std::runtime_error("failed to create compute pipeline layout!");
+	}
+
+	pipeline = new ComputePipeline(m_device, "shaders/compute_lm_copy.spv", pipelineLayout);
+
+}
+
+void Copy_Lightmaps_Module::createImageViews()
+{
+	for (int i = 0; i < configuration0->lightmap_dimensions.size(); i++)
+	{
+		//VkDeviceSize width = configuration0->lightmap_dimensions[i].Width;
+		//VkDeviceSize height = configuration0->lightmap_dimensions[i].Height;
+		//VkDeviceSize imgSize = width * height * 4;
+
+		VkImageView imgView;
+
+		//int a = VK_IMAGE_ASPECT_STENCIL_BIT;
+
+		imgView = m_device->createImageView(lightmapImages_in[i], VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT);
+
+		lightmapImageViews_in.push_back(imgView);
+	}
+}
+
+void Copy_Lightmaps_Module::createImages()
+{
+	lightmapImages_out.resize(configuration1->lightmap_dimensions.size());
+	lightmapImageViews_out.resize(configuration1->lightmap_dimensions.size());
+	lightmapsMemory_out.resize(configuration1->lightmap_dimensions.size());
+
+	for (int i = 0; i < configuration1->lightmap_dimensions.size(); i++)
+	{
+		VkDeviceSize width = configuration1->lightmap_dimensions[i].Width;
+		VkDeviceSize height = configuration1->lightmap_dimensions[i].Height;
+		VkDeviceSize imgSize = width * height * 4;
+
+		m_device->createImage(width, height, VK_FORMAT_R8G8B8A8_UNORM,
+			VK_IMAGE_TILING_OPTIMAL,
+			VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, lightmapImages_out[i],
+			lightmapsMemory_out[i]);
+
+		lightmapImageViews_out[i] = m_device->createImageView(lightmapImages_out[i], VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT);
+
+		m_device->transitionImageLayout(lightmapImages_out[i], VK_FORMAT_R8G8B8A8_UNORM,
+			VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
+	}
+}
+
+void Copy_Lightmaps_Module::createUVBuffer()
+{
+	n_vertices = uv_struct_0->size();
+
+	{
+		
+
+		VkDeviceSize bufferSize = sizeof(aligned_vec3) * n_vertices;
+
+		MyBufferObject stagingBuffer(m_device, sizeof(aligned_vec3), n_vertices, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+			VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 1);
+
+		stagingBuffer.writeToBuffer((void*)uv_struct_0->data());
+
+		m_device->createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+			VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, uvBuffer_0,
+			uvBufferMemory_0);
+
+		m_device->copyBuffer(stagingBuffer.getBuffer(), uvBuffer_0, bufferSize);
+	}
+
+	{
+
+		VkDeviceSize bufferSize = sizeof(aligned_vec3) * n_vertices;
+
+		MyBufferObject stagingBuffer(m_device, sizeof(aligned_vec3), n_vertices, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+			VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 1);
+
+		stagingBuffer.writeToBuffer((void*)uv_struct_1->data());
+
+		m_device->createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+			VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, uvBuffer_1,
+			uvBufferMemory_1);
+
+		m_device->copyBuffer(stagingBuffer.getBuffer(), uvBuffer_1, bufferSize);
+	}
+}
+
+void Copy_Lightmaps_Module::run()
+{
+
+
+	createDescriptorSetLayout();
+	createComputePipeline();
+	//createImageViews();
+	createImages();
+	createUVBuffer();
+	mySampler = createDefaultSampler();
+
+	int n_maps = configuration1->lightmap_dimensions.size();
+
+	lightmapImages_out.resize(n_maps);
+	lightmapImageViews_out.resize(n_maps);
+	lightmapsMemory_out.resize(n_maps);
+
+	shaderParamsBufferObject = new MyBufferObject(m_device, sizeof(ShaderParamsInfo), 1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+		VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 16);
+
+	for (int i = 0; i < configuration0->lightmap_dimensions.size(); i++)
+	{
+		std::cout << i << " to\n";
+		for (int j = 0; j < configuration1->lightmap_dimensions.size(); j++)
+		{
+			std::cout << "   " << j << ":\n";
+			for (tex_block& a : configuration0->bl_combined[i].blocks)
+			{
+				for (tex_block& b : configuration1->bl_combined[j].blocks)
+				{
+					if (a.element_id == b.element_id && a.surface_no == b.surface_no)
+					{
+						
+						ShaderParamsInfo info;
+						info.lightmap0_height = configuration0->lightmap_dimensions[i].Height;
+						info.lightmap0_width = configuration0->lightmap_dimensions[i].Width;
+
+						info.lightmap1_height = configuration1->lightmap_dimensions[j].Height;
+						info.lightmap1_width = configuration1->lightmap_dimensions[j].Width;
+						//info.intensity = random_number() % 255;
+						info.intensity = 255;
+
+						int element_no = element_by_element_id->data()[a.element_id];
+						int surface_no = a.surface_no;
+
+
+						u16 begin = surface_index->data[surface_index->offset[element_no] + surface_no].begin_i;
+						u16 end = surface_index->data[surface_index->offset[element_no] + surface_no].end_i;
+
+						std::cout << "       "<<element_no << "," << surface_no << ", " << (end - begin) / 3 << " triangles ";
+
+						info.face_index_offset = begin;
+						info.face_n_indices = end - begin;
+						//info.f
+
+						shaderParamsBufferObject->writeToBuffer((void*)&info);
+
+						execute(i, j, a.element_id, a.surface_no, (end-begin)/3);
+					}
+				}
+			}
+			
+		}
+	}
+
+	delete shaderParamsBufferObject;
+
+	vkDestroySampler(m_device->getDevice(), mySampler, NULL);
+
+	descriptorSetLayout->cleanup();
+	pipeline->cleanup();
+
+	vkDestroyPipelineLayout(m_device->getDevice(), pipelineLayout, nullptr);
+
+	vkDestroyBuffer(m_device->getDevice(), uvBuffer_0, nullptr);
+	vkFreeMemory(m_device->getDevice(), uvBufferMemory_0, nullptr);
+
+	vkDestroyBuffer(m_device->getDevice(), uvBuffer_1, nullptr);
+	vkFreeMemory(m_device->getDevice(), uvBufferMemory_1, nullptr);
+
+	//for (auto& imgView : lightmapImageViews_in)
+	//	vkDestroyImageView(m_device->getDevice(), imgView, nullptr);
+}
+
+void Copy_Lightmaps_Module::execute(int i,int j,int element_id,int surface_no, int n_triangles)
+{
+
+	createDescriptorSets(i,j);
+
+	std::cout << "  compute shader "<<n_triangles<<" workgroups";
+
+	VkCommandBuffer commandBuffer = m_device->beginSingleTimeCommands();
+
+	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE,
+		pipeline->getPipeline());
+
+	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineLayout, 0, 1,
+		&descriptorSets[0], 0, 0);
+
+	uint32_t work_length = 1;
+	uint32_t work_height = 1;
+
+	uint32_t n_WorkGroups_x = n_triangles;// +configuration->lightmap_dimensions[n].Width / (32 * work_length);
+	uint32_t n_WorkGroups_y = 1;// +configuration->lightmap_dimensions[n].Height / (8 * work_height);
+
+	vkCmdDispatch(commandBuffer, n_WorkGroups_x, n_WorkGroups_y, 1);
+
+	m_device->endSingleTimeCommands(commandBuffer);
+
+	m_DescriptorPool->freeDescriptorsSets(descriptorSets);
+
+	vkDeviceWaitIdle(m_device->getDevice());
+	std::cout << "...execution complete\n";
+}
+
+void Copy_Lightmaps_Module::destroyImages()
+{
+	for (auto& imgView : lightmapImageViews_out)
+		vkDestroyImageView(m_device->getDevice(), imgView, nullptr);
+
+	for (auto& img : lightmapImages_out)
+		vkDestroyImage(m_device->getDevice(), img, nullptr);
+
+	for (auto& imgMem : lightmapsMemory_out)
+		vkFreeMemory(m_device->getDevice(), imgMem, nullptr);
 }

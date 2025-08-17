@@ -678,6 +678,12 @@ void GeometryStack::make_index_lists()
         n_total_faces += elements[i].brush.faces.size();
     }
 
+    n_total_surfaces = 0;
+    for (int i = 1; i < elements.size(); i++)
+    {
+        n_total_surfaces += elements[i].surfaces.size();
+    }
+
     element_id_by_face_n.resize(n_total_faces);
     face_j_by_face_n.resize(n_total_faces);
 
@@ -1042,6 +1048,11 @@ polyfold* GeometryStack::get_geometry(face_index idx)
 int GeometryStack::get_element_index(face_index idx)
 {
     return get_element_index_by_id(idx.brush);
+}
+
+int GeometryStack::n_surfaces()
+{
+    return n_total_surfaces;
 }
 
 int GeometryStack::n_faces()

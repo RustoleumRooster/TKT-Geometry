@@ -48,7 +48,7 @@ void Lightmap_Manager::setLightmapTextures(geometry_scene* geo_scene, const std:
 
 	for (int i = 0; i < material_groups.size(); i++)
 	{
-		if (material_groups[i].has_lightmap == false)
+		if (material_groups[i].has_lightmap == false || material_groups[i].lightmap_no >= new_textures.size())
 		{
 			continue;
 		}
@@ -152,7 +152,9 @@ void Lightmap_Configuration::run_sunlight(geometry_scene* geo_scene)
 
 	my_lightmaps.clear();
 
-	Lightmap_Routine(geo_scene, this, my_lightmaps);
+	Lightmap_Routine(geo_scene, this, my_lightmaps,&geo_scene->geoNode()->get_lightmap_config(1));
+	//Lightmap_Routine2(geo_scene, this, my_lightmaps,&geo_scene->geoNode()->get_lightmap_config(1));
+	Lightmap_Routine2(geo_scene, this, my_lightmaps, this);
 
 }
 
@@ -167,7 +169,7 @@ f32 reduce_dimension_base2(f32 dim, int n = 1)
 	u16 lwi = static_cast<u16>(floor(log_width));
 	lwi -= n;
 	lwi = lwi > 3 ? lwi : 3;
-	lwi = lwi > 6 ? 6 : lwi;
+	lwi = lwi > 8 ? 8 : lwi;
 
 	return exp2(lwi);
 }
@@ -550,7 +552,8 @@ void initialize_lightmap_block(GeometryStack* geo_node, int element_id, int surf
 			}
 		}
 
-		if (element->surfaces[surface_no].lightmap_info.bOverrideSize == true)
+		//if (element->surfaces[surface_no].lightmap_info.bOverrideSize == true)
+		if(false)
 		{
 			b.bFlipped = element->surfaces[surface_no].lightmap_info.bFlipped;
 			b.height = element->surfaces[surface_no].lightmap_info.height;
@@ -592,6 +595,7 @@ void Lightmap_Configuration::calc_lightmap_uvs(const std::vector<TextureMaterial
 			calc_lightmap_uvs(geo_node,b);
 		}
 	}
+	int z = 0;
 }
 
 void Lightmap_Configuration::calc_lightmap_uvs(GeometryStack* geo_node, Lightmap_Block b)
@@ -650,13 +654,41 @@ void Lightmap_Configuration::calc_lightmap_uvs(GeometryStack* geo_node, Lightmap
 	}
 }
 
-void Lightmap_Configuration::set_lightmap_uvs_to_mesh(dimension2du lm_dimension, tex_block& block)
+void Lightmap_Configuration::transform_lightmap_uvs(MeshNode_Interface_Edit* edit_node, int element_no, int surface_no, const matrix4& mat)
+{
+	u16 offset_e = edit_node->surface_index.offset[element_no];
+
+	u16 offset_i = edit_node->get_buffer_index_by_face(offset_e + surface_no);
+
+	//cout << element_no << "," << surface_no << " " << offset_i<<" : "<< edit_node->geometry_raw_vertices.len[offset_i] << " vertices\n";
+
+	for (u16 i = 0; i < edit_node->geometry_raw_vertices.len[offset_i]; i++)
+	{
+		u16 idx_e = edit_node->geometry_raw_vertices.offset[offset_i] + i;
+
+		f32 V4[4] = { 0,0,0,1 };
+
+		V4[0] = lm_raw_uvs.data.data()[idx_e].V.X;
+		V4[1] = lm_raw_uvs.data.data()[idx_e].V.Y;
+
+		mat.multiplyWith1x4Matrix(V4);
+
+		lm_raw_uvs.data.data()[idx_e].V.X = V4[0];
+		lm_raw_uvs.data.data()[idx_e].V.Y = V4[1];
+
+		//cout << "   " << idx_e << ":  " << lm_raw_uvs.data.data()[idx_e].V.X << "," << lm_raw_uvs.data.data()[idx_e].V.Y << "\n";
+	}
+
+}
+
+
+void Lightmap_Configuration::copy_raw_lightmap_uvs_to_mesh(dimension2du lm_dimension, tex_block& block)
 {
 	MeshNode_Interface_Edit* mesh_node = &geo_node->edit_meshnode_interface;
 
 	geo_element* e = geo_node->get_element_by_id(block.element_id);
 	poly_surface* s = &e->surfaces[block.surface_no];
-	
+
 	std::vector<int> faces;
 
 	for (int f : s->my_faces)
@@ -666,6 +698,14 @@ void Lightmap_Configuration::set_lightmap_uvs_to_mesh(dimension2du lm_dimension,
 		if (f_j != -1)
 			faces.push_back(f_j);
 	}
+
+	copy_raw_lightmap_uvs_to_mesh(mesh_node, faces);
+}
+
+void Lightmap_Configuration::transform_lightmap_uvs(dimension2du lm_dimension, tex_block& block)
+{
+	MeshNode_Interface_Edit* mesh_node = &geo_node->edit_meshnode_interface;
+	int element_no = geo_node->element_by_element_id[block.element_id];
 
 	matrix4 flip_mat   (0, 1, 0, 0,
 						1, 0, 0, 0,
@@ -681,16 +721,34 @@ void Lightmap_Configuration::set_lightmap_uvs_to_mesh(dimension2du lm_dimension,
 
 	m.setTranslation(vector3df((f32)(block.coords.UpperLeftCorner.X + 0.5) / (f32)lm_dimension.Width,
 		(f32)(block.coords.UpperLeftCorner.Y + 0.5) / (f32)lm_dimension.Height, 0));
-
-	copy_raw_lightmap_uvs_to_mesh(mesh_node, faces);
-
+	
 	if (block.bFlipped)
 	{
-		apply_transform_to_uvs(mesh_node, faces, MAP_UVS_LIGHTMAP, flip_mat);
+		transform_lightmap_uvs(mesh_node, element_no,block.surface_no, flip_mat);
 	}
 
-	apply_transform_to_uvs(mesh_node, faces, MAP_UVS_LIGHTMAP, m);
+	transform_lightmap_uvs(mesh_node, element_no, block.surface_no, m);
+		
+	u16 offset_e = mesh_node->surface_index.offset[element_no];
+	u16 offset_i = mesh_node->get_buffer_index_by_face(offset_e + block.surface_no);
 
+	//cout << element_no << "," << block.surface_no << " " << offset_i<<" : "<< mesh_node->geometry_raw_vertices.len[offset_i] << " vertices\n";
+
+	for (u16 i = 0; i < mesh_node->geometry_raw_vertices.len[offset_i]; i++)
+	{
+		u16 idx_e = mesh_node->geometry_raw_vertices.offset[offset_i] + i;
+
+		f32 x = lm_raw_uvs.data.data()[idx_e].V.X * lm_dimension.Width;
+		f32 y = lm_raw_uvs.data.data()[idx_e].V.Y * lm_dimension.Height;
+
+		x = (floorf(x)+0.5)/ lm_dimension.Width;
+		y = (floorf(y)+0.5)/ lm_dimension.Height;
+
+		lm_raw_uvs.data.data()[idx_e].V.X = x;
+		lm_raw_uvs.data.data()[idx_e].V.Y = y;
+
+		//cout << "   " << idx_e << ":  " << lm_raw_uvs.data.data()[idx_e].V.X << "," << lm_raw_uvs.data.data()[idx_e].V.Y << "\n";
+	}
 }
 
 
@@ -915,12 +973,25 @@ void Lightmap_Configuration::layout_lightmaps()
 	}
 }
 
+void Lightmap_Configuration::transform_lightmap_uvs()
+{
+	for (blocklist& b : bl_combined)
+	{
+		for (tex_block& tb : b.blocks)
+		{
+			transform_lightmap_uvs(dimension2du(256, 256), tb);
+		}
+	}
+}
+
 void Lightmap_Configuration::apply_lightmap_uvs_to_mesh()
 {
 	for (blocklist& b : bl_combined)
 	{
 		for (tex_block& tb : b.blocks)
-			set_lightmap_uvs_to_mesh(dimension2du(256, 256), tb);
+		{
+			copy_raw_lightmap_uvs_to_mesh(dimension2du(256, 256), tb);
+		}
 	}
 
 	geo_node->final_meshnode_interface.copy_lightmap_uvs();
@@ -941,48 +1012,19 @@ void Lightmap_Configuration::initialize_soa_arrays(scene::SMesh* mesh)
 	{
 
 		u32(*length)(SMesh*, u32);
-		vector3df(*item0)(SMesh*, u32, u32);
-		vector2df(*item1)(SMesh*, u32, u32);
+		aligned_vec3(*item0)(SMesh*, u32, u32);
 
 		length = [](SMesh* mesh_, u32 index) -> u32 {
 			return ((mesh_buffer_type*)mesh_->getMeshBuffer(index))->getVertexCount();
 			};
 
-		item0 = [](SMesh* mesh_, u32 i, u32 j) -> vector3df {
-			return vector3df{ ((mesh_buffer_type*)mesh_->getMeshBuffer(i))->Vertices[j].Pos };
+		item0 = [](SMesh* mesh_, u32 i, u32 j) -> aligned_vec3 {
+			return aligned_vec3{ core::vector3df{0,0,0} };
 			};
 
-		item1 = [](SMesh* mesh_, u32 i, u32 j) -> vector2df {
-			return vector2df{ 0,0 };
-			};
-
-		lm_raw_uvs.fill_data(mesh, n, length, item0, item1);
+		lm_raw_uvs.fill_data(mesh, n, length, item0);
 	}
-
-	//indices
-	{
-		u32(*length)(SMesh*, u32);
-		u16(*item)(SMesh*, u32, u32);
-
-		length = [](SMesh* mesh_, u32 index) -> u32 {
-			return ((mesh_buffer_type*)mesh_->getMeshBuffer(index))->getIndexCount();
-			};
-
-		item = [](SMesh* mesh_, u32 i, u32 j) -> u16 {
-			return u16{ ((mesh_buffer_type*)mesh_->getMeshBuffer(i))->Indices[j] };
-			};
-
-		indices.fill_data(mesh, n, length, item);
-	}
-
-	//correct offsets
-	for (int i = 0; i < lm_raw_uvs.offset.size(); i++)
-	{
-		for (int j = 0; j < indices.len[i]; j++)
-		{
-			indices.data[indices.offset[i] + j] += lm_raw_uvs.offset[i];
-		}
-	}
+	
 }
 
 
@@ -993,9 +1035,9 @@ void Lightmap_Configuration::copy_raw_lightmap_uvs_to_mesh(MeshNode_Interface_Ed
 	for (int b_i : surface)
 	{
 		MeshBuffer_Chunk chunk = mesh_node->get_mesh_buffer(b_i);
-		int offset = this->indices.offset[b_i];
-		int len = this->indices.len[b_i];
-
+		int offset = mesh_node->indices_soa.offset[b_i];
+		int len = mesh_node->indices_soa.len[b_i];
+		//std::cout << b_i << ":\n";
 		int j = chunk.begin_i;
 		for (int i = offset; i < offset + len && j < chunk.end_i; i += 3, j += 3)
 		{
@@ -1007,13 +1049,22 @@ void Lightmap_Configuration::copy_raw_lightmap_uvs_to_mesh(MeshNode_Interface_Ed
 			vtx[1] = &((video::S3DVertex2TCoords*)chunk.buffer->getVertices())[idx1];
 			vtx[2] = &((video::S3DVertex2TCoords*)chunk.buffer->getVertices())[idx2];
 
-			idx0 = this->indices.data[i];
-			idx1 = this->indices.data[i + 1];
-			idx2 = this->indices.data[i + 2];
+			idx0 = mesh_node->indices_soa.data[i].x;
+			idx1 = mesh_node->indices_soa.data[i + 1].x;
+			idx2 = mesh_node->indices_soa.data[i + 2].x;
 
-			vtx[0]->TCoords2 = this->lm_raw_uvs.data1[idx0];
-			vtx[1]->TCoords2 = this->lm_raw_uvs.data1[idx1];
-			vtx[2]->TCoords2 = this->lm_raw_uvs.data1[idx2];
+			vtx[0]->TCoords2.X = this->lm_raw_uvs.data[idx0].V.X;
+			vtx[0]->TCoords2.Y = this->lm_raw_uvs.data[idx0].V.Y;
+
+			vtx[1]->TCoords2.X = this->lm_raw_uvs.data[idx1].V.X;
+			vtx[1]->TCoords2.Y = this->lm_raw_uvs.data[idx1].V.Y;
+
+			vtx[2]->TCoords2.X = this->lm_raw_uvs.data[idx2].V.X;
+			vtx[2]->TCoords2.Y = this->lm_raw_uvs.data[idx2].V.Y;
+
+			//std::cout << " " << vtx[0]->TCoords2.X << "," << vtx[0]->TCoords2.Y << "\n";
+			//std::cout << " " << vtx[1]->TCoords2.X << "," << vtx[1]->TCoords2.Y << "\n";
+			//std::cout << " " << vtx[2]->TCoords2.X << "," << vtx[2]->TCoords2.Y << "\n";
 		}
 	}
 }

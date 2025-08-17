@@ -80,7 +80,7 @@ void fill_vertex_struct(SMesh* mesh, soa_struct_2<aligned_vec3, aligned_vec3>& d
 
 }
 
-void fill_index_struct(SMesh* mesh, soa_struct<aligned_uint>& dest)
+void fill_index_struct_with_offsets(SMesh* mesh, soa_struct<aligned_uint>& dest)
 {
     u32 n = mesh->getMeshBufferCount();
 
@@ -96,6 +96,16 @@ void fill_index_struct(SMesh* mesh, soa_struct<aligned_uint>& dest)
         };
 
     dest.fill_data(mesh, n, length, item);
+
+    soa_offsets offsets;
+
+    length = [](SMesh* mesh_, u32 index) -> u32 {
+        return ((mesh_buffer_type*)mesh_->getMeshBuffer(index))->getVertexCount();
+        };
+
+    offsets.fill_data(mesh, n, length);
+
+    add_data_offsets(dest, offsets);
 }
 
 

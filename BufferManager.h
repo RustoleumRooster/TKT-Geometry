@@ -42,6 +42,13 @@ struct MeshBuffer_Chunk
     unsigned int end_i;
 };
 
+struct MeshIndex_Chunk
+{
+    unsigned int buffer;
+    unsigned int begin_i;
+    unsigned int end_i;
+};
+
 struct TextureMaterial
 {
     video::ITexture* texture;
@@ -57,6 +64,7 @@ struct TextureMaterial
     std::vector<int> faces;                     //unique to entire scene
     std::vector<face_index> my_faces;           //local to element
     std::vector<std::pair<int, int>> surfaces;  //pair: element no, surface no
+    //std::vector<int> surfaces;
     std::vector<Lightmap_Block> blocks;
 };
 
@@ -90,6 +98,15 @@ public:
 
     int get_material_group_by_face(int f_i);
 
+    soa_struct<aligned_vec3> geometry_raw_vertices;
+    void fill_raw_vertices_buffer();
+
+    soa_struct<aligned_uint> indices_soa; //for indexing into a SOA buffer
+
+    void fill_surface_index();
+
+    soa_struct<MeshIndex_Chunk> surface_index;
+
 protected:
     
     virtual void generate_mesh_buffer(scene::SMesh*)=0;
@@ -103,6 +120,7 @@ protected:
     MyEventReceiver* event_receiver=NULL;
 
     std::vector<int> face_to_material;
+    
 
     GeometryStack* geo_scene = NULL;
 
@@ -162,9 +180,12 @@ public:
     int get_n_triangles(int);
     int get_first_triangle(int);
 
+    
+
     //===========================
     //This just converts an index on final buffer into an index on the edit buffer, since the order is different
     std::vector<int> edit_mb_buffer;
+    
 
 protected:
 
@@ -175,6 +196,11 @@ protected:
     std::vector<int> face_to_mb_end;
     std::vector<int> face_to_mb_faces;
 
+    std::vector<int> surface_to_mb_buffer;
+    std::vector<int> surface_to_mb_begin;
+    std::vector<int> surface_to_mb_end;
+
+    
     
     std::vector<int> mb_buffer;
     std::vector<int> mb_begin;

@@ -5,6 +5,7 @@
 #include <vector>
 #include "BufferManager.h"
 #include <iterator>
+#include "soa.h"
 
 class GeometryStack;
 class geometry_scene;
@@ -82,16 +83,22 @@ public:
 	void split_material_groups();
 	void apply_transforms_to_mesh(irr::scene::SMesh*);
 	void apply_lightmap_uvs_to_mesh();
-	void set_lightmap_uvs_to_mesh(dimension2du lm_dimension, tex_block& block);
+	
 	void set_reduction(int);
 	void initialize_soa_arrays(scene::SMesh* mesh);
 
 	void calc_lightmap_uvs(const std::vector<TextureMaterial>& material_groups);
 	void calc_lightmap_uvs(GeometryStack* geo_node, Lightmap_Block b);
 
+	
+	void transform_lightmap_uvs(dimension2du lm_dimension, tex_block& block);
+	void transform_lightmap_uvs(MeshNode_Interface_Edit* , int element_no, int surface_no, const matrix4& mat);
+	void transform_lightmap_uvs();
+
 	template<class map_type>
 	void map_uvs(MeshNode_Interface_Edit* mesh_node, int surface_offset, const std::vector<int>& surface, map_type& mapper, int uv_type);
 
+	void copy_raw_lightmap_uvs_to_mesh(dimension2du lm_dimension, tex_block& block);
 	void copy_raw_lightmap_uvs_to_mesh(MeshNode_Interface_Edit* mesh_node, const std::vector<int>& surface);
 
 	const std::vector<TextureMaterial>& get_materials(){ return materials; }
@@ -102,8 +109,8 @@ public:
 
 	//================================
 	//structs for holding lightmap uvs
-	soa_struct_2<vector3df, vector2df> lm_raw_uvs;
-	soa_struct<u16> indices;
+	soa_struct<aligned_vec3> lm_raw_uvs;
+	//soa_struct<u16> indices;
 
 	std::vector<TextureMaterial> materials;
 	std::vector<min_lm_block> lightmap_blocks;
@@ -128,15 +135,15 @@ void Lightmap_Configuration::map_uvs(MeshNode_Interface_Edit* mesh_node, int sur
 	{
 		int f_j = mesh_node->get_buffer_index_by_face(surface_offset + b_i);
 
-		int offset = this->indices.offset[f_j];
-		int len = this->indices.len[f_j];
+		int offset = mesh_node->indices_soa.offset[f_j];
+		int len = mesh_node->indices_soa.len[f_j];
 
 		for (int i = offset; i < offset + len; i += 3)
 		{
 
-			mapper.calc(this->lm_raw_uvs.data0.data(),		//vertices
-				this->lm_raw_uvs.data1.data(),		//uvs
-				&this->indices.data[i]);			//indices
+			mapper.calc(mesh_node->geometry_raw_vertices.data.data(),		//vertices
+				this->lm_raw_uvs.data.data(),		//uvs
+				&mesh_node->indices_soa.data[i]);			//indices
 
 			//std::cout << " " << vtx[0]->TCoords2.X << "," << vtx[0]->TCoords2.Y << "  ";
 			//std::cout << " " << vtx[1]->TCoords2.X << "," << vtx[1]->TCoords2.Y << "  ";

@@ -138,6 +138,7 @@ public:
     int get_element_index(face_index);
 
     int n_faces();
+    int n_surfaces();
     poly_face* brush_face_by_n(int);
     poly_face* geo_face_by_n(int);
     polyfold* brush_by_n(int);
@@ -160,6 +161,12 @@ public:
     void set_lightmap_config(int);
     
     REFLECT()
+
+    int n_total_faces = 0;
+    int n_total_surfaces = 0;
+    std::vector<int> element_id_by_face_n;
+    std::vector<int> face_j_by_face_n;
+    std::vector<int> element_by_element_id;
 
 private:
 
@@ -203,10 +210,7 @@ private:
 
     LineHolder loops_graph;
 
-    int n_total_faces = 0;
-    std::vector<int> element_id_by_face_n;
-    std::vector<int> face_j_by_face_n;
-    std::vector<int> element_by_element_id;
+    
 
     friend class Open_Geometry_File;
     friend class geometry_scene;

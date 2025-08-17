@@ -26,7 +26,7 @@ class Sunlight_Module : public Vulkan_Module
 		uint32_t n_nodes;
 
 		//face info
-		uint32_t face_vertex_offset;
+		uint32_t face_vertex_offset; //not used in shader
 		uint32_t face_index_offset;
 		uint32_t face_n_indices;
 
