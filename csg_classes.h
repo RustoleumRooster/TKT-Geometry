@@ -3,10 +3,35 @@
 
 #include "Reflection.h"
 #include "BVH.h"
+#include "soa.h"
 
 using namespace irr;
 
 class polyfold;
+
+
+class canonical_brush
+{
+public:
+    int n_quads = 0;
+    int length = 0;
+    int height = 0;
+
+    std::vector<u16> vertices;
+    std::vector<aligned_vec3> uvs;
+    std::vector<int> face_ref;
+    void visualize(const polyfold*, LineHolder&) const;
+    void initialize(int n);
+    void init_quad(int n, polyfold* pf, int f, int v0, int v1, int v2, int v3);
+    void dump_quad(polyfold* pf, int n);
+    int get_real_length(polyfold* pf);
+    int get_real_height(polyfold* pf);
+    void layout_uvs(f32 len, f32 height);
+    void layout_uvs_texture(f32 len, f32 height);
+    bool barycentric(vector3df p, vector3df a, vector3df b, vector3df c, f32& u, f32& v, f32& w);
+    bool map_point(polyfold* pf, int face_no, vector3df p, aligned_vec3& uv);
+    bool map_point(polyfold* pf, int face_no, vector3df p, vector2df& uv);
+};
 
 class poly_vert
 {
@@ -120,6 +145,7 @@ enum
     SURFACE_GROUP_CYLINDER,
     SURFACE_GROUP_SPHERE,
     SURFACE_GROUP_DOME,
+    SURFACE_GROUP_CANONICAL,
     SURFACE_GROUP_CUSTOM_UVS_BRUSH,
     SURFACE_GROUP_CUSTOM_UVS_GEOMETRY
 };
@@ -140,6 +166,7 @@ public:
     core::vector3df vec1 = core::vector3df(0,0,0);
     //std::vector<core::vector2df> texcoords;
     std::vector<point_texcoord> texcoords;
+    canonical_brush c_brush;
     int height;
     int radius;
     //int n_columns;

@@ -2,8 +2,13 @@
 #include "csg_classes.h"
 #include "GeometryStack.h"
 #include <algorithm>
+#include "soa.h"
 
 using namespace irr;
+
+#define PRINTV(x) x.X <<","<<x.Y<<","<<x.Z<<" "
+
+#define pi 3.141592653
 
 core::vector3df get_center(polyfold pf)
 {
@@ -36,7 +41,16 @@ f32 get_angle_phi_for_face(vector3df point, vector3df vec1, vector3df iY, polyfo
     return az;
 }
 
-void do_primitive_calculations(polyfold& pf)
+void add_face_vertices_from_edges(polyfold& pf, poly_face& f)
+{
+    for (int e_i : f.edges)
+    {
+        f.addVertex(pf.edges[e_i].v0);
+        f.addVertex(pf.edges[e_i].v1);
+    }
+}
+
+void do_primitive_calculations(polyfold& pf, bool calc_normals = true)
 {
     for(int f_i=0;f_i<pf.faces.size();f_i++)
     {
@@ -47,7 +61,9 @@ void do_primitive_calculations(polyfold& pf)
             pf.faces[f_i].addVertex(pf.edges[e_i].v0);
             pf.faces[f_i].addVertex(pf.edges[e_i].v1);
         }
-        pf.calc_normal(f_i);
+
+        if(calc_normals)
+            pf.calc_normal(f_i);
     }
 
     f32 xsum=0;
@@ -67,15 +83,17 @@ void do_primitive_calculations(polyfold& pf)
 
     core::vector3df pf_center(xsum,ysum,zsum);
 
-    for(int f_i=0;f_i<pf.faces.size();f_i++)
+    if (calc_normals)
     {
-        
-        core::vector3df r = pf.faces[f_i].m_center - pf_center;
-        f32 dp = pf.faces[f_i].m_normal.dotProduct(r);
-        //std::cout << f_i << ": " << dp << "\n";
-        if(dp<0)
+        for (int f_i = 0; f_i < pf.faces.size(); f_i++)
         {
-            pf.faces[f_i].flip_normal();
+
+            core::vector3df r = pf.faces[f_i].m_center - pf_center;
+            f32 dp = pf.faces[f_i].m_normal.dotProduct(r);
+            if (dp < 0)
+            {
+                pf.faces[f_i].flip_normal();
+            }
         }
     }
 
@@ -248,9 +266,333 @@ geo_element make_poly_plane(int length, int width)
     return geo;
 }
 
+geo_element make_curve(int degrees_begin, int degrees_end, int inner_radius0, int outer_radius0, int height, int nSections)
+{
+    geo_element geo;
+    polyfold& pf = geo.brush;
+
+    f32 inner_radius = inner_radius0 / cos(pi / nSections);
+    f32 outer_radius = outer_radius0 / cos(pi / nSections);
+
+    f32 start_angle = pi * ((f32)degrees_begin / 180.0);
+    f32 end_angle = pi * ((f32)degrees_end / 180.0);
+    f32 theta_inc = (end_angle - start_angle) / nSections;
+
+    vector<int> top_face, bottom_face, inner_curve, outer_curve, cap_begin, cap_end;
+    cap_begin = vector<int>{ 0,1,2,3 };
+    cap_end = vector<int>{ 4 * nSections , 4 * nSections + 1, 4 * nSections + 2, 4 * nSections + 3};
+
+    canonical_brush top_brush, bottom_brush, inner_brush, outer_brush;
+    top_brush.initialize(nSections);
+    bottom_brush.initialize(nSections);
+    inner_brush.initialize(nSections);
+    outer_brush.initialize(nSections);
+
+    pf.surface_groups.resize(5);
+
+    geo.surfaces.resize(6);
+
+    geo.surfaces[0].surface_type = SURFACE_GROUP_CANONICAL;
+    geo.surfaces[1].surface_type = SURFACE_GROUP_CANONICAL;
+    geo.surfaces[2].surface_type = SURFACE_GROUP_CYLINDER;
+    geo.surfaces[3].surface_type = SURFACE_GROUP_CYLINDER;
+    geo.surfaces[4].surface_type = SURFACE_GROUP_STANDARD;
+    geo.surfaces[5].surface_type = SURFACE_GROUP_STANDARD;
+
+    //int inner_len = 0;
+    //int outer_len = 0;
+
+    for (int i = 0; i < nSections + 1; i++)
+    {
+        f32 theta = start_angle + theta_inc * i;
+        pf.vertices.push_back(poly_vert(cos(theta) * inner_radius, 0, sin(theta) * inner_radius));
+        pf.vertices.push_back(poly_vert(cos(theta) * inner_radius, height, sin(theta) * inner_radius));
+
+        pf.vertices.push_back(poly_vert(cos(theta) * outer_radius, 0, sin(theta) * outer_radius));
+        pf.vertices.push_back(poly_vert(cos(theta) * outer_radius, height, sin(theta) * outer_radius));
+
+        top_face.push_back(i * 4 + 1);
+        top_face.push_back(i * 4 + 3);
+
+        bottom_face.push_back(i * 4);
+        bottom_face.push_back(i * 4 + 2);
+
+        inner_curve.push_back(i * 4);
+        inner_curve.push_back(i * 4 + 1);
+
+        outer_curve.push_back(i * 4 + 2);
+        outer_curve.push_back(i * 4 + 3);
+    }
+
+    //TOP
+    //if(false)
+    {
+        pf.faces.push_back(poly_face{});
+        int f_no = pf.faces.size() - 1;
+        poly_face& f = pf.faces[f_no];
+
+        int e0 = pf.get_edge_or_add(top_face[0], top_face[1], 0);
+        int e1 = pf.get_edge_or_add(top_face[nSections * 2], top_face[nSections * 2 + 1], 0);
+
+        f.addEdge(e0);
+        f.addEdge(e1);
+
+        for (int i = 0; i < nSections; i++)
+        {
+            e0 = pf.get_edge_or_add(top_face[2 * i], top_face[2 * (i + 1)], 0);
+            e1 = pf.get_edge_or_add(top_face[2 * i + 1], top_face[2 * (i + 1) + 1], 0);
+
+            f.addEdge(e0);
+            f.addEdge(e1);
+
+            top_brush.init_quad(i, &pf, f_no, top_face[2 * i + 1],
+                top_face[2 * (i + 1) + 1],
+                top_face[2 * (i + 1)],
+                top_face[2 * i]);
+
+           // inner_len += vector3df(pf.vertices[top_face[2 * i]].V - pf.vertices[top_face[2 * (i + 1)]].V).getLength();
+           // outer_len += vector3df(pf.vertices[top_face[2 * i + 1]].V - pf.vertices[top_face[2 * (i + 1) + 1]].V).getLength();
+        }
+        //cout <<"len ="<< inner_len << " " << outer_len << "\n";
+
+        f.surface_group = 0;
+        f.surface_no = 0;
+        geo.surfaces[0].my_faces.push_back(f_no);
+
+        surface_group& sg = pf.surface_groups[0];
+        sg.type = SURFACE_GROUP_CANONICAL;
+        sg.point = vector3df{ 0,0,0 };
+        sg.vec = core::vector3df(0, 1, 0);
+        sg.vec1 = core::vector3df(0, 0, 1);
+        sg.c_brush = top_brush;
+
+        add_face_vertices_from_edges(pf, f);
+
+        pf.calc_center(f_no);
+        f.m_normal = vector3df{ 0,1,0 };
+    }
+
+    //BOTTOM
+    //if(false)
+    {
+        pf.faces.push_back(poly_face{});
+        int f_no = pf.faces.size() - 1;
+        poly_face& f = pf.faces[f_no];
+
+        int e0 = pf.get_edge_or_add(bottom_face[0], bottom_face[1], 0);
+        int e1 = pf.get_edge_or_add(bottom_face[nSections * 2], bottom_face[nSections * 2 + 1], 0);
+
+        f.addEdge(e0);
+        f.addEdge(e1);
+
+        for (int i = 0; i < nSections; i++)
+        {
+            e0 = pf.get_edge_or_add(bottom_face[2 * i], bottom_face[2 * (i + 1)], 0);
+            e1 = pf.get_edge_or_add(bottom_face[2 * i + 1], bottom_face[2 * (i + 1) + 1], 0);
+
+            f.addEdge(e0);
+            f.addEdge(e1);
+
+            bottom_brush.init_quad(i, &pf, f_no, bottom_face[2 * i + 1],
+                bottom_face[2 * (i + 1) + 1],
+                bottom_face[2 * (i + 1)],
+                bottom_face[2 * i]);
+        }
+
+        f.surface_group = 1;
+        f.surface_no = 1;
+        geo.surfaces[1].my_faces.push_back(f_no);
+
+        surface_group& sg = pf.surface_groups[1];
+        sg.type = SURFACE_GROUP_CANONICAL;
+        sg.point = vector3df{ 0,0,0 };
+        sg.vec = core::vector3df(0, 1, 0);
+        sg.vec1 = core::vector3df(0, 0, 1);
+        sg.c_brush = bottom_brush;
+
+        add_face_vertices_from_edges(pf, f);
+
+        pf.calc_center(f_no);
+        f.m_normal = vector3df{ 0,-1,0 };
+    }
+
+    //INNER
+    //if(false)
+    {
+        for (int i = 0; i < nSections; i++)
+        {
+            pf.faces.push_back(poly_face{});
+            int f_no = pf.faces.size() - 1;
+            poly_face& f = pf.faces[f_no];
+
+            int e0 = pf.get_edge_or_add(inner_curve[2 * i], inner_curve[2 * (i + 1)], 0);
+            int e1 = pf.get_edge_or_add(inner_curve[2 * i + 1], inner_curve[2 * (i + 1) + 1], 0);
+            int e2 = pf.get_edge_or_add(inner_curve[2 * i], inner_curve[2 * i + 1], 0);
+            int e3 = pf.get_edge_or_add(inner_curve[2 * (i + 1)], inner_curve[2 * (i + 1) + 1], 0);
+
+            f.addEdge(e0);
+            f.addEdge(e1);
+            f.addEdge(e2);
+            f.addEdge(e3);
+
+            inner_brush.init_quad(i, &pf, f_no, inner_curve[2 * i + 1],
+                inner_curve[2 * (i + 1) + 1],
+                inner_curve[2 * (i + 1)],
+                inner_curve[2 * i]);
+
+            f.surface_group = 2;
+            f.surface_no = 2;
+            geo.surfaces[2].my_faces.push_back(f_no);
+
+            add_face_vertices_from_edges(pf, f);
+
+            pf.calc_normal(f_no);
+            if (f.m_normal.dotProduct(f.m_center) > 0)
+                f.flip_normal();
+        }
+
+        surface_group& sg = pf.surface_groups[2];
+        sg.type = SURFACE_GROUP_CYLINDER;
+        sg.point = vector3df(0, 0, 0);
+        sg.vec = core::vector3df(0, 1, 0);
+        sg.vec1 = core::vector3df(0, 0, 1);
+        sg.height = height;
+        sg.radius = inner_radius;
+        sg.c_brush = inner_brush;
+
+        
+    }
+
+    //OUTER
+    //if(false)
+    {
+        for (int i = 0; i < nSections; i++)
+        {
+            pf.faces.push_back(poly_face{});
+            int f_no = pf.faces.size() - 1;
+            poly_face& f = pf.faces[f_no];
+
+            int e0 = pf.get_edge_or_add(outer_curve[2 * i], outer_curve[2 * (i + 1)], 0);
+            int e1 = pf.get_edge_or_add(outer_curve[2 * i + 1], outer_curve[2 * (i + 1) + 1], 0);
+            int e2 = pf.get_edge_or_add(outer_curve[2 * i], outer_curve[2 * i + 1], 0);
+            int e3 = pf.get_edge_or_add(outer_curve[2 * (i + 1)], outer_curve[2 * (i + 1) + 1], 0);
+
+            f.addEdge(e0);
+            f.addEdge(e1);
+            f.addEdge(e2);
+            f.addEdge(e3);
+            
+            outer_brush.init_quad(i, &pf, f_no, outer_curve[2 * i + 1],
+                outer_curve[2 * (i + 1) + 1],
+                outer_curve[2 * (i + 1)],
+                outer_curve[2 * i]);
+
+            f.surface_group = 3;
+            f.surface_no = 3;
+            geo.surfaces[3].my_faces.push_back(f_no);
+
+            add_face_vertices_from_edges(pf, f);
+
+            pf.calc_normal(f_no);
+            if (f.m_normal.dotProduct(f.m_center) < 0)
+                f.flip_normal();
+        }
+
+        surface_group& sg = pf.surface_groups[3];
+        sg.type = SURFACE_GROUP_CYLINDER;
+        sg.point = vector3df(0, 0, 0);
+        sg.vec = core::vector3df(0, 1, 0);
+        sg.vec1 = core::vector3df(0, 0, 1);
+        sg.height = height;
+        sg.radius = outer_radius;
+        sg.c_brush = outer_brush;
+    }
+
+    f32 ref_radius = inner_radius + (outer_radius - inner_radius) * 0.5;
+    f32 ref_angle_0 = start_angle + theta_inc * 0.5;
+    f32 ref_angle_1 = start_angle + theta_inc * (f32)(nSections - 0.5);
+
+    vector3df ref_point_0 = vector3df(cos(ref_angle_0) * ref_radius, 0, sin(ref_angle_0) * ref_radius);
+    vector3df ref_point_1 = vector3df(cos(ref_angle_1) * ref_radius, 0, sin(ref_angle_1) * ref_radius);
+    
+    //CAP 1
+    //if (false)
+    {
+        surface_group& sg = pf.surface_groups[4];
+        sg.type = SURFACE_GROUP_STANDARD;
+        sg.point = vector3df{ 0,0,0 };
+        sg.vec = core::vector3df(0, 1, 0);
+        sg.vec1 = core::vector3df(0, 0, 1);
+
+        pf.faces.push_back(poly_face{});
+        int f_no = pf.faces.size() - 1;
+        poly_face& f = pf.faces[f_no];
+
+        int e0 = pf.get_edge_or_add(0, 1, 0);
+        int e1 = pf.get_edge_or_add(1, 3, 0);
+        int e2 = pf.get_edge_or_add(2, 3, 0);
+        int e3 = pf.get_edge_or_add(2, 0, 0);
+
+        f.addEdge(e0);
+        f.addEdge(e1);
+        f.addEdge(e2);
+        f.addEdge(e3);
+        f.surface_group = 4;
+        f.surface_no = 4;
+        geo.surfaces[4].my_faces.push_back(f_no);
+
+        add_face_vertices_from_edges(pf, f);
+
+        pf.calc_normal(f_no);
+        if (f.m_normal.dotProduct(f.m_center - ref_point_0) < 0)
+            f.flip_normal();
+    }
+
+    //CAP 2
+    //if(false)
+    {
+        pf.faces.push_back(poly_face{});
+        int f_no = pf.faces.size() - 1;
+        poly_face& f = pf.faces[f_no];
+
+        int e0 = pf.get_edge_or_add(cap_end[0], cap_end[1], 0);
+        int e1 = pf.get_edge_or_add(cap_end[1], cap_end[3], 0);
+        int e2 = pf.get_edge_or_add(cap_end[2], cap_end[3], 0);
+        int e3 = pf.get_edge_or_add(cap_end[2], cap_end[0], 0);
+
+        f.addEdge(e0);
+        f.addEdge(e1);
+        f.addEdge(e2);
+        f.addEdge(e3);
+        f.surface_group = 4;
+        f.surface_no = 5;
+        geo.surfaces[5].my_faces.push_back(f_no);
+
+        add_face_vertices_from_edges(pf, f);
+
+        pf.calc_normal(f_no);
+        if (f.m_normal.dotProduct(f.m_center - ref_point_1) < 0)
+            f.flip_normal();
+    }
+
+    pf.control_vertices.push_back(poly_vert(0, 0, 0));
+
+    pf.recalc_bbox_and_loops();
+    pf.topology = TOP_CONVEX;
+
+    for (int f_i = 0; f_i < pf.faces.size(); f_i++)
+    {
+        pf.faces[f_i].face_id = f_i;
+    }
+
+    //do_primitive_calculations(pf,false);
+
+    return geo;
+}
+
 geo_element make_cylinder(int height, int length, int faces, int radius_type)
 {
-    f32 pi = 3.141592653;
+    
 
     geo_element geo;
     polyfold& pf = geo.brush;
@@ -276,7 +618,7 @@ geo_element make_cylinder(int height, int length, int faces, int radius_type)
     }
     int aa = pf.get_edge_or_add(0,(faces-1)*2,0);
     f.addEdge(aa);
-    pf.faces.push_back(f);
+    pf.faces.push_back(f);  //0
 
     f.clear();
     for(int i=0;i<faces-1;i++)
@@ -287,22 +629,35 @@ geo_element make_cylinder(int height, int length, int faces, int radius_type)
     }
     aa = pf.get_edge_or_add(1,(faces-1)*2+1,0);
     f.addEdge(aa);
-    pf.faces.push_back(f);
+    pf.faces.push_back(f);  //1
+
+    canonical_brush c_brush;
+    c_brush.initialize(faces);
 
     for(int i=0;i<faces-1;i++)
     {
+        //  i*2+1 ____  i*2+3
+        //   |            |
+        //   |            |
+        //  i*2   ____  i*2+2
+
+        c_brush.init_quad(i, &pf, i+2, i * 2 + 1, i * 2 + 3, i * 2 + 2, i * 2);
+        //c_brush.dump_quad(&pf, i);
+
         f.clear();
         int a = pf.get_edge_or_add(i*2,i*2+1,0);
         int b = pf.get_edge_or_add(i*2+1,(i+1)*2+1,0);
         int c = pf.get_edge_or_add((i+1)*2,(i+1)*2+1,0);
         int d = pf.get_edge_or_add(i*2,(i+1)*2,0);
+
         f.addEdge(a);
         f.addEdge(b);
         f.addEdge(c);
         f.addEdge(d);
         f.column = i;
-        pf.faces.push_back(f);
+        pf.faces.push_back(f); //i+2
     }
+   
 
     f.clear();
     int s = faces-1;
@@ -311,16 +666,40 @@ geo_element make_cylinder(int height, int length, int faces, int radius_type)
     int c = pf.get_edge_or_add(0*2,0*2+1,0);
     int d = pf.get_edge_or_add(s*2,s*2+1,0);
 
+    c_brush.init_quad(s, &pf, faces+1, s * 2 + 1, 1, 0, s * 2);
+
+    c_brush.layout_uvs(256, 64);
+
+    for (int i = 0; i < c_brush.n_quads; i++)
+    {
+        /*
+        cout <<
+            c_brush.uvs[i * 4].V.X << "," << c_brush.uvs[i * 4].V.Y << "  " <<
+            c_brush.uvs[i * 4 + 1].V.X << "," << c_brush.uvs[i * 4 + 1].V.Y << "  " <<
+            c_brush.uvs[i * 4 + 2].V.X << "," << c_brush.uvs[i * 4 + 2].V.Y << "  " <<
+            c_brush.uvs[i * 4 + 3].V.X << "," << c_brush.uvs[i * 4 + 3].V.Y << "\n";
+            */
+
+        /*cout <<
+            c_brush.vertices[i*4] << " " <<
+            c_brush.vertices[i*4+1] << " " <<
+            c_brush.vertices[i*4+2] << " " <<
+            c_brush.vertices[i*4+3] << "\n";
+           */
+    }
+
     f.addEdge(c);
     f.addEdge(a);
     f.addEdge(d);
     f.addEdge(b);
     f.column = faces - 1;
-    pf.faces.push_back(f);
+    pf.faces.push_back(f); //n_faces+1
 
-    do_primitive_calculations(pf);
+    
 
     surface_group sg;
+
+    sg.c_brush = c_brush;
 
     sg.type = SURFACE_GROUP_STANDARD;
     sg.point = get_center(pf);
@@ -338,6 +717,8 @@ geo_element make_cylinder(int height, int length, int faces, int radius_type)
     //sg.n_columns = faces;
 
     pf.surface_groups.push_back(sg);
+
+    do_primitive_calculations(pf);
 
     for(poly_face& face: pf.faces)
         face.surface_group=1;
@@ -398,7 +779,6 @@ geo_element make_cylinder(int height, int length, int faces, int radius_type)
 
 geo_element make_cone(int height, int radius, int faces)
 {
-    f32 pi = 3.141592653;
 
     geo_element geo;
     polyfold& pf = geo.brush;
@@ -476,7 +856,7 @@ geo_element make_cone(int height, int radius, int faces)
 
 int num_rad_points(int radius, int faces, int zen_faces, int zen_j, bool simplify)
 {
-    f32 pi = 3.141592653;
+
     int n_zen_points = zen_faces;
     int face_len0 = radius*pi*2 / faces;
     f32 zen_angle = -pi*0.5+(pi/n_zen_points)*zen_j;
@@ -488,7 +868,7 @@ int num_rad_points(int radius, int faces, int zen_faces, int zen_j, bool simplif
 
 core::vector3df get_sphere_point(int radius, int faces, int zen_faces, int zen_j, int az_i, bool simplify)
 {
-    f32 pi = 3.141592653;
+
     int n_zen_points = zen_faces;
     int n_rad_points =  num_rad_points(radius, faces, zen_faces, zen_j, simplify);
 
@@ -508,7 +888,6 @@ core::vector3df get_sphere_point(int radius, int faces, int zen_faces, int zen_j
 
 geo_element make_sphere(int radius, int rad_faces, int zen_faces, bool simplify)
 {
-    f32 pi = 3.141592653;
 
     geo_element geo;
     polyfold& pf = geo.brush;

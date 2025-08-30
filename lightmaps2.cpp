@@ -22,6 +22,7 @@ Lightmap_Manager* Lightmaps_Tool::lightmap_manager = NULL;
 
 extern IrrlichtDevice* device;
 
+#define PRINTV(x) x.X <<","<<x.Y<<","<<x.Z<<" "
 
 Lightmap_Manager::Lightmap_Manager()
 {
@@ -154,7 +155,7 @@ void Lightmap_Configuration::run_sunlight(geometry_scene* geo_scene)
 
 	Lightmap_Routine(geo_scene, this, my_lightmaps,&geo_scene->geoNode()->get_lightmap_config(1));
 	//Lightmap_Routine2(geo_scene, this, my_lightmaps,&geo_scene->geoNode()->get_lightmap_config(1));
-	Lightmap_Routine2(geo_scene, this, my_lightmaps, this);
+	//Lightmap_Routine2(geo_scene, this, my_lightmaps, this);
 
 }
 
@@ -439,22 +440,6 @@ void initialize_lightmap_block(GeometryStack* geo_node, int element_id, int surf
 		b.element_id = element_id;
 		b.surface_no = surface_no;
 
-		/*
-		surface_group& sfg = *pf->getFaceSurfaceGroup(f_i);
-		int sfg_i = pf->getFaceSurfaceGroupNo(f_i);
-
-		switch (sfg.type)
-		{
-		case SURFACE_GROUP_CYLINDER:
-		case SURFACE_GROUP_DOME:
-		case SURFACE_GROUP_SPHERE:
-			surface = pf->getSurfaceFromFace(f_i);
-			break;
-		default:
-			surface = vector<int>{ f_i };
-			break;
-		}*/
-
 		for (int f_j : surface)
 		{
 			pf->faces[f_j].temp_b = true;
@@ -473,7 +458,6 @@ void initialize_lightmap_block(GeometryStack* geo_node, int element_id, int surf
 				poly_face* f = &pf->faces[surface[0]];
 				b.width = reduce_dimension_base2(f->bbox2d.getWidth(), reduce);
 				b.height = reduce_dimension_base2(f->bbox2d.getHeight(), reduce);
-				//b.bounding_verts_index0 = 1;
 
 				rectf new_box;
 				new_box.UpperLeftCorner.X = f->bbox2d.LowerRightCorner.Y;
@@ -488,29 +472,14 @@ void initialize_lightmap_block(GeometryStack* geo_node, int element_id, int surf
 
 			} break;
 
+			case SURFACE_GROUP_CANONICAL:
 			case SURFACE_GROUP_CYLINDER:
 			{
-				b.width = reduce_dimension_base2(sfg.radius * 2 * 3.1459 * 2, reduce);
-				b.height = reduce_dimension_base2(sfg.height, reduce);
+				b.width = reduce_dimension_base2(sfg.c_brush.get_real_length(pf), reduce);
+				b.height = reduce_dimension_base2(sfg.c_brush.get_real_height(pf), reduce);
+
 				b.faces = surface;
 
-				for (int b_i : surface)
-				{
-					pf->calc_tangent(b_i);
-					if (b.height > b.width)
-					{
-						poly_face* f = &pf->faces[b_i];
-						rectf new_box;
-						new_box.UpperLeftCorner.X = f->bbox2d.LowerRightCorner.Y;
-						new_box.UpperLeftCorner.Y = f->bbox2d.UpperLeftCorner.X;
-						new_box.LowerRightCorner.X = f->bbox2d.UpperLeftCorner.Y;
-						new_box.LowerRightCorner.Y = f->bbox2d.LowerRightCorner.X;
-
-						f->bbox2d = new_box;
-						f->m_tangent = f->m_normal.crossProduct(f->m_tangent);
-						f->m_tangent *= -1;
-					}
-				}
 			} break;
 			case SURFACE_GROUP_DOME:
 			case SURFACE_GROUP_SPHERE:
@@ -621,19 +590,38 @@ void Lightmap_Configuration::calc_lightmap_uvs(GeometryStack* geo_node, Lightmap
 
 		mapper.init(&pf->faces[b.faces[0]], 0, b.width, b.height);
 
-		//map_uvs(&geo_node->edit_meshnode_interface, offset, vector<int>{ b.faces[0] }, mapper, MAP_UVS_LIGHTMAP);
 		map_uvs(&geo_node->edit_meshnode_interface, offset, vector<int>{ b.faces[0] }, mapper, MAP_UVS_LIGHTMAP);
 
 	} break;
 
 	case SURFACE_GROUP_CYLINDER:
+	case SURFACE_GROUP_CANONICAL:
 	{
-		map_sphere_to_uv mapper;
+		MeshNode_Interface_Edit* mesh_node = &geo_node->edit_meshnode_interface;
 
-		mapper.init(&sfg, pf, b.faces, sfg_i, b.width, b.height, true);
+		sfg.c_brush.layout_uvs(b.width, b.height);
 
-		map_uvs(&geo_node->edit_meshnode_interface, offset, b.faces, mapper, MAP_UVS_LIGHTMAP);
+		for (int b_i : b.faces)
+		{
+			int f_j = mesh_node->get_buffer_index_by_face(offset + b_i);
 
+			int index_offset = mesh_node->indices_soa.offset[f_j];
+			int len = mesh_node->indices_soa.len[f_j];
+
+			for (int i = index_offset; i < index_offset + len; i += 3)
+			{
+				aligned_vec3* pos = mesh_node->geometry_raw_vertices.data.data();
+				aligned_vec3* uv = this->lm_raw_uvs.data.data();
+
+				u16 idx0 = mesh_node->indices_soa.data[i].x;
+				u16 idx1 = mesh_node->indices_soa.data[i + 1].x;
+				u16 idx2 = mesh_node->indices_soa.data[i + 2].x;
+
+				sfg.c_brush.map_point(pf, b_i, pos[idx0].V, uv[idx0]);
+				sfg.c_brush.map_point(pf, b_i, pos[idx1].V, uv[idx1]);
+				sfg.c_brush.map_point(pf, b_i, pos[idx2].V, uv[idx2]);
+			}
+		}
 	} break;
 	case SURFACE_GROUP_DOME:
 	case SURFACE_GROUP_SPHERE:
@@ -658,27 +646,27 @@ void Lightmap_Configuration::transform_lightmap_uvs(MeshNode_Interface_Edit* edi
 {
 	u16 offset_e = edit_node->surface_index.offset[element_no];
 
-	u16 offset_i = edit_node->get_buffer_index_by_face(offset_e + surface_no);
-
-	//cout << element_no << "," << surface_no << " " << offset_i<<" : "<< edit_node->geometry_raw_vertices.len[offset_i] << " vertices\n";
-
-	for (u16 i = 0; i < edit_node->geometry_raw_vertices.len[offset_i]; i++)
+	for (int j = 0; j < geo_node->elements[element_no].surfaces[surface_no].my_faces.size(); j++)
 	{
-		u16 idx_e = edit_node->geometry_raw_vertices.offset[offset_i] + i;
+		
+		int f = geo_node->elements[element_no].reverse_index[geo_node->elements[element_no].surfaces[surface_no].my_faces[j]];
+		u16 offset_i = edit_node->get_buffer_index_by_face(f);
 
-		f32 V4[4] = { 0,0,0,1 };
+		for (u16 i = 0; i < edit_node->geometry_raw_vertices.len[offset_i]; i++)
+		{
+			u16 idx_e = edit_node->geometry_raw_vertices.offset[offset_i] + i;
 
-		V4[0] = lm_raw_uvs.data.data()[idx_e].V.X;
-		V4[1] = lm_raw_uvs.data.data()[idx_e].V.Y;
+			f32 V4[4] = { 0,0,0,1 };
 
-		mat.multiplyWith1x4Matrix(V4);
+			V4[0] = lm_raw_uvs.data.data()[idx_e].V.X;
+			V4[1] = lm_raw_uvs.data.data()[idx_e].V.Y;
 
-		lm_raw_uvs.data.data()[idx_e].V.X = V4[0];
-		lm_raw_uvs.data.data()[idx_e].V.Y = V4[1];
+			mat.multiplyWith1x4Matrix(V4);
 
-		//cout << "   " << idx_e << ":  " << lm_raw_uvs.data.data()[idx_e].V.X << "," << lm_raw_uvs.data.data()[idx_e].V.Y << "\n";
+			lm_raw_uvs.data.data()[idx_e].V.X = V4[0];
+			lm_raw_uvs.data.data()[idx_e].V.Y = V4[1];
+		}
 	}
-
 }
 
 
@@ -731,24 +719,6 @@ void Lightmap_Configuration::transform_lightmap_uvs(dimension2du lm_dimension, t
 		
 	u16 offset_e = mesh_node->surface_index.offset[element_no];
 	u16 offset_i = mesh_node->get_buffer_index_by_face(offset_e + block.surface_no);
-
-	//cout << element_no << "," << block.surface_no << " " << offset_i<<" : "<< mesh_node->geometry_raw_vertices.len[offset_i] << " vertices\n";
-
-	for (u16 i = 0; i < mesh_node->geometry_raw_vertices.len[offset_i]; i++)
-	{
-		u16 idx_e = mesh_node->geometry_raw_vertices.offset[offset_i] + i;
-
-		f32 x = lm_raw_uvs.data.data()[idx_e].V.X * lm_dimension.Width;
-		f32 y = lm_raw_uvs.data.data()[idx_e].V.Y * lm_dimension.Height;
-
-		x = (floorf(x)+0.5)/ lm_dimension.Width;
-		y = (floorf(y)+0.5)/ lm_dimension.Height;
-
-		lm_raw_uvs.data.data()[idx_e].V.X = x;
-		lm_raw_uvs.data.data()[idx_e].V.Y = y;
-
-		//cout << "   " << idx_e << ":  " << lm_raw_uvs.data.data()[idx_e].V.X << "," << lm_raw_uvs.data.data()[idx_e].V.Y << "\n";
-	}
 }
 
 
@@ -816,7 +786,7 @@ bool divide_material_groups(GeometryStack* geo_scene, out_type out, vector<Light
 		
 		for (int f_j : blocks_it->faces)
 		{
-			*ret_faces_back = offset + f_j; // geo_scene->edit_meshnode_interface.get_buffer_index_by_face(offset + f_j);
+			*ret_faces_back = offset + f_j;
 			++ret_faces_back;
 		}
 

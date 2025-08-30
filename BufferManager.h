@@ -91,6 +91,7 @@ public:
     void recalc_uvs_for_face_sphere(int e_i, int f_i, int f_j);
     void recalc_uvs_for_face_dome(int e_i, int f_i, int f_j);
     void recalc_uvs_for_face_custom(int e_i, int f_i, int f_j);
+    void recalc_uvs_for_face_canonical(int e_i, int f_i, int f_j);
 
     scene::CMeshSceneNode* addMeshSceneNode(scene::ISceneNode* parent, scene::ISceneManager* smgr,GeometryStack* geo_scene);
 

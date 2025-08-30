@@ -24,6 +24,7 @@ void calculate_meshbuffer_uvs_cylinder(GeometryStack* g_scene, int b_i, int f_i,
 void calculate_meshbuffer_uvs_dome(GeometryStack* g_scene, int b_i, int f_i, scene::IMeshBuffer* buffer, int, int);
 void calculate_meshbuffer_uvs_sphere(GeometryStack* g_scene, int b_i, int f_i, scene::IMeshBuffer* buffer, int, int);
 void calculate_meshbuffer_uvs_custom(GeometryStack* g_scene, int b_i, int f_i, scene::IMeshBuffer* buffer, int, int);
+void calculate_meshbuffer_uvs_canonical(GeometryStack* g_scene, int b_i, int f_i, scene::IMeshBuffer* buffer, int, int);
 
 
 #endif

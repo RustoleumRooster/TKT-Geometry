@@ -7,6 +7,7 @@
 
 using namespace irr;
 
+#define PRINTV(x) x.X <<","<<x.Y<<","<<x.Z<<" "
 
 void make_meshbuffer_from_triangles(const std::vector<triangle_holder>& triangles, scene::IMeshBuffer* buffer)
 {
@@ -292,6 +293,36 @@ void calculate_meshbuffer_uvs_sphere(GeometryStack* g_scene, int e_i, int f_i, s
 void calculate_meshbuffer_uvs_cube(GeometryStack* g_scene, int e_i, int f_i, scene::IMeshBuffer* buffer)
 {
     calculate_meshbuffer_uvs_cube(g_scene, e_i, f_i, buffer, 0, buffer->getVertexCount());
+}
+
+
+void calculate_meshbuffer_uvs_canonical(GeometryStack* g_scene, int e_i, int f_i, scene::IMeshBuffer* buffer, int v_start, int v_end)
+{
+    polyfold* brush = &g_scene->elements[e_i].brush;
+
+    poly_face* face = &brush->faces[f_i];
+
+    surface_group sfg = brush->surface_groups[face->surface_group];
+    core::vector3df N = face->m_normal;
+
+    aligned_vec3 w{ { 0, 0, 0 } };
+
+    video::S3DVertex2TCoords* vtx;
+
+    for (int i = v_start; i < v_end; i++)
+    {
+        u16 idx = buffer->getIndices()[i];
+        vtx = &((video::S3DVertex2TCoords*)buffer->getVertices())[idx];
+
+        if (sfg.c_brush.map_point(brush, face->face_id, vtx->Pos, w) == false)
+            cout << "mapping error\n";
+
+        face->uv_mat.transformVect(w.V);
+        face->uv_mat.translateVect(w.V);
+
+        vtx->TCoords.set(w.V.X, w.V.Y);
+        vtx->Normal = N;
+    }
 }
 
 void calculate_meshbuffer_uvs_cube(GeometryStack* g_scene, int e_i, int f_i, scene::IMeshBuffer* buffer, int v_start, int v_end)

@@ -59,6 +59,16 @@ private:
     virtual void click_OK();
 };
 
+class EditCurveWindow : public  EditWindow
+{
+public:
+    EditCurveWindow(gui::IGUIEnvironment* env, gui::IGUIElement* parent, s32 id, core::rect<s32> rect)
+        : EditWindow(env, parent, NULL, id, rect) {}
+
+private:
+    virtual void click_OK();
+};
+
 
 class geometry_scene;
 
@@ -114,6 +124,17 @@ class GeometryFactory
         REFLECT()
         };
 
+    struct Curve
+    {
+        int degStart;
+        int degEnd;
+        int innerRadius;
+        int outerRadius;
+        int height;
+        int nSections;
+        REFLECT()
+    };
+
 public:
 
     static Cube cube;
@@ -121,6 +142,7 @@ public:
     static Sphere sphere;
     static Plane plane;
     static Cone cone;
+    static Curve curve;
 
     static gui::IGUIEnvironment* env;
     static geometry_scene* g_scene;
@@ -141,12 +163,14 @@ public:
     static void MakeSphereWindow();
     static void MakePlaneWindow();
     static void MakeConeWindow();
+    static void MakeCurveWindow();
 
     static void CreateCube(EditCubeWindow*);
     static void CreateCylinder(EditCylinderWindow*);
     static void CreateSphere(EditSphereWindow*);
     static void CreatePlane(EditPlaneWindow*);
     static void CreateCone(EditConeWindow*);
+    static void CreateCurve(EditCurveWindow*);
 };
 
 #endif

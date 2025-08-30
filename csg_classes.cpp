@@ -11,6 +11,237 @@ using namespace irr;
 #define LEFT_RIGHT_TEST_SMALL_NUMBER 0.005
 #define LEFT_RIGHT_TEST_INCLUDE_NUMBER 0.01
 
+#define PRINTV(x) x.X <<","<<x.Y<<","<<x.Z<<" "
+
+void canonical_brush::visualize(const polyfold* pf, LineHolder& graph) const
+{
+
+    for (int i = 0; i < n_quads; i++)
+    {
+        int j = i * 4;
+        f32 u, v, w;
+        vector3df a = pf->vertices[vertices[j]].V;
+        vector3df b = pf->vertices[vertices[j + 1]].V;
+        vector3df c = pf->vertices[vertices[j + 2]].V;
+
+        graph.lines.push_back(line3df(a, b));
+        graph.lines.push_back(line3df(b, c));
+        graph.lines.push_back(line3df(a, c));
+
+        a = pf->vertices[vertices[j + 2]].V;
+        b = pf->vertices[vertices[j + 3]].V;
+        c = pf->vertices[vertices[j + 0]].V;
+
+        graph.lines.push_back(line3df(a, b));
+        graph.lines.push_back(line3df(b, c));
+        graph.lines.push_back(line3df(a, c));
+    }
+}
+
+void canonical_brush::initialize(int n)
+{
+    vertices.resize(4 * n);
+    uvs.resize(4 * n);
+    face_ref.resize(n);
+    n_quads = n;
+}
+
+void canonical_brush::init_quad(int n, polyfold* pf, int f, int v0, int v1, int v2, int v3)
+{
+    //       L
+    //  v0 _____ v1
+    //  |        |
+    //  |        |  H
+    //  |        |
+    //  v3 ----- v2
+
+    face_ref[n] = f;
+    vertices[n * 4] = v0;
+    vertices[n * 4 + 1] = v1;
+    vertices[n * 4 + 2] = v2;
+    vertices[n * 4 + 3] = v3;
+}
+
+void canonical_brush::dump_quad(polyfold* pf, int n)
+{
+    std::cout << face_ref[n] << ": ";
+    std::cout << "  " << PRINTV(pf->vertices[vertices[n * 4]].V) << "  "
+        << PRINTV(pf->vertices[vertices[n * 4 + 1]].V) << "  "
+        << PRINTV(pf->vertices[vertices[n * 4 + 2]].V) << "  "
+        << PRINTV(pf->vertices[vertices[n * 4 + 3]].V) << "\n";
+}
+
+int canonical_brush::get_real_length(polyfold* pf)
+{
+    int ret = 0;
+    for (int i = 0; i < n_quads; i++)
+    {
+        ret += vector3df(pf->vertices[vertices[i * 4]].V - pf->vertices[vertices[(i * 4) + 1]].V).getLength();
+    }
+    return ret;
+}
+
+int canonical_brush::get_real_height(polyfold* pf)
+{
+    int ret = 0;
+    for (int i = 0; i < n_quads; i++)
+    {
+        ret = std::max((f32)ret,vector3df(pf->vertices[vertices[i * 4]].V - pf->vertices[vertices[(i * 4) + 3]].V).getLength());
+    }
+    return ret;
+}
+
+void canonical_brush::layout_uvs(f32 len, f32 height)
+{
+    this->length = len;
+    this->height = height;
+
+    f32 w = (len - (n_quads - 1) - 2) / n_quads;
+    f32 h = height - 1.f;
+
+    for (int i = 0; i < n_quads; i++)
+    {
+        f32 j = (f32)i;
+        uvs[i * 4].V.X = 1.f + j + j * w;
+        uvs[i * 4].V.Y = 1.f;
+
+        uvs[i * 4 + 1].V.X = 1.f + j + (j + 1.f) * w;
+        uvs[i * 4 + 1].V.Y = 1.f;
+
+        uvs[i * 4 + 3].V.X = 1.f + j + j * w;
+        uvs[i * 4 + 3].V.Y = h;
+
+        uvs[i * 4 + 2].V.X = 1.f + j + (j + 1.f) * w;
+        uvs[i * 4 + 2].V.Y = h;
+/*
+        cout << PRINTV(uvs[i * 4].V) << "\n" <<
+            PRINTV(uvs[i * 4 + 1].V) << "\n" <<
+            PRINTV(uvs[i * 4 + 2].V) << "\n" <<
+            PRINTV(uvs[i * 4 + 3].V) << "\n\n";*/
+    }
+}
+
+void canonical_brush::layout_uvs_texture(f32 len, f32 height)
+{
+    this->length = len;
+    this->height = height;
+
+    f32 w = len / n_quads;
+    f32 h = height;
+
+    for (int i = 0; i < n_quads; i++)
+    {
+        f32 j = (f32)i;
+        uvs[i * 4].V.X = j * w;
+        uvs[i * 4].V.Y = 0;
+
+        uvs[i * 4 + 1].V.X = (j + 1.f) * w;
+        uvs[i * 4 + 1].V.Y = 0;
+
+        uvs[i * 4 + 3].V.X = j * w;
+        uvs[i * 4 + 3].V.Y = height;
+
+        uvs[i * 4 + 2].V.X = (j + 1.f) * w;
+        uvs[i * 4 + 2].V.Y = height;
+    }
+}
+
+bool canonical_brush::barycentric(vector3df p, vector3df a, vector3df b, vector3df c, f32& u, f32& v, f32& w)
+{
+
+    vector3df v0 = b - a;
+    vector3df v1 = c - a;
+    vector3df v2 = p - a;
+    f32 d00 = v0.dotProduct(v0);
+    f32 d01 = v0.dotProduct(v1);
+    f32 d11 = v1.dotProduct(v1);
+    f32 d20 = v2.dotProduct(v0);
+    f32 d21 = v2.dotProduct(v1);
+    f32 denom = d00 * d11 - d01 * d01;
+    v = (d11 * d20 - d01 * d21) / denom;
+    w = (d00 * d21 - d01 * d20) / denom;
+    u = 1.0f - v - w;
+
+    u = fabs(u) < 0.001 ? 0.0 : u;
+    v = fabs(v) < 0.001 ? 0.0 : v;
+    w = fabs(w) < 0.001 ? 0.0 : w;
+
+    if (u < 0 || v < 0 || w < 0)
+        return false;
+
+    return true;
+}
+
+bool canonical_brush::map_point(polyfold* pf, int face_no, vector3df p, aligned_vec3& uv)
+{
+    for (int i = 0; i < n_quads; i++)
+    {
+        if (face_ref[i] != face_no)
+            continue;
+
+        int j = i * 4;
+        f32 u, v, w;
+        vector3df a = pf->vertices[vertices[j]].V;
+        vector3df b = pf->vertices[vertices[j + 1]].V;
+        vector3df c = pf->vertices[vertices[j + 2]].V;
+
+        if (barycentric(p, a, b, c, u, v, w))
+        {
+            uv.V = uvs[j].V * u + uvs[j + 1].V * v + uvs[j + 2].V * w;
+            return true;
+        }
+
+        a = pf->vertices[vertices[j + 2]].V;
+        b = pf->vertices[vertices[j + 3]].V;
+        c = pf->vertices[vertices[j + 0]].V;
+
+        if (barycentric(p, a, b, c, u, v, w))
+        {
+            uv.V = uvs[j + 2].V * u + uvs[j + 3].V * v + uvs[j + 0].V * w;
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool canonical_brush::map_point(polyfold* pf, int face_no, vector3df p, vector2df& uv)
+{
+    for (int i = 0; i < n_quads; i++)
+    {
+        if (face_ref[i] != face_no)
+            continue;
+
+        int j = i * 4;
+        f32 u, v, w;
+        vector3df a = pf->vertices[vertices[j]].V;
+        vector3df b = pf->vertices[vertices[j + 1]].V;
+        vector3df c = pf->vertices[vertices[j + 2]].V;
+
+        if (barycentric(p, a, b, c, u, v, w))
+        {
+            vector3df V = uvs[j].V * u + uvs[j + 1].V * v + uvs[j + 2].V * w;
+            uv.X = V.X;
+            uv.Y = V.Y;
+            return true;
+        }
+
+        a = pf->vertices[vertices[j + 2]].V;
+        b = pf->vertices[vertices[j + 3]].V;
+        c = pf->vertices[vertices[j + 0]].V;
+
+        if (barycentric(p, a, b, c, u, v, w))
+        {
+            vector3df V = uvs[j + 2].V * u + uvs[j + 3].V * v + uvs[j + 0].V * w;
+            uv.X = V.X;
+            uv.Y = V.Y;
+            return true;
+        }
+    }
+
+    return false;
+}
+
 
 core::vector3df poly_edge::position(const poly_vert* verts) const
 {
@@ -207,7 +438,6 @@ void polyfold::calc_tangent(int f_i)
     }
     else
     {
-
         for (int i = 0; i < faces[f_i].edges.size(); i++)
         {
             int e_i = faces[f_i].edges[i];

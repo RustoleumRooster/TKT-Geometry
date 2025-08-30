@@ -279,7 +279,6 @@ void MeshNode_Interface_Edit::generate_mesh_buffer(SMesh* mesh)
 
     this->face_to_mb_buffer.assign(pf->faces.size(), -1);
 
-    //for(int f_i =0; f_i<pf->faces.size(); f_i++)
     for (int t_i = 0; t_i < materials_used.size(); t_i++)
     {
 
@@ -287,25 +286,18 @@ void MeshNode_Interface_Edit::generate_mesh_buffer(SMesh* mesh)
 
         std::vector<triangle_holder> triangle_groups;
 
-        //for(int f_i : materials_used[t_i].faces)
         for (std::pair<int, int> surf : materials_used[t_i].surfaces)
         {
             int e_i = geo_scene->get_element_index_by_id(surf.first);
             int s_i = surf.second;
 
+            surface_index.data[surface_index.offset[e_i] + s_i].begin_i = i_count;
+
             for (int f_i0 : geo_scene->elements[e_i].surfaces[s_i].my_faces)
             {
                 int f_i = geo_scene->elements[e_i].reverse_index[f_i0];
 
-               // if (pf->faces[f_i].loops.size() > 0)
-                //{
-                //    this->face_to_mb_buffer.push_back(-1);
-                //        continue;
-               // }
-
-
-                surface_index.data[surface_index.offset[e_i] + s_i].buffer = b_count;
-                surface_index.data[surface_index.offset[e_i] + s_i].begin_i = i_count;
+                
 
                 this->face_to_mb_buffer[f_i] = b_count;
 
@@ -323,11 +315,13 @@ void MeshNode_Interface_Edit::generate_mesh_buffer(SMesh* mesh)
                 i_count += buffer->getIndexCount();
                 v_count += buffer->getVertexCount();
 
-                surface_index.data[surface_index.offset[e_i] + s_i].end_i = i_count;
+                
 
                 //lightmap_raw_uvs.push_back(std::vector<core::vector2df>{});
                 //lightmap_raw_uvs[lightmap_raw_uvs.size() - 1].resize(buffer->getVertexCount());
             }
+
+            surface_index.data[surface_index.offset[e_i] + s_i].end_i = i_count;
         }
     }
      //std::cout<<""<<b_count<<" buffers with "<<v_count<<" vertices and "<<i_count/3<<" triangles... done\n";
@@ -354,10 +348,23 @@ void MeshNode_Interface::recalc_uvs_for_face( int brush_i, int face_i, int f_j)
     case SURFACE_GROUP_CUSTOM_UVS_GEOMETRY:
         recalc_uvs_for_face_custom(brush_i, face_i, f_j);
         break;
+    case SURFACE_GROUP_CANONICAL:
+        recalc_uvs_for_face_canonical(brush_i, face_i, f_j);
+        break;
     case SURFACE_GROUP_STANDARD:
     default:
         recalc_uvs_for_face_cube(brush_i, face_i, f_j);
         break;
+    }
+}
+
+void MeshNode_Interface::recalc_uvs_for_face_canonical(int e_i, int f_i, int f_j)
+{
+    MeshBuffer_Chunk chunk = get_mesh_buffer_by_face(f_j);
+
+    if (chunk.buffer)
+    {
+        calculate_meshbuffer_uvs_canonical(geo_scene, e_i, f_i, chunk.buffer, chunk.begin_i, chunk.end_i);
     }
 }
 
@@ -526,6 +533,22 @@ void MeshNode_Interface::generate_uvs()
             {
                 switch(brush->surface_groups[ f->surface_group ].type)
                 {
+                case SURFACE_GROUP_CANONICAL:
+                {
+                    MeshBuffer_Chunk chunk = get_mesh_buffer_by_face(f_i);
+
+                    surface_group& sfg = brush->surface_groups[f->surface_group];
+
+                    int n_sections = sfg.c_brush.n_quads;
+
+                    sfg.c_brush.layout_uvs_texture(n_sections, 1.0);
+
+                    if (chunk.buffer)
+                    {
+                        calculate_meshbuffer_uvs_canonical(geo_scene, original_brush, original_face, chunk.buffer, chunk.begin_i, chunk.end_i);
+                    }
+                    f->temp_b = true;
+                } break;
                 case SURFACE_GROUP_STANDARD:
                     {
                         MeshBuffer_Chunk chunk = get_mesh_buffer_by_face(f_i);
@@ -974,6 +997,7 @@ void MeshNode_Interface_Final::generate_mesh_buffer(SMesh* mesh)
                         case SURFACE_GROUP_STANDARD:
                         case SURFACE_GROUP_CUSTOM_UVS_BRUSH:
                         case SURFACE_GROUP_CUSTOM_UVS_GEOMETRY:
+                        case SURFACE_GROUP_CANONICAL:
                         {
                             triangle_holder* th = geo_scene->get_triangles_for_face(f_i);
                             triangle_groups.push_back(*th);

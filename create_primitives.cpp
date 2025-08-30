@@ -12,6 +12,13 @@ GeometryFactory::Cylinder GeometryFactory::cylinder{128,64,16};
 GeometryFactory::Sphere GeometryFactory::sphere{0,128,8,8,true};
 GeometryFactory::Plane GeometryFactory::plane{256,256};
 GeometryFactory::Cone GeometryFactory::cone{256,128,8};
+GeometryFactory::Curve GeometryFactory::curve{ 0,90,128,160,64,4 };
+
+void EditCurveWindow::click_OK()
+{
+    GeometryFactory::CreateCurve(this);
+    this->remove();
+}
 
 void EditCubeWindow::click_OK()
 {
@@ -106,6 +113,17 @@ void GeometryFactory::CreateCone(EditConeWindow* win)
     g_scene->geoNode()->elements[0].brush.translate(M);
 }
 
+void GeometryFactory::CreateCurve(EditCurveWindow* win)
+{
+    win->write(&curve);
+
+    core::matrix4 M;
+    M.setTranslation(g_scene->geoNode()->elements[0].brush.vertices[0].V);
+    g_scene->geoNode()->elements[0] = make_curve(curve.degStart, curve.degEnd, curve.innerRadius, curve.outerRadius, curve.height, curve.nSections);
+    g_scene->geoNode()->elements[0].type = GEO_RED;
+    g_scene->geoNode()->elements[0].brush.translate(M);
+}
+
 
 void GeometryFactory::MakePlaneWindow()
 {
@@ -157,6 +175,16 @@ void GeometryFactory::MakeConeWindow()
     win->drop();
 }
 
+void GeometryFactory::MakeCurveWindow()
+{
+    EditCurveWindow* win = new EditCurveWindow(env, env->getRootGUIElement(), -1, core::rect<s32>(140, 200, 16 + 196, 64 + 196));
+    win->setText(L"Make a curve");
+
+    reflect::TypeDescriptor_Struct* typeDesc = (reflect::TypeDescriptor_Struct*)reflect::TypeResolver<Curve>::get();
+    win->Show(typeDesc, &curve);
+    win->drop();
+}
+
 REFLECT_MULTI_STRUCT_BEGIN(GeometryFactory::SphereOptions)
     REFLECT_MULTI_STRUCT_LABEL("sphere")
     REFLECT_MULTI_STRUCT_LABEL("dome")
@@ -198,4 +226,13 @@ REFLECT_STRUCT_BEGIN(GeometryFactory::Cone)
     REFLECT_STRUCT_MEMBER(height)
     REFLECT_STRUCT_MEMBER(radius)
     REFLECT_STRUCT_MEMBER(nSides)
+REFLECT_STRUCT_END()
+
+REFLECT_STRUCT_BEGIN(GeometryFactory::Curve)
+    REFLECT_STRUCT_MEMBER(degStart)
+    REFLECT_STRUCT_MEMBER(degEnd)
+    REFLECT_STRUCT_MEMBER(innerRadius)
+    REFLECT_STRUCT_MEMBER(outerRadius)
+    REFLECT_STRUCT_MEMBER(height)
+    REFLECT_STRUCT_MEMBER(nSections)
 REFLECT_STRUCT_END()
