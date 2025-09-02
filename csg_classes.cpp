@@ -664,71 +664,75 @@ void polyfold::recalc_faces()
     }
 }
 
-void polyfold::make_convex2(LineHolder& graph)
+void polyfold::set_face_convex(int f_i, LineHolder& graph)
 {
     LineHolder nograph;
 
-    for(int f_i=0; f_i<faces.size(); f_i++)
+    for (int e_0 = 0; e_0 < faces[f_i].edges.size(); e_0++)
     {
-        if(faces[f_i].loops.size()==0)
-            continue;
+        core::vector3df axis = faces[f_i].m_normal;
+
+        int e_i = faces[f_i].edges[e_0];
+
+        core::vector3df v0;
+        get_facial_point(f_i, e_i, get_edge_loop_no(f_i, e_i), v0, nograph);
+
+        //graph.points.push_back(v0);
 
         polyfold verts;
-        //graph.lines.push_back(core::line3df(v0,this->vertices[w].V));
+        verts.get_point_or_add(v0);
 
-        for(int e_0=0;e_0<faces[f_i].edges.size();e_0++)
+        for (int f_j = 0; f_j < this->faces.size(); f_j++)
         {
-            core::vector3df axis = faces[f_i].m_normal;
+            if (f_i == f_j)
+                continue;
 
-            int e_i = faces[f_i].edges[e_0];
+            poly_face f = this->faces[f_j];
+            core::plane3df f_plane = core::plane3df(f.m_center, f.m_normal);
 
-            core::vector3df v0;
-            get_facial_point(f_i,e_i, get_edge_loop_no(f_i,e_i),v0,nograph);
+            core::vector3df ipoint;
 
-            verts.get_point_or_add(v0);
-
-            for(int f_j=0; f_j<this->faces.size(); f_j++)
+            if (f_plane.getIntersectionWithLine(v0, axis, ipoint) && this->is_point_on_face(f_j, ipoint))
             {
-                if(f_i==f_j)
-                    continue;
-
-                poly_face f=this->faces[f_j];
-                core::plane3df f_plane = core::plane3df(f.m_center,f.m_normal);
-
-                core::vector3df ipoint;
-
-                if(f_plane.getIntersectionWithLine(v0,axis,ipoint) && this->is_point_on_face(f_j,ipoint))
-                {
-                    verts.get_point_or_add(ipoint);
-                }
+                verts.get_point_or_add(ipoint);
             }
-
-            if(verts.vertices.size()%2==0)
-            {
-                sort_inline_vertices(verts);
-                core::vector3df N = verts.vertices[0].V - verts.vertices[verts.vertices.size()-1].V;
-                N.normalize();
-
-                for(int i=0; i<verts.vertices.size(); i++)
-                {
-                    if(is_same_point(v0,verts.vertices[i].V))
-                    {
-                        if(faces[f_i].m_normal.dotProduct(N) < 0)
-                        {
-                            faces[f_i].flip_normal();
-                        }
-                        goto next_face;
-                    }
-                    N*=(-1);
-                }
-            }
-            else
-                graph.points.push_back(v0);
         }
-        next_face:
-        int z=0;
-    }
 
+        if (verts.vertices.size() % 2 == 0)
+        {
+            graph.lines.push_back(core::line3df(verts.vertices[0].V, verts.vertices[1].V));
+
+            sort_inline_vertices(verts);
+            core::vector3df N = verts.vertices[0].V - verts.vertices[verts.vertices.size() - 1].V;
+            N.normalize();
+
+            for (int i = 0; i < verts.vertices.size(); i++)
+            {
+                if (is_same_point(v0, verts.vertices[i].V))
+                {
+                    if (faces[f_i].m_normal.dotProduct(N) < 0)
+                    {
+                        faces[f_i].flip_normal();
+
+                        for (int p_i = 0; p_i < faces[f_i].loops.size(); p_i++)
+                            set_loop_solid(f_i, p_i);
+                    }
+                    return;
+                }
+                N *= (-1);
+            }
+        }
+        else
+            graph.points.push_back(v0);
+    }
+}
+
+void polyfold::make_convex2(LineHolder& graph)
+{
+    for(int f_i=0; f_i<faces.size(); f_i++)
+    {
+        set_face_convex(f_i, graph);
+    }
     topology=TOP_CONVEX;
 }
 

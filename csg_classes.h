@@ -518,6 +518,7 @@ class polyfold
     //Topology functions
     void make_convex();
     void make_convex2(LineHolder& graph);
+    void set_face_convex(int f_i, LineHolder& graph);
     void make_concave();
     void recalc_faces();
 
