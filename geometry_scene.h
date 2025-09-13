@@ -285,11 +285,7 @@ void clip_poly_single(polyfold& pf, polyfold& pf2, int rule, int base_type, clip
 
 //void clip_poly7(polyfold& pf, polyfold& pf2, int rule, int base_type, clip_results& results, LineHolder& graph);
 
-geo_element make_poly_cube(int,int,int);
-geo_element make_poly_plane(int,int);
-geo_element make_cylinder(int height, int radius, int faces, int radius_type);
-geo_element make_sphere(int radius, int faces, int zen_faces, bool simplify);
-geo_element make_cone(int height, int radius, int faces);
+
 
 
 #endif

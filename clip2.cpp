@@ -286,6 +286,8 @@ void polyfold::reduce_edges_vertices()
     int e_size = this->edges.size();
 
     std::vector<poly_vert> old_verts = this->vertices;
+    std::vector<int> new_verts;
+    new_verts.assign(old_verts.size(),-1);
 
     this->edges.clear();
     this->vertices.clear();
@@ -311,7 +313,11 @@ void polyfold::reduce_edges_vertices()
             for (int i = 0; i < tempv.size() - 1; i++)
             {
                 int v0 = this->get_point_or_add(old_verts[tempv[i]].V);
+                new_verts[tempv[i]] = v0;
+
                 int v1 = this->get_point_or_add(old_verts[tempv[i + 1]].V);
+                new_verts[tempv[i+1]] = v1;
+
                 this->faces[f_i].addVertex(v0);
                 this->faces[f_i].addVertex(v1);
 
@@ -327,6 +333,17 @@ void polyfold::reduce_edges_vertices()
             }
 
             this->faces[f_i].loops[p_i].vertices = new_loop;
+        }
+    }
+
+    for (surface_group& sfg : this->surface_groups)
+    {
+        for (u16& v : sfg.c_brush.vertices)
+        {
+            if (new_verts[v] == -1)
+                v = get_point_or_add(old_verts[v].V);
+            else
+                v = new_verts[v];
         }
     }
    // std::<<"edges reduced from "<<e_size<<" to "<<this->edges.size()<<", vertices reduced from "<<v_size<<" to "<<this->vertices.size()<<"\n";

@@ -3,10 +3,12 @@
 
 #include "edit_classes.h"
 #include <irrlicht.h>
+#include "geometry_scene.h"
 
 using namespace irr;
 
 class GeometryFactory;
+
 
 
 class EditCubeWindow : public  EditWindow
@@ -132,6 +134,7 @@ class GeometryFactory
         int outerRadius;
         int height;
         int nSections;
+        RadiusOptions radius_type;
         REFLECT()
     };
 
@@ -172,5 +175,13 @@ public:
     static void CreateCone(EditConeWindow*);
     static void CreateCurve(EditCurveWindow*);
 };
+
+
+geo_element make_poly_cube(int, int, int);
+geo_element make_poly_plane(int, int);
+geo_element make_cylinder(int height, int radius, int faces, int radius_type);
+geo_element make_sphere(int radius, int faces, int zen_faces, bool simplify);
+geo_element make_cone(int height, int radius, int faces);
+geo_element make_curve(int degrees_begin, int degrees_end, int inner_radius, int outer_radius, int height, int nSections, int radius_type);
 
 #endif

@@ -266,13 +266,25 @@ geo_element make_poly_plane(int length, int width)
     return geo;
 }
 
-geo_element make_curve(int degrees_begin, int degrees_end, int inner_radius0, int outer_radius0, int height, int nSections)
+geo_element make_curve(int degrees_begin, int degrees_end, int inner_radius0, int outer_radius0, int height, int nSections, int radius_type)
 {
     geo_element geo;
     polyfold& pf = geo.brush;
 
-    f32 inner_radius = inner_radius0 / cos(pi / nSections);
-    f32 outer_radius = outer_radius0 / cos(pi / nSections);
+    f32 tot_angle = pi * (degrees_end - degrees_begin) / 360.0;
+
+    f32 inner_radius, outer_radius;
+
+    if (radius_type == 1)
+    {
+        inner_radius = inner_radius0;
+        outer_radius = outer_radius0;
+    }
+    else
+    {
+        inner_radius = inner_radius0 / cos(tot_angle / nSections);
+        outer_radius = outer_radius0 / cos(tot_angle / nSections);
+    }
 
     f32 start_angle = pi * ((f32)degrees_begin / 180.0);
     f32 end_angle = pi * ((f32)degrees_end / 180.0);

@@ -891,7 +891,6 @@ struct TypeDescriptor_Vector3 : TypeDescriptor {
     {}
 };
 
-
 struct TypeDescriptor_Dimension2 : TypeDescriptor {
     TypeDescriptor_Dimension2() : TypeDescriptor{ "dimension2", sizeof(irr::core::dimension2du) } {
     }

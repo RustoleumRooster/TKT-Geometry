@@ -447,9 +447,12 @@ void polyfold::remove_empty_faces(std::vector<poly_surface>& surfaces)
     {
         surfaces[i].my_faces.clear();
     }
-
+    std::vector<int> faces_ref;
     std::vector<poly_face> new_faces;
     int c = 0;
+
+    faces_ref.assign(this->faces.size(), -1);
+
     for(int f_i=0;f_i<this->faces.size();f_i++)
     {
         if(this->faces[f_i].loops.size() > 0)
@@ -459,14 +462,47 @@ void polyfold::remove_empty_faces(std::vector<poly_surface>& surfaces)
 
             new_face.face_id = c;
             surfaces[new_face.surface_no].my_faces.push_back(c);
+            faces_ref[f_i] = c;
             
             c++;
         }
     }
 
+    for (int s_i = 0; s_i < this->surface_groups.size(); s_i++)
+    {
+        surface_group& sg = this->surface_groups[s_i];
+
+        if (sg.c_brush.vertices.size() > 0)
+        {
+            canonical_brush new_c_brush;
+
+            for (int q_i = 0; q_i < sg.c_brush.face_ref.size(); q_i++)
+            {
+                if (faces_ref[sg.c_brush.face_ref[q_i]] != -1)
+                {
+                    new_c_brush.n_quads++;
+
+                    new_c_brush.face_ref.push_back(faces_ref[sg.c_brush.face_ref[q_i]]);
+
+                    new_c_brush.vertices.push_back(sg.c_brush.vertices[q_i * 4]);
+                    new_c_brush.vertices.push_back(sg.c_brush.vertices[q_i * 4 + 1]);
+                    new_c_brush.vertices.push_back(sg.c_brush.vertices[q_i * 4 + 2]);
+                    new_c_brush.vertices.push_back(sg.c_brush.vertices[q_i * 4 + 3]);
+
+                    new_c_brush.uvs.push_back(sg.c_brush.uvs[q_i * 4]);
+                    new_c_brush.uvs.push_back(sg.c_brush.uvs[q_i * 4 + 1]);
+                    new_c_brush.uvs.push_back(sg.c_brush.uvs[q_i * 4 + 2]);
+                    new_c_brush.uvs.push_back(sg.c_brush.uvs[q_i * 4 + 3]);
+                }
+            }
+
+            sg.c_brush = new_c_brush;
+        }
+    }
+
     this->faces = new_faces;
 
-    std::vector<poly_surface> new_surfaces;
+    vector<poly_surface> new_surfaces;
 
     for (int i = 0; i < surfaces.size(); i++)
     {

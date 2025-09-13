@@ -31,6 +31,8 @@ public:
     bool barycentric(vector3df p, vector3df a, vector3df b, vector3df c, f32& u, f32& v, f32& w);
     bool map_point(polyfold* pf, int face_no, vector3df p, aligned_vec3& uv);
     bool map_point(polyfold* pf, int face_no, vector3df p, vector2df& uv);
+
+    REFLECT()
 };
 
 class poly_vert

@@ -727,6 +727,8 @@ void GeometryStack::intersect_active_brush()
 
     int num = 0;
     std::vector<polyfold*> polies;
+    std::vector<geo_element*> geos;
+
     for (int j = 1; j < this->elements.size(); j++)
     {
         if (this->elements[j].has_geometry() &&
@@ -734,10 +736,19 @@ void GeometryStack::intersect_active_brush()
             BoxIntersectsWithBox(cube.bbox, this->elements[j].brush.bbox))
         {
             polies.push_back(&elements[j].geometry);
+            geos.push_back(&elements[j]);
             num++;
         }
     }
-    combine_polyfolds(polies, pf2);
+
+    std::vector<std::vector<poly_surface>> surfaces;
+
+    for (geo_element* e : geos)
+        surfaces.push_back(e->surfaces);
+
+    std::vector<poly_surface> new_surfaces;
+
+    combine_polyfolds(polies, surfaces, pf2, new_surfaces);
 
     clip_poly_accelerated(cube, pf2, GEO_SUBTRACT, base_type, results, nograph);
 
@@ -747,10 +758,17 @@ void GeometryStack::intersect_active_brush()
     }
     else
     {
+        std::vector<std::vector<poly_surface>> surfaces2;
+        surfaces2.push_back(new_surfaces);
+        surfaces2.push_back(this->elements[0].surfaces);
+        std::vector<poly_surface> new_surfaces2;
+
         polyfold res;
-        combine_polyfolds(std::vector<polyfold*>{&pf2, & cube}, res);
-       // res.remove_empty_faces(&this->elements[0]);
+        combine_polyfolds(std::vector<polyfold*>{&pf2, & cube}, surfaces2, res, new_surfaces2);
+
+        res.remove_empty_faces(new_surfaces2);
         this->elements[0].brush = res;
+        this->elements[0].surfaces = new_surfaces2;
         this->elements[0].brush.topology = TOP_CONVEX;
     }
 }
@@ -1367,7 +1385,27 @@ void combine_polyfolds(const std::vector<polyfold*>& polies, const vector<vector
         const polyfold& pf = *polies[j];
 
         for (int s_i = 0; s_i < pf.surface_groups.size(); s_i++)
+        {
             res.surface_groups.push_back(pf.surface_groups[s_i]);
+            if (pf.surface_groups[s_i].c_brush.vertices.size() > 0)
+            {
+                canonical_brush& new_c_brush = res.surface_groups[res.surface_groups.size() - 1].c_brush;
+
+                new_c_brush.vertices.clear();
+
+                for (u16 v_i : pf.surface_groups[s_i].c_brush.vertices)
+                {
+                    new_c_brush.vertices.push_back(res.get_point_or_add(pf.vertices[v_i].V));
+                }
+
+                new_c_brush.face_ref.clear();
+
+                for (int f_i : pf.surface_groups[s_i].c_brush.face_ref)
+                {
+                    new_c_brush.face_ref.push_back(res.faces.size() + f_i);
+                }
+            }
+        }
 
         for (const poly_vert& vert : polies[j]->control_vertices)
             res.control_vertices.push_back(vert);
@@ -1410,6 +1448,8 @@ void combine_polyfolds(const std::vector<polyfold*>& polies, const vector<vector
                 new_loop.direction = loop.direction;
                 res.calc_loop_bbox(f, new_loop);
             }
+
+
         }
 
         n_surface_groups += pf.surface_groups.size();

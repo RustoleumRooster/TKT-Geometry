@@ -3,6 +3,7 @@
 //#include "edit_classes.h"
 #include "Reflection.h"
 #include "GeometryStack.h"
+#include "soa.h"
 
 namespace reflect {
 
@@ -74,6 +75,12 @@ TypeDescriptor* getPrimitiveDescriptor<irr::core::dimension2du>() {
 template <>
 TypeDescriptor* getPrimitiveDescriptor<irr::core::vector3df>() {
     static TypeDescriptor_Vector3 typeDesc;
+    return &typeDesc;
+}
+
+template <>
+TypeDescriptor* getPrimitiveDescriptor<aligned_vec3>() {
+    static TypeDescriptor_Aligned_Vector3 typeDesc;
     return &typeDesc;
 }
 

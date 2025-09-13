@@ -672,21 +672,7 @@ void geometry_scene::restore_gui_state()
     ::restore_gui_state(saved_gui_state);
 }
 
-void geometry_scene::InitializeEmptyScene()
-{
-    if (!geometry_stack)
-    {
-        geometry_stack = new GeometryStack();
-        geometry_stack->initialize(smgr->getRootSceneNode(), smgr, event_receiver);
-        
 
-        geo_element red = make_poly_cube(256, 256, 256);
-        red.type = GEO_RED;
-        geometry_stack->elements.push_back(red);
-
-        geometry_stack->rebuild_geometry();
-    }
-}
 
 geometry_scene::geometry_scene()
 {

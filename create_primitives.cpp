@@ -14,6 +14,22 @@ GeometryFactory::Plane GeometryFactory::plane{256,256};
 GeometryFactory::Cone GeometryFactory::cone{256,128,8};
 GeometryFactory::Curve GeometryFactory::curve{ 0,90,128,160,64,4 };
 
+void geometry_scene::InitializeEmptyScene()
+{
+    if (!geometry_stack)
+    {
+        geometry_stack = new GeometryStack();
+        geometry_stack->initialize(smgr->getRootSceneNode(), smgr, event_receiver);
+
+
+        geo_element red = make_poly_cube(256, 256, 256);
+        red.type = GEO_RED;
+        geometry_stack->elements.push_back(red);
+
+        geometry_stack->rebuild_geometry();
+    }
+}
+
 void EditCurveWindow::click_OK()
 {
     GeometryFactory::CreateCurve(this);
@@ -119,7 +135,7 @@ void GeometryFactory::CreateCurve(EditCurveWindow* win)
 
     core::matrix4 M;
     M.setTranslation(g_scene->geoNode()->elements[0].brush.vertices[0].V);
-    g_scene->geoNode()->elements[0] = make_curve(curve.degStart, curve.degEnd, curve.innerRadius, curve.outerRadius, curve.height, curve.nSections);
+    g_scene->geoNode()->elements[0] = make_curve(curve.degStart, curve.degEnd, curve.innerRadius, curve.outerRadius, curve.height, curve.nSections, curve.radius_type.value);
     g_scene->geoNode()->elements[0].type = GEO_RED;
     g_scene->geoNode()->elements[0].brush.translate(M);
 }
@@ -235,4 +251,5 @@ REFLECT_STRUCT_BEGIN(GeometryFactory::Curve)
     REFLECT_STRUCT_MEMBER(outerRadius)
     REFLECT_STRUCT_MEMBER(height)
     REFLECT_STRUCT_MEMBER(nSections)
+    REFLECT_STRUCT_MEMBER(radius_type)
 REFLECT_STRUCT_END()
