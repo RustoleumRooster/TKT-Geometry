@@ -126,6 +126,7 @@ protected:
     GeometryStack* geo_scene = NULL;
 
     friend class GeometryStack;
+    friend class Lightmap_Configuration;
 };
 
 class MeshNode_Interface_Edit : public MeshNode_Interface
@@ -159,6 +160,7 @@ protected:
     std::vector<TextureMaterial> materials_used;
 
     friend class GeometryStack;
+    
 };
 
 class MeshNode_Interface_Final : public MeshNode_Interface
@@ -188,7 +190,7 @@ public:
     std::vector<int> edit_mb_buffer;
     
 
-protected:
+//protected:
 
     virtual void generate_mesh_buffer(scene::SMesh*);
 

@@ -6,6 +6,7 @@
 #include "geometry_scene.h"
 #include "soa.h"
 #include "vkSunlightModule.h"
+#include "vkAreaLightModule.h"
 #include <vulkan/vulkan.h>
 
 using namespace irr;
@@ -14,172 +15,7 @@ using namespace std;
 
 extern IrrlichtDevice* device;
 
-
-void Lightmap_Routine2(geometry_scene* g_scene, Lightmap_Configuration* configuration, std::vector<irr::video::ITexture*>& textures, Lightmap_Configuration* configuration1)
-{
-	//==================================
-	// Setup 
-	//
-
-	Geometry_Assets geo_assets(g_scene, configuration);
-
-	Vulkan_App vulkan;
-
-	vulkan.indices_soa = &geo_assets.indices_soa;
-	vulkan.vertices_soa = &geo_assets.vertices_soa;
-	vulkan.bvh = &geo_assets.bvh;
-	vulkan.n_indices = geo_assets.indices_soa.data.size();
-	vulkan.n_vertices = geo_assets.vertices_soa.data0.size();
-	vulkan.n_nodes = geo_assets.bvh.node_count;
-	vulkan.triangle_edges = &geo_assets.triangle_edges;
-	vulkan.initBuffers();
-
-
-	Load_Textures_Module load_textures(&vulkan, device->getVideoDriver(), configuration);
-	load_textures.textures = textures;
-
-	load_textures.run();
-	//load_textures.destroyImages();
-	
-	Copy_Lightmaps_Module copy(&vulkan, configuration, configuration1);
-
-	copy.element_by_element_id = &g_scene->geoNode()->element_by_element_id;
-	copy.surface_index = &geo_assets.surface_index;
-
-	copy.indexBuffer = vulkan.indexBuffer;
-	copy.indexBufferMemory = vulkan.indexBufferMemory;
-	copy.n_indices = vulkan.n_indices;
-
-	copy.lightmapImages_in = load_textures.lightmapImages;
-	copy.lightmapImageViews_in = load_textures.lightmapImageViews;
-	copy.lightmapsMemory_in = load_textures.lightmapsMemory;
-
-	copy.uv_struct_0 = &configuration->lm_raw_uvs.data;
-	copy.uv_struct_1 = &configuration1->lm_raw_uvs.data;
-
-	copy.run();
-	//copy.destroyImages();
-	
-	load_textures.destroyImages();
-
-	//==================================
-	// Make ITextures from the vulkan images
-	//
-
-	Download_Textures_Module download_textures(&vulkan, device->getVideoDriver(), configuration1);
-
-	download_textures.lightmapImages = copy.lightmapImages_out;
-	download_textures.lightmapImageViews = copy.lightmapImageViews_out;
-	download_textures.lightmapsMemory = copy.lightmapsMemory_out;
-	download_textures.bFlip = false;
-
-	download_textures.run();
-
-	textures = download_textures.textures;
-
-	//cleanup
-
-	copy.destroyImages();
-
-	vulkan.cleanup();
-}
-
-void Lightmap_Routine(geometry_scene* g_scene, Lightmap_Configuration* configuration, std::vector<irr::video::ITexture*>& textures, Lightmap_Configuration* configuration1)
-{
-	//==================================
-	// Setup 
-	//
-
-	Geometry_Assets geo_assets(g_scene, configuration);
-
-	Vulkan_App vulkan;
-
-	vulkan.indices_soa = &geo_assets.indices_soa;
-	vulkan.vertices_soa = &geo_assets.vertices_soa;
-	vulkan.bvh = &geo_assets.bvh;
-	vulkan.n_indices = geo_assets.indices_soa.data.size();
-	vulkan.n_vertices = geo_assets.vertices_soa.data0.size();
-	vulkan.n_nodes = geo_assets.bvh.node_count;
-	vulkan.triangle_edges = &geo_assets.triangle_edges;
-	vulkan.initBuffers();
-
-	//==================================
-	// Create images on the GPU
-	//
-
-	Create_Images_Module create_images(&vulkan, configuration);
-	create_images.run();
-
-	//==================================
-	// Run the raytracing program
-	//
-
-	Sunlight_Module sunlight(&vulkan);
-
-	std::vector<Reflected_SceneNode*> sun_nodes = g_scene->get_reflected_nodes_by_type("Reflected_LightSceneNode");
-
-	if (sun_nodes.size() > 0)
-	{
-		sunlight.sun_direction = sun_nodes[0]->get_direction_vector();
-	}
-
-	sunlight.indices_soa = &geo_assets.indices_soa;
-	sunlight.vertices_soa = &geo_assets.vertices_soa;
-	sunlight.n_indices = geo_assets.indices_soa.data.size();
-	sunlight.n_vertices = geo_assets.vertices_soa.data0.size();
-	sunlight.n_nodes = geo_assets.bvh.node_count;
-
-	sunlight.materials = &configuration->get_materials();
-
-	sunlight.lightmapImages = create_images.lightmapImages;
-	sunlight.lightmapImageViews = create_images.lightmapImageViews;
-	sunlight.lightmapsMemory = create_images.lightmapsMemory;
-
-	sunlight.edgeBuffer = vulkan.edgeBuffer;
-	sunlight.edgeBufferMemory = vulkan.edgeBufferMemory;
-	sunlight.indexBuffer = vulkan.indexBuffer;
-	sunlight.indexBufferMemory = vulkan.indexBufferMemory;
-	sunlight.vertexBuffer = vulkan.vertexBuffer;
-	sunlight.vertexBufferMemory = vulkan.vertexBufferMemory;
-	sunlight.nodeBuffer = vulkan.nodeBuffer;
-	sunlight.nodeBufferMemory = vulkan.nodeBufferMemory;
-	sunlight.uvBuffer = vulkan.uvBuffer;
-	sunlight.uvBufferMemory = vulkan.uvBufferMemory;
-
-	sunlight.run();
-
-	//==================================
-	// Edge / Corner correction
-	//
-
-	Lightmap_Edges_Module edges(&vulkan, configuration);
-
-	edges.lightmapImages_in = sunlight.lightmapImages;
-	edges.lightmapImageViews_in = sunlight.lightmapImageViews;
-	edges.lightmapsMemory_in = sunlight.lightmapsMemory;
-
-	edges.run();
-
-	//==================================
-	// Make ITextures from the vulkan images
-	//
-
-	Download_Textures_Module download_textures(&vulkan, device->getVideoDriver(), configuration);
-
-	download_textures.lightmapImages = edges.lightmapImages_out;
-	download_textures.lightmapImageViews = edges.lightmapImageViews_out;
-	download_textures.lightmapsMemory = edges.lightmapsMemory_out;
-	download_textures.bFlip = true;
-
-	download_textures.run();
-
-	textures = download_textures.textures;
-
-	//cleanup
-	edges.destroyImages();
-	
-	vulkan.cleanup();
-}
+#define PRINTV(x) << x.X <<","<<x.Y<<","<<x.Z<<" "
 
 
 void Vulkan_App::initVulkan() 
@@ -217,6 +53,18 @@ void Vulkan_App::cleanup()
 	vkDestroyBuffer(m_device->getDevice(), edgeBuffer, nullptr);
 	vkFreeMemory(m_device->getDevice(), edgeBufferMemory, nullptr);
 
+	if (outputBuffer)
+	{
+		vkDestroyBuffer(m_device->getDevice(), outputBuffer, nullptr);
+		vkFreeMemory(m_device->getDevice(), outputBufferMemory, nullptr);
+	}
+
+	if (AreaLightSourceBuffer)
+	{
+		vkDestroyBuffer(m_device->getDevice(), AreaLightSourceBuffer, nullptr);
+		vkFreeMemory(m_device->getDevice(), AreaLightSourceBufferMemory, nullptr);
+	}
+
 	m_DescriptorPool->cleanup();
 	m_device->cleanup();
 }
@@ -238,7 +86,7 @@ void Vulkan_App::createDescriptorPool() {
 
 
 	poolSizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-	poolSizes[1].descriptorCount = 5;
+	poolSizes[1].descriptorCount = 6;
 
 	poolSizes[2].type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
 	poolSizes[2].descriptorCount = 2;
@@ -303,6 +151,26 @@ void Vulkan_App::createVertexBuffer() {
 	m_device->copyBuffer(stagingBuffer.getBuffer(), vertexBuffer, bufferSize);
 }
 
+void Vulkan_App::init_area_light_buffer() {
+
+	int n = area_light_indices->size();
+
+	VkDeviceSize bufferSize = sizeof(aligned_uint) * n;
+
+	MyBufferObject stagingBuffer(m_device, sizeof(aligned_uint), n, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+		VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 1);
+
+	stagingBuffer.writeToBuffer((void*)area_light_indices->data());
+
+	m_device->createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+		VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, AreaLightSourceBuffer,
+		AreaLightSourceBufferMemory);
+
+	m_device->copyBuffer(stagingBuffer.getBuffer(), AreaLightSourceBuffer, bufferSize);
+}
+
 void Vulkan_App::createUVBuffer()
 {
 	VkDeviceSize bufferSize = sizeof(aligned_vec3) * n_vertices;
@@ -355,6 +223,26 @@ void Vulkan_App::createNodeBuffer()
 		nodeBufferMemory);
 
 	m_device->copyBuffer(stagingBuffer.getBuffer(), nodeBuffer, bufferSize);
+}
+
+void Vulkan_App::createOutputBuffer()
+{
+	VkDeviceSize bufferSize = sizeof(aligned_vec3) * 512;
+
+	/*
+	MyBufferObject stagingBuffer(m_device, sizeof(aligned_vec3), 512, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+		VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 1);
+
+	stagingBuffer.writeToBuffer((void*)bvh->nodes.data());
+	*/
+
+	m_device->createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT |
+		VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, outputBuffer,
+		outputBufferMemory);
+
+	//m_device->copyBuffer(stagingBuffer.getBuffer(), nodeBuffer, bufferSize);
 }
 
 void Create_Images_Module::run()
@@ -501,16 +389,38 @@ Geometry_Assets::Geometry_Assets(geometry_scene* g_scene, Lightmap_Configuration
 
 	for (const TextureMaterial& tm : config->get_materials())
 	{
+		//cout << "material: " << tm.materialGroup << "\n";
 		for (int f_i : tm.faces)
 		{
 			int b_offset = indices_soa.offset[meshnode->get_buffer_index(f_i)] / 3;
 			int t_0 = meshnode->get_first_triangle(f_i);
-
+			//cout << "  face: " << f_i << ", index: " << b_offset + t_0 << "\n";
 			for (int i = 0; i < meshnode->get_n_triangles(f_i); i++)
 			{
+				
 				triangle_material_type[b_offset + t_0 + i] = tm.materialGroup;
 			}
 		}
+	}
+
+	if (g_scene->getSelectedFaces().size() > 0)
+	{
+		GeometryStack* geo_node = g_scene->geoNode();
+		int f_i = g_scene->getSelectedFaces()[0];
+
+		int mb_i = g_scene->geoNode()->edit_meshnode_interface.get_buffer_index_by_face(f_i);
+		selected_triangle_mg = g_scene->geoNode()->edit_meshnode_interface.get_material_group_by_face(mb_i);
+		
+		int lm_size = config->get_materials()[selected_triangle_mg].lightmap_size;
+
+		MeshBuffer_Chunk chunk = meshnode->get_mesh_buffer_by_face(f_i);
+
+		int buffer_index = meshnode->get_buffer_index_by_face(f_i);
+		int face_offset = indices_soa.offset[buffer_index] + chunk.begin_i;
+		int tri_sel = g_scene->get_last_click().triangle_n;
+
+		selected_triangle_index = face_offset +tri_sel * 3;
+		selected_triangle_bary_coords = g_scene->get_last_click().bary_coords;
 	}
 
 	bvh.build(vertices_soa.data0.data(), master_triangle_list.data(), master_triangle_list.size(), NULL);
@@ -588,6 +498,84 @@ Geometry_Assets::Geometry_Assets(geometry_scene* g_scene, Lightmap_Configuration
 			}
 		}
 	}
+
+	//==========================================================
+	// Make a list of area lights
+	//
+
+	//cout << "Area lights: ";
+	for (const TextureMaterial& tm : config->get_materials())
+	{
+		if (tm.materialGroup == 7)
+		{
+			//cout << "material: " << tm.materialGroup << "\n";
+			for (int f_i : tm.faces)
+			{
+
+				unsigned int b_offset = indices_soa.offset[meshnode->get_buffer_index(f_i)] / 3;
+				int t_0 = meshnode->get_first_triangle(f_i);
+
+				//area_light_indices.push_back(aligned_uint{ 59 });
+				//cout << "face offset: " << b_offset + t_0 << "\n";
+
+				for (int i = 0; i < meshnode->get_n_triangles(f_i); i++)
+				{
+					area_light_indices.push_back(aligned_uint{ b_offset + t_0 + i});
+					//cout << b_offset + t_0 + i << " ";
+				}
+
+				//for (u32 i = 0; i < meshnode->get_n_triangles(f_i); i++)
+				{
+					//area_light_indices.push_back(aligned_uint{ b_offset + t_0 + i });
+					//area_light_indices.push_back(aligned_uint{ b_offset + t_0 + i });
+					//cout << b_offset + t_0 + i << ", ";
+					//cout << b_offset + t_0 + i << ", ";
+				}
+			}
+		}
+	}
+	cout << "\n" << area_light_indices.size() << " (triangles) area lights\n";
+	cout << "\n";
+}
+
+bool Triangle_Transformer::get_uvs_for_triangle(int triangle_no, int lm_size, vector3df& w0, vector3df& w1, vector3df& w2)
+{
+	int i_0 = triangle_no;
+
+	const vector<aligned_vec3>& map_uvs = vertices_soa.data1;
+
+	int v_0, v_1, v_2;
+
+	if (map_uvs[indexed(i_0)].V.Y < map_uvs[indexed(i_0, 1)].V.Y)
+		v_0 = 0;
+	else
+		v_0 = 1;
+
+	if (map_uvs[indexed(i_0, v_0)].V.Y < map_uvs[indexed(i_0, 2)].V.Y)
+		v_0 = v_0;
+	else
+		v_0 = 2;
+
+	if (map_uvs[indexed(i_0, ((v_0 + 1) % 3))].V.Y > map_uvs[indexed(i_0, ((v_0 + 2) % 3))].V.Y)
+	{
+		v_1 = (v_0 + 1) % 3;
+		v_2 = (v_0 + 2) % 3;
+	}
+	else
+	{
+		v_1 = (v_0 + 2) % 3;
+		v_2 = (v_0 + 1) % 3;
+	}
+
+	v_0 = indexed(i_0, v_0);
+	v_1 = indexed(i_0, v_1);
+	v_2 = indexed(i_0, v_2);
+
+	w0 = vector3df(floor_x_value(map_uvs[v_0].V.X, lm_size), floor_y_value(map_uvs[v_0].V.Y, lm_size), 0);
+	w1 = vector3df(floor_x_value(map_uvs[v_1].V.X, lm_size), floor_y_value(map_uvs[v_1].V.Y, lm_size), 0);
+	w2 = vector3df(floor_x_value(map_uvs[v_2].V.X, lm_size), floor_y_value(map_uvs[v_2].V.Y, lm_size), 0);
+
+	return true;
 }
 
 void Download_Textures_Module::run()
@@ -1038,8 +1026,6 @@ void Copy_Lightmaps_Module::createUVBuffer()
 
 void Copy_Lightmaps_Module::run()
 {
-
-
 	createDescriptorSetLayout();
 	createComputePipeline();
 	//createImageViews();

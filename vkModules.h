@@ -22,7 +22,41 @@ class MyDescriptorPool;
 class Lightmap_Configuration;
 
 void Lightmap_Routine(geometry_scene*, Lightmap_Configuration*, std::vector<irr::video::ITexture*>&, Lightmap_Configuration*);
+void Lightmap_Routine3(geometry_scene*, Lightmap_Configuration*, std::vector<irr::video::ITexture*>&, Lightmap_Configuration*);
 void Lightmap_Routine2(geometry_scene* g_scene, Lightmap_Configuration* configuration, std::vector<irr::video::ITexture*>& textures, Lightmap_Configuration* configuration1);
+
+class Triangle_Transformer
+{
+public:
+
+	Triangle_Transformer(soa_struct_2<aligned_vec3, aligned_vec3>& verts, soa_struct<aligned_uint>& indx)
+		: vertices_soa{ verts }, indices_soa{ indx } {}
+
+	u16 indexed(u16 v_i)
+	{
+		return indices_soa.data[v_i].x;
+	}
+
+	u16 indexed(u16 v_i, u16 offset)
+	{
+		return indices_soa.data[v_i + offset].x;
+	}
+
+	float floor_y_value(float y, float lm_height)
+	{
+		return (floor(lm_height * y) + 0.5) / lm_height;
+	}
+
+	float floor_x_value(float x, float lm_width)
+	{
+		return (floor(lm_width * x) + 0.5) / lm_width;
+	}
+
+	bool get_uvs_for_triangle(int triangle_no, int lm_size, vector3df& w0, vector3df& w1, vector3df& w2);
+
+	const soa_struct_2<aligned_vec3, aligned_vec3>& vertices_soa;
+	const soa_struct<aligned_uint>& indices_soa;
+};
 
 class Geometry_Assets
 {
@@ -34,7 +68,12 @@ public:
 	soa_struct<MeshIndex_Chunk> surface_index;
 	std::vector<triangle_b> master_triangle_list;
 	std::vector<aligned_uint> triangle_edges;
+	std::vector<aligned_uint> area_light_indices;
 	BVH_structure_triangles bvh;
+	int selected_triangle_index = 0;
+	int selected_triangle_mg = 0;
+	vector3df selected_triangle_bary_coords{ 0,0,0 };
+
 };
 
 class Vulkan_App
@@ -48,6 +87,7 @@ public:
 
 	void initVulkan();
 	void initBuffers();
+	void init_area_light_buffer();
 
 	void cleanup();
 	void createDescriptorPool();
@@ -58,6 +98,7 @@ public:
 	void createUVBuffer();
 	void createEdgeBuffer();
 	void createNodeBuffer();
+	void createOutputBuffer();
 
 	VkBuffer vertexBuffer;
 	VkDeviceMemory vertexBufferMemory;
@@ -74,6 +115,12 @@ public:
 	VkBuffer edgeBuffer;
 	VkDeviceMemory edgeBufferMemory;
 
+	VkBuffer outputBuffer;
+	VkDeviceMemory outputBufferMemory;
+
+	VkBuffer AreaLightSourceBuffer;
+	VkDeviceMemory AreaLightSourceBufferMemory;
+
 	std::vector<VkCommandBuffer> commandBuffers;
 	MyDescriptorPool* m_DescriptorPool = NULL;
 	MyDevice* m_device = NULL;
@@ -85,6 +132,7 @@ public:
 	soa_struct_2<aligned_vec3, aligned_vec3>* vertices_soa = NULL;
 	soa_struct<aligned_uint>* indices_soa = NULL;
 	std::vector<aligned_uint>* triangle_edges = NULL;
+	std::vector<aligned_uint>* area_light_indices = NULL;
 	BVH_structure_triangles* bvh = NULL;
 };
 

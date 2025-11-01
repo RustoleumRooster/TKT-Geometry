@@ -522,6 +522,11 @@ void MyDevice::createLogicalDevice() {
 	VkPhysicalDeviceFeatures deviceFeatures{};
 	deviceFeatures.samplerAnisotropy = VK_TRUE;
 
+	VkPhysicalDeviceShaderAtomicFloatFeaturesEXT atomicFloatFeatures = {};
+	atomicFloatFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_FLOAT_FEATURES_EXT;
+
+	
+
 	VkDeviceCreateInfo createInfo{};
 	createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
 
@@ -530,11 +535,14 @@ void MyDevice::createLogicalDevice() {
 
 	createInfo.pEnabledFeatures = &deviceFeatures;
 
-	//createInfo.enabledExtensionCount = static_cast<uint32_t>(deviceExtensions.size());
-	//createInfo.ppEnabledExtensionNames = deviceExtensions.data();
+	createInfo.enabledExtensionCount = static_cast<uint32_t>(deviceExtensions.size());
+	createInfo.ppEnabledExtensionNames = deviceExtensions.data();
 
-	createInfo.enabledExtensionCount = 0;
-	createInfo.ppEnabledExtensionNames = 0;
+	//createInfo.enabledExtensionCount = 0;
+	//createInfo.ppEnabledExtensionNames = 0;
+
+	atomicFloatFeatures.shaderSharedFloat32AtomicAdd = VK_TRUE;
+	createInfo.pNext = &atomicFloatFeatures;
 
 	//backwards compatibility
 	if (enableValidationLayers) {

@@ -153,7 +153,7 @@ void Lightmap_Configuration::run_sunlight(geometry_scene* geo_scene)
 
 	my_lightmaps.clear();
 
-	Lightmap_Routine(geo_scene, this, my_lightmaps,&geo_scene->geoNode()->get_lightmap_config(1));
+	Lightmap_Routine3(geo_scene, this, my_lightmaps,&geo_scene->geoNode()->get_lightmap_config(1));
 	//Lightmap_Routine2(geo_scene, this, my_lightmaps,&geo_scene->geoNode()->get_lightmap_config(1));
 	//Lightmap_Routine2(geo_scene, this, my_lightmaps, this);
 
@@ -956,6 +956,19 @@ void Lightmap_Configuration::transform_lightmap_uvs()
 
 void Lightmap_Configuration::apply_lightmap_uvs_to_mesh()
 {
+	//geo_node->final_meshnode_interface.face_to_material.assign(geo_node->final_meshnode_interface.face_to_mb_buffer.size(), -1);
+
+	for (int i = 0; i < materials.size(); i++)
+	{
+		TextureMaterial& tm = materials[i];
+
+		for (int f_i : tm.faces)
+		{
+			int f_j = geo_node->final_meshnode_interface.edit_mb_buffer[f_i];
+			geo_node->edit_meshnode_interface.face_to_material[f_j] = i;
+		}
+	}
+
 	for (blocklist& b : bl_combined)
 	{
 		for (tex_block& tb : b.blocks)

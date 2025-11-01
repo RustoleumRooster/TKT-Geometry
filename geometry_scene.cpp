@@ -1314,6 +1314,7 @@ void geometry_scene::set_selected_brush_vertex_editing(int brush_i)
 void geometry_scene::drawGraph(LineHolder& graph)
 {
     graph.lines.clear();
+    graph.points.clear();
 
     for (const line3df& el : special_graph.lines)
         graph.lines.push_back(el);

@@ -111,7 +111,8 @@ void MeshNode_Interface_Edit::refresh_material_groups()
 
         for (int j = 0; j < materials_used[i].faces.size(); j++)
         {
-            int f_i = materials_used[i].faces[j];
+            //int f_i = materials_used[i].faces[j];
+            //face_to_material[f_i] = i;
         }
     }
 }
@@ -174,7 +175,7 @@ void MeshNode_Interface_Edit::generate_lightmap_info()
     geo_scene->get_lightmap_config(0).initialize_soa_arrays(this->m_mesh);
     geo_scene->get_lightmap_config(1).initialize_soa_arrays(this->m_mesh);
 
-    geo_scene->get_lightmap_config(0).set_reduction(1);
+    geo_scene->get_lightmap_config(0).set_reduction(2);
     geo_scene->get_lightmap_config(1).set_reduction(2);
 
     geo_scene->get_lightmap_config(0).calc_lightmap_uvs(materials_used);
@@ -221,8 +222,9 @@ void MeshNode_Interface_Final::generate_mesh_node()
             {
                 int f_j = face_to_mb_faces[f_i];
                 edit_mb_buffer[f_j] = geo_scene->edit_meshnode_interface.get_buffer_index_by_face(f_i);
-                f_i = f_j;
                 
+               // cout << f_i << " (" << f_j << ")\n";
+                f_i = f_j;
             }
         }
     }
@@ -244,6 +246,7 @@ void MeshNode_Interface_Final::generate_lightmap_info()
     geo_scene->get_lightmap_config(0).apply_lightmap_uvs_to_mesh();
 
     geo_scene->get_lightmap_config(1).transform_lightmap_uvs();
+   // geo_scene->get_lightmap_config(1).apply_lightmap_uvs_to_mesh();
 
 }
 
@@ -773,6 +776,7 @@ int MeshNode_Interface_Final::get_first_triangle(int f_n)
     return mb_begin[f_n] / 3;
 }
 
+//You must pass a buffer index to this function
 int MeshNode_Interface::get_material_group_by_face(int f_i)
 {
     if (f_i < face_to_material.size())
@@ -965,7 +969,7 @@ void MeshNode_Interface_Final::generate_mesh_buffer(SMesh* mesh)
 	//========loop material groups
 	for(int t_i=0; t_i< materials_used.size(); t_i++)
     {
-        
+       // cout << "Material group " << t_i << ":\n";
         int total_indices=0;
 
         std::vector<triangle_holder> triangle_groups;
@@ -975,6 +979,8 @@ void MeshNode_Interface_Final::generate_mesh_buffer(SMesh* mesh)
         {
             int e_i = geo_scene->get_element_index_by_id(surf.first);
             int s_i = surf.second;
+
+            //cout << "  element " << e_i << ", surface " << s_i <<":\n";
 
             surface_to_mb_buffer[surface_c] = t_i;
             surface_to_mb_begin[surface_c] = total_indices;
@@ -1005,6 +1011,10 @@ void MeshNode_Interface_Final::generate_mesh_buffer(SMesh* mesh)
                             face_to_mb_buffer[f_i] = t_i;
                             face_to_mb_begin[f_i] = total_indices;
                             face_to_mb_end[f_i] = total_indices + th->triangles.size() * 3;
+                            
+                           // cout << "    face " << face_c << " (" << f_i << ")\n";
+                           // cout << "    buffer " << face_to_mb_buffer[f_i] << "\n";
+
 
                             mb_begin[face_c] = face_to_mb_begin[f_i];
                             mb_end[face_c] = face_to_mb_end[f_i];

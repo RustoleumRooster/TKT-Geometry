@@ -13,6 +13,18 @@ class geometry_scene;
 class Reflected_SceneNode;
 class polyfold;
 
+struct click_brush_info
+{
+    bool hit;
+    core::plane3df f_plane;
+    core::vector3df hitvec;
+    core::vector3df bary_coords;
+    int brush_n;
+    int face_n;
+    int triangle_n;
+    f32 distance;
+};
+
 namespace irr
 {
     namespace scene
@@ -131,7 +143,7 @@ public:
     core::vector3df get_fp_camera_rot();
     scene::ICameraSceneNode* get_fp_camera();
 
-private:
+//private:
 
     bool m_bFullscreen = false;
     TestPanel* panel_TL = NULL;
@@ -155,15 +167,7 @@ private:
 };
 
 
-struct click_brush_info
-{
-    bool hit;
-    core::plane3df f_plane;
-    core::vector3df hitvec;
-    int brush_n;
-    int face_n;
-    f32 distance;
-};
+
 
 struct click_node_info
 {
@@ -323,6 +327,7 @@ public:
     virtual void resize(core::dimension2d<u32> new_size) ;
 
     virtual void render();
+    void render_to_framebuffer();
     void AddGraph(LineHolder& graph);
     void AddGraphs(LineHolder&, LineHolder&, LineHolder&);
     core::vector3df getDragVector();

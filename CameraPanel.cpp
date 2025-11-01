@@ -179,7 +179,7 @@ void CameraQuad::initialize(geometry_scene* geo_scene)
 
     
     test_panel->setAxis(CAMERA_X_AXIS);
-    test_panel2->SetViewStyle(PANEL3D_VIEW_LOOPS);
+    test_panel2->SetViewStyle(PANEL3D_VIEW_RENDER);
     test_panel3->setAxis(CAMERA_Y_AXIS);
     test_panel4->setAxis(CAMERA_Z_AXIS);
 }

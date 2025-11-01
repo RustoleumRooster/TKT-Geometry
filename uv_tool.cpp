@@ -18,6 +18,8 @@ using namespace gui;
 UV_Editor_Base* UV_Editor_Tool::base = NULL;
 multi_tool_panel* UV_Editor_Tool::panel = NULL;
 
+#define PRINTV(x) x.X <<","<<x.Y<<" "
+
 extern IrrlichtDevice* device;
 
 extern irr::video::ITexture* small_circle_tex_add_selected;
@@ -395,6 +397,10 @@ void UV_Editor_Panel::make_face(polyfold* pf_0, int f_no, video::ITexture* face_
 
             int c_indx = source_brush->find_point(vtx2->Pos);
             (*vertex_index)[c_indx] = c;
+
+           // cout << i  << " : " << PRINTV(vector2df(vtx0->TCoords * 128.f)) << "\n";
+           // cout << i+1  << " : " << PRINTV(vector2df(vtx1->TCoords * 128.f)) << "\n";
+           // cout << i+2  << " : " << PRINTV(vector2df(vtx2->TCoords * 128.f)) << "\n";
 
 
             int e0 = uv_poly->get_edge_or_add(a, b, 0);

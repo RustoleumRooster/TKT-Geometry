@@ -7,6 +7,7 @@
 #include "USceneNode.h"
 #include "GeometryStack.h"
 #include "utils.h"
+#include "CameraPanel.h"
 
 void print_geometry_ops_timers();
 void reset_geometry_ops_timers();
@@ -82,6 +83,13 @@ public:
 
     void setSelectedFaces(std::vector<int>, bool force = false);
     void setSelectedFaces_ShiftAdd(int new_sel);
+    //void setSelectedTriangle(int);
+    //void setLastClickCoords(vector3df);
+   // int getSelectedTriangle();
+   // vector3df getLastClickCoords();
+    void set_last_click(const click_brush_info& i) { last_click_info = i; }
+    click_brush_info get_last_click() { return last_click_info; }
+
     std::vector<int> getSelectedFaces();
     //std::vector<int> getSurfaceFromFace(int);
     void selectSurfaceGroup();
@@ -181,6 +189,8 @@ private:
     std::vector<int> selected_brushes;
     std::vector<int> selected_faces;
     std::vector<Reflected_SceneNode*> selected_scene_nodes;
+    //int selected_triangle = 0;
+    //vector3df last_click_coords{ vector3df(0,0,0) };
 
     //scene_selection saved_selection;
 
@@ -207,6 +217,8 @@ private:
     bool b_dynamic_light = false;
 
     int selected_material_group = 0;
+
+    click_brush_info last_click_info;
 
     REFLECT()
 

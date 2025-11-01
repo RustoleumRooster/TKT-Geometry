@@ -545,6 +545,8 @@ void LM_Viewer_Panel::left_click(core::vector2di pos)
 
     geo_scene->setBrushSelection(std::vector<int>{});
 
+    //cout << pos.X << ", " << pos.Y << "\n";
+
     for (int i = 0; i < uv_scene->elements.size(); i++)
     {
         if (click_hits_poly(&uv_scene->elements[i].brush, core::vector2di(clickx, clicky)))

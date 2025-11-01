@@ -265,6 +265,11 @@ void initialize_materials(geometry_scene* scene)
     m6.create_meshBuffer_Node = true;
     m6.meshBuffer_Node_typeName = "Reflected_MeshBuffer_Clouds_SceneNode";
 
+    Material_Group m7{ "Emitter",video::SColor(255,128,128,64) };
+    m7.lightmap = false;
+    m7.create_meshBuffer_Node = false;
+    //m7.meshBuffer_Node_typeName = "Reflected_MeshBuffer_Clouds_SceneNode";
+
 
     material_groups_base->material_groups.push_back(m0);
     material_groups_base->material_groups.push_back(m1);
@@ -273,6 +278,7 @@ void initialize_materials(geometry_scene* scene)
     material_groups_base->material_groups.push_back(m4);
     material_groups_base->material_groups.push_back(m5);
     material_groups_base->material_groups.push_back(m6);
+    material_groups_base->material_groups.push_back(m7);
 
     CloudsShaderCallBack::initialize();
 

@@ -38,6 +38,7 @@ extern irr::video::ITexture* med_circle_tex_sub_not_selected;
 extern irr::video::ITexture* med_circle_tex_red_selected;
 extern irr::video::ITexture* med_circle_tex_red_not_selected;
 
+#define PRINTV(x) << x.X <<","<<x.Y<<","<<x.Z<<" "
 
 //===================================================================================================
 // Camera Panel 3D
@@ -606,8 +607,35 @@ bool TestPanel::get_click_brush(int x, int y, click_brush_info& ret)
     return ret.hit;
 }
 
+bool barycentric(vector3df p, vector3df a, vector3df b, vector3df c, f32& u, f32& v, f32& w)
+{
+    vector3df v0 = b - a;
+    vector3df v1 = c - a;
+    vector3df v2 = p - a;
+    f32 d00 = v0.dotProduct(v0);
+    f32 d01 = v0.dotProduct(v1);
+    f32 d11 = v1.dotProduct(v1);
+    f32 d20 = v2.dotProduct(v0);
+    f32 d21 = v2.dotProduct(v1);
+    f32 denom = d00 * d11 - d01 * d01;
+    v = (d11 * d20 - d01 * d21) / denom;
+    w = (d00 * d21 - d01 * d20) / denom;
+    u = 1.0f - v - w;
+
+    u = fabs(u) < 0.001 ? 0.0 : u;
+    v = fabs(v) < 0.001 ? 0.0 : v;
+    w = fabs(w) < 0.001 ? 0.0 : w;
+
+    if (u < 0 || v < 0 || w < 0)
+        return false;
+
+    return true;
+}
+
 bool TestPanel_3D::get_click_face(int x, int y, click_brush_info& ret)
 {
+    typedef scene::CMeshBuffer<video::S3DVertex2TCoords> mesh_buffer_type;
+
     core::vector3df cam_pos = this->getCamera()->getAbsolutePosition();
     int near_dist = this->getCamera()->getNearValue();
     core::vector3df hitvec;
@@ -653,6 +681,30 @@ bool TestPanel_3D::get_click_face(int x, int y, click_brush_info& ret)
         ret.brush_n = selected_poly;
         ret.face_n = selected_face;
         ret.distance = dist;
+
+        MeshBuffer_Chunk chunk = geo_node->edit_meshnode_interface.get_mesh_buffer_by_face(selected_face);
+
+        mesh_buffer_type* buffer = (mesh_buffer_type*)chunk.buffer;
+
+        for (int i = chunk.begin_i; i < chunk.end_i; i += 3)
+        {
+            int idx0 = buffer->getIndices()[i];
+            int idx1 = buffer->getIndices()[i + 1];
+            int idx2 = buffer->getIndices()[i + 2];
+
+            f32 u, v, w;
+
+            vector3df a = buffer->Vertices[idx0].Pos;
+            vector3df b = buffer->Vertices[idx1].Pos;
+            vector3df c = buffer->Vertices[idx2].Pos;
+
+            if (barycentric(ret_vec, a, b, c, u, v, w))
+            {
+                ret.triangle_n = i / 3;
+                ret.bary_coords = vector3df(u, v, w);
+            }
+        }
+
         return true;
     }
 
@@ -714,7 +766,8 @@ void TestPanel_3D::left_click(core::vector2di pos)
         }
 
     }
-    else if (this->bShowGeometry && this->view_style == PANEL3D_VIEW_RENDER)
+    //else if (this->bShowGeometry && this->view_style == PANEL3D_VIEW_RENDER)
+    else if (this->bShowGeometry)
     {
         core::vector3df hitvec;
         int selected_face = -1;
@@ -728,6 +781,7 @@ void TestPanel_3D::left_click(core::vector2di pos)
         Reflected_SceneNode* node_hit = GetSceneNodeHit(clickx, clicky, true);
 
         this->geo_scene->setBrushSelection(std::vector<int>{});
+        
 
         if (bShiftDown && geo_scene->getSelectedFaces().size() > 0)
         {
@@ -752,6 +806,9 @@ void TestPanel_3D::left_click(core::vector2di pos)
         {
             geo_scene->setSelectedNodes(std::vector<Reflected_SceneNode*>{});
             geo_scene->setSelectedFaces(std::vector<int>{selected_face});
+            //geo_scene->setSelectedTriangle(res.triangle_n);
+           // geo_scene->setLastClickCoords(res.hitvec);
+            geo_scene->set_last_click(res);
         }
         else
         {
@@ -851,6 +908,22 @@ void TestPanel_3D::right_click(core::vector2di pos)
     if (geo_scene && view_style == PANEL3D_VIEW_RENDER && geo_scene->getSelectedFaces().size() > 0)
     {
         gui::IGUIContextMenu* menu = environment->addContextMenu(core::rect<s32>(pos, core::vector2di(256, 256)), 0, -1);
+       
+        menu->addItem(L"View  ", -1, true, true, false, false);
+
+        menu->addSeparator();
+        gui::IGUIContextMenu* submenu;
+        submenu = menu->getSubMenu(0);
+        submenu->addItem(L"Loops", GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_VIEW_LOOPS, true, false, true, true);
+        submenu->addItem(L"Triangles", GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_VIEW_TRIANGLES, true, false, true, true);
+        submenu->addItem(L"Edit Mesh", GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_VIEW_RENDER, true, false, true, true);
+        submenu->addItem(L"Final Mesh", GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_VIEW_RENDER_FINAL, true, false, true, true);
+        
+        submenu->setItemChecked(0, this->view_style == PANEL3D_VIEW_LOOPS);
+        submenu->setItemChecked(1, this->view_style == PANEL3D_VIEW_TRIANGLES);
+        submenu->setItemChecked(2, this->view_style == PANEL3D_VIEW_RENDER);
+        submenu->setItemChecked(3, this->view_style == PANEL3D_VIEW_RENDER_FINAL);
+
         menu->addItem(L"Use Current Texture", GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_SET_TEXTURE, true, false, false, false);
         menu->addItem(L"Choose Texture", GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_CHOOSE_TEXTURE, true, false, false, false);
         menu->addItem(L"Align Texture", GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_ADJUST_TEXTURE, true, false, false, false);
@@ -1144,9 +1217,107 @@ void TestPanel_3D::SetViewStyle(s32 vtype)
         this->graph2.lines.clear();
         this->graph2.points.clear();
 
-        geo_scene->geoNode()->GetGeometryLoopLines(graph, graph2);
+        //geo_scene->geoNode()->GetGeometryLoopLines(graph, graph2);
        
         geo_scene->drawGraph(this->graph2);
+
+        if(false)
+        for (geo_element& e : geo_scene->geoNode()->elements)
+        {
+            /*
+            e.brush.recalc_bbox();
+
+            for (int f_i = 0; f_i < e.brush.faces.size(); f_i++)
+            {
+                e.brush.calc_normal(f_i);
+
+                for (int p_i = 0; p_i < e.brush.faces[f_i].loops.size(); p_i++)
+                {
+                    e.brush.calc_loop_bbox(f_i, p_i);
+
+                    e.brush.set_loop_solid(f_i, p_i);
+                }
+            }*/
+            LineHolder nograph;
+
+            //e.brush.set_face_convex(7, this->graph2);
+            //e.brush.set_face_convex(10, this->graph2);
+            //e.brush.set_face_convex(11, this->graph2);
+
+            for (int f_i = 0; f_i < e.brush.faces.size(); f_i++)
+            {
+               // cout << f_i << ",";
+                if(f_i==7)
+                    e.brush.set_face_convex(f_i, this->graph2);
+                else
+                    e.brush.set_face_convex(f_i, nograph);
+
+                for (int p_i = 0; p_i < e.brush.faces[f_i].loops.size(); p_i++)
+                {
+                 //   e.brush.set_loop_solid(f_i, p_i);
+                }
+            }
+
+            //e.brush.set_face_convex(10, this->graph2);
+           // e.brush.set_face_convex(11, this->graph2);
+
+            //e.brush.recalc_faces();
+
+            for (const surface_group& sfg : e.brush.surface_groups)
+            {
+               // sfg.c_brush.visualize(&e.brush, this->graph);
+            }
+
+            if(false)
+            for (const poly_face& f : e.brush.faces)
+            {
+                vector3df v0 = f.m_center;
+                vector3df v1 = f.m_normal;
+
+                this->graph.lines.push_back(line3df(v0, v0 + v1 * 32));
+            }
+        }
+
+
+        MeshNode_Interface_Final* meshnode = &geo_scene->geoNode()->final_meshnode_interface;
+
+        if (geo_scene->getSelectedFaces().size() > 0)
+        {
+            typedef video::S3DVertex2TCoords vertexType;
+
+            GeometryStack* geo_node = geo_scene->geoNode();
+            int f_i = geo_scene->getSelectedFaces()[0];
+
+            //int mb_i = geo_scene->geoNode()->edit_meshnode_interface.get_buffer_index_by_face(f_i);
+            //int selected_triangle_mg = g_scene->geoNode()->edit_meshnode_interface.get_material_group_by_face(mb_i);
+
+
+            //int b_offset = indices_soa.offset[meshnode->get_buffer_index(f_i)] / 3;
+            //int first_index = geo_scene->getSelectedTriangle() * 3;
+            int first_index = geo_scene->get_last_click().triangle_n * 3;
+            cout << "first index=" << first_index << "\n";
+            //int selected_triangle_index = b_offset + tri_sel;
+            MeshBuffer_Chunk chunk = geo_scene->geoNode()->edit_meshnode_interface.get_mesh_buffer_by_face(f_i);
+
+            //for (int i = 0; i < chunk.buffer->getIndexCount(); i += 3)
+            {
+                int idx0 = chunk.buffer->getIndices()[first_index];
+                int idx1 = chunk.buffer->getIndices()[first_index + 1];
+                int idx2 = chunk.buffer->getIndices()[first_index + 2];
+
+                
+
+                vertexType* v0 = &((video::S3DVertex2TCoords*)chunk.buffer->getVertices())[idx0];
+                vertexType* v1 = &((video::S3DVertex2TCoords*)chunk.buffer->getVertices())[idx1];
+                vertexType* v2 = &((video::S3DVertex2TCoords*)chunk.buffer->getVertices())[idx2];
+
+                cout PRINTV(v0->Pos) <<"\n" PRINTV(v1->Pos) << "\n" PRINTV(v2->Pos) <<"\n";
+
+                this->graph.lines.push_back(line3df(v0->Pos, v1->Pos));
+                this->graph.lines.push_back(line3df(v2->Pos, v1->Pos));
+                this->graph.lines.push_back(line3df(v0->Pos, v2->Pos));
+            }
+        }
 
         if (geo_scene->getSelectedFaces().size() > 0)
         {
@@ -1163,8 +1334,12 @@ void TestPanel_3D::SetViewStyle(s32 vtype)
 
         this->graph.lines.clear();
         this->graph.points.clear();
+        this->graph2.lines.clear();
+        this->graph2.points.clear();
 
-       
+        //geo_scene->geoNode()->GetGeometryLoopLines(graph, graph2);
+
+        geo_scene->drawGraph(this->graph2);
        
         if (geo_scene->getSelectedFaces().size() > 0)
         {
@@ -1237,7 +1412,6 @@ void TestPanel_3D::render()
 
     Active_Camera_Window = this;
 
-
     driver->setRenderTarget(getImage(), true, true, video::SColor(255, 16, 16, 16));
     
     getCamera()->render();
@@ -1256,6 +1430,22 @@ void TestPanel_3D::render()
         }
         */
         smgr->drawAll();
+
+        video::SMaterial someMaterial;
+        someMaterial.Lighting = false;
+        someMaterial.Thickness = 1.0;
+        someMaterial.MaterialType = video::EMT_SOLID;
+
+        driver->setMaterial(someMaterial);
+
+        for (const core::line3df& aline : graph.lines)
+        {
+            driver->draw3DLine(aline.start, aline.end, video::SColor(128, 255, 0, 255));
+        }
+        for (const core::line3df& aline : graph2.lines)
+        {
+            driver->draw3DLine(aline.start, aline.end, video::SColor(255, 96, 128, 96));
+        }
     }
     else if (view_style == PANEL3D_VIEW_LOOPS)
     {
@@ -1268,11 +1458,11 @@ void TestPanel_3D::render()
 
         for (const core::line3df& aline : graph.lines)
         {
-            driver->draw3DLine(aline.start, aline.end, video::SColor(200, 128, 255, 255));
+            driver->draw3DLine(aline.start, aline.end, video::SColor(128, 255, 0, 255));
         }
         for (const core::line3df& aline : graph2.lines)
         {
-            driver->draw3DLine(aline.start, aline.end, video::SColor(128, 255, 0, 255));
+            driver->draw3DLine(aline.start, aline.end, video::SColor(255, 96, 128, 96));
         }
         /*
         for (const core::line3df& aline : graph2.lines)
@@ -1286,7 +1476,8 @@ void TestPanel_3D::render()
         for (const core::line3df& aline : graph.lines)
         {
             driver->draw3DLine(aline.start, aline.end, video::SColor(255, 255, 0, 255));
-        }
+        }*/
+
         for (core::vector3df v : graph.points)
         {
             int len = 4;
@@ -1302,12 +1493,23 @@ void TestPanel_3D::render()
             driver->draw3DLine(v + core::vector3df(0, len, 0), v - core::vector3df(0, len, 0), video::SColor(255, 96, 128, 96));
             driver->draw3DLine(v + core::vector3df(0, 0, len), v - core::vector3df(0, 0, len), video::SColor(255, 96, 128, 96));
         }
-        */
+        
     }
     else
         smgr->drawAll();
 
     driver->setRenderTarget(NULL, true, true, video::SColor(0, 0, 0, 0));
+}
+
+void TestPanel_3D::render_to_framebuffer()
+{
+    smgr->setActiveCamera(getCamera());
+
+    Active_Camera_Window = this;
+
+    getCamera()->render();
+
+    smgr->drawAll();
 }
 
 
