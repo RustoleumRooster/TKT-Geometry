@@ -25,7 +25,7 @@ std::vector<char> ComputePipeline::readFile(const std::string& filename) {
 void ComputePipeline::createComputePipeline(const char* shaderFilePath, VkPipelineLayout pipelineLayout)
 {
 	auto vertShaderCode = readFile(shaderFilePath);
-	std::cout << "loaded compute shader file: " << vertShaderCode.size() << " bytes\n";
+	//std::cout << "loaded compute shader file: " << vertShaderCode.size() << " bytes\n";
 
 	VkShaderModule shaderModule;
 	createShaderModule(vertShaderCode, &shaderModule);

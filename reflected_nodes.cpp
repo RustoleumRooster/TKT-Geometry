@@ -390,9 +390,9 @@ void Reflected_Sprite_SceneNode::render()
 	driver->setTransform(video::ETS_WORLD, mat);
 	driver->setMaterial(Buffer->Material);
 
-    driver->draw3DBox(
-        getBoundingBox(),
-        video::SColor(255, 190, 128, 128));
+    //driver->draw3DBox(
+    //    getBoundingBox(),
+    //    video::SColor(255, 190, 128, 128));
 
 	driver->drawVertexPrimitiveList(Buffer->getVertices(), 4,
 		Buffer->getIndices(), 2, video::EVT_STANDARD, EPT_TRIANGLES,Buffer->getIndexType());
@@ -889,3 +889,4 @@ REFLECT_STRUCT2_BEGIN(Reflected_MeshBuffer_Water_SceneNode)
     INHERIT_FROM(Reflected_MeshBuffer_SceneNode)
     REFLECT_STRUCT2_MEMBER(is_connected)
 REFLECT_STRUCT2_END()
+

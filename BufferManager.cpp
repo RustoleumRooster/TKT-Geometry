@@ -773,7 +773,7 @@ int MeshNode_Interface_Final::get_n_triangles(int f_n)
 
 int MeshNode_Interface_Final::get_first_triangle(int f_n)
 {
-    return mb_begin[f_n] / 3;
+    return mb_begin[f_n];
 }
 
 //You must pass a buffer index to this function

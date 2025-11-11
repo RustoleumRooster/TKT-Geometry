@@ -65,5 +65,23 @@ namespace reflect
         typeDesc->alias = typeDesc->name; 
 
 
+
+#define REFLECT_CUSTOM_STRUCT_BEGIN_TEMPLATE(W, type) \
+    type<W>::my_typeDesc type<W>::Reflection{type<W>::initReflection}; \
+    reflect::TypeDescriptor_Struct* type<W>::my_typeDesc::getNewEmptyStruct() { \
+            return new type<W>::my_typeDesc(reflect::EmptyStruct::initReflection); \
+        } \
+    template<>\
+    void type<W>::my_typeDesc::addFormWidget(Reflected_GUI_Edit_Form* win, reflect::TypeDescriptor_Struct* type_struct, std::vector<int> tree, size_t offset, bool bVisible, bool bEditable, int tab) {} \
+    template<>\
+    void type<W>::initReflection(reflect::TypeDescriptor_Struct* typeDesc) { \
+        using T = type<W>; \
+        typeDesc->name = #type; \
+        typeDesc->size = sizeof(T); \
+        typeDesc->inherited_type = NULL; \
+        typeDesc->name_func = NULL; \
+        typeDesc->alias = typeDesc->name; 
+
+
 }
 #endif

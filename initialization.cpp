@@ -267,8 +267,9 @@ void initialize_materials(geometry_scene* scene)
 
     Material_Group m7{ "Emitter",video::SColor(255,128,128,64) };
     m7.lightmap = false;
-    m7.create_meshBuffer_Node = false;
-    //m7.meshBuffer_Node_typeName = "Reflected_MeshBuffer_Clouds_SceneNode";
+    m7.create_meshBuffer_Node = true;
+    m7.use_unlit_texture = true;
+    m7.meshBuffer_Node_typeName = "Reflected_MeshBuffer_AreaLight_SceneNode";
 
 
     material_groups_base->material_groups.push_back(m0);

@@ -11,7 +11,6 @@
 
 #include "soa.h"
 
-using namespace std;
 using namespace irr;
 using namespace core;
 

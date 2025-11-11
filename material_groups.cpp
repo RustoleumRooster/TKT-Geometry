@@ -261,10 +261,14 @@ void Material_Groups_Base::apply_material_to_buffer(scene::IMeshBuffer* buffer, 
         //These meshbuffers are "managed" by their respective meshbuffer_sceneNodes, in final view only
         //
 
-        if (final_view)
+        if (final_view && mg.use_unlit_texture == false)
+        {
             return;
+        }
         else
         {
+            buffer->getMaterial().Lighting = false;
+
             if (selected)
                 buffer->getMaterial().MaterialType = SolidMaterial_Selected_Type;
             else

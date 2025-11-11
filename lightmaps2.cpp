@@ -153,9 +153,7 @@ void Lightmap_Configuration::run_sunlight(geometry_scene* geo_scene)
 
 	my_lightmaps.clear();
 
-	Lightmap_Routine3(geo_scene, this, my_lightmaps,&geo_scene->geoNode()->get_lightmap_config(1));
-	//Lightmap_Routine2(geo_scene, this, my_lightmaps,&geo_scene->geoNode()->get_lightmap_config(1));
-	//Lightmap_Routine2(geo_scene, this, my_lightmaps, this);
+	Lightmap_Routine(geo_scene, this, my_lightmaps,&geo_scene->geoNode()->get_lightmap_config(1));
 
 }
 

@@ -61,10 +61,7 @@ layout(std140, binding = 5) readonly buffer edgesUBO
 	uint global_edges[];
 };
 
-layout(std140, binding = 6) readonly buffer lightsUBO
-{
-	uint global_light_indices[];
-};
+layout(binding = 6, rgba8) uniform readonly image2D imageIn;
 
 //an output buffer for debugging
 layout(std140, binding = 7) buffer hitResults
@@ -666,23 +663,14 @@ float MinorX(float y)
 	return 0;
 }
 
-void do_precalculations(uint light_i, vec3 pos)
-{
-	uint idx = global_light_indices[light_i];
-
-	for(int i=0;i<3;i++)
-		src_vert[i] = global_vertices[global_indices[idx*3 + i]];
-
-	src_normal = cross(global_vertices[indexed(idx*3,1)] - global_vertices[indexed(idx*3,0)], global_vertices[indexed(idx*3,2)] - global_vertices[indexed(idx*3,1)]);
-	src_normal = normalize(src_normal);
-}
-
 
 void main()
 {
 	uint ix = gl_LocalInvocationID.x;
 	uint iy = gl_LocalInvocationID.y;
 	//uint thread_id = iy * gl_WorkGroupSize.x + ix;
+
+	return;
 
 	if(gl_WorkGroupID.x * 3 < params.m_triangles_n_indices && ix == 0 && iy == 0)
 	{
@@ -951,99 +939,7 @@ void main()
 
 				subgroup_total = 0;
 
-				//========================================================
-				// Loop over each light source
-				//
-				
-				while(light_i < params.n_lights)
-				{
-					uint light_idx = global_light_indices[light_i*2];
-
-					subgroup_total=0;
-
-					if(ix == 0 && iy == 0)
-					{
-						do_precalculations(light_i*2,pos);
-
-						shared_bool = (dot(Normal,global_vertices[global_indices[light_idx*3]] - pos) > 0.0 || 
-								dot(Normal,global_vertices[global_indices[light_idx*3 + 1]] - pos) > 0.0 ||
-								dot(Normal,global_vertices[global_indices[light_idx*3 + 2]] - pos) > 0.0 );
-					}
-
-					barrier();
-
-					if(shared_bool)
-					{
-						vec3 ray = normalize(rand_triangle_point(ix + 32*iy) - pos);
-
-						if(true)
-						{
-							
-							uint hit_id;
-
-							float d = trace_scene_hit(pos,ray,hit_id);
-
-							bool isHit = false;
-
-							if(hit_id == light_idx && ((dot(ray,Normal) > 0) && 
-							((point_type == 1) ||
-							(is_on_edge(pos,1,0) && (dot(ray,EdgeNormal0) > 0) || edges[0] == 0xFFFF) ||
-							(is_on_edge(pos,1,2) && (dot(ray,EdgeNormal1) > 0) || edges[1] == 0xFFFF) ||
-							(is_on_edge(pos,2,0) && (dot(ray,EdgeNormal2) > 0) || edges[2] == 0xFFFF) )))
-							{
-								isHit = true;
-							}
-
-							//Testing Code
-							if(ipos == vec2(floor(params.in_coords.x * params.lm_width),floor(params.in_coords.y * params.lm_height)) && valid_pos )
-							{
-								//hits[0].x = ray_count;
-								//hits[ix+32*iy] = pos;
-								//hits[ix+32*iy+256] = pos + ray * d;
-							}
-
-							subgroupBarrier();
-
-							//float p = 100000.0 * dot(-ray,src_normal)  * dot(ray,Normal) / (d*d);
-							float p =  dot(-ray,src_normal)  * dot(-ray,src_normal)  * dot(-ray,src_normal)  * dot(ray,Normal) / (d*d);
-
-
-							//============================================
-							// Add up the contribution from each thread in the subgroup
-							//
-							subgroup_total = subgroupAdd( isHit && valid_pos ? p : 0 );
-							subgroup_total *= 0.1 * global_light_indices[light_i*2+1];
-
-						}
-					
-						subgroupBarrier();
-
-						//============================================
-						// Add up the contribution from all the subgroups
-						//
-
-						if(subgroupElect())
-						{
-							atomicAdd(shared_total[light_i],subgroup_total);
-						}
-
-						barrier();
-
-					}//if shared_bool
-
-					barrier();
-
-					if(ix == 0 && iy == 0)
-					{
-						light_i += 1;
-
-						
-					}
-
-					barrier();
-
-
-				}// per light source
+				//Actual Lighting Calcs
 			
 				barrier();
 
@@ -1074,8 +970,8 @@ void main()
 						//hits[0].z = p;
 					}
 
-					if(ray_count > 32 )
-						imageStore(imageOut,ipos,vec4(p,1,p,1));					
+					//if(ray_count > 32 )
+					//	imageStore(imageOut,ipos,vec4(p,1,p,1));					
 
 				}// if(ipos == vec2(floor(params.in_c...
 

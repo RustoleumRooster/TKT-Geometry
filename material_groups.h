@@ -18,6 +18,7 @@ struct Material_Group
     bool transparent = false;
     bool lightmap = false;
     bool create_meshBuffer_Node = false;
+    bool use_unlit_texture = false; //instead of letting the meshBuffer_node set the texture, just use unlit
     const char* meshBuffer_Node_typeName = NULL;
 };
 

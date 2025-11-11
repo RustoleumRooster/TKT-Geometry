@@ -1,7 +1,9 @@
 #pragma once
 
-#ifndef _VK_AREALIGHT_MOD_H_
-#define _VK_AREALIGHT_MOD_H_
+#pragma once
+
+#ifndef _VK_BOUNCEDLIGHT_MOD_H_
+#define _VK_BOUNCEDLIGHT_MOD_H_
 
 #include <vulkan/vulkan.h>
 #include <irrlicht.h>
@@ -15,7 +17,7 @@
 
 class Lightmap_Configuration;
 
-class AreaLight_Module : public Vulkan_Module
+class BouncedLight_Module : public Vulkan_Module
 {
 
 	struct RayTraceInfo {
@@ -38,27 +40,25 @@ class AreaLight_Module : public Vulkan_Module
 		uint32_t lightmap_width;
 		uint32_t lightmap_height;
 
-		uint32_t n_lights;
-
 	};
 
 public:
-	AreaLight_Module(Vulkan_App*, Geometry_Module* geo_mod, Lightmap_Configuration*);
+	BouncedLight_Module(Vulkan_App* vulkan, Geometry_Module* geo_mod, Lightmap_Configuration* configuration);
 
 	void createDescriptorSetLayout();
 	void createDescriptorSets(int);
-	void createUBO();
+	void createRaytraceInfoBuffer();
 
 	virtual void run() override;
 
+	void createImages();
 	void read_results();
 	void cleanup();
-
 
 	void runMaterial(int);
 	void runTriangle(int mat_n, int triangle_offset);
 	void writeUBO(int);
-	void writeUBO2(int mg , int triangle_n);
+	void writeUBO2(int mg, int triangle_n);
 
 	const std::vector<TextureMaterial>* materials = NULL;
 
@@ -71,8 +71,8 @@ public:
 	reflect::input<vkBufferResource> edges;
 	reflect::input<vkBufferResource> scratchpad;
 	reflect::input<vkBufferResource> area_lights;
-	reflect::input<vkMultiImageResource> images_in;
 
+	reflect::input<vkMultiImageResource> images_in;
 	reflect::output<vkMultiImageResource> images_out;
 
 	Triangle_Transformer* triangle_trans = NULL;
@@ -81,18 +81,18 @@ public:
 	uint16_t n_vertices = 0;
 	uint32_t n_nodes = 0;
 
-	uint16_t n_lightsource_indices = 0;
-
 	uint16_t selected_triangle_index = 0;
 	uint16_t selected_triangle_mg = 0;
 	vector3df selected_triangle_bary_coords{ 0,0,0 };
 
 	soa_struct_2<aligned_vec3, aligned_vec3>* vertices_soa = NULL;
 	soa_struct<aligned_uint>* indices_soa = NULL;
-	std::vector<aligned_uint>* lightsource_indices_soa;
+
+	Lightmap_Configuration* configuration = NULL;
 
 	LineHolder graph;
 
 	REFLECT3()
+
 };
 #endif
