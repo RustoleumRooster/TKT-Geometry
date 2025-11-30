@@ -1,6 +1,7 @@
 #include <vulkan/vulkan.h>
 #include "vkAreaLightModule.h"
 #include "LightMaps.h"
+#include "vkUtilModules.h"
 
 #define PRINTV(x) << x.X <<","<<x.Y<<","<<x.Z<<" "
 
@@ -14,12 +15,13 @@ REFLECT_STRUCT3_BEGIN(AreaLight_Module)
 	REFLECT_STRUCT_MEMBER(area_lights)
 	REFLECT_STRUCT_MEMBER(images_in)
 	REFLECT_STRUCT_MEMBER(images_out)
+	REFLECT_STRUCT_MEMBER_FORWARD(images_in, images_out)
 REFLECT_STRUCT3_END()
 
 AreaLight_Module::AreaLight_Module(Vulkan_App* vulkan, Geometry_Module* geo_mod, Lightmap_Configuration* configuration) :
 	Vulkan_Module(vulkan)
 {
-	set_uids();
+	set_ptrs();
 
 	Geometry_Assets* geo_assets = geo_mod->geo_assets;
 
@@ -51,14 +53,14 @@ void AreaLight_Module::createDescriptorSets(int lightmap_n)
 	descriptorSets.resize(1);
 
 	writer.writeBuffer(0, ubo.getDescriptorBufferInfo());
-	writer.writeBuffer(1, indices.X.getDescriptorBufferInfo());
-	writer.writeBuffer(2, vertices.X.getDescriptorBufferInfo());
-	writer.writeBuffer(3, lm_uvs.X.getDescriptorBufferInfo());
-	writer.writeBuffer(4, bvh_nodes.X.getDescriptorBufferInfo());
-	writer.writeBuffer(5, edges.X.getDescriptorBufferInfo());
-	writer.writeBuffer(6, area_lights.X.getDescriptorBufferInfo());
-	writer.writeBuffer(7, scratchpad.X.getDescriptorBufferInfo());
-	writer.writeImage(8, images_in.X.getDescriptorBufferInfo(lightmap_n));
+	writer.writeBuffer(1, indices.X->getDescriptorBufferInfo());
+	writer.writeBuffer(2, vertices.X->getDescriptorBufferInfo());
+	writer.writeBuffer(3, lm_uvs.X->getDescriptorBufferInfo());
+	writer.writeBuffer(4, bvh_nodes.X->getDescriptorBufferInfo());
+	writer.writeBuffer(5, edges.X->getDescriptorBufferInfo());
+	writer.writeBuffer(6, area_lights.X->getDescriptorBufferInfo());
+	writer.writeBuffer(7, scratchpad.X->getDescriptorBufferInfo());
+	writer.writeImage(8, images_in.X->getDescriptorBufferInfo(lightmap_n));
 	writer.build(descriptorSets[0]);
 }
 
@@ -68,14 +70,14 @@ void AreaLight_Module::createDescriptorSetLayout()
 	bindings.resize(9);
 
 	bindings[0] = ubo.getDescriptorSetLayout(0);
-	bindings[1] = indices.X.getDescriptorSetLayout(1);
-	bindings[2] = vertices.X.getDescriptorSetLayout(2);
-	bindings[3] = lm_uvs.X.getDescriptorSetLayout(3);
-	bindings[4] = bvh_nodes.X.getDescriptorSetLayout(4);
-	bindings[5] = edges.X.getDescriptorSetLayout(5);
-	bindings[6] = area_lights.X.getDescriptorSetLayout(6);
-	bindings[7] = scratchpad.X.getDescriptorSetLayout(7);
-	bindings[8] = images_out.X.getDescriptorSetLayout(8);
+	bindings[1] = indices.X->getDescriptorSetLayout(1);
+	bindings[2] = vertices.X->getDescriptorSetLayout(2);
+	bindings[3] = lm_uvs.X->getDescriptorSetLayout(3);
+	bindings[4] = bvh_nodes.X->getDescriptorSetLayout(4);
+	bindings[5] = edges.X->getDescriptorSetLayout(5);
+	bindings[6] = area_lights.X->getDescriptorSetLayout(6);
+	bindings[7] = scratchpad.X->getDescriptorSetLayout(7);
+	bindings[8] = images_out.X->getDescriptorSetLayout(8);
 
 	descriptorSetLayout = new MyDescriptorSetLayout(m_device, bindings);
 }
@@ -222,9 +224,6 @@ void AreaLight_Module::runTriangle(int mat_n, int triangle_offset)
 
 void AreaLight_Module::run()
 {
-	if (!load_resources())
-		return;
-
 	n_lightsource_indices = lightsource_indices_soa->size();
 
 	if (n_lightsource_indices == 0)
@@ -277,7 +276,7 @@ void AreaLight_Module::read_results()
 		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
 		VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 1);
 
-	m_device->copyBuffer(scratchpad.X.Buffer, stagingBuffer.getBuffer(), sizeof(aligned_vec3) * 256 * 2);
+	m_device->copyBuffer(scratchpad.X->Buffer, stagingBuffer.getBuffer(), sizeof(aligned_vec3) * 256 * 2);
 
 	stagingBuffer.readFromBuffer((void*)hit_results);
 

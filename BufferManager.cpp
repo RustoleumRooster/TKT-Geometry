@@ -150,7 +150,6 @@ void MeshNode_Interface_Edit::generate_lightmap_info()
         pf->faces[f_i].temp_b = false;
     }
 
-
     for (int i = 0; i < materials_used.size(); i++)
     {
         if (!materials_used[i].has_lightmap)

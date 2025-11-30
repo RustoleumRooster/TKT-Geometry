@@ -121,11 +121,12 @@ float trace_node_triangles_hit(in uint node_i, in vec3 eye, in vec3 ray, out uin
 
 		if(j==0)
 		{
-			idx = floatBitsToUint(global_nodes[node_i].padding.x);
+			idx = floatBitsToUint(global_nodes[node_i].padding.x) & 0xFFFF;
 		}
 		else if(j==1)
 		{
-			idx = floatBitsToUint(global_nodes[node_i].padding.y);
+			idx = floatBitsToUint(global_nodes[node_i].padding.z) & 0xFFFF;
+			//idx = floatBitsToUint(global_nodes[node_i].padding.x) >> 16;
 		}
 
 		edge1 = global_vertices[global_indices[(idx*3) + 1]] - global_vertices[global_indices[idx*3]];

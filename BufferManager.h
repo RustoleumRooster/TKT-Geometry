@@ -59,6 +59,7 @@ struct TextureMaterial
     bool has_lightmap = false;
     int lightmap_size;
     int lightmap_no;
+    int texture_idx;                            //index for accessing on the GPU
     //int original_material_no;
 
     std::vector<int> faces;                     //unique to entire scene

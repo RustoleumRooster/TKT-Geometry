@@ -12,6 +12,33 @@ struct BVH_node_gpu
 	alignas(16) f32 aabbMax[4];
 	alignas(16) u32 packing[4];
 
+	//pack up to 8 u16 values in the packing field
+	void pack(int pos, u16 data)
+	{
+		if (pos % 2 == 0)
+		{
+			packing[pos / 2] |= 0xFFFFu;
+			packing[pos / 2] &= ((0xFFFFu << 16) | data);
+		}
+		else if (pos % 2 == 1)
+		{
+			packing[pos / 2] |= (0xFFFFu << 16);
+			packing[pos / 2] &= (0xFFFFu | ((u32)data << 16));
+		}
+	}
+
+	void check_packing(int pos, u16 data)
+	{
+		if (pos % 2 == 0)
+		{
+			cout << data << " = " << static_cast<u16>(packing[pos / 2] & 0xFFFF) << "\n";
+		}
+		else if (pos % 2 == 1)
+		{
+			cout << data << " = " << static_cast<u16>((packing[pos / 2] >> 16) & 0xFFFF) << "\n";
+		}
+	}
+
 	u32 left_node = 0xFFFF;
 	u32 right_node = 0xFFFF;
 

@@ -1,6 +1,9 @@
 #include <vulkan/vulkan.h>
 #include "vkBouncedLightModule.h"
 #include "LightMaps.h"
+#include "vkModules.h"
+#include "vkUtilModules.h"
+
 
 #define PRINTV(x) << x.X <<","<<x.Y<<","<<x.Z<<" "
 
@@ -14,12 +17,13 @@ REFLECT_STRUCT3_BEGIN(BouncedLight_Module)
 	REFLECT_STRUCT_MEMBER(area_lights)
 	REFLECT_STRUCT_MEMBER(images_in)
 	REFLECT_STRUCT_MEMBER(images_out)
+	//REFLECT_STRUCT_MEMBER_FORWARD(images_in,images_out)
 REFLECT_STRUCT3_END()
 
 BouncedLight_Module::BouncedLight_Module(Vulkan_App* vulkan, Geometry_Module* geo_mod, Lightmap_Configuration* configuration)
 	: Vulkan_Module(vulkan), configuration{ configuration }
 {
-	set_uids();
+	set_ptrs();
 	Geometry_Assets* geo_assets = geo_mod->geo_assets;
 
 	indices_soa = &geo_assets->indices_soa;
@@ -50,14 +54,14 @@ void BouncedLight_Module::createDescriptorSets(int lightmap_n)
 	descriptorSets.resize(1);
 
 	writer.writeBuffer(0, ubo.getDescriptorBufferInfo());
-	writer.writeBuffer(1, indices.X.getDescriptorBufferInfo());
-	writer.writeBuffer(2, vertices.X.getDescriptorBufferInfo());
-	writer.writeBuffer(3, lm_uvs.X.getDescriptorBufferInfo());
-	writer.writeBuffer(4, bvh_nodes.X.getDescriptorBufferInfo());
-	writer.writeBuffer(5, edges.X.getDescriptorBufferInfo());
-	writer.writeImage(6, images_in.X.getDescriptorBufferInfo(lightmap_n));
-	writer.writeBuffer(7, scratchpad.X.getDescriptorBufferInfo());
-	writer.writeImage(8, images_out.X.getDescriptorBufferInfo(lightmap_n));
+	writer.writeBuffer(1, indices.X->getDescriptorBufferInfo());
+	writer.writeBuffer(2, vertices.X->getDescriptorBufferInfo());
+	writer.writeBuffer(3, lm_uvs.X->getDescriptorBufferInfo());
+	writer.writeBuffer(4, bvh_nodes.X->getDescriptorBufferInfo());
+	writer.writeBuffer(5, edges.X->getDescriptorBufferInfo());
+	writer.writeImageArray(6, images_in.X->getDescriptorBufferInfo());
+	writer.writeBuffer(7, scratchpad.X->getDescriptorBufferInfo());
+	writer.writeImageArray(8, images_out.X->getDescriptorBufferInfo());
 	writer.build(descriptorSets[0]);
 }
 
@@ -67,14 +71,14 @@ void BouncedLight_Module::createDescriptorSetLayout()
 	bindings.resize(9);
 
 	bindings[0] = ubo.getDescriptorSetLayout(0);
-	bindings[1] = indices.X.getDescriptorSetLayout(1);
-	bindings[2] = vertices.X.getDescriptorSetLayout(2);
-	bindings[3] = lm_uvs.X.getDescriptorSetLayout(3);
-	bindings[4] = bvh_nodes.X.getDescriptorSetLayout(4);
-	bindings[5] = edges.X.getDescriptorSetLayout(5);
-	bindings[6] = images_in.X.getDescriptorSetLayout(6);
-	bindings[7] = scratchpad.X.getDescriptorSetLayout(7);
-	bindings[8] = images_out.X.getDescriptorSetLayout(8);
+	bindings[1] = indices.X->getDescriptorSetLayout(1);
+	bindings[2] = vertices.X->getDescriptorSetLayout(2);
+	bindings[3] = lm_uvs.X->getDescriptorSetLayout(3);
+	bindings[4] = bvh_nodes.X->getDescriptorSetLayout(4);
+	bindings[5] = edges.X->getDescriptorSetLayout(5);
+	bindings[6] = images_in.X->getDescriptorSetLayout(6);
+	bindings[7] = scratchpad.X->getDescriptorSetLayout(7);
+	bindings[8] = images_out.X->getDescriptorSetLayout(8);
 
 	descriptorSetLayout = new MyDescriptorSetLayout(m_device, bindings);
 }
@@ -121,7 +125,10 @@ void BouncedLight_Module::writeUBO2(int mg, int triangle_offset)
 	//cout PRINTV(vertices_soa->data1[idx0].V) << "\n";
 	//cout PRINTV(vertices_soa->data1[idx1].V) << "\n";
 	//cout PRINTV(vertices_soa->data1[idx2].V) << "\n";
-	//cout << "bary coords = " PRINTV(info.in_coords) << "\n";
+	cout << "bary coords = " PRINTV(info.in_coords) << "\n";
+
+	//info.lightmap_no = materials->data()[info_n].lightmap_no;
+	//std::cout << "lightmap_no: " << info.lightmap_no << "\n";
 
 	ubo.writeToBuffer(m_device->getDevice(),(void*)&info);
 }
@@ -145,31 +152,21 @@ void BouncedLight_Module::writeUBO(int info_n)
 
 	info.lightmap_width = materials->data()[info_n].lightmap_size;
 	info.lightmap_height = materials->data()[info_n].lightmap_size;
+	info.lightmap_no = materials->data()[info_n].lightmap_no;
+	//std::cout << "lightmap_no: " << info.lightmap_no << "\n";
 
 	ubo.writeToBuffer(m_device->getDevice(), (void*)&info);
 }
 
 void BouncedLight_Module::createImages()
 {
-	images_out.X.Images.resize(images_in.X.Images.size());
+	u32 n_images = images_in.X->n_images;
+	VkDeviceSize width = configuration->lightmap_dimensions[0].Width;
+	VkDeviceSize height = configuration->lightmap_dimensions[0].Height;
 
-	for (int i = 0; i < images_in.X.Images.size(); i++)
-	{
-		VkDeviceSize width = configuration->lightmap_dimensions[i].Width;
-		VkDeviceSize height = configuration->lightmap_dimensions[i].Height;
-		VkDeviceSize imgSize = width * height * 4;
-
-		m_device->createImage(width, height, VK_FORMAT_R8G8B8A8_UNORM,
-			VK_IMAGE_TILING_OPTIMAL,
-			VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, images_out.X.Images[i].Image,
-			images_out.X.Images[i].ImageMemory);
-
-		images_out.X.Images[i].ImageView = m_device->createImageView(images_out.X.Images[i].Image, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT);
-
-		m_device->transitionImageLayout(images_out.X.Images[i].Image, VK_FORMAT_R8G8B8A8_UNORM,
-			VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
-	}
+	images_out.X = vulkan->create_imageArray(n_images, width, height,
+		VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+		&images_out);
 }
 
 void BouncedLight_Module::runMaterial(int mat_n)
@@ -232,8 +229,8 @@ void BouncedLight_Module::runTriangle(int mat_n, int triangle_offset)
 
 void BouncedLight_Module::run()
 {
-	if (!load_resources())
-		return;
+	//if (!load_resources())
+	//	return;
 
 	createImages();
 	createDescriptorSetLayout();
@@ -242,7 +239,7 @@ void BouncedLight_Module::run()
 
 	triangle_trans = new Triangle_Transformer(*vertices_soa, *indices_soa);
 
-	//cout << "Running material " << selected_triangle_mg << ", triangle " << selected_triangle_index << "\n";
+	cout << "Running material " << selected_triangle_mg << ", triangle " << selected_triangle_index << "\n";
 
 	vector3df w0, w1, w2;
 
@@ -250,15 +247,20 @@ void BouncedLight_Module::run()
 
 	for (int i = 0; i < materials->size(); i++)
 	{
-		//if (materials->data()[i].has_lightmap)
-		//	runMaterial(i);
+		if (materials->data()[i].has_lightmap)
+			runMaterial(i);
 	}
 
 	read_results();
 
 	delete triangle_trans;
 
+	//images_out.ready = true;
+
+	//images_out.X = images_in.X;
 	images_out.ready = true;
+
+	//images_in.X.destroy(m_device->getDevice());
 
 	cleanup();
 }
@@ -279,13 +281,14 @@ void BouncedLight_Module::read_results()
 		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
 		VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 1);
 
-	m_device->copyBuffer(ubo.Buffer, stagingBuffer.getBuffer(), sizeof(aligned_vec3) * 256 * 2);
+	m_device->copyBuffer(scratchpad.X->Buffer, stagingBuffer.getBuffer(), sizeof(aligned_vec3) * 256 * 2);
 
 	stagingBuffer.readFromBuffer((void*)hit_results);
 
 	for (int i = 0; i < 256; i++)
 	{
-		//cout PRINTV(hit_results[i].V) << " ";
+		//cout PRINTV(hit_results[i].V) << "\n";
+		//cout << hit_results[i].V.X << ", " << hit_results[i].V.Y << "\n";
 		//graph.lines.push_back(line3df(hit_results[i].V, hit_results[256 + i].V));
 	}
 

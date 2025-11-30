@@ -165,6 +165,22 @@ public:
 		writes.push_back(descriptorWrite);
 	}
 
+	void writeImageArray(uint32_t binding, VkDescriptorImageInfo* imageInfo) {
+		VkWriteDescriptorSet descriptorWrite{};
+
+		auto& bindingDescription = setLayout.bindings[binding];
+
+		descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		//descriptorWrite.dstSet = descriptorSets[i];
+		descriptorWrite.dstBinding = binding;
+		descriptorWrite.dstArrayElement = 0;
+		descriptorWrite.descriptorType = bindingDescription.descriptorType;
+		descriptorWrite.descriptorCount = bindingDescription.descriptorCount;
+		descriptorWrite.pImageInfo = imageInfo;
+
+		writes.push_back(descriptorWrite);
+	}
+
 	bool build(VkDescriptorSet& set) {
 		bool success = pool.allocateDescriptorSet(setLayout.getDescriptorSetLayout(), set);
 

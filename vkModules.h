@@ -24,18 +24,31 @@ class Lightmap_Configuration;
 
 void Lightmap_Routine(geometry_scene*, Lightmap_Configuration*, std::vector<irr::video::ITexture*>&, Lightmap_Configuration*);
 
-struct vkResource
+
+namespace reflect {
+	struct input_type;
+	struct output_type;
+}
+
+struct vkMemoryResource
 {
-	
+	vkMemoryResource(reflect::output_type*);
+	void find_consumers(reflect::output_type*);
+	void consume(reflect::input_type*);
+
+	u32 reference_count = 0;
+	std::vector<reflect::input_type*> consumers;
+	virtual void destroy(VkDevice) = 0;
 };
 
 struct vkRaytraceResource
 {
-
+	
 };
 
-struct vkUniformBufferResource
+struct vkUniformBufferResource //: public vkMemoryResource
 {
+
 	VkBuffer Buffer;
 	VkDeviceMemory BufferMemory;
 	u32 range = 0;
@@ -48,12 +61,13 @@ struct vkUniformBufferResource
 
 };
 
-struct vkBufferResource
+struct vkBufferResource : public vkMemoryResource
 {
 	VkBuffer Buffer;
 	VkDeviceMemory BufferMemory;
 	u32 range = 0;
 
+	vkBufferResource(reflect::output_type* out) : vkMemoryResource(out) {}
 	VkDescriptorSetLayoutBinding getDescriptorSetLayout(u32);
 	VkDescriptorBufferInfo getDescriptorBufferInfo();
 
@@ -62,23 +76,61 @@ struct vkBufferResource
 	REFLECT()
 };
 
-struct vkImageResource
+struct vkImageResource : public vkMemoryResource
+{
+	VkImage Image;
+	VkDeviceMemory ImageMemory;
+	VkImageView ImageView;
+
+	vkImageResource(reflect::output_type* out) : vkMemoryResource(out) {}
+	void destroy(VkDevice);
+	void create_and_load_texture(MyDevice* device, video::IVideoDriver* driver, video::ITexture* tex);
+
+	REFLECT()
+};
+
+struct vkImageSubresource
 {
 	VkImage Image;
 	VkDeviceMemory ImageMemory;
 	VkImageView ImageView;
 
 	void destroy(VkDevice);
+	void create_and_load_texture(MyDevice* device, video::IVideoDriver* driver, video::ITexture* tex);
 
 	REFLECT()
 };
 
-struct vkMultiImageResource 
+struct vkImageArrayResource : public vkMemoryResource
 {
-	std::vector<vkImageResource> Images;
+	VkImage Image;
+	VkDeviceMemory ImageMemory;
+	VkImageView ImageView;
+
+	int n_images = 0;
+
+	vkImageArrayResource(reflect::output_type* out) : vkMemoryResource(out) {}
+
+	void destroy(VkDevice);
+	VkDescriptorSetLayoutBinding getDescriptorSetLayout(u32);
+	VkDescriptorImageInfo* getDescriptorBufferInfo();
+	void initializeDescriptorInfo();
+
+	std::vector<VkDescriptorImageInfo> imageStorageInfo;
+
+	REFLECT()
+};
+
+struct vkMultiImageResource : public vkMemoryResource
+{
+	std::vector<vkImageSubresource> Images;
+
+	vkMultiImageResource(reflect::output_type* out) : vkMemoryResource(out) {}
 
 	VkDescriptorSetLayoutBinding getDescriptorSetLayout(u32);
 	VkDescriptorImageInfo getDescriptorBufferInfo(u32);
+
+	void destroy(VkDevice);
 
 	REFLECT()
 };
@@ -109,6 +161,19 @@ namespace reflect
             typeDesc->name_func = NULL; \
             typeDesc->alias = typeDesc->name;
 
+#define REFLECT_STRUCT_MEMBER_FORWARD(name0,name1) \
+		int a = offsetof(T,name0);int b = offsetof(T,name1);\
+        for(int i=0;i<typeDesc->members.size();i++) {\
+			if(strcmp(typeDesc->members[i].name,#name0)==0) {\
+				for(int j=0;j<typeDesc->members.size();j++) {\
+					if(strcmp(typeDesc->members[j].name,#name1)==0) { \
+						typeDesc->members[i].forward_output = j; \
+						std::cout << #name0 <<" FWD DST = "<<j<<", "<<typeDesc->members[j].name<<"\n";\
+					}\
+				}\
+			}\
+		}
+
 #define REFLECT_STRUCT3_END() \
     }
 
@@ -118,16 +183,52 @@ namespace reflect
 	template <typename TY>
 	void connect(input<TY>* in, output<TY>* out);
 
+	struct output_type;
+
+	enum {
+		INPUT_NOT_CONNECTED,
+		INPUT_WAITING,
+		INPUT_FINISHED
+	};
+
 	struct input_type
 	{
-		u64 my_uid = 0;
-		virtual bool load() = 0;
+		//u64 my_uid = 0;
+		
+		u64 input_uid = 0;
+		std::string input_member;
+
+		//not reflected
+		//
+
+		Vulkan_Module* owner = NULL;
+		output_type* src_output = NULL;		
+		output_type* forward_output = NULL;	
+		bool ready = false;				
+		int status = INPUT_NOT_CONNECTED;
+
+		u64 forward_uid = 0;
+		
+
 		REFLECT()
 	};
 
 	struct output_type
 	{
-		u64 my_uid = 0;
+		//u64 my_uid = 0;
+		std::vector<u64> output_uids;
+		std::vector<std::string> output_member;
+
+		//not reflected
+		//
+		virtual void consume(input_type*) = 0;
+		Vulkan_Module* owner = NULL;
+		std::vector<input_type*> dest_inputs;	
+		bool ready = false;						
+
+		virtual void signal() = 0;
+		virtual void push() = 0;
+
 		REFLECT()
 	};
 
@@ -138,12 +239,12 @@ namespace reflect
 		{
 		};
 
-		u64 input_uid = 0;
-		std::string input_member;
-		u64 old_uid;	//not reflected
-		TY X;			//not reflected
+		input() {}
 
-		virtual bool load() override;
+		u64 old_uid;	//not reflected
+		TY* X = NULL;			//not reflected
+
+		//virtual bool load() override;
 
 		REFLECT_CUSTOM_STRUCT()
 	};
@@ -155,10 +256,15 @@ namespace reflect
 		{
 		};
 
-		std::vector<u64> output_uids;
+		output() {}
+
+		virtual void consume(input_type*);
+
 		std::vector<u64> old_uids;	//not reflected
-		TY X;						//not reflected
-		bool ready = false;			//not reflected
+		TY* X = NULL;						
+
+		virtual void signal() override;
+		virtual void push() override;
 
 		REFLECT_CUSTOM_STRUCT()
 	};
@@ -166,25 +272,39 @@ namespace reflect
 	template <typename TY>
 	void connect( output<TY>* out, input<TY>* in)
 	{
-		in->input_uid = out->my_uid;
-		out->output_uids.push_back(in->my_uid);
+		//in->input_uid = out->my_uid;
+		in->input_uid = out->owner->m_uid;
+		//out->output_uids.push_back(in->my_uid);
+		out->output_uids.push_back(in->owner->m_uid);
 
-		std::vector<Vulkan_Module*>* all_vulkan_modules = get_all_vk_modules();
+		Vulkan_Module* out_module = out->owner;
+		Vulkan_Module* in_module = in->owner;
 
-		if (!all_vulkan_modules)
+		if (!out_module || !in_module)
 			return;
 
-		Vulkan_Module* out_module = get_module_by_uid(all_vulkan_modules, out->my_uid);
-
-		if (!out_module)
-			return;
-
-		reflect::TypeDescriptor_Struct* tD = out_module->GetDynamicReflection();
-		for (reflect::Member m : tD->members)
+		reflect::TypeDescriptor_Struct* out_tD = out_module->GetDynamicReflection();
+		for (int i=0;i< out_tD->members.size();i++)
 		{
+			reflect::Member& m = out_tD->members[i];
+
 			if ((char*)out_module + m.offset == (char*)out)
 			{
 				in->input_member = m.name;
+				in->src_output = (reflect::output_type*)m.get(out_module);
+				in->status = reflect::INPUT_WAITING;
+			}
+		}
+
+		reflect::TypeDescriptor_Struct* in_tD = in_module->GetDynamicReflection();
+		for (int i = 0; i < in_tD->members.size(); i++)
+		{
+			reflect::Member& m = in_tD->members[i];
+
+			if ((char*)in_module + m.offset == (char*)in)
+			{
+				out->output_member.push_back(m.name);
+				out->dest_inputs.push_back((reflect::input_type*)m.get(in_module));
 			}
 		}
 
@@ -197,36 +317,57 @@ namespace reflect
 	}
 
 	template <typename TY>
-	bool input<TY>::load()
+	void output<TY>::consume(input_type* in)
+	{
+		X->consume(in);
+	}
+
+	template <typename TY>
+	void output<TY>::push()
 	{
 		std::vector<Vulkan_Module*>* all_vulkan_modules = get_all_vk_modules();
 
-		Vulkan_Module* module = get_module_by_uid(all_vulkan_modules, this->input_uid);
-		
-		if (!module)
-			return false;
-
-		TypeDescriptor_Struct* td = module->GetDynamicReflection();
-
-		if (!td)
-			return false;
-
-		for (reflect::Member& m : td->members)
+		for (int i = 0; i < this->output_uids.size(); i++)
 		{
-			if (strcmp(this->input_member.c_str(), m.name) == 0)
-			{
-				output<TY>* src = (output<TY>*)((char*)module + m.offset);
+			Vulkan_Module* module = get_module_by_uid(all_vulkan_modules, this->output_uids[i]);
 
-				if (!src->ready)
-					return false;
+			if (!module)
+				return;
 
-				this->X = src->X;
+			TypeDescriptor_Struct* in_td = module->GetDynamicReflection();
 
-				return true;
-			}
+			if (!in_td)
+				return;
+
+			input<TY>* in = (input<TY>*)this->dest_inputs[i];
+			in->X = this->X;
+			in->ready = true;
 		}
+	}
 
-		return false;
+	template <typename TY>
+	void output<TY>::signal()
+	{
+		std::vector<Vulkan_Module*>* all_vulkan_modules = get_all_vk_modules();
+
+		for (int i = 0; i < this->output_uids.size(); i++)
+		{
+			Vulkan_Module* module = get_module_by_uid(all_vulkan_modules, this->output_uids[i]);
+
+			if (!module)
+				return;
+
+			TypeDescriptor_Struct* in_td = module->GetDynamicReflection();
+
+			if (!in_td)
+				return;
+
+			input<TY>* in = (input<TY>*)this->dest_inputs[i];
+			in->X = this->X;
+			in->ready = true;
+
+			module->signaled();
+		}
 	}
 }
 
@@ -292,6 +433,12 @@ public:
 
 class Vulkan_App;
 
+enum
+{
+	VK_MODULE_NOT_RAN = 0,
+	VK_MODULE_RAN
+};
+
 class Vulkan_Module
 {
 public:
@@ -301,8 +448,11 @@ public:
 	void createComputePipeline(const char* shader_path);
 
 	virtual void run() = 0;
-	bool load_resources();
-	void set_uids();
+	//bool load_resources();
+	bool all_resources_ready();
+	void signaled();
+	void run_and_push();
+	void set_ptrs();
 
 	Vulkan_App* vulkan = NULL;
 	MyDevice* m_device = NULL;
@@ -314,6 +464,8 @@ public:
 	ComputePipeline* pipeline = NULL;
 
 	u64 m_uid;
+	int my_status = VK_MODULE_NOT_RAN;
+	bool enabled = true;
 
 	REFLECT3()
 };
@@ -326,160 +478,25 @@ public:
 
 	void initVulkan();
 	void cleanup();
+	void status();
+	void run_workflow();
 
 	void createDescriptorPool();
 	void createCommandBuffers();
+
+	vkImageArrayResource* create_imageArray(int n_layers, int width, int height, VkImageUsageFlags flags, reflect::output_type*);
+	vkMultiImageResource* create_multiImage(int n_layers, int width, int height, VkImageUsageFlags flags, reflect::output_type*);
+	vkImageResource* create_image(int width, int height, VkImageUsageFlags flags, reflect::output_type*);
+	vkBufferResource* create_buffer(VkDeviceSize bufferSize, VkBufferUsageFlags flags, reflect::output_type*);
 
 	std::vector<VkCommandBuffer> commandBuffers;
 	MyDescriptorPool* m_DescriptorPool = NULL;
 	MyDevice* m_device = NULL;
 	std::vector<Vulkan_Module*> all_modules;
+	std::vector<vkMemoryResource*> resources;
+
 };
 
-class Geometry_Module : public Vulkan_Module
-{
-public:
-
-	Geometry_Module(Vulkan_App* vulkan, Geometry_Assets* geo_assets);
-
-	void initBuffers();
-	void init_area_light_buffer();
-
-	void cleanup();
-	
-	void createIndexBuffer();
-	void createVertexBuffer();
-	void createUVBuffer();
-	void createEdgeBuffer();
-	void createNodeBuffer();
-	void createOutputBuffer();
-	virtual void run();
-
-	reflect::output<vkBufferResource> vertices;
-	reflect::output<vkBufferResource> indices;
-	reflect::output<vkBufferResource> lm_uvs;
-	reflect::output<vkBufferResource> bvh_nodes;
-	reflect::output<vkBufferResource> edges;
-	reflect::output<vkBufferResource> scratchpad;
-	reflect::output<vkBufferResource> area_lights;
-
-	uint16_t n_indices = 0;
-	uint16_t n_vertices = 0;
-	uint32_t n_nodes = 0;
-
-	soa_struct_2<aligned_vec3, aligned_vec3>* vertices_soa = NULL;
-	soa_struct<aligned_uint>* indices_soa = NULL;
-	std::vector<aligned_uint>* triangle_edges = NULL;
-	std::vector<aligned_uint>* area_light_indices = NULL;
-	BVH_structure_triangles* bvh = NULL;
-
-	Geometry_Assets* geo_assets;
-
-	REFLECT3()
-};
-
-
-
-class Create_Images_Module : public Vulkan_Module
-{
-public:
-
-	Create_Images_Module(Vulkan_App* vulkan, Lightmap_Configuration* configuration)
-	: Vulkan_Module(vulkan), configuration{ configuration }
-	{
-		set_uids();
-		//images_out.my_uid = m_uid;
-	}
-
-	virtual void run();
-	void createImages();
-
-	Lightmap_Configuration* configuration = NULL;
-
-	reflect::output<vkMultiImageResource> images_out;
-
-	REFLECT3()
-};
-
-class Lightmap_Edges_Module : public Vulkan_Module
-{
-	struct ShaderParamsInfo {
-		uint32_t lightmap_width;
-		uint32_t lightmap_height;
-	};
-
-public:
-
-	Lightmap_Edges_Module(Vulkan_App* vulkan, Lightmap_Configuration* configuration)
-		: Vulkan_Module(vulkan), configuration{ configuration }
-	{
-		set_uids();
-		//images_in.my_uid = m_uid;
-		//images_out.my_uid = m_uid;
-	}
-
-	void createDescriptorSetLayout();
-	void createDescriptorSets(int);
-	void createComputePipeline();
-
-	virtual void run() override;
-	void execute(int);
-
-	Lightmap_Configuration* configuration = NULL;
-
-	MyBufferObject* shaderParamsBufferObject = NULL;
-
-	reflect::input<vkMultiImageResource> images_in;
-	reflect::output<vkMultiImageResource> images_out;
-
-	REFLECT3()
-};
-
-class Load_Textures_Module : public Vulkan_Module
-{
-public:
-	Load_Textures_Module(Vulkan_App* vulkan, video::IVideoDriver* driver, Lightmap_Configuration* configuration)
-		: Vulkan_Module(vulkan), driver{ driver }, configuration{ configuration }
-	{
-		set_uids();
-	}
-
-	virtual void run() override;
-	void createImages();
-	void destroyImages();
-
-	Lightmap_Configuration* configuration = NULL;
-
-	std::vector<VkImage> lightmapImages;
-	std::vector<VkDeviceMemory> lightmapsMemory;
-	std::vector<VkImageView> lightmapImageViews;
-
-	std::vector<video::ITexture*> textures;
-	video::IVideoDriver* driver;
-};
-
-class Download_Textures_Module : public Vulkan_Module
-{
-public:
-	Download_Textures_Module(Vulkan_App* vulkan, video::IVideoDriver* driver, Lightmap_Configuration* configuration)
-		: Vulkan_Module(vulkan), driver{driver}, configuration{configuration}
-	{
-		set_uids();
-	}
-
-	virtual void run() override;
-
-	reflect::input<vkMultiImageResource> images_in;
-
-	std::vector<video::ITexture*> textures;
-
-	video::IVideoDriver* driver;
-	Lightmap_Configuration* configuration;
-
-	bool bFlip = false;
-
-	REFLECT3()
-};
 
 class Copy_Lightmaps_Module : public Vulkan_Module
 {
@@ -501,7 +518,7 @@ public:
 		Lightmap_Configuration* configuration0, Lightmap_Configuration* configuration1)
 		: Vulkan_Module(vulkan), configuration0{ configuration0 }, configuration1{ configuration1 }
 	{
-		set_uids();
+		set_ptrs();
 	}
 
 	void createDescriptorSetLayout();

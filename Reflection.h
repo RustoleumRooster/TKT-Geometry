@@ -172,14 +172,11 @@ struct EmptyStruct
 #define FLAG_UINT_WIDGET_POWER2 4
 
 struct Member {
-         struct Attribute {
-            int A;
-            int B;
-            };
+
         const char* name;
         size_t offset;
         TypeDescriptor* type;
-        std::vector<Attribute> attributes;
+        unsigned short forward_output; //used for vk modules
         bool expanded;   //for editor widgets
         bool readwrite;  //for editor widgets
         bool modified;   //for editor widgets
@@ -432,7 +429,7 @@ struct TypeDescriptor_Struct : TypeDescriptor {
         //typeDesc->members = {
 
 #define REFLECT_STRUCT_MEMBER(name) \
-        typeDesc->members.push_back(reflect::Member{#name, offsetof(T, name), reflect::TypeResolver<decltype(T::name)>::get()});
+        typeDesc->members.push_back(reflect::Member{#name, offsetof(T, name), reflect::TypeResolver<decltype(T::name)>::get(),0xFF});
         //   {#name, offsetof(T, name), reflect::TypeResolver<decltype(T::name)>::get()},
 
 #define REFLECT_STRUCT_MEMBER_FLAG(flag) \

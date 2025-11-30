@@ -1433,8 +1433,8 @@ void geometry_scene::setFaceNodeType(const std::vector<int>& faces_i, const char
                 int face_id = pf->faces[f_i].face_id;
                 int element_id = pf->faces[f_i].element_id;
 
-                if (meshbuffer_node->get_face_id() == element_id &&
-                    meshbuffer_node->get_element_id() == face_id)
+                if (meshbuffer_node->get_face_id() == face_id &&
+                    meshbuffer_node->get_element_id() == element_id)
                 {
                     if (tD == NULL || meshbuffer_node->GetDynamicReflection() != tD)
                     {

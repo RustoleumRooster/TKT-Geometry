@@ -93,7 +93,12 @@ public:
 
 	void createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, 
 		VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory);
+	void createImageArray(uint32_t n_layers, uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling,
+		VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory);
+
 	VkImageView createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags);
+	VkImageView createImageArrayView(uint32_t n_layers, VkImage image, VkFormat format, VkImageAspectFlags aspectFlags);
+	
 	VkBufferView createBufferView(VkBuffer buffer, VkFormat format, VkDeviceSize range, VkBufferViewCreateFlags flags);
 
 	void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
@@ -113,8 +118,12 @@ public:
 
 	void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
 	void copyImageToBuffer(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
+	void copyImage(VkImage image_to, VkImage image_from, uint32_t width, uint32_t height);
+	void copyImageToImageLayer(uint32_t, VkImage image_to, VkImage image_from, uint32_t width, uint32_t height);
+	void copyImageLayerToBuffer(uint32_t, VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
 
 	void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
+	void transitionImageArrayLayout(uint32_t, VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
 
 private:
 	void init()

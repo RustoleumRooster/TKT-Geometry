@@ -1,7 +1,5 @@
 #pragma once
 
-#pragma once
-
 #ifndef _VK_BOUNCEDLIGHT_MOD_H_
 #define _VK_BOUNCEDLIGHT_MOD_H_
 
@@ -16,10 +14,10 @@
 #include "vkComputePipeline.h"
 
 class Lightmap_Configuration;
+class Geometry_Module;
 
 class BouncedLight_Module : public Vulkan_Module
 {
-
 	struct RayTraceInfo {
 		//Lightmap coordinates
 		alignas(16) vector3df in_coords;
@@ -39,6 +37,7 @@ class BouncedLight_Module : public Vulkan_Module
 		//lightmap info
 		uint32_t lightmap_width;
 		uint32_t lightmap_height;
+		uint32_t lightmap_no;
 
 	};
 
@@ -72,8 +71,8 @@ public:
 	reflect::input<vkBufferResource> scratchpad;
 	reflect::input<vkBufferResource> area_lights;
 
-	reflect::input<vkMultiImageResource> images_in;
-	reflect::output<vkMultiImageResource> images_out;
+	reflect::input<vkImageArrayResource> images_in;
+	reflect::output<vkImageArrayResource> images_out;
 
 	Triangle_Transformer* triangle_trans = NULL;
 

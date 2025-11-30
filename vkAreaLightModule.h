@@ -14,6 +14,7 @@
 #include "vkComputePipeline.h"
 
 class Lightmap_Configuration;
+class Geometry_Module;
 
 class AreaLight_Module : public Vulkan_Module
 {
