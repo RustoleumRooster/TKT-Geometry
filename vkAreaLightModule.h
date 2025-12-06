@@ -44,7 +44,7 @@ class AreaLight_Module : public Vulkan_Module
 	};
 
 public:
-	AreaLight_Module(Vulkan_App*, Geometry_Module* geo_mod, Lightmap_Configuration*);
+	AreaLight_Module(Vulkan_App*);
 
 	void createDescriptorSetLayout();
 	void createDescriptorSets(int);
@@ -91,6 +91,8 @@ public:
 	soa_struct_2<aligned_vec3, aligned_vec3>* vertices_soa = NULL;
 	soa_struct<aligned_uint>* indices_soa = NULL;
 	std::vector<aligned_uint>* lightsource_indices_soa;
+
+	Lightmap_Configuration* configuration;
 
 	LineHolder graph;
 

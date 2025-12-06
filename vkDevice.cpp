@@ -485,7 +485,41 @@ void MyDevice::copyImageToImageLayer(uint32_t layer_no, VkImage image_to, VkImag
 		image_to, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 		1,
 		&regions
-		);
+	);
+
+	endSingleTimeCommands(commandBuffer);
+}
+
+void MyDevice::copyImageLayerToImage(uint32_t layer_no, VkImage image_to, VkImage image_from, uint32_t width, uint32_t height)
+{
+	VkCommandBuffer commandBuffer = beginSingleTimeCommands();
+
+	VkImageCopy regions;
+
+	regions.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	regions.srcSubresource.baseArrayLayer = layer_no;
+	regions.srcSubresource.mipLevel = 0;
+	regions.srcSubresource.layerCount = 1;
+
+	regions.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	regions.dstSubresource.baseArrayLayer = 0;
+	regions.dstSubresource.mipLevel = 0;
+	regions.dstSubresource.layerCount = 1;
+
+	regions.extent = {
+		width,
+		height,
+		1 };
+
+	regions.srcOffset = { 0, 0, 0 };
+	regions.dstOffset = { 0, 0, 0 };
+
+	vkCmdCopyImage(commandBuffer,
+		image_from, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+		image_to, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+		1,
+		&regions
+	);
 
 	endSingleTimeCommands(commandBuffer);
 }

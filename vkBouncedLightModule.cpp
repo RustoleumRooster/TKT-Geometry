@@ -20,9 +20,12 @@ REFLECT_STRUCT3_BEGIN(BouncedLight_Module)
 	//REFLECT_STRUCT_MEMBER_FORWARD(images_in,images_out)
 REFLECT_STRUCT3_END()
 
-BouncedLight_Module::BouncedLight_Module(Vulkan_App* vulkan, Geometry_Module* geo_mod, Lightmap_Configuration* configuration)
-	: Vulkan_Module(vulkan), configuration{ configuration }
+BouncedLight_Module::BouncedLight_Module(Vulkan_App* vulkan)
+	: Vulkan_Module(vulkan)
 {
+	configuration = vulkan->configuration;
+	Geometry_Module* geo_mod = vulkan->geo_module;
+
 	set_ptrs();
 	Geometry_Assets* geo_assets = geo_mod->geo_assets;
 

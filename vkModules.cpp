@@ -35,26 +35,26 @@ REFLECT_CUSTOM_STRUCT_BEGIN_TEMPLATE(int, reflect::input)
 	REFLECT_STRUCT_MEMBER(input_uids)
 REFLECT_STRUCT_END()*/
 
-REFLECT_STRUCT_BEGIN(vkBufferResource)
+REFLECT_STRUCT3_BEGIN(vkBufferResource)
 	REFLECT_STRUCT_MEMBER(Buffer)
 	REFLECT_STRUCT_MEMBER(BufferMemory)
 REFLECT_STRUCT_END()
 
-REFLECT_STRUCT_BEGIN(vkImageArrayResource)
+REFLECT_STRUCT3_BEGIN(vkImageArrayResource)
 	REFLECT_STRUCT_MEMBER(Image)
 REFLECT_STRUCT_END()
 
-REFLECT_STRUCT_BEGIN(vkMultiImageResource)
+REFLECT_STRUCT3_BEGIN(vkMultiImageResource)
 	REFLECT_STRUCT_MEMBER(Images)
 REFLECT_STRUCT_END()
 
-REFLECT_STRUCT_BEGIN(vkImageResource)
+REFLECT_STRUCT3_BEGIN(vkImageResource)
 	REFLECT_STRUCT_MEMBER(Image)
 	REFLECT_STRUCT_MEMBER(ImageMemory)
 	REFLECT_STRUCT_MEMBER(ImageView)
 REFLECT_STRUCT_END()
 
-REFLECT_STRUCT_BEGIN(vkImageSubresource)
+REFLECT_STRUCT3_BEGIN(vkImageSubresource)
 	REFLECT_STRUCT_MEMBER(Image)
 	REFLECT_STRUCT_MEMBER(ImageMemory)
 	REFLECT_STRUCT_MEMBER(ImageView)
@@ -93,10 +93,10 @@ REFLECT_CUSTOM_STRUCT_BEGIN_TEMPLATE(vkBufferResource, reflect::input)
 	REFLECT_STRUCT_MEMBER(input_member)
 REFLECT_STRUCT_END()
 
-REFLECT_STRUCT_BEGIN(reflect::input_type)
+REFLECT_STRUCT3_BEGIN(reflect::input_type)
 REFLECT_STRUCT_END()
 
-REFLECT_STRUCT_BEGIN(reflect::output_type)
+REFLECT_STRUCT3_BEGIN(reflect::output_type)
 REFLECT_STRUCT_END()
 
 namespace reflect
@@ -123,14 +123,15 @@ namespace reflect
 	}
 }
 
-Vulkan_App::Vulkan_App(Geometry_Assets* geo_assets)
+Vulkan_App::Vulkan_App(Geometry_Assets* geo_assets, Lightmap_Configuration* configuration, video::IVideoDriver* driver)
+: driver{ driver }, configuration{ configuration }, geo_assets{ geo_assets }
 {
 	initVulkan();
 
 	all_vulkan_modules = &all_modules;
 }
 
-void Vulkan_App::initVulkan() 
+void Vulkan_App::initVulkan()
 {
 	m_device = new MyDevice();
 
@@ -138,13 +139,20 @@ void Vulkan_App::initVulkan()
 
 	createDescriptorPool();
 	createCommandBuffers();
-	//createSyncObjects();
+
+	geo_module = (Geometry_Module*)create_module<Geometry_Module>();
+
 }
 
 void Vulkan_App::cleanup()
 {
 	m_DescriptorPool->cleanup();
 	m_device->cleanup();
+
+	for (Vulkan_Module* module : all_modules)
+	{
+		delete module;
+	}
 }
 
 REFLECT_STRUCT3_BEGIN(Vulkan_Module)
@@ -177,10 +185,10 @@ bool Vulkan_Module::all_resources_ready()
 	return true;
 }
 
-void Vulkan_Module::signaled()
+bool Vulkan_Module::signaled()
 {
 	if (my_status != VK_MODULE_NOT_RAN)
-		return;
+		return false;
 
 	if(all_resources_ready())
 	{
@@ -210,7 +218,9 @@ void Vulkan_Module::signaled()
 				}
 			}
 		}
+		return true;
 	}
+	return false;
 }
 
 void Vulkan_Module::run_and_push()
@@ -320,6 +330,7 @@ vkImageArrayResource* Vulkan_App::create_imageArray(int n_layers, int width, int
 
 	imgArray->n_images = n_layers;
 	imgArray->initializeDescriptorInfo();
+	imgArray->status = RESOURCE_VALID;
 
 	resources.push_back(imgArray);
 
@@ -343,6 +354,8 @@ vkMultiImageResource* Vulkan_App::create_multiImage(int n_layers, int width, int
 		img->Images[i].ImageView = m_device->createImageView(img->Images[i].Image, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT);
 	}
 
+	img->status = RESOURCE_VALID;
+
 	resources.push_back(img);
 
 	return img;
@@ -358,6 +371,8 @@ vkImageResource* Vulkan_App::create_image(int width, int height, VkImageUsageFla
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, img->Image,
 		img->ImageMemory);
 
+	img->status = RESOURCE_VALID;
+
 	resources.push_back(img);
 
 	return img;
@@ -371,6 +386,8 @@ vkBufferResource* Vulkan_App::create_buffer(VkDeviceSize bufferSize, VkBufferUsa
 	m_device->createBuffer(bufferSize, flags,
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, buffer->Buffer,
 		buffer->BufferMemory);
+
+	buffer->status = RESOURCE_VALID;
 
 	resources.push_back(buffer);
 
@@ -458,6 +475,8 @@ void Vulkan_App::run_workflow()
 		}
 	}
 
+	geo_module->run_and_push();
+
 	bool still_running = true;
 	while (still_running)
 	{
@@ -466,11 +485,49 @@ void Vulkan_App::run_workflow()
 		{
 			if (vk->enabled && vk->my_status == VK_MODULE_NOT_RAN)
 			{
-				vk->signaled();
-				still_running = true;
+				if(vk->signaled() == true)
+					still_running = true;
 			}
 		}
 	}
+
+	for (Vulkan_Module* vk : all_modules)
+	{
+		reflect::TypeDescriptor_Struct* tD = vk->GetDynamicReflection();
+
+		if (vk->my_status == VK_MODULE_NOT_RAN)
+		{
+			//std::cout << tD->name << " did not run\n";
+		}
+	}
+	bool UnusedResources = false;
+	for (vkMemoryResource* res : resources)
+	{
+		if (res->status != RESOURCE_DESTROYED)
+		{	
+			if (!UnusedResources)
+			{
+				UnusedResources = true;
+				cout << "Resources not consumed:\n";
+			}
+			reflect::TypeDescriptor_Struct* res_tD = res->GetDynamicReflection();
+			reflect::TypeDescriptor_Struct* res_owner_tD = res->owner->owner->GetDynamicReflection();
+			cout <<"  "<< res_owner_tD->name << "::" << res_tD->name << "\n";
+
+			for (reflect::input_type* in : res->consumers)
+			{
+				reflect::TypeDescriptor_Struct* tD = in->owner->GetDynamicReflection();
+				cout << "    -> " << tD->name << "\n";
+			}
+			res->status = RESOURCE_DESTROYED;
+			res->destroy(m_device->getDevice());
+		}
+	}
+	if (!UnusedResources)
+	{
+		cout << "All resources consumed\n";
+	}
+	cout << "Finished running workflow\n";
 }
 
 Geometry_Assets::Geometry_Assets(geometry_scene* g_scene, Lightmap_Configuration* config)
@@ -784,355 +841,6 @@ bool Triangle_Transformer::get_uvs_for_triangle(int triangle_no, int lm_size, ve
 	return true;
 }
 
-VkSampler Copy_Lightmaps_Module::createDefaultSampler()
-{
-	VkSamplerCreateInfo samplerInfo{};
-	samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-	samplerInfo.magFilter = VK_FILTER_LINEAR;
-	samplerInfo.minFilter = VK_FILTER_LINEAR;
-
-	samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-	samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-	samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-
-	samplerInfo.anisotropyEnable = VK_TRUE;
-
-	VkPhysicalDeviceProperties properties{};
-	vkGetPhysicalDeviceProperties(m_device->getPhysicalDevice(), &properties);
-	samplerInfo.maxAnisotropy = properties.limits.maxSamplerAnisotropy;
-	samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
-	samplerInfo.unnormalizedCoordinates = VK_FALSE;
-	samplerInfo.compareEnable = VK_FALSE;
-	samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
-	samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-	samplerInfo.mipLodBias = 0.0f;
-	samplerInfo.minLod = 0.0f;
-	samplerInfo.maxLod = 0.0f;
-
-	VkSampler sampler;
-
-	if (vkCreateSampler(m_device->getDevice(), &samplerInfo, nullptr,
-		&sampler) != VK_SUCCESS) {
-		throw std::runtime_error("failed to create texture sampler!");
-	}
-
-	return sampler;
-}
-
-void Copy_Lightmaps_Module::createDescriptorSetLayout()
-{
-	VkDescriptorSetLayoutBinding paramsBufferBinding{};
-	paramsBufferBinding.binding = 0;
-	paramsBufferBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	paramsBufferBinding.descriptorCount = 1;
-	paramsBufferBinding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
-	paramsBufferBinding.pImmutableSamplers = nullptr; // Optional
-
-	VkDescriptorSetLayoutBinding indexBufferBinding{};
-	indexBufferBinding.binding = 1;
-	indexBufferBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-	indexBufferBinding.descriptorCount = 1;
-	indexBufferBinding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
-	indexBufferBinding.pImmutableSamplers = nullptr; // Optional
-
-	VkDescriptorSetLayoutBinding uvBufferBinding0{};
-	uvBufferBinding0.binding = 2;
-	uvBufferBinding0.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-	uvBufferBinding0.descriptorCount = 1;
-	uvBufferBinding0.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
-	uvBufferBinding0.pImmutableSamplers = nullptr; // Optional
-
-	VkDescriptorSetLayoutBinding uvBufferBinding1{};
-	uvBufferBinding1.binding = 3;
-	uvBufferBinding1.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-	uvBufferBinding1.descriptorCount = 1;
-	uvBufferBinding1.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
-	uvBufferBinding1.pImmutableSamplers = nullptr; // Optional
-
-	VkDescriptorSetLayoutBinding samplerLayoutBinding{};
-	samplerLayoutBinding.binding = 4;
-	samplerLayoutBinding.descriptorCount = 1;
-	samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	samplerLayoutBinding.pImmutableSamplers = nullptr;
-	samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
-
-	VkDescriptorSetLayoutBinding imageStorageBinding{};
-	imageStorageBinding.binding = 5;
-	imageStorageBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-	imageStorageBinding.descriptorCount = 1;
-	imageStorageBinding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
-	imageStorageBinding.pImmutableSamplers = nullptr; // Optional
-
-	std::vector<VkDescriptorSetLayoutBinding> bindings;
-	bindings.resize(6);
-	bindings = { paramsBufferBinding, indexBufferBinding, uvBufferBinding0, uvBufferBinding1, samplerLayoutBinding, imageStorageBinding };
-
-	descriptorSetLayout = new MyDescriptorSetLayout(m_device, bindings);
-}
-
-void Copy_Lightmaps_Module::createDescriptorSets(int i, int j)
-{
-	MyDescriptorWriter writer(*descriptorSetLayout, *m_DescriptorPool);
-
-	descriptorSets.resize(1);
-
-	VkDescriptorBufferInfo paramsInfo{};
-	paramsInfo.buffer = shaderParamsBufferObject->getBuffer();
-	paramsInfo.offset = 0;
-	paramsInfo.range = sizeof(ShaderParamsInfo);
-
-	VkDescriptorBufferInfo indexBufferInfo{};
-	indexBufferInfo.buffer = indexBuffer;
-	indexBufferInfo.offset = 0;
-	indexBufferInfo.range = sizeof(aligned_uint) * n_indices;
-
-	VkDescriptorBufferInfo uvBufferInfo0{};
-	uvBufferInfo0.buffer = uvBuffer_0;
-	uvBufferInfo0.offset = 0;
-	uvBufferInfo0.range = sizeof(aligned_vec3) * n_vertices;
-
-	VkDescriptorBufferInfo uvBufferInfo1{};
-	uvBufferInfo1.buffer = uvBuffer_1;
-	uvBufferInfo1.offset = 0;
-	uvBufferInfo1.range = sizeof(aligned_vec3) * n_vertices;
-
-	VkDescriptorImageInfo imageInfo{};
-	imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	imageInfo.imageView = lightmapImageViews_in[i];
-	imageInfo.sampler = mySampler;
-
-	VkDescriptorImageInfo imageStorageInfo{};
-	imageStorageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
-	imageStorageInfo.imageView = lightmapImageViews_out[j];
-
-	writer.writeBuffer(0, paramsInfo);
-	writer.writeBuffer(1, indexBufferInfo);
-	writer.writeBuffer(2, uvBufferInfo0);
-	writer.writeBuffer(3, uvBufferInfo1);
-	writer.writeImage(4, imageInfo);
-	writer.writeImage(5, imageStorageInfo);
-	writer.build(descriptorSets[0]);
-}
-
-void Copy_Lightmaps_Module::createComputePipeline()
-{
-	VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
-	pipelineLayoutInfo.sType =
-		VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-	pipelineLayoutInfo.setLayoutCount = 1;
-	pipelineLayoutInfo.pSetLayouts = &(descriptorSetLayout->getDescriptorSetLayout());
-
-	if (vkCreatePipelineLayout(m_device->getDevice(), &pipelineLayoutInfo, nullptr,
-		&pipelineLayout) != VK_SUCCESS) {
-		throw std::runtime_error("failed to create compute pipeline layout!");
-	}
-
-	pipeline = new ComputePipeline(m_device, "shaders/compute_lm_copy.spv", pipelineLayout);
-
-}
-
-void Copy_Lightmaps_Module::createImageViews()
-{
-	for (int i = 0; i < configuration0->lightmap_dimensions.size(); i++)
-	{
-
-		VkImageView imgView;
-
-		imgView = m_device->createImageView(lightmapImages_in[i], VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT);
-
-		lightmapImageViews_in.push_back(imgView);
-	}
-}
-
-void Copy_Lightmaps_Module::createImages()
-{
-	lightmapImages_out.resize(configuration1->lightmap_dimensions.size());
-	lightmapImageViews_out.resize(configuration1->lightmap_dimensions.size());
-	lightmapsMemory_out.resize(configuration1->lightmap_dimensions.size());
-
-	for (int i = 0; i < configuration1->lightmap_dimensions.size(); i++)
-	{
-		VkDeviceSize width = configuration1->lightmap_dimensions[i].Width;
-		VkDeviceSize height = configuration1->lightmap_dimensions[i].Height;
-		VkDeviceSize imgSize = width * height * 4;
-
-		m_device->createImage(width, height, VK_FORMAT_R8G8B8A8_UNORM,
-			VK_IMAGE_TILING_OPTIMAL,
-			VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, lightmapImages_out[i],
-			lightmapsMemory_out[i]);
-
-		lightmapImageViews_out[i] = m_device->createImageView(lightmapImages_out[i], VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT);
-
-		m_device->transitionImageLayout(lightmapImages_out[i], VK_FORMAT_R8G8B8A8_UNORM,
-			VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
-	}
-}
-
-void Copy_Lightmaps_Module::createUVBuffer()
-{
-	n_vertices = uv_struct_0->size();
-
-	{
-		VkDeviceSize bufferSize = sizeof(aligned_vec3) * n_vertices;
-
-		MyBufferObject stagingBuffer(m_device, sizeof(aligned_vec3), n_vertices, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-			VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 1);
-
-		stagingBuffer.writeToBuffer((void*)uv_struct_0->data());
-
-		m_device->createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT |
-			VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, uvBuffer_0,
-			uvBufferMemory_0);
-
-		m_device->copyBuffer(stagingBuffer.getBuffer(), uvBuffer_0, bufferSize);
-	}
-
-	{
-		VkDeviceSize bufferSize = sizeof(aligned_vec3) * n_vertices;
-
-		MyBufferObject stagingBuffer(m_device, sizeof(aligned_vec3), n_vertices, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-			VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 1);
-
-		stagingBuffer.writeToBuffer((void*)uv_struct_1->data());
-
-		m_device->createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT |
-			VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, uvBuffer_1,
-			uvBufferMemory_1);
-
-		m_device->copyBuffer(stagingBuffer.getBuffer(), uvBuffer_1, bufferSize);
-	}
-}
-
-void Copy_Lightmaps_Module::run()
-{
-	createDescriptorSetLayout();
-	createComputePipeline();
-	//createImageViews();
-	createImages();
-	createUVBuffer();
-	mySampler = createDefaultSampler();
-
-	int n_maps = configuration1->lightmap_dimensions.size();
-
-	lightmapImages_out.resize(n_maps);
-	lightmapImageViews_out.resize(n_maps);
-	lightmapsMemory_out.resize(n_maps);
-
-	shaderParamsBufferObject = new MyBufferObject(m_device, sizeof(ShaderParamsInfo), 1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-		VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 16);
-
-	for (int i = 0; i < configuration0->lightmap_dimensions.size(); i++)
-	{
-		//std::cout << i << " to\n";
-		for (int j = 0; j < configuration1->lightmap_dimensions.size(); j++)
-		{
-			//std::cout << "   " << j << ":\n";
-			for (tex_block& a : configuration0->bl_combined[i].blocks)
-			{
-				for (tex_block& b : configuration1->bl_combined[j].blocks)
-				{
-					if (a.element_id == b.element_id && a.surface_no == b.surface_no)
-					{
-						
-						ShaderParamsInfo info;
-						info.lightmap0_height = configuration0->lightmap_dimensions[i].Height;
-						info.lightmap0_width = configuration0->lightmap_dimensions[i].Width;
-
-						info.lightmap1_height = configuration1->lightmap_dimensions[j].Height;
-						info.lightmap1_width = configuration1->lightmap_dimensions[j].Width;
-						//info.intensity = random_number() % 255;
-						info.intensity = 255;
-
-						int element_no = element_by_element_id->data()[a.element_id];
-						int surface_no = a.surface_no;
-
-
-						u16 begin = surface_index->data[surface_index->offset[element_no] + surface_no].begin_i;
-						u16 end = surface_index->data[surface_index->offset[element_no] + surface_no].end_i;
-
-						//std::cout << "       "<<element_no << "," << surface_no << ", " << (end - begin) / 3 << " triangles ";
-
-						info.face_index_offset = begin;
-						info.face_n_indices = end - begin;
-						//info.f
-
-						shaderParamsBufferObject->writeToBuffer((void*)&info);
-
-						execute(i, j, a.element_id, a.surface_no, (end-begin)/3);
-					}
-				}
-			}
-		}
-	}
-
-	delete shaderParamsBufferObject;
-
-	vkDestroySampler(m_device->getDevice(), mySampler, NULL);
-
-	descriptorSetLayout->cleanup();
-	pipeline->cleanup();
-
-	vkDestroyPipelineLayout(m_device->getDevice(), pipelineLayout, nullptr);
-
-	vkDestroyBuffer(m_device->getDevice(), uvBuffer_0, nullptr);
-	vkFreeMemory(m_device->getDevice(), uvBufferMemory_0, nullptr);
-
-	vkDestroyBuffer(m_device->getDevice(), uvBuffer_1, nullptr);
-	vkFreeMemory(m_device->getDevice(), uvBufferMemory_1, nullptr);
-
-	//for (auto& imgView : lightmapImageViews_in)
-	//	vkDestroyImageView(m_device->getDevice(), imgView, nullptr);
-}
-
-void Copy_Lightmaps_Module::execute(int i,int j,int element_id,int surface_no, int n_triangles)
-{
-
-	createDescriptorSets(i,j);
-
-	std::cout << "  compute shader "<<n_triangles<<" workgroups";
-
-	VkCommandBuffer commandBuffer = m_device->beginSingleTimeCommands();
-
-	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE,
-		pipeline->getPipeline());
-
-	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineLayout, 0, 1,
-		&descriptorSets[0], 0, 0);
-
-	uint32_t work_length = 1;
-	uint32_t work_height = 1;
-
-	uint32_t n_WorkGroups_x = n_triangles;// +configuration->lightmap_dimensions[n].Width / (32 * work_length);
-	uint32_t n_WorkGroups_y = 1;// +configuration->lightmap_dimensions[n].Height / (8 * work_height);
-
-	vkCmdDispatch(commandBuffer, n_WorkGroups_x, n_WorkGroups_y, 1);
-
-	m_device->endSingleTimeCommands(commandBuffer);
-
-	m_DescriptorPool->freeDescriptorsSets(descriptorSets);
-
-	vkDeviceWaitIdle(m_device->getDevice());
-	std::cout << "...execution complete\n";
-}
-
-void Copy_Lightmaps_Module::destroyImages()
-{/*
-	for (auto& imgView : lightmapImageViews_out)
-		vkDestroyImageView(m_device->getDevice(), imgView, nullptr);
-
-	for (auto& img : lightmapImages_out)
-		vkDestroyImage(m_device->getDevice(), img, nullptr);
-
-	for (auto& imgMem : lightmapsMemory_out)
-		vkFreeMemory(m_device->getDevice(), imgMem, nullptr);*/
-}
-
 void vkImageSubresource::destroy(VkDevice device)
 {
 	vkDestroyImageView(device, ImageView, nullptr);
@@ -1190,10 +898,6 @@ void vkImageSubresource::create_and_load_texture(MyDevice* device, video::IVideo
 	VkDeviceSize width = tex->getOriginalSize().Width;
 	VkDeviceSize height = tex->getOriginalSize().Height;
 	VkDeviceSize imgSize = width * height * 4;
-
-	//VkImage img;
-	//VkDeviceMemory imgMemory;
-	//VkImageView imgView;
 
 	MyBufferObject stagingBuffer(device, imgSize, 1, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
@@ -1358,6 +1062,7 @@ void vkImageArrayResource::initializeDescriptorInfo()
 
 vkMemoryResource::vkMemoryResource(reflect::output_type* out)
 {
+	owner = out;
 	find_consumers(out);
 }
 
@@ -1395,7 +1100,11 @@ void vkMemoryResource::consume(reflect::input_type* in)
 	}
 	else
 	{
-		std::cout << "resource destroyed\n";
+		consumers.clear();
+		//reflect::TypeDescriptor_Struct* owner_tD = (reflect::TypeDescriptor_Struct*)owner->owner->GetDynamicReflection();
+		//reflect::TypeDescriptor_Struct* m_tD = (reflect::TypeDescriptor_Struct*)GetDynamicReflection();
+		//cout << "  " << owner_tD->name << "::" << m_tD->name << "  destroyed\n";
+		status = RESOURCE_DESTROYED;
 		destroy(vk_device);
 	}
 }

@@ -42,7 +42,7 @@ class BouncedLight_Module : public Vulkan_Module
 	};
 
 public:
-	BouncedLight_Module(Vulkan_App* vulkan, Geometry_Module* geo_mod, Lightmap_Configuration* configuration);
+	BouncedLight_Module(Vulkan_App* vulkan);
 
 	void createDescriptorSetLayout();
 	void createDescriptorSets(int);

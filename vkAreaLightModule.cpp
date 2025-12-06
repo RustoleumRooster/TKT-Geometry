@@ -18,12 +18,13 @@ REFLECT_STRUCT3_BEGIN(AreaLight_Module)
 	REFLECT_STRUCT_MEMBER_FORWARD(images_in, images_out)
 REFLECT_STRUCT3_END()
 
-AreaLight_Module::AreaLight_Module(Vulkan_App* vulkan, Geometry_Module* geo_mod, Lightmap_Configuration* configuration) :
-	Vulkan_Module(vulkan)
+AreaLight_Module::AreaLight_Module(Vulkan_App* vulkan)
+	: Vulkan_Module(vulkan), configuration{ vulkan->configuration }
 {
 	set_ptrs();
 
-	Geometry_Assets* geo_assets = geo_mod->geo_assets;
+	Geometry_Module* geo_mod = vulkan->geo_module;
+	Geometry_Assets* geo_assets = vulkan->geo_module->geo_assets;
 
 	indices_soa = &geo_assets->indices_soa;
 	vertices_soa = &geo_assets->vertices_soa;

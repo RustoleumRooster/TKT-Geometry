@@ -120,6 +120,7 @@ public:
 	void copyImageToBuffer(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
 	void copyImage(VkImage image_to, VkImage image_from, uint32_t width, uint32_t height);
 	void copyImageToImageLayer(uint32_t, VkImage image_to, VkImage image_from, uint32_t width, uint32_t height);
+	void copyImageLayerToImage(uint32_t, VkImage image_to, VkImage image_from, uint32_t width, uint32_t height);
 	void copyImageLayerToBuffer(uint32_t, VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
 
 	void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);

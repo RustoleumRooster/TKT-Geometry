@@ -27,7 +27,7 @@ class Geometry_Module : public Vulkan_Module
 {
 public:
 
-	Geometry_Module(Vulkan_App* vulkan, Geometry_Assets* geo_assets);
+	Geometry_Module(Vulkan_App* vulkan);
 
 	void initBuffers();
 	void init_area_light_buffer();
@@ -67,8 +67,8 @@ class MultiImage_To_ImageArray_Module : public Vulkan_Module
 {
 public:
 
-	MultiImage_To_ImageArray_Module(Vulkan_App* vulkan, Lightmap_Configuration* configuration)
-		: Vulkan_Module(vulkan), configuration{ configuration }
+	MultiImage_To_ImageArray_Module(Vulkan_App* vulkan)
+		: Vulkan_Module(vulkan), configuration{ vulkan->configuration }
 	{
 		set_ptrs();
 	}
@@ -84,11 +84,32 @@ public:
 	REFLECT3()
 };
 
+class ImageArray_To_MultiImage_Module : public Vulkan_Module
+{
+public:
+
+	ImageArray_To_MultiImage_Module(Vulkan_App* vulkan)
+		: Vulkan_Module(vulkan), configuration{ vulkan->configuration }
+	{
+		set_ptrs();
+	}
+
+	virtual void run();
+	void createImages();
+
+	Lightmap_Configuration* configuration = NULL;
+
+	reflect::input<vkImageArrayResource> images_in;
+	reflect::output<vkMultiImageResource> images_out;
+	
+	REFLECT3()
+};
+
 class MultiImage_Copy_Module : public Vulkan_Module
 {
 public:
 
-	MultiImage_Copy_Module(Vulkan_App* vulkan, Lightmap_Configuration* configuration)
+	MultiImage_Copy_Module(Vulkan_App* vulkan)
 		: Vulkan_Module(vulkan), configuration{ configuration }
 	{
 		set_ptrs();
@@ -114,8 +135,8 @@ class Merge_Images_Module : public Vulkan_Module
 
 public:
 
-	Merge_Images_Module(Vulkan_App* vulkan, Lightmap_Configuration* configuration)
-		: Vulkan_Module(vulkan), configuration{ configuration }
+	Merge_Images_Module(Vulkan_App* vulkan)
+		: Vulkan_Module(vulkan), configuration{ vulkan->configuration }
 	{
 		set_ptrs();
 	}
@@ -126,6 +147,7 @@ public:
 	virtual void run();
 	virtual void execute(u32);
 	void createImages();
+	void cleanup();
 
 	Lightmap_Configuration* configuration = NULL;
 
@@ -142,8 +164,8 @@ class Create_Lightmap_Images_Module : public Vulkan_Module
 {
 public:
 
-	Create_Lightmap_Images_Module(Vulkan_App* vulkan, Lightmap_Configuration* configuration)
-		: Vulkan_Module(vulkan), configuration{ configuration }
+	Create_Lightmap_Images_Module(Vulkan_App* vulkan)
+		: Vulkan_Module(vulkan), configuration{ vulkan->configuration }
 	{
 		set_ptrs();
 	}
@@ -162,8 +184,8 @@ class Create_Texture_Images_Module : public Vulkan_Module
 {
 public:
 
-	Create_Texture_Images_Module(Vulkan_App* vulkan, Lightmap_Configuration* configuration)
-		: Vulkan_Module(vulkan), configuration{ configuration }
+	Create_Texture_Images_Module(Vulkan_App* vulkan)
+		: Vulkan_Module(vulkan), configuration{ vulkan->configuration }, driver{ vulkan->driver }
 	{
 		set_ptrs();
 	}
@@ -192,8 +214,8 @@ class Lightmap_Edges_Module : public Vulkan_Module
 
 public:
 
-	Lightmap_Edges_Module(Vulkan_App* vulkan, Lightmap_Configuration* configuration)
-		: Vulkan_Module(vulkan), configuration{ configuration }
+	Lightmap_Edges_Module(Vulkan_App* vulkan)
+		: Vulkan_Module(vulkan), configuration{ vulkan->configuration }
 	{
 		set_ptrs();
 	}
@@ -218,8 +240,8 @@ public:
 class Load_Textures_Module : public Vulkan_Module
 {
 public:
-	Load_Textures_Module(Vulkan_App* vulkan, video::IVideoDriver* driver, Lightmap_Configuration* configuration)
-		: Vulkan_Module(vulkan), driver{ driver }, configuration{ configuration }
+	Load_Textures_Module(Vulkan_App* vulkan)
+		: Vulkan_Module(vulkan), configuration{ vulkan->configuration }, driver{ vulkan->driver }
 	{
 		set_ptrs();
 	}
@@ -241,8 +263,8 @@ public:
 class Download_Textures_Module : public Vulkan_Module
 {
 public:
-	Download_Textures_Module(Vulkan_App* vulkan, video::IVideoDriver* driver, Lightmap_Configuration* configuration)
-		: Vulkan_Module(vulkan), driver{ driver }, configuration{ configuration }
+	Download_Textures_Module(Vulkan_App* vulkan)
+		:Vulkan_Module(vulkan), configuration{ vulkan->configuration }, driver{ vulkan->driver }
 	{
 		set_ptrs();
 	}
@@ -265,8 +287,8 @@ class Download_TextureArray_Module : public Vulkan_Module
 {
 public:
 
-	Download_TextureArray_Module(Vulkan_App* vulkan, video::IVideoDriver* driver, Lightmap_Configuration* configuration)
-		: Vulkan_Module(vulkan), driver{ driver }, configuration{ configuration }
+	Download_TextureArray_Module(Vulkan_App* vulkan)
+		: Vulkan_Module(vulkan), configuration{ vulkan->configuration }, driver{vulkan->driver}
 	{
 		set_ptrs();
 	}

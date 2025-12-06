@@ -30,8 +30,7 @@ REFLECT_STRUCT3_BEGIN(Geometry_Module)
 	REFLECT_STRUCT_MEMBER(area_lights)
 REFLECT_STRUCT3_END()
 
-Geometry_Module::Geometry_Module(Vulkan_App* vulkan, Geometry_Assets* geo_assets) : Vulkan_Module(vulkan),
-geo_assets{ geo_assets }
+Geometry_Module::Geometry_Module(Vulkan_App* vulkan) : Vulkan_Module(vulkan), geo_assets{ vulkan->geo_assets }
 {
 	set_ptrs();
 
@@ -245,18 +244,6 @@ void MultiImage_To_ImageArray_Module::createImages()
 		VkDeviceSize width = configuration->lightmap_dimensions[0].Width;
 		VkDeviceSize height = configuration->lightmap_dimensions[0].Height;
 		uint32_t n_layers = images_in.X->Images.size();
-		//VkImage img;
-		//VkDeviceMemory imgMemory;
-		//VkImageView imgView;
-		/*
-		m_device->createImageArray(n_layers, width, height, VK_FORMAT_R8G8B8A8_UNORM,
-			VK_IMAGE_TILING_OPTIMAL,
-			VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, images_out.X->Image,
-			images_out.X->ImageMemory);
-
-		images_out.X->ImageView = m_device->createImageArrayView(n_layers, images_out.X->Image, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT);
-		*/
 
 		images_out.X = vulkan->create_imageArray(n_layers, width, height,
 			VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
@@ -281,16 +268,53 @@ void MultiImage_To_ImageArray_Module::createImages()
 
 		vkDeviceWaitIdle(m_device->getDevice());
 
-		//m_device->transitionImageArrayLayout(n_layers, img, VK_FORMAT_R8G8B8A8_UNORM,
-		//	VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-
-		//images_out.X->Image = img;
-		//images_out.X->ImageView = imgView;
-		//images_out.X->ImageMemory = imgMemory;
 		images_out.X->n_images = n_layers;
 
 		images_out.X->initializeDescriptorInfo();
 		images_out.ready = true;
+}
+
+REFLECT_STRUCT3_BEGIN(ImageArray_To_MultiImage_Module)
+	REFLECT_STRUCT_MEMBER(images_in)
+	REFLECT_STRUCT_MEMBER(images_out)
+REFLECT_STRUCT3_END()
+
+void ImageArray_To_MultiImage_Module::run()
+{
+	createImages();
+}
+
+void ImageArray_To_MultiImage_Module::createImages()
+{
+	VkDeviceSize width = configuration->lightmap_dimensions[0].Width;
+	VkDeviceSize height = configuration->lightmap_dimensions[0].Height;
+	uint32_t n_layers = images_in.X->n_images;
+
+	images_out.X = vulkan->create_multiImage(n_layers, width, height,
+		VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+		&images_out);
+
+	m_device->transitionImageArrayLayout(n_layers, images_in.X->Image, VK_FORMAT_R8G8B8A8_UNORM,
+		VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+
+	for (int i = 0; i < n_layers; i++)
+	{
+		m_device->transitionImageLayout(images_out.X->Images[i].Image, VK_FORMAT_R8G8B8A8_UNORM,
+			VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+
+		m_device->copyImageLayerToImage(i, images_out.X->Images[i].Image, images_in.X->Image, width, height);
+
+		m_device->transitionImageLayout(images_out.X->Images[i].Image, VK_FORMAT_R8G8B8A8_UNORM,
+			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
+
+	}
+
+	m_device->transitionImageArrayLayout(n_layers, images_in.X->Image, VK_FORMAT_R8G8B8A8_UNORM,
+		VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
+
+	vkDeviceWaitIdle(m_device->getDevice());
+
+	images_out.ready = true;
 }
 
 //==========================================
@@ -332,11 +356,7 @@ void MultiImage_Copy_Module::run()
 		m_device->transitionImageLayout(img, VK_FORMAT_R8G8B8A8_UNORM,
 			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
 
-		images_out.X->Images.push_back(vkImageSubresource{ img,imgMemory,imgView });
 	}
-
-	//for (auto& img : images_in.X->Images)
-	//	img.destroy(m_device->getDevice());
 
 	images_out.ready = true;
 }
@@ -351,14 +371,10 @@ REFLECT_STRUCT3_END()
 
 void Create_Texture_Images_Module::run()
 {
-	//if (!load_resources())
-	//	return;
 }
 
 Create_Texture_Images_Module::~Create_Texture_Images_Module()
 {
-	//for (auto& img : images_out.X->Images)
-	//	img.destroy(m_device->getDevice());
 }
 
 void Create_Texture_Images_Module::index_materials(Lightmap_Configuration* configuration)
@@ -607,15 +623,6 @@ void Lightmap_Edges_Module::run()
 
 	for (int i = 0; i < n_layers; i++)
 	{
-		/*
-		m_device->createImage(width, height, VK_FORMAT_R8G8B8A8_UNORM,
-			VK_IMAGE_TILING_OPTIMAL,
-			VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, images_out.X->Images[i].Image,
-			images_out.X->Images[i].ImageMemory);
-
-		images_out.X->Images[i].ImageView = m_device->createImageView(images_out.X->Images[i].Image, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT);
-		*/
 		m_device->transitionImageLayout(images_out.X->Images[i].Image, VK_FORMAT_R8G8B8A8_UNORM,
 			VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
 
@@ -629,10 +636,6 @@ void Lightmap_Edges_Module::run()
 	}
 
 	delete shaderParamsBufferObject;
-
-
-	//for (auto& img : images_in.X->Images)
-	//	img.destroy(m_device->getDevice());
 
 	descriptorSetLayout->cleanup();
 	pipeline->cleanup();
@@ -743,7 +746,7 @@ void Lightmap_Edges_Module::createComputePipeline()
 }
 
 //==========================================
-// Lightmap Edge/Corner Correction
+// Merge Images
 //
 
 REFLECT_STRUCT3_BEGIN(Merge_Images_Module)
@@ -758,8 +761,6 @@ void Merge_Images_Module::run()
 {
 	createDescriptorSetLayout();
 	createComputePipeline("shaders/merge_images.spv");
-
-	images_out.X->Images.resize(images_in_0.X->Images.size());
 
 	ubo.range = sizeof(ShaderParamsInfo);
 
@@ -781,8 +782,7 @@ void Merge_Images_Module::run()
 		execute(i);
 	}
 
-	//for (auto& img : images_in_0.X->Images)
-	//	img.destroy(m_device->getDevice());
+	cleanup();
 
 	images_out.X = images_in_1.X;
 	images_out.ready = true;
@@ -841,4 +841,15 @@ void Merge_Images_Module::execute(u32 n)
 	m_DescriptorPool->freeDescriptorsSets(descriptorSets);
 
 	vkDeviceWaitIdle(m_device->getDevice());
+}
+
+void Merge_Images_Module::cleanup()
+{
+	descriptorSetLayout->cleanup();
+
+	ubo.destroy(m_device->getDevice());
+
+	pipeline->cleanup();
+
+	vkDestroyPipelineLayout(m_device->getDevice(), pipelineLayout, nullptr);
 }

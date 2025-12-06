@@ -25,10 +25,53 @@ class Lightmap_Configuration;
 void Lightmap_Routine(geometry_scene*, Lightmap_Configuration*, std::vector<irr::video::ITexture*>&, Lightmap_Configuration*);
 
 
-namespace reflect {
+namespace reflect 
+{
+
 	struct input_type;
 	struct output_type;
+
+#define REFLECT3() \
+        virtual reflect::TypeDescriptor_Struct* GetDynamicReflection(); \
+        friend struct reflect::DefaultResolver; \
+        static reflect::TypeDescriptor_Struct Reflection; \
+        static void initReflection(reflect::TypeDescriptor_Struct*); \
+
+#define REFLECT_STRUCT3_BEGIN(type) \
+        reflect::TypeDescriptor_Struct type::Reflection{type::initReflection}; \
+        reflect::TypeDescriptor_Struct* type::GetDynamicReflection() {\
+            return &type::Reflection;\
+            }\
+        void type::initReflection(reflect::TypeDescriptor_Struct* typeDesc) { \
+            using T = type; \
+            typeDesc->name = #type; \
+            typeDesc->size = sizeof(T); \
+            typeDesc->inherited_type = NULL; \
+            typeDesc->name_func = NULL; \
+            typeDesc->alias = typeDesc->name;
+
+#define REFLECT_STRUCT_MEMBER_FORWARD(name0,name1) \
+		int a = offsetof(T,name0);int b = offsetof(T,name1);\
+        for(int i=0;i<typeDesc->members.size();i++) {\
+			if(strcmp(typeDesc->members[i].name,#name0)==0) {\
+				for(int j=0;j<typeDesc->members.size();j++) {\
+					if(strcmp(typeDesc->members[j].name,#name1)==0) { \
+						typeDesc->members[i].forward_output = j; \
+						std::cout << #name0 <<" FWD DST = "<<j<<", "<<typeDesc->members[j].name<<"\n";\
+					}\
+				}\
+			}\
+		}
+
+#define REFLECT_STRUCT3_END() \
+		}
 }
+
+enum {
+	RESOURCE_UNK,
+	RESOURCE_VALID,
+	RESOURCE_DESTROYED
+};
 
 struct vkMemoryResource
 {
@@ -39,6 +82,10 @@ struct vkMemoryResource
 	u32 reference_count = 0;
 	std::vector<reflect::input_type*> consumers;
 	virtual void destroy(VkDevice) = 0;
+	reflect::output_type* owner = NULL;
+	int status = RESOURCE_UNK;
+
+	virtual reflect::TypeDescriptor_Struct* GetDynamicReflection() = 0;
 };
 
 struct vkRaytraceResource
@@ -73,7 +120,7 @@ struct vkBufferResource : public vkMemoryResource
 
 	void destroy(VkDevice);
 
-	REFLECT()
+	REFLECT3()
 };
 
 struct vkImageResource : public vkMemoryResource
@@ -86,7 +133,7 @@ struct vkImageResource : public vkMemoryResource
 	void destroy(VkDevice);
 	void create_and_load_texture(MyDevice* device, video::IVideoDriver* driver, video::ITexture* tex);
 
-	REFLECT()
+	REFLECT3()
 };
 
 struct vkImageSubresource
@@ -98,7 +145,7 @@ struct vkImageSubresource
 	void destroy(VkDevice);
 	void create_and_load_texture(MyDevice* device, video::IVideoDriver* driver, video::ITexture* tex);
 
-	REFLECT()
+	REFLECT3()
 };
 
 struct vkImageArrayResource : public vkMemoryResource
@@ -118,7 +165,7 @@ struct vkImageArrayResource : public vkMemoryResource
 
 	std::vector<VkDescriptorImageInfo> imageStorageInfo;
 
-	REFLECT()
+	REFLECT3()
 };
 
 struct vkMultiImageResource : public vkMemoryResource
@@ -132,7 +179,7 @@ struct vkMultiImageResource : public vkMemoryResource
 
 	void destroy(VkDevice);
 
-	REFLECT()
+	REFLECT3()
 };
 
 class Vulkan_Module;
@@ -142,40 +189,6 @@ Vulkan_Module* get_module_by_uid(std::vector<Vulkan_Module*>*, u64 uid);
 
 namespace reflect
 {
-#define REFLECT3() \
-        virtual reflect::TypeDescriptor_Struct* GetDynamicReflection(); \
-        friend struct reflect::DefaultResolver; \
-        static reflect::TypeDescriptor_Struct Reflection; \
-        static void initReflection(reflect::TypeDescriptor_Struct*); \
-
-#define REFLECT_STRUCT3_BEGIN(type) \
-        reflect::TypeDescriptor_Struct type::Reflection{type::initReflection}; \
-        reflect::TypeDescriptor_Struct* type::GetDynamicReflection() {\
-            return &type::Reflection;\
-            }\
-        void type::initReflection(reflect::TypeDescriptor_Struct* typeDesc) { \
-            using T = type; \
-            typeDesc->name = #type; \
-            typeDesc->size = sizeof(T); \
-            typeDesc->inherited_type = NULL; \
-            typeDesc->name_func = NULL; \
-            typeDesc->alias = typeDesc->name;
-
-#define REFLECT_STRUCT_MEMBER_FORWARD(name0,name1) \
-		int a = offsetof(T,name0);int b = offsetof(T,name1);\
-        for(int i=0;i<typeDesc->members.size();i++) {\
-			if(strcmp(typeDesc->members[i].name,#name0)==0) {\
-				for(int j=0;j<typeDesc->members.size();j++) {\
-					if(strcmp(typeDesc->members[j].name,#name1)==0) { \
-						typeDesc->members[i].forward_output = j; \
-						std::cout << #name0 <<" FWD DST = "<<j<<", "<<typeDesc->members[j].name<<"\n";\
-					}\
-				}\
-			}\
-		}
-
-#define REFLECT_STRUCT3_END() \
-    }
 
 	template <typename TY> struct input;
 	template <typename TY> struct output;
@@ -210,7 +223,7 @@ namespace reflect
 		u64 forward_uid = 0;
 		
 
-		REFLECT()
+		REFLECT3()
 	};
 
 	struct output_type
@@ -229,7 +242,7 @@ namespace reflect
 		virtual void signal() = 0;
 		virtual void push() = 0;
 
-		REFLECT()
+		REFLECT3()
 	};
 
 	template <typename TY>
@@ -246,6 +259,7 @@ namespace reflect
 
 		//virtual bool load() override;
 
+		virtual reflect::TypeDescriptor_Struct* GetDynamicReflection() { return &input<TY>::Reflection; }
 		REFLECT_CUSTOM_STRUCT()
 	};
 
@@ -266,8 +280,14 @@ namespace reflect
 		virtual void signal() override;
 		virtual void push() override;
 
+		virtual reflect::TypeDescriptor_Struct* GetDynamicReflection() { return &output<TY>::Reflection; }
 		REFLECT_CUSTOM_STRUCT()
 	};
+
+
+	//void connect(output<vkImageArrayResource>* out, input<vkMultiImageResource>* in)
+	//{
+	//}
 
 	template <typename TY>
 	void connect( output<TY>* out, input<TY>* in)
@@ -450,7 +470,7 @@ public:
 	virtual void run() = 0;
 	//bool load_resources();
 	bool all_resources_ready();
-	void signaled();
+	bool signaled();
 	void run_and_push();
 	void set_ptrs();
 
@@ -470,11 +490,13 @@ public:
 	REFLECT3()
 };
 
+class Geometry_Module;
+
 class Vulkan_App
 {
 public:
 
-	Vulkan_App(Geometry_Assets* geo_assets);
+	Vulkan_App(Geometry_Assets* geo_assets, Lightmap_Configuration* configuration, video::IVideoDriver* driver);
 
 	void initVulkan();
 	void cleanup();
@@ -489,83 +511,33 @@ public:
 	vkImageResource* create_image(int width, int height, VkImageUsageFlags flags, reflect::output_type*);
 	vkBufferResource* create_buffer(VkDeviceSize bufferSize, VkBufferUsageFlags flags, reflect::output_type*);
 
+	template<typename T>
+	Vulkan_Module* create_module();
+
+
 	std::vector<VkCommandBuffer> commandBuffers;
 	MyDescriptorPool* m_DescriptorPool = NULL;
 	MyDevice* m_device = NULL;
 	std::vector<Vulkan_Module*> all_modules;
 	std::vector<vkMemoryResource*> resources;
 
+	video::IVideoDriver* driver;
+	Lightmap_Configuration* configuration;
+	Geometry_Module* geo_module = NULL;
+	Geometry_Assets* geo_assets;
 };
 
-
-class Copy_Lightmaps_Module : public Vulkan_Module
+template<typename T>
+Vulkan_Module* Vulkan_App::create_module()
 {
-	struct ShaderParamsInfo {
-		uint32_t lightmap0_width;
-		uint32_t lightmap0_height;
+	reflect::TypeDescriptor_Struct* descriptor = &T::Reflection;
 
-		uint32_t lightmap1_width;
-		uint32_t lightmap1_height;
+	void* mem = malloc(descriptor->size);
+	T* module = (T*)mem;
 
-		uint32_t face_vertex_offset; //not used in shader
-		uint32_t face_index_offset;
-		uint32_t face_n_indices;
-		uint32_t intensity;
-	};
+	new(module) T(this);
 
-public:
-	Copy_Lightmaps_Module(Vulkan_App* vulkan,
-		Lightmap_Configuration* configuration0, Lightmap_Configuration* configuration1)
-		: Vulkan_Module(vulkan), configuration0{ configuration0 }, configuration1{ configuration1 }
-	{
-		set_ptrs();
-	}
-
-	void createDescriptorSetLayout();
-	void createDescriptorSets(int,int);
-	void createComputePipeline();
-	void createImageViews();
-	void createImages();
-	void createUVBuffer();
-
-	VkSampler createDefaultSampler();
-
-	virtual void run() override;
-	void execute(int,int,int,int,int);
-	void destroyImages();
-
-	std::vector<aligned_vec3>* uv_struct_0;
-	std::vector<aligned_vec3>* uv_struct_1;
-	int n_vertices = 0;
-
-	Lightmap_Configuration* configuration0;
-	Lightmap_Configuration* configuration1;
-
-	std::vector<int>* element_by_element_id = NULL;
-	soa_struct<MeshIndex_Chunk>* surface_index = NULL;
-
-	std::vector<VkImage> lightmapImages_in;
-	std::vector<VkDeviceMemory> lightmapsMemory_in;
-	std::vector<VkImageView> lightmapImageViews_in;
-
-	std::vector<VkImage> lightmapImages_out;
-	std::vector<VkDeviceMemory> lightmapsMemory_out;
-	std::vector<VkImageView> lightmapImageViews_out;
-
-	VkBuffer uvBuffer_0;
-	VkDeviceMemory uvBufferMemory_0;
-
-	VkBuffer uvBuffer_1;
-	VkDeviceMemory uvBufferMemory_1;
-
-	VkBuffer indexBuffer;
-	VkDeviceMemory indexBufferMemory;
-	int n_indices = 0;
-
-	VkSampler mySampler;
-
-	MyBufferObject* shaderParamsBufferObject = NULL;
-	
-};
+	return module;
+}
 
 #endif
