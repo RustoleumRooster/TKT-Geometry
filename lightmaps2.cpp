@@ -642,7 +642,7 @@ void Lightmap_Configuration::calc_lightmap_uvs(GeometryStack* geo_node, Lightmap
 
 void Lightmap_Configuration::transform_lightmap_uvs(MeshNode_Interface_Edit* edit_node, int element_no, int surface_no, const matrix4& mat)
 {
-	u16 offset_e = edit_node->surface_index.offset[element_no];
+	//u16 offset_e = edit_node->surface_index.offset[element_no];
 
 	for (int j = 0; j < geo_node->elements[element_no].surfaces[surface_no].my_faces.size(); j++)
 	{
@@ -715,8 +715,8 @@ void Lightmap_Configuration::transform_lightmap_uvs(dimension2du lm_dimension, t
 
 	transform_lightmap_uvs(mesh_node, element_no, block.surface_no, m);
 		
-	u16 offset_e = mesh_node->surface_index.offset[element_no];
-	u16 offset_i = mesh_node->get_buffer_index_by_face(offset_e + block.surface_no);
+	//u16 offset_e = mesh_node->surface_index.offset[element_no];
+	//u16 offset_i = mesh_node->get_buffer_index_by_face(offset_e + block.surface_no);
 }
 
 

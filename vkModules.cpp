@@ -121,6 +121,23 @@ namespace reflect
 		static TypeDescriptor_U64 typeDesc;
 		return &typeDesc;
 	}
+
+	void connect(output<vkImageArrayResource>* in, input<vkMultiImageResource>* out)
+	{
+		ImageArray_To_MultiImage_Module* link_module = (ImageArray_To_MultiImage_Module* )in->owner->vulkan->create_module<ImageArray_To_MultiImage_Module>();
+		
+		connect(in, &link_module->images_in);
+		connect(&link_module->images_out,out);
+	}
+
+	void connect(output<vkMultiImageResource>* in, input<vkImageArrayResource>* out)
+	{
+		MultiImage_To_ImageArray_Module* link_module = (MultiImage_To_ImageArray_Module*)in->owner->vulkan->create_module<MultiImage_To_ImageArray_Module>();
+	
+		connect(in, &link_module->images_in);
+		connect(&link_module->images_out, out);
+	}
+
 }
 
 Vulkan_App::Vulkan_App(Geometry_Assets* geo_assets, Lightmap_Configuration* configuration, video::IVideoDriver* driver)
@@ -746,29 +763,24 @@ Geometry_Assets::Geometry_Assets(geometry_scene* g_scene, Lightmap_Configuration
 	{
 		if (tm.materialGroup == 7)
 		{
-			for (int f_i : tm.faces)
+			for (AreaLightInfoStruct& light : area_lights)
 			{
-				unsigned int b_offset = indices_soa.offset[meshnode->get_buffer_index(f_i)] / 3;
-				int t_0 = meshnode->get_first_triangle(f_i) / 3;
-
-				AreaLightInfoStruct* light_info = NULL;
-
-				for (AreaLightInfoStruct& light : area_lights)
+				for (const pair<int, int>& face_id : tm.surfaces)
 				{
-					for (const pair<int, int>& face_id : tm.surfaces)
+					if (face_id.first == light.element_id && face_id.second == light.face_id)
 					{
-						if (face_id.first == light.element_id && face_id.second == light.face_id)
+						AreaLightInfoStruct* light_info = &light;
+						int element_n = g_scene->geoNode()->element_by_element_id[light.element_id];
+
+						u32 offset = meshnode->surface_index.offset[element_n] + light.face_id;
+
+						int begin_i = meshnode->surface_index.data[offset].begin_i;
+						int end_i = meshnode->surface_index.data[offset].end_i;
+						int len = (end_i - begin_i) / 3;
+						for (int i = 0; i < len; i++)
 						{
-							light_info = &light;
+							light_info->indices.push_back(begin_i / 3 + i);
 						}
-					}
-				}
-
-				if (light_info)
-				{
-					for (int i = 0; i < meshnode->get_n_triangles(f_i); i++)
-					{
-						light_info->indices.push_back(b_offset + t_0 + i);
 					}
 				}
 			}

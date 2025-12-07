@@ -285,9 +285,8 @@ namespace reflect
 	};
 
 
-	//void connect(output<vkImageArrayResource>* out, input<vkMultiImageResource>* in)
-	//{
-	//}
+	void connect(output<vkImageArrayResource>* in, input<vkMultiImageResource>* out);
+	void connect(output<vkMultiImageResource>* in, input<vkImageArrayResource>* out);
 
 	template <typename TY>
 	void connect( output<TY>* out, input<TY>* in)
