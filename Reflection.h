@@ -13,6 +13,8 @@
 
 class Reflected_GUI_Edit_Form;
 class Reflected_SceneNode;
+class TextureInfo;
+
 
 #define ALIGN_BYTES 8
 
@@ -930,10 +932,10 @@ struct TypeDescriptor_SColor : TypeDescriptor {
 };
 
 struct TypeDescriptor_Texture : TypeDescriptor {
-    TypeDescriptor_Texture() : TypeDescriptor{"Texture", sizeof(irr::video::ITexture*)} {
+    TypeDescriptor_Texture() : TypeDescriptor{"Texture", sizeof(TextureInfo*)} {
     }
     virtual void dump(const void* obj, int /* unused */) const override {
-        std::cout << "Texture{" << *(const irr::video::ITexture**) obj << "}";
+        std::cout << "Texture{" << *(const TextureInfo**) obj << "}";
     }
 
     virtual bool expandable(){return true;}

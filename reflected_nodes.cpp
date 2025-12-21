@@ -9,6 +9,7 @@
 #include "my_reflected_nodes.h"
 #include "USceneNode.h"
 #include "my_nodes.h"
+#include "texture_picker.h"
 
 using namespace irr;
 using namespace gui;
@@ -590,7 +591,8 @@ void Reflected_MeshBuffer_SceneNode::restore_original_texture()
 
             poly_surface* surface = geo_scene->geoNode()->surface_by_n(face_i);
 
-            video::ITexture* texture = device->getVideoDriver()->getTexture(surface->texture_name.c_str());
+           // video::ITexture* texture = device->getVideoDriver()->getTexture(surface->texture_name.c_str());
+            video::ITexture* texture = TexturePicker_Tool::get_texture(surface->texture_name.c_str());
             
             MeshBuffer_Chunk chunk = geo_scene->geoNode()->final_meshnode_interface.get_mesh_buffer_by_face(f_i);
 

@@ -10,6 +10,8 @@
 
 class LM_Viewer_Window;
 
+class TextureInfo;
+
 struct material_group_struct
 {
     //ATTRIBUTES:
@@ -23,7 +25,7 @@ struct material_group_struct
     int nFaces;
     int nTriangles;
     int material_group;
-    video::ITexture* texture;
+    TextureInfo* texture;
 
     //NON REFLECTED MEMBERS:
     bool selected;
@@ -253,7 +255,7 @@ public:
     virtual void write_attributes(reflect::TypeDescriptor_Struct* flat_typeDescriptor);
 
     std::string GetSelectedString();
-    video::ITexture* GetSelectedTexture();
+    TextureInfo* GetSelectedTexture();
 
     s32 getWidgetHeight();
     void setWidgetHeight(s32);

@@ -629,13 +629,6 @@ Geometry_Assets::Geometry_Assets(geometry_scene* g_scene, Lightmap_Configuration
 				u32 prim_no = static_cast<f32> (bvh.indices[bvh.nodes[i].first_prim + j]);
 
 				//Pack data about each triangle into the packing space 
-				
-				
-				/*
-				bvh.nodes[i].pack(j*4 + 1, static_cast<u16> (triangle_gpu_info[prim_no].material_type));
-				bvh.nodes[i].pack(j * 4 + 2, static_cast<u16> (triangle_gpu_info[prim_no].lightmap_no));
-				*/
-				//bvh.nodes[i].packing[3] = 5;
 
 				if (j == 0)
 				{
@@ -647,29 +640,6 @@ Geometry_Assets::Geometry_Assets(geometry_scene* g_scene, Lightmap_Configuration
 					bvh.nodes[i].pack(4, prim_no);
 					bvh.nodes[i].pack(5, static_cast<u16> (triangle_gpu_info[prim_no].lightmap_no));
 				}
-				
-
-				
-
-				//cout << prim_no << ", " << static_cast<u16> (triangle_gpu_info[prim_no].lightmap_no) << "\n";
-			}
-		}
-		else
-			bvh.nodes[i].n_prims = 0;
-	}
-
-	for (int i = 0; i < bvh.node_count; i++)
-	{
-		if (bvh.nodes[i].left_node == 0xFFFF && bvh.nodes[i].right_node == 0xFFFF)
-		{
-
-			for (int j = 0; j < std::min(2u, bvh.nodes[i].n_prims); j++)
-			{
-
-				//for (int k = 0; k < 8; k++)
-				//	bvh.nodes[i].check_packing(k, k + 1);
-
-				//cout << prim_no << ", " << static_cast<u16> (triangle_gpu_info[prim_no].lightmap_no) << "\n";
 			}
 		}
 		else
@@ -741,6 +711,8 @@ Geometry_Assets::Geometry_Assets(geometry_scene* g_scene, Lightmap_Configuration
 	reflect::TypeDescriptor_Struct* MeshBufferNode_tD =
 		(reflect::TypeDescriptor_Struct*)(reflect::TypeResolver<Reflected_MeshBuffer_AreaLight_SceneNode>::get());
 
+	vector<Reflected_MeshBuffer_AreaLight_SceneNode*> light_source_nodes;
+
 	core::list<ISceneNode*> nodes = g_scene->EditorNodes()->getChildren();
 	core::list<scene::ISceneNode*>::Iterator it = nodes.begin();
 	for (; it != nodes.end(); ++it)
@@ -756,6 +728,7 @@ Geometry_Assets::Geometry_Assets(geometry_scene* g_scene, Lightmap_Configuration
 			light_info.intensity = light_node->intensity;
 
 			area_lights.push_back(light_info);
+			light_source_nodes.push_back(light_node);
 		}
 	}
 
@@ -772,6 +745,8 @@ Geometry_Assets::Geometry_Assets(geometry_scene* g_scene, Lightmap_Configuration
 						AreaLightInfoStruct* light_info = &light;
 						int element_n = g_scene->geoNode()->element_by_element_id[light.element_id];
 
+						light_info->surface_normal = g_scene->geoNode()->get_element_by_id(light.element_id)->brush.faces[light.face_id].m_normal;
+
 						u32 offset = meshnode->surface_index.offset[element_n] + light.face_id;
 
 						int begin_i = meshnode->surface_index.data[offset].begin_i;
@@ -786,9 +761,12 @@ Geometry_Assets::Geometry_Assets(geometry_scene* g_scene, Lightmap_Configuration
 			}
 		}
 	}
-
-	for (const AreaLightInfoStruct& a : area_lights)
+	//cout << "Light Power Values:\n";
+	for (int i = 0; i < area_lights.size(); i++)
 	{
+		const AreaLightInfoStruct& a = area_lights[i];
+
+		u32 power = 0;
 		for (u32 idx : a.indices)
 		{
 			area_light_indices.push_back(aligned_uint{ idx });
@@ -808,9 +786,16 @@ Geometry_Assets::Geometry_Assets(geometry_scene* g_scene, Lightmap_Configuration
 
 			u32 intensity = a.intensity * area;
 
+			power += intensity;
+
 			area_light_indices.push_back(aligned_uint{ intensity });
 		}
+
+		light_source_nodes[i]->power = power;
+		light_source_nodes[i]->normal = area_lights[i].surface_normal;
 	}
+
+	g_scene->calc_lighting_vectors();
 }
 
 bool Triangle_Transformer::get_uvs_for_triangle(int triangle_no, int lm_size, vector3df& w0, vector3df& w1, vector3df& w2)

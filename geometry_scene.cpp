@@ -218,7 +218,7 @@ bool Geometry_Scene_File_IO::WriteTextureNames(geometry_scene* geo_scene, std::s
         return false;
     }
 
-    std::vector<video::ITexture*> textures_used;
+    std::vector<TextureInfo*> textures_used;
     std::vector<std::wstring> texture_paths;
 
     video::IVideoDriver* driver = device->getVideoDriver();
@@ -229,7 +229,8 @@ bool Geometry_Scene_File_IO::WriteTextureNames(geometry_scene* geo_scene, std::s
         for (poly_surface& surface : geometry_stack->elements[i].surfaces)
         {
             //video::ITexture* tex_j = driver->getTexture(geometry_stack->elements[i].brush.faces[f_i].texture_name.c_str());
-            video::ITexture* tex_j = driver->getTexture(surface.texture_name.c_str());
+            //video::ITexture* tex_j = driver->getTexture(surface.texture_name.c_str());
+            TextureInfo* tex_j = TexturePicker_Tool::get_texture_info(surface.texture_name.c_str());
 
             bool b = false;
             for (int j = 0; j < textures_used.size(); j++)
@@ -1224,28 +1225,11 @@ void geometry_scene::MaterialGroupToSelectedFaces()
 
     for (int i : selected_faces)
     {
-        //int element_id = geometry_stack->get_total_geometry()->faces[i].element_id;
-        //int face_i = geometry_stack->get_total_geometry()->faces[i].face_id;
-        //geo_element* element = geometry_stack->get_element_by_id(element_id);
-
         if (geometry_stack->surface_by_n(i)->material_group != mg)
         {
             geometry_stack->surface_by_n(i)->material_group = mg;
             dirty_mesh = true;
         }
-
-        /*if (geometry_stack->get_total_geometry()->faces[i].material_group != mg ||
-            element->brush.faces[face_i].material_group != mg ||
-            element->geometry.faces[face_i].material_group != mg)
-        {
-            element->brush.faces[face_i].material_group = mg;
-            element->geometry.faces[face_i].material_group = mg;
-
-            geometry_stack->get_total_geometry()->faces[i].material_group = mg;
-
-            dirty_mesh = true;
-        }
-        */
     }
 
     if (b_Visualize)
@@ -1275,18 +1259,8 @@ void geometry_scene::TextureToSelectedFaces()
 
     for(int i: this->selected_faces)
     {
-        //int element_id = geometry_stack->get_total_geometry()->faces[i].element_id;
-       // int face_i = geometry_stack->get_total_geometry()->faces[i].face_id;
-       // geo_element& element = geometry_stack->get_element_by_id(element_id);
-
-        //element.surfaces[]
         poly_surface* surface = geometry_stack->surface_by_n(i);
-        surface->texture_name = TexturePicker_Tool::getCurrentTexture()->getName().getPath();
-
-        //element.texture_names[face_i] = TexturePicker_Tool::getCurrentTexture()->getName().getPath();
-
-       // element.brush.faces[face_i].texture_name=core::stringw(TexturePicker_Tool::getCurrentTexture()->getName().getPath());
-       // element.geometry.faces[face_i].texture_name= TexturePicker_Tool::getCurrentTexture()->getName().getPath();
+        surface->texture_name = TexturePicker_Tool::getCurrentTexture()->name;
     }
 
     for(int i=0; i<this->getMeshNode()->getMesh()->getMeshBufferCount();i++)
@@ -1586,6 +1560,31 @@ void geometry_scene::buildSceneGraph(bool addObjects, int light_mode, bool final
     }
 
     b_Visualize = false;
+}
+
+void geometry_scene::calc_lighting_vectors()
+{
+    reflect::TypeDescriptor_Struct* MeshBufferNode_tD =
+        (reflect::TypeDescriptor_Struct*)(reflect::TypeResolver<Reflected_MeshBuffer_AreaLight_SceneNode>::get());
+
+    vector<Reflected_MeshBuffer_AreaLight_SceneNode*> light_sources;
+
+    core::list<ISceneNode*> nodes = EditorNodes()->getChildren();
+    core::list<scene::ISceneNode*>::Iterator it = nodes.begin();
+    for (; it != nodes.end(); ++it)
+    {
+        Reflected_SceneNode* node = (Reflected_SceneNode*)*it;
+        if (node->GetDynamicReflection()->isOfType(MeshBufferNode_tD))
+        {
+            Reflected_MeshBuffer_AreaLight_SceneNode* light_node = dynamic_cast<Reflected_MeshBuffer_AreaLight_SceneNode*>(node);
+        
+            light_sources.push_back(light_node);
+        }
+    }
+
+    geometry_stack->final_meshnode_interface.calc_vertex_lighting_vectors(light_sources, special_graph);
+
+    int z = 0;
 }
 
 void geometry_scene::beginScene()

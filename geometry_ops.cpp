@@ -265,8 +265,8 @@ void GeometryStack::add()
         face.element_id = element_id_incrementer;
     }
 
-    video::ITexture* tex = TexturePicker_Tool::getCurrentTexture();
-    io::path path = tex->getName();
+    const TextureInfo* tex = TexturePicker_Tool::getCurrentTexture();
+    io::path path = tex->name;
 
     for (poly_surface& s : geo.surfaces)
     {
@@ -299,8 +299,8 @@ void GeometryStack::add_plane()
         face.element_id = element_id_incrementer;
     }
 
-    video::ITexture* tex = TexturePicker_Tool::getCurrentTexture();
-    io::path path = tex->getName();
+    const TextureInfo* tex = TexturePicker_Tool::getCurrentTexture();
+    io::path path = tex->name;
 
     for (poly_surface& s : geo.surfaces)
     {
@@ -338,8 +338,8 @@ void GeometryStack::add_semisolid()
     }
 
 
-    video::ITexture* tex = TexturePicker_Tool::getCurrentTexture();
-    io::path path = tex->getName();
+    const TextureInfo* tex = TexturePicker_Tool::getCurrentTexture();
+    io::path path = tex->name;
 
     for (poly_surface& s : geo.surfaces)
     {
@@ -371,8 +371,8 @@ void GeometryStack::subtract()
         face.element_id = element_id_incrementer;
     }
 
-    video::ITexture* tex = TexturePicker_Tool::getCurrentTexture();
-    io::path path = tex->getName();
+    const TextureInfo* tex = TexturePicker_Tool::getCurrentTexture();
+    io::path path = tex->name;
 
     //geo.texture_names.assign(pf.faces.size(), path);
     for (poly_surface& s : geo.surfaces)
@@ -1206,7 +1206,8 @@ void GeometryStack::buildSceneNode(bool finalMesh, int light_mode)
 
                 Material_Groups_Tool::apply_material_to_buffer(buffer, surface_by_n(f_i)->material_group, light_mode, false, false);
 
-                video::ITexture* tex_j = driver->getTexture(face_texture_by_n(f_i).c_str());
+                //video::ITexture* tex_j = driver->getTexture(face_texture_by_n(f_i).c_str());
+                video::ITexture* tex_j = TexturePicker_Tool::get_texture(face_texture_by_n(f_i).c_str());
 
                 buffer->getMaterial().setTexture(0, tex_j);
             }

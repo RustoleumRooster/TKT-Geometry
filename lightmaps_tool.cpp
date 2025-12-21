@@ -1444,7 +1444,7 @@ std::string Material_Buffers_Base::GetSelectedString()
     return std::string();
 }
 
-video::ITexture* Material_Buffers_Base::GetSelectedTexture()
+TextureInfo* Material_Buffers_Base::GetSelectedTexture()
 {
     if (selection != -1)
     {

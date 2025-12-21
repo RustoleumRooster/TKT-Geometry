@@ -24,6 +24,8 @@
 #include <random>
 #include <chrono>
 
+#include "clip_functions.h"
+
 using namespace irr;
 using namespace scene;
 using namespace std;
@@ -118,7 +120,7 @@ int main()
 
     CMeshSceneNode::initialize_unique_color(driver);
 
-    
+ 
     //=============================================================================================
 
 	device->getCursorControl()->setVisible(true);
@@ -132,57 +134,97 @@ int main()
     initialize_camera_quad(&scene, gui_layout, renderList);
 
     TexturePicker_Base* texture_picker_base = TexturePicker_Tool::get_base();
-    texture_picker_base->addTexture("terrain2.jpg");
-    texture_picker_base->addTexture("wall.bmp");
-    texture_picker_base->addTexture("water3.jpg");
+    texture_picker_base->addTexture("terrain2.jpg", "");
+    texture_picker_base->addTexture("wall.bmp", "");
+    texture_picker_base->addTexture("water3.jpg", "");
+    texture_picker_base->addTexture("simple_light.png", "");
     texture_picker_base->addTexture("../media/textures/greek_cornice.jpg","AI");
-    texture_picker_base->addTexture("../media/textures/temple_wall.jpg","AI");
-    texture_picker_base->addTexture("../media/textures/temple_floor.jpg","AI");
+    texture_picker_base->addTexture("../media/textures/temple_wall.jpg", "AI")
+        .set_height_map("../media/textures/temple_wall_height.jpg")
+        .set_normal_map("../media/textures/temple_wall_normal.jpg");
+    texture_picker_base->addTexture("../media/textures/temple_floor.jpg","AI")
+        .set_height_map("../media/textures/temple_floor_height.jpg")
+        .set_normal_map("../media/textures/temple_floor_normal.jpg");
     texture_picker_base->addTexture("../media/textures/carved_stone_buddha.jpg","AI");
     texture_picker_base->addTexture("../media/textures/ganesha_stone0.jpg","AI");
     texture_picker_base->addTexture("../media/textures/ganesha_stone1.jpg","AI");
     texture_picker_base->addTexture("../media/textures/greek_cornice.jpg","AI");
     texture_picker_base->addTexture("../media/textures/kama_sutra.jpg","AI");
 
-    for(int i=0;i<10;i++)
-    {
-    texture_picker_base->addTexture("terrain2.jpg");
-    texture_picker_base->addTexture("wall.bmp");
-    texture_picker_base->addTexture("water3.jpg");
-    }
+
 
     MakeCircleImages(driver);
 
     bool s_down=false;
 
     core::rect<s32> windowsize_0 = driver->getViewPort();
-
+    
     cout << "Loading Project\n";
 
+    //**AUTO LOAD SCENE**
     Geometry_Scene_File_IO file_io(device->getFileSystem());
-    file_io.AutoLoad(gs_coordinator, "../projects/test01");
+    file_io.AutoLoad(gs_coordinator, "../projects/test03");
 
+    //===============================================================
+    //scene = *gs_coordinator->current_scene();
     /*
     clip_results results;
 
-    pf = scene.elements[0].brush;
-    pf.make_convex();
+    polyfold pf = gs_coordinator->current_scene()->geoNode()->elements[0].brush;
+    pf.make_concave();
 
-    pf2 = scene.elements[1].geometry;
+    //polyfold pf2 = *gs_coordinator->current_scene()->geoNode()->get_total_geometry();
+    polyfold pf2 = gs_coordinator->current_scene()->geoNode()->elements[1].geometry;
+    //gs_coordinator->current_scene()->geoNode()->build_intersecting_target(pf, pf2);
 
-    clip_poly_accelerated2(pf, pf2, GEO_ADD, GEO_SOLID, results, nograph);
+    clip_poly_accelerated2(pf, pf2, GEO_SUBTRACT, GEO_SOLID, results, graph);
+    */
+     //addDrawLines(pf, graph, graph2, graph4);
+     //addDrawLines(pf2, graph, graph2, graph4);
+     
+    /*
+     std::vector<triangle_holder> triangles;
+     triangles.resize(pf2.faces.size());
 
-     addDrawLines(pf, graph, graph2, graph4);
+     for (int i = 0; i < pf2.faces.size(); i++)
+     {
+         if (pf2.faces[i].loops.size() > 0)
+         {
+             pf2.trianglize(i, triangles[i], NULL, nograph, nograph);
+         }
+     }
 
-     ((TestPanel_3D*)cameraQuad->getPanel(0))->AddGraphs(graph, graph2, graph4);
+     for (int i = 0; i < triangles.size(); i++)
+     {
+         for (int j = 0; j < triangles[i].triangles.size(); j++)
+         {
+             int a = triangles[i].triangles[j].A;
+             int b = triangles[i].triangles[j].B;
+             int c = triangles[i].triangles[j].C;
+             core::line3df aline(triangles[i].vertices[a], triangles[i].vertices[b]);
+             core::line3df bline(triangles[i].vertices[a], triangles[i].vertices[c]);
+             core::line3df cline(triangles[i].vertices[c], triangles[i].vertices[b]);
+             graph.lines.push_back(aline);
+             graph.lines.push_back(bline);
+             graph.lines.push_back(cline);
+         }
+     }
      */
 
      CameraQuad* cameraQuad = gui_layout->getCameraQuad();
 
      //((TestPanel_3D*)cameraQuad->getPanel(0))->AddGraphs(graph, graph2, graph4);
      
+     TestPanel_3D* main_panel = (TestPanel_3D * )cameraQuad->panel_TL;
      
     //================================================================
+
+     bool bWriteToFramebuffer = false;
+
+     core::stringw str = L"Das Irrlicht Engine  [";
+         str += driver->getName();
+     str += "] ";
+     device->setWindowCaption(str.c_str());
 
 	while(device->run())
 		if (device->isWindowActive())
@@ -197,14 +239,27 @@ int main()
             gui_layout->resize(windowsize);
         }
 
+        if (receiver.IsKeyDown(KEY_KEY_F) && bWriteToFramebuffer == false)
+        {
+            cout << "Writing to Default Framebuffer\n";
+            bWriteToFramebuffer = true;
+        }
+
 		driver->beginScene(true, true, video::SColor(255,32,32,32));
 
-        renderList->renderAll();
+        if (bWriteToFramebuffer == false)
+        {
+            renderList->renderAll();
 
-        gui->drawAll();
+            gui->drawAll();
+        }
+        else
+        { 
+            main_panel->render_to_framebuffer();
+        }
 
 		driver->endScene();
-
+        /*
 		int fps = driver->getFPS();
 
 		if (lastFPS != fps)
@@ -216,7 +271,7 @@ int main()
 
 			device->setWindowCaption(str.c_str());
 			lastFPS = fps;
-		}
+		}*/
 	}
 
 	device->drop();

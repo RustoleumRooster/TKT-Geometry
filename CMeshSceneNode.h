@@ -8,6 +8,8 @@
 #include "IMeshSceneNode.h"
 #include "IMesh.h"
 
+class TextureInfo;
+
 namespace irr
 {
 namespace scene
@@ -92,7 +94,7 @@ namespace scene
 		void render_with_material(video::SMaterial& material);
 		static void initialize_unique_color(video::IVideoDriver* driver);
 
-		void SetFaceTexture(int f_i, video::ITexture* texture);
+		void SetFaceTexture(int f_i, TextureInfo* texture);
 		void SetFaceMaterialType(int f_i, video::E_MATERIAL_TYPE new_material);
 		void copyMaterials();
 

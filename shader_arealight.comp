@@ -378,6 +378,8 @@ shared vec3 src_vert[3];
 shared vec3 src_normal;
 shared float ray_count;
 shared uint point_type;
+shared float light_distance;
+shared uint light_id;
 
 //==================================================
 // Functions that use shared variables
@@ -618,6 +620,33 @@ bool sphere_intersects_triangle(in vec3 P, in float r)
 		return false;
 
 	return true;
+}
+
+float get_next_light(float start_distance, vec3 pos, out uint new_light_id)
+{
+	float best_d = 0xFFFF;
+	uint best_i = 0;
+	
+	for(int i=0;i<params.n_lights;i++)
+	{
+	
+		uint light_idx = global_light_indices[i*2];
+		vec3 t_center = global_vertices[global_indices[light_idx*3 + 0]] +
+					global_vertices[global_indices[light_idx*3 + 1]] +
+					global_vertices[global_indices[light_idx*3 + 2]];
+		t_center /= 3;
+
+		float d = length(t_center - pos);
+
+		if(d < best_d && d > start_distance)
+		{
+			best_i = i;
+			best_d = d;// + 0.001;
+		}
+	}
+
+	new_light_id = best_i;
+	return best_d;
 }
 
 vec3 uv_to_vec3(in vec2 uv)
@@ -875,6 +904,7 @@ void main()
 						shared_total[j] = 0;
 
 					light_i = 0;
+					light_distance = 0;
 					ray_count = 0;
 					vec3 pos2 = uv_to_vec3( vec2( (float(ipos.x)) / params.lm_width, (float(ipos.y)) / params.lm_height) );
 
@@ -956,15 +986,26 @@ void main()
 				// Loop over each light source
 				//
 				
-				while(light_i < params.n_lights)
+				while(light_i < params.n_lights && light_i < 8)
 				{
-					uint light_idx = global_light_indices[light_i*2];
+					uint light_idx;
+
+					barrier();
+
+					if(ix == 0 && iy == 0)
+					{
+						light_distance = get_next_light(light_distance, pos, light_id);
+					}
+
+					barrier();
+
+					light_idx = global_light_indices[light_id*2];
 
 					subgroup_total=0;
 
 					if(ix == 0 && iy == 0)
 					{
-						do_precalculations(light_i*2,pos);
+						do_precalculations(light_id*2,pos);
 
 						shared_bool = (dot(Normal,global_vertices[global_indices[light_idx*3]] - pos) > 0.0 || 
 								dot(Normal,global_vertices[global_indices[light_idx*3 + 1]] - pos) > 0.0 ||
@@ -1006,14 +1047,14 @@ void main()
 							subgroupBarrier();
 
 							//float p = 100000.0 * dot(-ray,src_normal)  * dot(ray,Normal) / (d*d);
-							float p =  dot(-ray,src_normal)  * dot(-ray,src_normal)  * dot(-ray,src_normal)  * dot(ray,Normal) / (d*d);
+							float p =  dot(-ray,src_normal) * dot(-ray,src_normal) * dot(-ray,src_normal) * dot(ray,Normal) / (d*d);
 
 
 							//============================================
 							// Add up the contribution from each thread in the subgroup
 							//
 							subgroup_total = subgroupAdd( isHit && valid_pos ? p : 0 );
-							subgroup_total *= 0.1 * global_light_indices[light_i*2+1];
+							subgroup_total *= 0.1 * global_light_indices[light_id*2+1];
 
 						}
 					

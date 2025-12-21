@@ -49,9 +49,11 @@ struct MeshIndex_Chunk
     unsigned int end_i;
 };
 
+class TextureInfo;
+
 struct TextureMaterial
 {
-    video::ITexture* texture;
+    TextureInfo* texture;
     int materialGroup;
     int n_faces = 0;
     int n_triangles = 0;
@@ -68,6 +70,8 @@ struct TextureMaterial
     //std::vector<int> surfaces;
     std::vector<Lightmap_Block> blocks;
 };
+
+class Reflected_MeshBuffer_AreaLight_SceneNode;
 
 class MeshNode_Interface
 {
@@ -93,6 +97,8 @@ public:
     void recalc_uvs_for_face_dome(int e_i, int f_i, int f_j);
     void recalc_uvs_for_face_custom(int e_i, int f_i, int f_j);
     void recalc_uvs_for_face_canonical(int e_i, int f_i, int f_j);
+
+    void calc_vertex_lighting_vectors(vector<Reflected_MeshBuffer_AreaLight_SceneNode*>&, LineHolder& graph);
 
     scene::CMeshSceneNode* addMeshSceneNode(scene::ISceneNode* parent, scene::ISceneManager* smgr,GeometryStack* geo_scene);
 
@@ -123,7 +129,6 @@ protected:
 
     std::vector<int> face_to_material;
     
-
     GeometryStack* geo_scene = NULL;
 
     friend class GeometryStack;
@@ -184,8 +189,6 @@ public:
     int get_n_triangles(int);
     int get_first_triangle(int);
 
-    
-
     //===========================
     //This just converts an index on final buffer into an index on the edit buffer, since the order is different
     std::vector<int> edit_mb_buffer;
@@ -204,8 +207,6 @@ public:
     std::vector<int> surface_to_mb_begin;
     std::vector<int> surface_to_mb_end;
 
-    
-    
     std::vector<int> mb_buffer;
     std::vector<int> mb_begin;
     std::vector<int> mb_end;

@@ -98,13 +98,13 @@ TypeDescriptor* getPrimitiveDescriptor<irr::video::SColor>() {
     return &typeDesc;
 }
 
-
+/*
 template <>
 TypeDescriptor* getPrimitiveDescriptor<irr::video::ITexture*>() {
     static TypeDescriptor_Texture typeDesc;
     return &typeDesc;
 }
-
+*/
 
 template <>
 TypeDescriptor* getPrimitiveDescriptor<unsigned short>() {
@@ -121,6 +121,12 @@ TypeDescriptor* getPrimitiveDescriptor<char*>() {
 template <>
 TypeDescriptor* getPrimitiveDescriptor<unsigned long long>() {
     static TypeDescriptor_U64 typeDesc;
+    return &typeDesc;
+}
+
+template <>
+TypeDescriptor* getPrimitiveDescriptor<TextureInfo*>() {
+    static TypeDescriptor_Texture typeDesc;
     return &typeDesc;
 }
 

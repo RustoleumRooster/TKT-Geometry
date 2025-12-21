@@ -32,8 +32,8 @@ layout (binding = 0) uniform raytraceParams
 	
 	uint lm_width;
 	uint lm_height;
+	uint lightmap_no;
 
-	uint n_lights;
 } params;
 
 layout(std140, binding = 1) readonly buffer indexUBO
@@ -61,7 +61,7 @@ layout(std140, binding = 5) readonly buffer edgesUBO
 	uint global_edges[];
 };
 
-layout(binding = 6, rgba8) uniform readonly image2D imageIn;
+layout(binding = 6, rgba8) uniform  image2DArray imagesIn;
 
 //an output buffer for debugging
 layout(std140, binding = 7) buffer hitResults
@@ -69,7 +69,7 @@ layout(std140, binding = 7) buffer hitResults
 	vec3 hits[];
 };
 
-layout(binding = 8, rgba8) uniform image2D imageOut;
+layout(binding = 8, rgba8) uniform image2DArray imageOut;
 
 //==================================================
 // Random numbers (Tiny Encryption Algorithm)
@@ -118,11 +118,12 @@ float trace_node_triangles_hit(in uint node_i, in vec3 eye, in vec3 ray, out uin
 
 		if(j==0)
 		{
-			idx = floatBitsToUint(global_nodes[node_i].padding.x);
+			idx = floatBitsToUint(global_nodes[node_i].padding.x) & 0xFFFF;
 		}
 		else if(j==1)
 		{
-			idx = floatBitsToUint(global_nodes[node_i].padding.y);
+			idx = floatBitsToUint(global_nodes[node_i].padding.z) & 0xFFFF;
+			//idx = floatBitsToUint(global_nodes[node_i].padding.x) >> 16;
 		}
 
 		edge1 = global_vertices[global_indices[(idx*3) + 1]] - global_vertices[global_indices[idx*3]];
@@ -152,7 +153,8 @@ float trace_node_triangles_hit(in uint node_i, in vec3 eye, in vec3 ray, out uin
 		if(t > 0 && t < best)
 			{
 				best=t;
-				hit_id = idx;
+				//hit_id = idx;
+				hit_id = node_i*2 + j;
 			}
 	}
 	
@@ -229,7 +231,8 @@ vec3 rand_hemisphere_ray(in vec3 N, in vec3 Tan, in vec3 BiTan, inout uint seed)
 {
 	uint[2] V = tea(uint[2](seed,0));
 
-	float theta = acos( random_to_float01(V[0]) ) * 0.02;
+	//float theta =  random_to_float01(V[0]) * 3.1415926535 * 0.5;
+	float theta =  acos(random_to_float01(V[0]));
 	float omega = (random_to_float01(V[1]) * 3.1415926535 * 2);
 	
 	float x = sin(theta)*cos(omega);
@@ -369,7 +372,7 @@ shared uint edges[3];
 shared vec3 EdgeNormal0,EdgeNormal1,EdgeNormal2;
 shared uint light_i;
 shared bool shared_bool;
-shared float shared_total[8];
+shared float shared_total;
 shared vec3 src_vert[3];
 shared vec3 src_normal;
 shared float ray_count;
@@ -448,6 +451,31 @@ bool is_on_edge(vec3 P, uint v0, uint v1)
 	return (length(P-global_vertices[indexed(i_0,v0)]) + 
 			length(P-global_vertices[indexed(i_0,v1)]) - 
 			length(global_vertices[indexed(i_0,v1)] - global_vertices[indexed(i_0,v0)]) < 0.05);
+}
+
+bool barycentric(inout vec3 p, vec3 a, vec3 b, vec3 c)
+{
+    vec3 v0 = b - a;
+    vec3 v1 = c - a;
+    vec3 v2 = p - a;
+    float d00 = dot(v0,v0);
+    float d01 = dot(v0,v1);
+    float d11 = dot(v1,v1);
+    float d20 = dot(v2,v0);
+    float d21 = dot(v2,v1);
+    float denom = d00 * d11 - d01 * d01;
+    p.y = (d11 * d20 - d01 * d21) / denom;
+    p.z = (d00 * d21 - d01 * d20) / denom;
+    p.x = 1.0f - p.y - p.z;
+
+    p.x = abs(p.x) < 0.001 ? 0.0 : p.x;
+    p.y = abs(p.y) < 0.001 ? 0.0 : p.y;
+    p.z = abs(p.z) < 0.001 ? 0.0 : p.z;
+
+    if (p.x < 0 || p.y < 0 || p.z < 0)
+        return false;
+
+    return true;
 }
 	
 /*
@@ -670,7 +698,6 @@ void main()
 	uint iy = gl_LocalInvocationID.y;
 	//uint thread_id = iy * gl_WorkGroupSize.x + ix;
 
-	return;
 
 	if(gl_WorkGroupID.x * 3 < params.m_triangles_n_indices && ix == 0 && iy == 0)
 	{
@@ -758,7 +785,6 @@ void main()
 
 		uv2worldMat = T2 * T1;
 
-		
 		Normal = cross(global_vertices[indexed(i_0,1)] - global_vertices[indexed(i_0,0)], global_vertices[indexed(i_0,2)] - global_vertices[indexed(i_0,1)]);
 		Normal = normalize(Normal);
 
@@ -858,8 +884,7 @@ void main()
 
 				if(ix == 0 && iy == 0)
 				{
-					for(int j=0;j<8;j++)
-						shared_total[j] = 0;
+					shared_total = 0;
 
 					light_i = 0;
 					ray_count = 0;
@@ -936,47 +961,132 @@ void main()
 				}
 
 				barrier();
+				for(int it=0;it<4;it++)
+				{
+					subgroup_total = 0;
 
-				subgroup_total = 0;
+					//Actual Lighting Calcs
 
-				//Actual Lighting Calcs
-			
-				barrier();
+					uint hit_id,hit_id0;
+					uint lightmap_no;
+
+					vec3 ray = rand_hemisphere_ray(Normal,Tan,Bitan,rand_state);
+
+					float hit_score = trace_scene_hit(pos,ray,hit_id0);
+
+					//if(hit_score != 0xFFFF)
+					{
+						if(hit_id % 2 == 0 )
+						{
+							//hit_id = floatBitsToUint(global_nodes[hit_id0/2].padding[0]) & 0xFFFF;
+							//lightmap_no = floatBitsToUint(global_nodes[hit_id0/2].padding[1]) & 0xFFFF;
+							hit_id = (floatBitsToUint(global_nodes[hit_id0/2].padding[0])) & 0xFFFF ;
+							lightmap_no = (floatBitsToUint(global_nodes[hit_id0/2].padding[0]) >> 16) & 0xFFFF ;
+					
+						}
+						else
+						{
+							//hit_id = floatBitsToUint(global_nodes[hit_id0/2].padding[2]) & 0xFFFF;
+							//lightmap_no = (floatBitsToUint(global_nodes[hit_id0/2].padding[3])) & 0xFFFF;
+							//lightmap_no = 1;
+							hit_id  = (floatBitsToUint(global_nodes[hit_id0/2].padding[2])) & 0xFFFF ;
+							lightmap_no = (floatBitsToUint(global_nodes[hit_id0/2].padding[2]) >> 16) & 0xFFFF ;
+							
+						}
+
+						//hits[ix + iy*32].x = (floatBitsToUint(global_nodes[hit_id0/2].padding[2])) & 0xFFFF ;
+						//hits[ix + iy*32].y = (floatBitsToUint(global_nodes[hit_id0/2].padding[2]) >> 16) & 0xFFFF ;
+						//hits[ix + iy*32].z = (floatBitsToUint(global_nodes[hit_id/2].padding[3])) & 0xFFFF ;
+
+						
+
+						//hits[ix + iy*32] = pos;
+						//hits[ix + iy*32 + 256] = pos + ray * hit_score;
+
+						float dotproduct = dot(ray,Normal);
+
+						ray = pos + ray * hit_score;
+
+						barycentric(ray, 
+									global_vertices[indexed(hit_id*3)],
+									global_vertices[indexed(hit_id*3,1)],
+									global_vertices[indexed(hit_id*3,2)]);
+
+						vec3 lightmap_hit_pos;
+
+						lightmap_hit_pos = map_uvs[indexed(hit_id*3)] * ray.x +
+											map_uvs[indexed(hit_id*3,1)] * ray.y +
+											map_uvs[indexed(hit_id*3,2)] * ray.z;
+
+						////imageStore(imagesIn,ivec3(256 * lightmap_hit_pos.x,256 * lightmap_hit_pos.y,lightmap_no),vec4(1,1,1,1));
+
+						vec4 value = imageLoad(imagesIn,ivec3(256 * lightmap_hit_pos.x,256 * lightmap_hit_pos.y,lightmap_no));
+						////vec4 value = imageLoad(imagesIn,ivec3(256 * lightmap_hit_pos.x,256 * lightmap_hit_pos.y,lightmap_no));
+
+
+						//imageStore(imageOut,ivec3(256 * lightmap_hit_pos.x,256 * lightmap_hit_pos.y,lightmap_no),vec4(1,1,1,1));
+
+					
+
+						hit_score /= 512;
+						hit_score += 5;
+
+						//if(hit_score < 1.0)
+						//	hit_score = 1;
+
+						float p = 48  *  value.x * dotproduct / (hit_score*hit_score);
+						//float p = value.x;
+
+						//hits[ix + iy*32].x = p;
+
+						subgroup_total = subgroupAdd( hit_score != 0xFFFF && valid_pos ? p : 0 );
+						//subgroup_total = subgroupAdd( hit_score != 0xFFFF && valid_pos ? 0.1 : 0 );
+						
+
+					}
+
+					subgroupBarrier();
+
+					//============================================
+					// Add up the contribution from all the subgroups
+					//
+
+					if(subgroupElect())
+					{
+						atomicAdd(shared_total,subgroup_total);
+					}
+
+					barrier();
+				} //iterations
 
 				if(ix == 0 && iy == 0)
 				{
 					float p = 0;
 
-					//============================================
-					// Add up the contributions from each light source
-					//
-
-					for(int j=0;j<8;j++)
-					{
-						p += shared_total[j];
-					}
+					p = shared_total;
 
 					//Test Code
 					//if(ipos == vec2(floor(params.in_coords.x * params.lm_width),floor(params.in_coords.y * params.lm_height)))
 					{
-						//hits[0].y = p;
+						//hits[0].x = shared_total;
 					}
 
-					p = p / (ray_count * params.n_lights);
+					p = p / (ray_count*4);
 
 					//Test Code
-					//if(ipos == vec2(floor(params.in_coords.x * params.lm_width),floor(params.in_coords.y * params.lm_height)))
+					if(ipos == vec2(floor(params.in_coords.x * params.lm_width),floor(params.in_coords.y * params.lm_height)))
 					{
-						//hits[0].z = p;
+						//hits[0].x = p;
 					}
 
-					//if(ray_count > 32 )
-					//	imageStore(imageOut,ipos,vec4(p,1,p,1));					
+					if(ray_count > 32 )
+						imageStore(imageOut,ivec3(ipos,params.lightmap_no),vec4(p,1,p,1));					
 
-				}// if(ipos == vec2(floor(params.in_c...
+				}
 
 				barrier();
-			}
+
+			}// if(ipos == vec2(floor(params.in_c...
 
 			i++;
 

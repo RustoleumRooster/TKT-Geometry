@@ -16,10 +16,15 @@ using namespace gui;
 struct TextureInfo
 {
     video::ITexture* texture=NULL;
+    video::ITexture* normal_map=NULL;
+    video::ITexture* height_map=NULL;
     core::stringw name;
     //core::stringw category;
     int category;
     int texture_number;
+
+    TextureInfo& set_normal_map(std::string fname);
+    TextureInfo& set_height_map(std::string fname);
 };
 
 class TexturePicker_Base;
@@ -97,10 +102,12 @@ public:
     void show();
 
     //void addTexture(std::string);
-    void addTexture(std::string name,std::string category = std::string(""));
-    void addTexture(video::ITexture* texture, std::string name, std::string category);
+    TextureInfo& addTexture(std::string name, std::string fname, std::string category);
+    TextureInfo& addTexture(std::string fname, std::string category);
+    //TextureInfo& addTexture(video::ITexture* texture, std::string name, std::string category);
 
-    video::ITexture* getCurrentTexture();
+   // video::ITexture* getCurrentTexture();
+    TextureInfo* getCurrentTexture();
 
 private:
     std::vector<TextureInfo> my_textures;
@@ -110,6 +117,7 @@ private:
 
     friend class Texture_Picker_Window;
     friend class TexturePicker;
+    friend class TexturePicker_Tool;
 };
 
 class TexturePicker_Tool
@@ -131,10 +139,15 @@ public:
         return base;
     }
 
-    static video::ITexture* getCurrentTexture()
+    static TextureInfo* getCurrentTexture()
     {
         return base->getCurrentTexture();
     }
+
+    static TextureInfo* get_texture_info(core::stringw);
+    static video::ITexture* get_texture(core::stringw);
+    static video::ITexture* get_height_map(core::stringw);
+    static video::ITexture* get_normal_map(core::stringw);
 
     static TexturePicker_Base* base;
     static multi_tool_panel* panel;

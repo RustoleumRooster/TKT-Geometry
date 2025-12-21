@@ -1232,11 +1232,7 @@ void Texture_FormField::readValue(void* obj)
 
             if(my_texture != NULL)
             {
-                io::path path = my_texture->getName();
-                core::deletePathFromFilename(path);
-                core::cutFilenameExtension(path,path);
-                core::stringw str = path;
-                editbox->setText(str.c_str());
+                editbox->setText(my_texture->name.c_str());
             }
             else
                 editbox->setText(L"no texture");
@@ -1255,11 +1251,7 @@ bool Texture_FormField::clickButton(s32 id, reflected_tool_base* base)
         {
             if(my_texture != NULL)
             {
-                io::path path = my_texture->getName();
-                core::deletePathFromFilename(path);
-                core::cutFilenameExtension(path,path);
-                core::stringw str = path;
-                editbox->setText(str.c_str());
+                editbox->setText(my_texture->name.c_str());
             }
             else
                 editbox->setText(L"no texture");

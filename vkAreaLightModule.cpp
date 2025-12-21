@@ -2,6 +2,7 @@
 #include "vkAreaLightModule.h"
 #include "LightMaps.h"
 #include "vkUtilModules.h"
+//#include <algorithm>
 
 #define PRINTV(x) << x.X <<","<<x.Y<<","<<x.Z<<" "
 
@@ -122,20 +123,7 @@ void AreaLight_Module::writeUBO2(int mg, int triangle_offset)
 		vertices_soa->data1[idx1].V * selected_triangle_bary_coords.Y +
 		vertices_soa->data1[idx2].V * selected_triangle_bary_coords.Z;
 	
-	//info.in_coords = vector3df(0.120613, 0.906483, 0);
-	//info.in_coords = vector3df(0.125543, 0.793006, 0);
-		
-
-	//cout PRINTV(vertices_soa->data1[idx0].V) << "\n";
-	//cout PRINTV(vertices_soa->data1[idx1].V) << "\n";
-	//cout PRINTV(vertices_soa->data1[idx2].V) << "\n";
-	//cout << "bary coords = " PRINTV(info.in_coords) << "\n";
-
-	//======================================
-	// Struct is paired uints: index,intensity
-	//
-	info.n_lights = lightsource_indices_soa->size()/2;
-
+	info.n_lights = lightsource_indices_soa->size() / 2;
 	ubo.writeToBuffer(m_device->getDevice(),(void*)&info);
 }
 

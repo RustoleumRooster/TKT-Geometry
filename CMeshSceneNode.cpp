@@ -17,6 +17,7 @@
 #include "CMeshSceneNode.h"
 #include <iostream>
 #include "utils.h"
+#include "texture_picker.h"
 
 namespace irr
 {
@@ -336,11 +337,11 @@ void CMeshSceneNode::render()
 	}
 }
 
-void CMeshSceneNode::SetFaceTexture(int f_i, video::ITexture* texture)
+void CMeshSceneNode::SetFaceTexture(int f_i, TextureInfo* texture)
 {
     if(f_i < this->Mesh->getMeshBufferCount())
     {
-        ((scene::SMeshBuffer*)this->Mesh->getMeshBuffer(f_i))->Material.setTexture(0,texture);
+        ((scene::SMeshBuffer*)this->Mesh->getMeshBuffer(f_i))->Material.setTexture(0,texture->texture);
     }
     copyMaterials();
 }

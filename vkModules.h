@@ -396,6 +396,7 @@ struct AreaLightInfoStruct
 	u32 element_id;
 	u32 face_id;
 	u32 intensity;
+	core::vector3df surface_normal;
 };
 
 class Triangle_Transformer

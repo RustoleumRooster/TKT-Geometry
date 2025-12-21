@@ -381,7 +381,7 @@ void Create_Texture_Images_Module::index_materials(Lightmap_Configuration* confi
 {
 	std::vector<TextureMaterial>& materials = configuration->materials;
 
-	std::vector<video::ITexture*> textures_used;
+	std::vector<TextureInfo*> textures_used;
 
 	for (int i = 0; i < materials.size(); i++)
 	{

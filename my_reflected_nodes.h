@@ -41,7 +41,7 @@ public:
     virtual bool addSelfToScene(USceneNode* parent, irr::scene::ISceneManager* smgr, geometry_scene* geo_scene) override;
 
     core::vector3df EmitBox = core::vector3df(64, 64, 64);
-    video::ITexture* texture = NULL;
+    TextureInfo* texture = NULL;
     core::vector2df particle_scale = core::vector2df(10, 10);
     int minParticlesPerSecond = 10;
     int maxParticlesPerSecond = 25;
@@ -132,6 +132,8 @@ public:
     virtual void onSceneInit() override;
 
     u32 intensity = 1000;
+    u32 power;                  //this is a transient value
+    core::vector3df normal;     //transient
 
     REFLECT2()
 };

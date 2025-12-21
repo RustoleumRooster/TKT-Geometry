@@ -320,8 +320,8 @@ void TexturePicker_Base::show()
 
     widget->drop();
 }
-
-void TexturePicker_Base::addTexture(video::ITexture* texture, std::string name, std::string category)
+/*
+TextureInfo& TexturePicker_Base::addTexture(video::ITexture* texture, std::string name, std::string category)
 {
     TextureInfo texinfo;
     texinfo.texture = texture;
@@ -353,18 +353,22 @@ void TexturePicker_Base::addTexture(video::ITexture* texture, std::string name, 
     texinfo.texture_number =  my_textures.size();
 
     my_textures.push_back(texinfo);
-}
 
-void TexturePicker_Base::addTexture(std::string name, std::string category)
+    return texinfo;
+}
+*/
+
+TextureInfo& TexturePicker_Base::addTexture(std::string tex_name, std::string fname, std::string category)
 {
     TextureInfo texinfo;
-    texinfo.texture = device->getVideoDriver()->getTexture(name.c_str());
+    texinfo.name = tex_name.c_str();
+    texinfo.texture = device->getVideoDriver()->getTexture(fname.c_str());
 
     io::path path = texinfo.texture->getName();
     core::deletePathFromFilename(path);
     core::cutFilenameExtension(path,path);
     core::stringw str = path;
-    texinfo.name = str;
+    //texinfo.name = str;
 
     if(category != std::string(""))
         {
@@ -389,20 +393,84 @@ void TexturePicker_Base::addTexture(std::string name, std::string category)
     texinfo.texture_number =  my_textures.size();
 
     my_textures.push_back(texinfo);
+
+    return texinfo;
 }
 
-video::ITexture* TexturePicker_Base::getCurrentTexture()
+TextureInfo& TexturePicker_Base::addTexture(std::string fname, std::string category)
+{
+    io::path path = fname.c_str();
+    core::deletePathFromFilename(path);
+    core::cutFilenameExtension(path, path);
+
+    return addTexture(path.c_str(), fname, category);
+}
+
+TextureInfo* TexturePicker_Base::getCurrentTexture()
 {
     if(selection !=-1)
     {
-        return my_textures[selection].texture;
+        return &my_textures[selection];
     }
     else if(my_textures.size()>0)
     {
-        return my_textures[0].texture;
+        return &my_textures[0];
     }
     else return NULL;
 }
 
+TextureInfo& TextureInfo::set_normal_map(std::string fname)
+{
+    normal_map = device->getVideoDriver()->getTexture(fname.c_str());
+    return *this;
+}
 
+TextureInfo& TextureInfo::set_height_map(std::string fname)
+{
+    height_map = device->getVideoDriver()->getTexture(fname.c_str());
+    return *this;
+}
 
+TextureInfo* TexturePicker_Tool::get_texture_info(core::stringw name)
+{
+    for (TextureInfo& ti : base->my_textures)
+    {
+        if (ti.name == name)
+            return &ti;
+    }
+
+    return NULL;
+}
+
+video::ITexture* TexturePicker_Tool::get_texture(core::stringw name)
+{
+    for (const TextureInfo& ti : base->my_textures)
+    {
+        if (ti.name == name)
+            return ti.texture;
+    }
+
+    return NULL;
+}
+
+video::ITexture* TexturePicker_Tool::get_height_map(core::stringw name)
+{
+    for (const TextureInfo& ti : base->my_textures)
+    {
+        if (ti.name == name)
+            return ti.height_map;
+    }
+
+    return NULL;
+}
+
+video::ITexture* TexturePicker_Tool::get_normal_map(core::stringw name)
+{
+    for (const TextureInfo& ti : base->my_textures)
+    {
+        if (ti.name == name)
+            return ti.normal_map;
+    }
+
+    return NULL;
+}

@@ -510,6 +510,7 @@ public:
 //
 // Texture
 //
+class TextureInfo;
 
 class Texture_FormField : public FormField
 {
@@ -524,9 +525,9 @@ public:
     virtual bool is_equal(void* a, void* b) {
         return *get(a) == *get(b);
     }
-    video::ITexture** get(void* obj_) {return (video::ITexture**)((char*)obj_ + offset);}
+    TextureInfo** get(void* obj_) {return (TextureInfo**)((char*)obj_ + offset);}
 
-    video::ITexture* my_texture = NULL;
+    TextureInfo* my_texture = NULL;
 };
 
 class Texture_EditField : public Texture_FormField

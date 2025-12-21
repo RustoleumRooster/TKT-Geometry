@@ -8,10 +8,14 @@
 #include "tolerances.h"
 #include "LightMaps.h"
 #include "build_meshes.h"
+#include "my_reflected_nodes.h"
+#include "texture_picker.h"
 #include "soa.h"
 
 using namespace irr;
 using namespace scene;
+
+#define PRINTV(x) << x.X <<","<<x.Y<<","<<x.Z<<" "
 
 MeshNode_Interface::MeshNode_Interface(scene::ISceneManager* smgr_,video::IVideoDriver* driver_,MyEventReceiver* receiver)
 {
@@ -55,7 +59,8 @@ void MeshNode_Interface_Edit::refresh_material_groups()
 
             if (n_loops > 0)
             {
-                video::ITexture* tex_j = driver->getTexture(s->texture_name);
+                //video::ITexture* tex_j = driver->getTexture(s->texture_name);
+                TextureInfo* tex_j = TexturePicker_Tool::get_texture_info(s->texture_name);
 
                 bool b = false;
 
@@ -307,7 +312,8 @@ void MeshNode_Interface_Edit::generate_mesh_buffer(SMesh* mesh)
 
                 buffer = new scene::CMeshBuffer<video::S3DVertex2TCoords>();
 
-                buffer->getMaterial().setTexture(0, driver->getTexture(geo_scene->face_texture_by_n(f_i).c_str()));
+                //buffer->getMaterial().setTexture(0, driver->getTexture(geo_scene->face_texture_by_n(f_i).c_str()));
+                buffer->getMaterial().setTexture(0, TexturePicker_Tool::get_texture(geo_scene->face_texture_by_n(f_i).c_str()));
 
                 make_meshbuffer_from_triangles(th, buffer);
                 mesh->addMeshBuffer(buffer);
@@ -418,6 +424,67 @@ void MeshNode_Interface::recalc_uvs_for_face_custom(int e_i, int f_i, int f_j)
     if (chunk.buffer)
     {
         calculate_meshbuffer_uvs_custom(geo_scene,e_i,f_i, chunk.buffer, chunk.begin_i, chunk.end_i);
+    }
+}
+
+void MeshNode_Interface::calc_vertex_lighting_vectors(vector<Reflected_MeshBuffer_AreaLight_SceneNode*>& lights, LineHolder& graph)
+{
+    graph.lines.clear();
+
+    typedef CMeshBuffer<video::S3DVertex2TCoords> mesh_buffer_type;
+    scene::SMesh* mesh = getMesh();
+
+    //cout << "Light Sources:\n";
+    for (int i = 0; i < mesh->getMeshBufferCount(); i++)
+    {
+        scene::IMeshBuffer* buffer = mesh->getMeshBuffer(i);
+        for (int j = 0; j < buffer->getVertexCount(); j++)
+        {
+            video::S3DVertex2TCoords* vtx = &((video::S3DVertex2TCoords*)buffer->getVertices())[j];
+
+            f32 total_power = 0;
+
+            vector3df light_pos{ 0,0,0 };
+            
+            for (Reflected_MeshBuffer_AreaLight_SceneNode* node : lights)
+            {
+                vector3df r = node->getPosition() - vtx->Pos;
+                f32 d = r.getLength();
+                d += 1.0;
+                d *= d;
+                r.normalize();
+
+                f32 power = fmax(0,-node->normal.dotProduct(r)) * fmax(0, vtx->Normal.dotProduct(r)) * node->power / (d);
+
+                total_power += power;
+
+                light_pos += node->getPosition() * power;
+               // cout << power << " ";
+            }
+           // cout << "\n";
+            
+            if(total_power > 0)
+            light_pos /= total_power;
+            //cout << " (" << total_power << ")\n";
+
+           //     PRINTV(light_pos) << "\n";
+            vector3df m = light_pos - vtx->Pos;
+            m.normalize();
+
+            //cout << m.dotProduct(vtx->Normal) << "\n";
+            if (total_power == 0)
+                m = vtx->Normal;
+
+            graph.lines.push_back(line3df{ vtx->Pos,vtx->Pos + m*64 });
+            //graph.lines.push_back(line3df{ vtx->Pos,vtx->Pos + vtx->Normal * 64 });
+
+            vtx->Color.set(0,
+                255 * (m.X + 1.0) / 2.0,
+                255 * (m.Y + 1.0) / 2.0,
+                255 * (m.Z + 1.0) / 2.0);
+
+        }
+        
     }
 }
 
@@ -993,7 +1060,8 @@ void MeshNode_Interface_Final::generate_mesh_buffer(SMesh* mesh)
                 if (pf->faces[f_i].loops.size() > 0 && pf->faces[f_i].temp_b == false)
                     //for(int f_i : geo_scene->elements[e_i].surfaces[s_i].my_faces)
                 {
-                    video::ITexture* tex_j = driver->getTexture(geo_scene->elements[e_i].surfaces[s_i].texture_name);
+                    //video::ITexture* tex_j = driver->getTexture(geo_scene->elements[e_i].surfaces[s_i].texture_name);
+                    TextureInfo* tex_j = TexturePicker_Tool::get_texture_info(geo_scene->elements[e_i].surfaces[s_i].texture_name);
 
                     if (tex_j == materials_used[t_i].texture && geo_scene->elements[e_i].surfaces[s_i].material_group == materials_used[t_i].materialGroup)
                     {
@@ -1106,7 +1174,7 @@ void MeshNode_Interface_Final::generate_mesh_buffer(SMesh* mesh)
         total_total_indices += total_indices;
 
         buffer = new scene::CMeshBuffer<video::S3DVertex2TCoords>();
-        buffer->getMaterial().setTexture(0,materials_used[t_i].texture);
+        buffer->getMaterial().setTexture(0,materials_used[t_i].texture->texture);
 
         make_meshbuffer_from_triangles(triangle_groups,buffer);
 

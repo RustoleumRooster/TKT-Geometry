@@ -139,6 +139,8 @@ public:
     void setSelectedNodes_ShiftAdd(Reflected_SceneNode*);
     std::vector<Reflected_SceneNode*> getSelectedNodes();
 
+    void calc_lighting_vectors();
+
     void deleteSelectedNodes();
 
     void addSceneSelectedSceneNodeType(core::vector3df pos);

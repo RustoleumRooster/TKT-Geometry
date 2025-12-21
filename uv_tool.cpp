@@ -10,6 +10,7 @@
 #include <sstream>
 #include <algorithm>
 #include "edit_env.h"
+#include "texture_picker.h"
 
 using namespace std;
 using namespace irr;
@@ -227,7 +228,7 @@ bool UV_Editor_Panel::OnEvent(const SEvent& event)
                     my_image = NULL;
 
                     core::stringw texname = real_geo_node->face_texture_by_n(selection[0]);
-                    video::ITexture* my_texture = device->getVideoDriver()->getTexture(texname);
+                    video::ITexture* my_texture = TexturePicker_Tool::get_texture(texname);
 
                     my_image = new TextureImage(my_texture, true);
 

@@ -84,7 +84,7 @@ void Lightmap_Routine(geometry_scene* g_scene, Lightmap_Configuration* configura
 	vulkan.run_workflow();
 
 	textures = download_textures->textures;
-	g_scene->special_graph = bouncedLight->graph;
+	//g_scene->special_graph = bouncedLight->graph;
 
 	vulkan.cleanup();
 }
