@@ -463,7 +463,7 @@ bool TestPanel_2D::OnEvent(const SEvent& event)
                                 geo_scene->geoNode()->elements[geo_scene->getBrushSelection()[0]].brush.topology=TOP_UNDEF;
                             }
                         }
-                        else if(bDragNode)
+                        else if(bDragNode && this->geo_scene->getSelectedNodes().size() > 0)
                         {
                             int ydif = clicky-mousey;
                             int xdif = clickx-mousex;

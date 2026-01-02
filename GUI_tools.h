@@ -79,6 +79,7 @@ public:
     gui::IGUIElement* clientRect;
     std::vector<tool_base*> my_tools;
     std::vector<tool_header*> my_headers;
+    int tool_header_height;
 };
 
 class tool_header : public gui::IGUIElement

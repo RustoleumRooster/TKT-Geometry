@@ -29,6 +29,7 @@ struct node_class_item
     {
         bool placeable;
         bool selected;
+        std::string name;
     };
     
     //REFLECTED MEMBERS:

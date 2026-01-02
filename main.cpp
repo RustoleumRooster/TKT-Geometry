@@ -20,11 +20,16 @@
 #include "initialization.h"
 #include "polyfold_soa.h"
 #include "my_nodes.h"
+#include "fonts.h"
 
 #include <random>
 #include <chrono>
 
 #include "clip_functions.h"
+
+#include <Windows.h>
+#include <WinUser.h>
+#include <WinDef.h>
 
 using namespace irr;
 using namespace scene;
@@ -48,10 +53,14 @@ struct TestStruct
     REFLECT()
 };
 
+int font_callback(const LOGFONT* lpelf, const TEXTMETRIC* lptnm, DWORD fonttype, LPARAM lParam)
+{
+    cout << lpelf->lfFaceName << "\n";
+    return 1;
+}
 
 int main()
 {
-
     video::E_DRIVER_TYPE driverType = video::EDT_OPENGL;
 
     if (driverType == video::EDT_COUNT)
@@ -59,16 +68,29 @@ int main()
 
     MyEventReceiver receiver;
 
-    device = createDevice(driverType, core::dimension2d<u32>(1200, 680), 16, false, false, false, &receiver);
-
-
-    if (device == 0)
-        return 1; // could not create selected driver.
+    //device = createDevice(driverType, core::dimension2d<u32>(1200, 680), 16, false, false, false, &receiver);
+    device = createDevice(driverType, core::dimension2d<u32>(1500, 850), 16, false, false, false, &receiver);
 
     video::IVideoDriver* driver = device->getVideoDriver();
     scene::ISceneManager* smgr = device->getSceneManager();
     gui::IGUIEnvironment* gui = device->getGUIEnvironment();
 
+    bool dpiAware = true;
+    if(dpiAware)
+    {
+        DPI_AWARENESS_CONTEXT dpi_context = DPI_AWARENESS_CONTEXT_SYSTEM_AWARE;
+        SetProcessDpiAwarenessContext(dpi_context);
+
+        video::SExposedVideoData videodata = driver->getExposedVideoData();
+        RECT window_rect;
+        GetClientRect((HWND)videodata.OpenGLWin32.HWnd, &window_rect);
+        u32 dpi = GetDpiForWindow((HWND)videodata.OpenGLWin32.HWnd);
+
+        cout << "dpi: " << dpi << "\n";
+    }
+
+    if (device == 0)
+        return 1; // could not create selected driver.
 
     if (gui->getFileSystem()->addFileArchive("../media/", true, true, io::EFAT_FOLDER))
     {
@@ -76,7 +98,6 @@ int main()
     }
     else
         std::cout << "failed to add ../media/ as directory archive\n";
-
 
     bool bMouseDown = false;
     bool rMouseDown = false;
@@ -110,7 +131,35 @@ int main()
 
     gui_layout = new GUI_layout(driver, gui);
 
-    gui_layout->initialize(core::rect<s32>(core::position2d<s32>(0, 0), core::dimension2d<u32>(1200, 680)));
+    bool enumerateFonts = false;
+    if(enumerateFonts)
+    {
+        LOGFONTA logfont;
+        logfont.lfCharSet = DEFAULT_CHARSET;
+        logfont.lfFaceName[0] = '\0';
+
+        cout << "enumerating fonts:\n";
+        HDC dc = ::GetDC(0);
+        EnumFontFamiliesExA(dc, &logfont, &font_callback, NULL, 0);
+    }
+
+    //==============================================================
+    //Choose a font and render it
+    //
+
+    AGG_TT_Font_Renderer font_render;
+
+    AGG_TT_Font* agg_font = font_render.Render_Font(gui, "Calibri", 22, 1.0, -1, 2, dimension2du{ 256,256 });
+
+
+    //==============================================================
+    //Initialize GUI elements
+    //
+
+    gui_layout->initialize(core::rect<s32>(core::position2d<s32>(0, 0), core::dimension2d<u32>(1200, 680)), agg_font);
+    //gui_layout->initialize(core::rect<s32>(core::position2d<s32>(0, 0), core::dimension2d<u32>(1200, 680)), NULL);
+
+
 
     multi_tool_panel* tool_panel = gui_layout->getToolPanel();
 
@@ -225,6 +274,12 @@ int main()
          str += driver->getName();
      str += "] ";
      device->setWindowCaption(str.c_str());
+
+     //Render_Tool::show();
+     {
+         core::rect<s32> windowsize = driver->getViewPort();
+         gui_layout->resize(windowsize);
+     }
 
 	while(device->run())
 		if (device->isWindowActive())

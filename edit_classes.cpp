@@ -512,7 +512,8 @@ cell_background* Reflected_GUI_Edit_Form::getCellPanel(int row, int column)
 {
     if (column < n_columns && row < n_rows && cell_by_rc != NULL)
     {
-        return cell_by_rc[row * n_columns + column];
+        if(cell_by_rc[row * n_columns + column])
+            return cell_by_rc[row * n_columns + column]->cell;
     }
     return NULL;
 }
@@ -541,7 +542,7 @@ int Reflected_GUI_Edit_Form::ShowWidgets(int start_ID)
 	calculateSize();
 
     core::vector2di pos = getRelativePosition().UpperLeftCorner;
-    this->DesiredRect = core::rect<s32>(pos, core::dimension2d<u32>(my_columns[n_columns-1].right_pos+1, getTotalHeight()));
+    this->DesiredRect = core::rect<s32>(pos, core::dimension2d<u32>(getRelativePosition().getWidth(), getTotalHeight()));
     this->recalculateAbsolutePosition(false);
   
     n_rows = 0;
@@ -555,7 +556,7 @@ int Reflected_GUI_Edit_Form::ShowWidgets(int start_ID)
 
     if (n_rows > 0)
     {
-        cell_by_rc = new cell_background* [n_rows * n_columns];
+        cell_by_rc = new Form_Cell* [n_rows * n_columns];
 
         for (int i = 0; i < n_rows; i++)
             for (int j = 0; j < n_columns; j++)
@@ -564,8 +565,6 @@ int Reflected_GUI_Edit_Form::ShowWidgets(int start_ID)
 
     int cur_ID = start_ID;
     int row = 0;
-
-	//std::cout<<n_columns<<" columns\n";
 
     f = edit_fields;
     while(f)
@@ -583,7 +582,25 @@ int Reflected_GUI_Edit_Form::ShowWidgets(int start_ID)
         f=f->next;
     }
 
+    adjustCellDimensions();
+
     return cur_ID;
+}
+
+void Reflected_GUI_Edit_Form::setColumns(std::vector<s32> width)
+{
+    if (my_columns != NULL)
+        delete[] my_columns;
+
+    n_columns = width.size();
+
+    my_columns = new column_info[n_columns];
+
+    for (int i = 0; i < n_columns; i++)
+    {
+        my_columns[i].left_pos = 0;
+        my_columns[i].right_pos = width[i];
+    }
 }
 
 void Reflected_GUI_Edit_Form::calculateSize()
@@ -615,6 +632,77 @@ void Reflected_GUI_Edit_Form::calculateSize()
             }
 
        // std::cout << "columns: " << my_columns[0].left_pos << ", " << column_left_end << " / " << my_columns[1].left_pos << ", " << column_right_end << "\n";
+    }
+}
+
+void Reflected_GUI_Edit_Form::adjustCellDimensions()
+{
+    vector<int> desired_column_width;
+    desired_column_width.assign(3,0);
+    int desired_column_0_width_min_tab = 0;
+    int total_width = this->AbsoluteRect.getWidth();
+    int tab_dist = Environment->getSkin()->getSize(EGDS_WINDOW_BUTTON_WIDTH);
+
+    for (int i = 0; i < n_rows; i++)
+    {
+        int n_cells = 0;
+        for (int j = 0; j < n_columns; j++)
+        {
+            if (cell_by_rc[i * n_columns + j])
+            {
+                n_cells += 1;
+            }
+        }
+
+        if (n_cells > 1)
+        {
+            desired_column_width[0] = std::max(desired_column_width[0],
+                cell_by_rc[i * n_columns + 0]->desired_width +
+                cell_by_rc[i * n_columns + 0]->desired_tab * tab_dist);
+
+            desired_column_0_width_min_tab = std::max(desired_column_0_width_min_tab,
+                cell_by_rc[i * n_columns + 0]->desired_width +
+                cell_by_rc[i * n_columns + 0]->min_tab * tab_dist);
+
+            for (int j = 1; j < n_columns; j++)
+            {
+                if (cell_by_rc[i * n_columns + j])
+                {
+                    desired_column_width[j] = std::max(desired_column_width[j],
+                        cell_by_rc[i * n_columns + j]->desired_width);
+                }
+            }
+        }
+    }
+
+    if (desired_column_width[0] + desired_column_width[1] + desired_column_width[2] >= total_width)
+    {
+        desired_column_width[0] = total_width - (desired_column_width[1] + desired_column_width[2]);
+    }
+
+    {
+        for (int i = 0; i < n_rows; i++)
+        {
+            int begin_x = 0;
+            for (int j = 0; j < n_columns; j++)
+            {
+                if (Form_Cell* cell = cell_by_rc[i * n_columns + j])
+                {
+                    int x = begin_x + cell->desired_tab * tab_dist;
+                    int x1 = x + cell->desired_width;
+                    if(j == 0 && cell_by_rc[i * n_columns + 1])
+                        x1 = std::min(x1, begin_x + desired_column_width[j]);
+                    int y = i * line_height;
+                    int y1 = y + line_height;
+
+                    cell->draw_rect = recti(x, y, x1, y1);
+                    cell->createElements(this);
+
+                    int z = 0;
+                }
+                begin_x += desired_column_width[j] + tab_dist/2;
+            }
+        }
     }
 }
 
@@ -656,119 +744,80 @@ FormField* Reflected_GUI_Edit_Form::getField(int row, int column)
     return nullptr;
 }
 
-void Reflected_GUI_Edit_Form::addStaticTextLabel(FormField* field, std::string text, int row, int tab, int ID)
+void Form_Cell::createElements(Reflected_GUI_Edit_Form* form)
 {
-    core::rect<s32> r = getCell(row, 0, tab);
-    std::wstring txt(text.begin(), text.end());
-    cell_background* cell_panel = new cell_background(Environment, this, field, CELL_TYPE_LABEL, -1, r);
+    IGUIEnvironment* env = device->getGUIEnvironment();
+    cell_background* cell_panel = new cell_background(env, form, field, -1, draw_rect);
 
-    gui::IGUIStaticText* stxt = Environment->addStaticText(txt.c_str(),
-        core::rect<s32>(core::vector2di(4, 4), core::vector2di(r.getWidth(), r.getHeight())),
-        false, false, cell_panel, ID);
+    video::SColor color;
 
-    if (field->text_color == FORM_TEXT_COLOR_GREY)
-        stxt->setOverrideColor(video::SColor(255, 100, 80, 120));
-
-    cell_panel->my_element = stxt;
-    cell_by_rc[row * n_columns + 0] = cell_panel;
-    cell_panel->can_select = field->bCanSelect;
-    cell_panel->border = field->bBorder;
-    cell_panel->highlight = field->bHighlight;
-    cell_panel->drop();
-}
-
-void Reflected_GUI_Edit_Form::addStaticTextCell(FormField* field, std::string text, int row, int column, int ID)
-{
-    core::rect<s32> r = getCell(row, column);
-    std::wstring txt(text.begin(), text.end());
-    cell_background* cell_panel = new cell_background(Environment, this, field, CELL_TYPE_STATIC, -1, r);
-
-    gui::IGUIStaticText* stxt = Environment->addStaticText(txt.c_str(),
-        core::rect<s32>(core::vector2di(4, 4), core::vector2di(r.getWidth(), r.getHeight())),
-        false, false, cell_panel, ID);
-
-    cell_panel->my_element = stxt;
-    cell_by_rc[row * n_columns + column] = cell_panel;
-	cell_panel->border = field->bBorder;
-    cell_panel->highlight = field->bHighlight;
-    cell_panel->drop();
-}
-
-void Reflected_GUI_Edit_Form::addTextEditCell(FormField* field, int row, int column, int ID)
-{
-    core::rect<s32> r = getCell(row, column);
-    cell_background* cell_panel = new cell_background(Environment, this, field, CELL_TYPE_EDIT, -1, r);
-
-    gui::IGUIEditBox* box = Environment->addEditBox(L"",
-        core::rect<s32>(core::vector2di(4, 0), core::vector2di(r.getWidth(), r.getHeight())),
-        false, cell_panel, ID);
-
-    box->setDrawBackground(false);
-
-    cell_panel->my_element = box;
-    cell_by_rc[row * n_columns + column] = cell_panel;
-	cell_panel->border = true;
-    cell_panel->can_select = true;
-    cell_panel->highlight = field->bHighlight;
-    cell_panel->drop();
-}
-
-// A bit of a hack, so that we can rename items in a list
-//
-void Reflected_GUI_Edit_Form::addTextLabelEdit(FormField* field, int row, int column, int tab, int ID)
-{
-    core::rect<s32> r = getCell(row, column, tab);
-    cell_background* cell_panel = new cell_background(Environment, this, field, CELL_TYPE_EDIT, -1, r);
-
-    gui::IGUIEditBox* box = Environment->addEditBox(L"",
-        core::rect<s32>(core::vector2di(4, 0), core::vector2di(r.getWidth(), r.getHeight())),
-        false, cell_panel, ID);
-
-    box->setDrawBackground(false);
-
-    cell_panel->my_element = box;
-    cell_by_rc[row * n_columns + column] = cell_panel;
-    cell_panel->border = true;
-    cell_panel->can_select = true;
-    cell_panel->highlight = field->bHighlight;
-    cell_panel->drop();
-}
-
-void Reflected_GUI_Edit_Form::addComboBoxCell(FormField* field, int row, int column, int ID)
-{
-    core::rect<s32> r = getCell(row, column);
-}
-
-void Reflected_GUI_Edit_Form::addCheckBoxCell(FormField* field, int row, int column, int ID)
-{
-    core::rect<s32> r = getCell(row, column);
-    cell_background* cell_panel = new cell_background(Environment, this, field, CELL_TYPE_EDIT, -1, r);
-
-    gui::IGUICheckBox* box = Environment->addCheckBox(false,
-        core::rect<s32>(core::vector2di(0, 0), core::vector2di(r.getWidth(), r.getHeight())), cell_panel, ID);
-
-    box->setDrawBackground(false);
-
-    cell_panel->my_element = box;
-    cell_by_rc[row * n_columns + column] = cell_panel;
-    cell_panel->can_select = true;
-    cell_panel->drop();
-}
-
-void Reflected_GUI_Edit_Form::setColumns(std::vector<s32> width)
-{
-    if (my_columns != NULL)
-        delete[] my_columns;
-
-    n_columns = width.size();
-
-    my_columns = new column_info[n_columns];
-
-    for (int i = 0; i < n_columns; i++)
+    switch (this->text_color)
     {
-        my_columns[i].left_pos = 0;
-        my_columns[i].right_pos = width[i];
+    case FORM_TEXT_COLOR_GREY:
+        color = video::SColor(255, 100, 80, 120);
+        break;
+    default:
+        color = video::SColor(255, 235, 235, 235);
     }
+
+    switch (element_type)
+    {
+    case CELL_ELEMENT_TEXT:
+        {
+            gui::IGUIStaticText* stxt = env->addStaticText(text.c_str(),
+                recti(0,0,draw_rect.getWidth(),draw_rect.getHeight()), false, false, cell_panel, ID);
+
+            cell_panel->my_element = stxt;
+            cell_panel->border = field->bBorder;
+            cell_panel->highlight = field->bHighlight;
+            stxt->setOverrideColor(color);
+
+            break;
+        }
+    case CELL_ELEMENT_EDITBOX:
+        {
+            gui::IGUIEditBox* box = env->addEditBox(L"", recti(0, 0, draw_rect.getWidth(), draw_rect.getHeight()), false, cell_panel, ID);
+
+            box->setDrawBackground(false);
+
+            cell_panel->my_element = box;
+            cell_panel->border = true;
+            cell_panel->can_select = true;
+            cell_panel->highlight = field->bHighlight;
+            box->setOverrideColor(video::SColor(255, 128, 190, 100));
+
+            break;
+        }
+    case CELL_ELEMENT_CHECKBOX:
+        {
+        gui::IGUICheckBox* box = env->addCheckBox(false, recti(0, 0, draw_rect.getWidth(), draw_rect.getHeight()), cell_panel, ID);
+
+        box->setDrawBackground(false);
+
+        cell_panel->my_element = box;
+        cell_panel->can_select = true;
+        break;
+        }
+    }
+
+    cell_panel->drop();
+}
+
+void Reflected_GUI_Edit_Form::addCell(FormField* field, int element_type, std::wstring text, int min_tab, int tab, int row, int column, int ID)
+{
+    Form_Cell* cell = new Form_Cell;
+    cell->field = field;
+    cell->text = text;
+    cell->element_type = element_type;
+    cell->desired_width = std::max(24u, Environment->getSkin()->getFont()->getDimension(text.c_str()).Width);
+    cell->min_tab = min_tab;
+    cell->desired_tab = tab;
+    cell->ID = ID;
+    cell->text_color = field->text_color;
+    cell_by_rc[row * n_columns + column] = cell;
+
+   // if (field->text_color == FORM_TEXT_COLOR_GREY)
+   //     stxt->setOverrideColor(video::SColor(255, 100, 80, 120));
 }
 
 
@@ -779,27 +828,28 @@ void Reflected_GUI_Edit_Form::setColumns(std::vector<s32> width)
 
 void FormField::addStaticTextLabel(std::string text, int row, int tab, int ID)
 {
-    owner->addStaticTextLabel(this, text, row, tab, ID);
+    owner->addCell(this, CELL_ELEMENT_TEXT, wstring(text.begin(),text.end()), tab, tab, row, 0, ID);
 }
 void FormField::addTextLabelEdit(int row, int column, int tab, int ID)
 {
-    owner->addTextLabelEdit(this, row, column, tab, ID);
+    owner->addCell(this, CELL_ELEMENT_TEXT, wstring(text.begin(), text.end()), tab, tab, row, column, ID);
 }
 void FormField::addStaticTextCell(std::string text, int row, int column, int ID)
 {
-    owner->addStaticTextCell(this, text, row, column, ID);
+    owner->addCell(this, CELL_ELEMENT_TEXT, wstring(text.begin(), text.end()), tab, tab, row, column, ID);
 }
-void FormField::addTextEditCell(int row, int column, int ID)
+   
+void FormField::addTextEditCell(std::string text, int row, int column, int ID)
 {
-    owner->addTextEditCell(this, row, column, ID);
+    owner->addCell(this, CELL_ELEMENT_EDITBOX, wstring(text.begin(), text.end()), 0, 0, row, column, ID);
 }
 void FormField::addComboBoxCell(int row, int column, int ID)
 {
-    owner->addComboBoxCell(this, row, column, ID);
+    //owner->addComboBoxCell(this, row, column, ID);
 }
 void FormField::addCheckBoxCell(int row, int column, int ID)
 {
-    owner->addCheckBoxCell(this, row, column, ID);
+    owner->addCell(this, CELL_ELEMENT_CHECKBOX, L"", 0, 0, row, column, ID);
 }
 
 gui::IGUIElement* FormField::getEditElement(int n)
@@ -811,7 +861,6 @@ gui::IGUIElement* FormField::getStaticElement(int)
 {
     return owner->getElementFromId(my_ID, true);
 }
-
 
 #define BEGIN_WIDGET() \
     owner = win; \
@@ -844,6 +893,7 @@ void FormField::initInline(std::string text_, std::vector<int> tree_pos_, size_t
 	bInline = true;
 }
 
+//DEPRECATED
 int FormField::getWidth(int column)
 {
     if(column == 0)
@@ -873,12 +923,11 @@ int Icon_FormField::addWidget(Reflected_GUI_Edit_Form* win, int ID, int row)
     if (texture)
     {
         int ypos = win->line_height * row;
-        int tabdist = tab == 1 ? 24 : tab * 16;
+        int tabdist = tab * env->getSkin()->getSize(EGDS_WINDOW_BUTTON_WIDTH);
 
         gui::IGUIImage* img = env->addImage(
-            //core::rect<s32>(core::vector2di(win->my_columns[1].left_pos, ypos + win->line_height * 0 - 4), core::vector2di(win->my_columns[1].right_pos, ypos + win->line_height * 0 + win->text_height - 4)),
-            core::rect<s32>(core::vector2di(win->my_columns[0].left_pos - 24 + tabdist, ypos),
-                core::vector2di(win->my_columns[0].left_pos + tabdist, ypos + 24)),
+            core::rect<s32>(core::vector2di(win->my_columns[0].left_pos - win->line_height + tabdist, ypos),
+                core::vector2di(win->my_columns[0].left_pos + tabdist, ypos + win->line_height)),
             this->owner, my_ID, NULL, false);
 
         img->setImage(texture);
@@ -901,10 +950,13 @@ int ExButton_FormField::addWidget(Reflected_GUI_Edit_Form* win, int ID, int row)
 
     int ypos = win->line_height * row;
 
-    int tabdist = tab == 1 ? 20 : tab * 16;
+    int tabdist = tab * env->getSkin()->getSize(EGDS_WINDOW_BUTTON_WIDTH);
 
-    core::rect<s32> rect(core::vector2di(win->my_columns[0].left_pos-18+tabdist,ypos+4),
-                                           core::vector2di(win->my_columns[0].left_pos-2+tabdist,ypos+20));
+    int box_size = env->getSkin()->getSize(EGDS_WINDOW_BUTTON_WIDTH);
+    int x = win->my_columns[0].left_pos + tabdist - (box_size * 1.0);
+    int y = ypos + (win->line_height - box_size) * 0.5;
+
+    core::rect<s32> rect(x, y, x + box_size, y + box_size);
 
     Flat_Button* ex_button = new Flat_Button(env,win,ID,rect);
     ex_button->setText(txt.c_str());
@@ -939,7 +991,6 @@ int String_StaticField::addWidget(Reflected_GUI_Edit_Form* win, int ID, int row)
     BEGIN_WIDGET()
 
     addStaticTextLabel(text, row, tab, ID);
-    //addStaticTextLabel(text, row, tab, ID+1);
 
     END_WIDGET()
 }
@@ -971,7 +1022,6 @@ int String_EditField::addWidget(Reflected_GUI_Edit_Form* win, int ID, int row)
 {
     BEGIN_WIDGET()
 
-    //addStaticTextLabel(text, row, tab, ID);
     addTextLabelEdit(row, 0, tab, ID);
 
     END_WIDGET()
@@ -981,7 +1031,7 @@ int String_EditField::addInlineWidget(Reflected_GUI_Edit_Form* win, int ID, int 
 {
     BEGIN_WIDGET()
 
-    addTextEditCell(row, my_column, ID);
+    addTextEditCell("000.000", row, my_column, ID);
 
     END_WIDGET()
 }
@@ -1063,7 +1113,7 @@ int Float_EditField::addWidget(Reflected_GUI_Edit_Form* win, int ID, int row)
     BEGIN_WIDGET()
 
     addStaticTextLabel(text, row, tab, ID);
-    addTextEditCell(row, 1, ID+1);
+    addTextEditCell("-00000.000", row, 1, ID+1);
 
     END_WIDGET()
 }
@@ -1073,7 +1123,7 @@ int Float_EditField::addInlineWidget(Reflected_GUI_Edit_Form* win, int ID, int r
 {
 	BEGIN_WIDGET()
 
-	addTextEditCell(row, my_column, ID);
+	addTextEditCell("-00000.000", row, my_column, ID);
 
 	END_WIDGET()
 }
@@ -1110,6 +1160,7 @@ void Float_FormField::readValue(void* obj)
 //  Integer
 //
 
+
 void Int_EditField::setActive(int status)
 {
     if(bVisible){
@@ -1125,7 +1176,7 @@ int Int_EditField::addWidget(Reflected_GUI_Edit_Form* win, int ID, int row)
     BEGIN_WIDGET()
 
     addStaticTextLabel(text, row, tab, ID);
-    addTextEditCell(row, 1, ID+1);
+    addTextEditCell("00000", row, 1, ID+1);
 
     END_WIDGET()
 }
@@ -1134,7 +1185,7 @@ int Int_EditField::addInlineWidget(Reflected_GUI_Edit_Form* win, int ID, int row
 {
 	BEGIN_WIDGET()
 
-	addTextEditCell(row, my_column, ID);
+	addTextEditCell("00000", row, my_column, ID);
 
 	END_WIDGET()
 }
@@ -1370,6 +1421,7 @@ int UID_Reference_StaticField::addWidget(Reflected_GUI_Edit_Form* win, int ID, i
 // Power 2
 //
 
+
 void Pwr2_EditField::setActive(int status)
 {
     if (bVisible) {
@@ -1566,7 +1618,7 @@ int Byte_EditField::addWidget(Reflected_GUI_Edit_Form* win, int ID, int row)
     BEGIN_WIDGET()
 
     addStaticTextLabel(text, row, tab, ID);
-    addTextEditCell(row, 1, ID+1);
+    addTextEditCell("00000", row, 1, ID+1);
 
     END_WIDGET()
 }
@@ -1770,8 +1822,8 @@ void CheckBox_StaticField::readValue(void* obj)
 //  Cell Background
 //
 
-cell_background::cell_background(gui::IGUIEnvironment* env, gui::IGUIElement* parent, FormField* field, int type, s32 id, core::rect<s32> rect)
-    :gui::IGUIElement(gui::EGUIET_ELEMENT, env, parent, id, rect), my_field(field), cell_type(type)
+cell_background::cell_background(gui::IGUIEnvironment* env, gui::IGUIElement* parent, FormField* field, s32 id, core::rect<s32> rect)
+    :gui::IGUIElement(gui::EGUIET_ELEMENT, env, parent, id, rect), my_field(field)
 {  
 }
 
@@ -1865,6 +1917,11 @@ void cell_background::setStatus(int status)
         selected = false;
     else
         my_status = status;
+}
+
+void cell_background::setDesiredRect(core::recti r)
+{
+    DesiredRect = r;
 }
 
 void cell_background::draw()

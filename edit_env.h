@@ -244,7 +244,7 @@ class GUI_layout
 public:
     GUI_layout(video::IVideoDriver*, gui::IGUIEnvironment*);
 
-    void initialize(core::rect<s32>);
+    void initialize(core::rect<s32>, gui::IGUIFont*);
 
     CameraQuad* getCameraQuad() {
         return cameraQuad;

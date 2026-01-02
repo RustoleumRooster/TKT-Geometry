@@ -60,29 +60,62 @@ enum
     CELL_STATUS_UNSELECT
 };
 
+enum
+{
+    CELL_ELEMENT_TEXT,
+    CELL_ELEMENT_EDITBOX,
+    CELL_ELEMENT_CHECKBOX
+};
+
 class cell_background : public gui::IGUIElement
 {
 public:
-    cell_background(gui::IGUIEnvironment* env, gui::IGUIElement* parent, FormField* field, int type, s32 id, core::rect<s32> rect);
+    cell_background(gui::IGUIEnvironment* env, gui::IGUIElement* parent, FormField* field, s32 id, core::rect<s32> rect);
     ~cell_background();
 
     virtual void draw();
     virtual bool OnEvent(const SEvent& event);
 
     void setStatus(int status);
+    void setDesiredRect(core::recti);
+    
 
     int my_status = CELL_STATUS_NONE;
+    int cell_element_type = CELL_ELEMENT_TEXT;
     bool can_select = true;
     bool selected = false;
     bool hovered = false;
     bool highlight = false;
 	bool border = false;
     bool shiftDown = false;
-    int cell_type = CELL_TYPE_UNK;
     FormField* my_field = NULL;
     gui::IGUIElement* my_element = NULL;
 
     int count = 0;
+    int desired_width = 0;
+    int min_width = 0;
+    int desired_tab = 0;
+    int min_tab = 0;
+};
+
+class Form_Cell
+{
+public:
+    void createElements(Reflected_GUI_Edit_Form* form);
+
+    cell_background* cell = NULL;
+    gui::IGUIElement* element = NULL;
+
+    std::wstring text;
+    int element_type;
+    int desired_width = 0;
+    int min_width = 0;
+    int desired_tab = 0;
+    int min_tab = 0;
+    int ID;
+    int text_color;
+    FormField* field = NULL;
+    core::rect<s32> draw_rect;
 };
 
 class Reflected_GUI_Edit_Form : public gui::IGUIElement
@@ -97,13 +130,17 @@ public:
 
     Reflected_GUI_Edit_Form(gui::IGUIEnvironment* env, gui::IGUIElement* parent, geometry_scene* g_scene_, s32 id,core::rect<s32> rect)
     : gui::IGUIElement(gui::EGUIET_ELEMENT,env,parent,id,rect) , g_scene(g_scene_)
-    {}
+    {
+        text_height = env->getSkin()->getFont()->getDimension(L"A").Height;
+        line_height = text_height ;
+    }
     ~Reflected_GUI_Edit_Form();
 
     virtual bool OnEvent(const SEvent& event);
 
     void addEditField(FormField*);
     void calculateSize();
+    void adjustCellDimensions();
     int ShowWidgets(int start_ID);
     int getTotalHeight();
     int getTotalWidth();
@@ -118,12 +155,8 @@ public:
     core::rect<s32> getCell(int row, int column);
     cell_background* getCellPanel(int row, int column);
 
-    void addStaticTextLabel(FormField* field, std::string text, int row, int tab, int ID);
-    void addTextLabelEdit(FormField* field, int row, int column, int tab, int ID);
-    void addStaticTextCell(FormField* field, std::string text, int row, int column, int ID);
-    void addTextEditCell(FormField* field, int row, int column, int ID);
-    void addComboBoxCell(FormField* field, int row, int column, int ID);
-    void addCheckBoxCell(FormField* field, int row, int column, int ID);
+    void addCell(FormField* field, int element_type, std::wstring text, int min_tab, int tab, int row, int column, int ID);
+
     void setColumns(std::vector<s32> width);
 
     gui::IGUIEnvironment* getEnvironment(){return this->Environment;}
@@ -134,16 +167,15 @@ public:
     FormField* edit_fields = NULL;
     geometry_scene* g_scene = NULL;
 
-    int line_height = 23;
-    int text_height = 22;
+    int line_height;
+    int text_height;
 
     column_info* my_columns = NULL;
 private: 
     int n_columns = 0;
     int n_rows = 0;
     
-    //FormField** field_by_rc = NULL;
-    cell_background** cell_by_rc = NULL;
+    Form_Cell** cell_by_rc = NULL;
 
     reflect::TypeDescriptor_Struct* m_flat_td = NULL;
 };
@@ -191,7 +223,7 @@ public:
     void addStaticTextLabel(std::string text, int row, int tab, int ID);
     void addTextLabelEdit(int row, int column, int tab, int ID);
     void addStaticTextCell(std::string text, int row, int column, int ID);
-    void addTextEditCell(int row, int column, int ID);
+    void addTextEditCell(std::string text, int row, int column, int ID);
     void addComboBoxCell(int row, int column, int ID);
     void addCheckBoxCell(int row, int column, int ID);
 

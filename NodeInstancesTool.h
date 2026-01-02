@@ -21,6 +21,7 @@ struct node_instance
     struct attributes
     {
         bool selected;
+        std::string name;
     };
 
     //REFLECTED MEMBERS:
@@ -52,6 +53,7 @@ struct node_tree_item
     struct attributes
     {
         bool selected;
+        std::string name;
     };
 
     //REFLECTED MEMBERS:

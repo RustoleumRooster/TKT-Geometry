@@ -393,7 +393,8 @@ bool MyEventReceiver::OnEvent(const SEvent& event)
                         //std::cout<<"Sphere\n";
                         break;
                     case GUI_ID_BUTTON_CONE:
-                        GeometryFactory::MakeConeWindow();
+                        //GeometryFactory::MakeConeWindow();
+                        GeometryFactory::MakeCurveWindow();
                         //std::cout<<"Cone\n";
                         break;
                     case GUI_ID_BUTTON_PLANE:
@@ -626,34 +627,50 @@ GUI_layout::GUI_layout(video::IVideoDriver* driv, gui::IGUIEnvironment* gui)
     env = gui;
 }
 
-void GUI_layout::initialize(core::rect<s32> win_rect)
+void GUI_layout::initialize(core::rect<s32> win_rect, gui::IGUIFont* font)
 {
     core::rect<s32> main_panel_rect = win_rect;
 
     main_panel_rect.LowerRightCorner.X -= 300;
     main_panel = new gui::IGUIElement(gui::EGUIET_ELEMENT, env, env->getRootGUIElement(), -1, main_panel_rect);
-    
-    menu_layout();
 
     MySkin* skin = new MySkin(EGST_WINDOWS_CLASSIC, driver);
-
-    gui::IGUIFont* builtinfont = env->getBuiltInFont();
-    gui::IGUIFontBitmap* bitfont = 0;
-    if (builtinfont && builtinfont->getType() == EGFT_BITMAP)
-        bitfont = (IGUIFontBitmap*)builtinfont;
-
-    IGUISpriteBank* bank = 0;
-    skin->setFont(builtinfont);
-
-    if (bitfont)
-        bank = bitfont->getSpriteBank();
-
-    skin->setSpriteBank(bank);
-
-
-    gui::IGUIFont* font = env->getFont("fonthaettenschweiler.bmp");
     if (font)
+    {
+        gui::IGUIFont* builtinfont = env->getBuiltInFont();
+        gui::IGUIFontBitmap* bitfont = 0;
+        if (builtinfont && builtinfont->getType() == EGFT_BITMAP)
+            bitfont = (IGUIFontBitmap*)builtinfont;
+
+
+        IGUISpriteBank* bank = 0;
+        if (bitfont)
+            bank = bitfont->getSpriteBank();
+
+        skin->setSpriteBank(bank);
+
+        skin->setSize(EGDS_CHECK_BOX_WIDTH, font->getDimension(L"A").Height);
+        skin->setSize(EGDS_WINDOW_BUTTON_WIDTH, font->getDimension(L"A").Height);
         skin->setFont(font);
+        skin->setFont(font, EGDF_MENU);
+    }
+    else
+    {
+        gui::IGUIFont* builtinfont = env->getBuiltInFont();
+        gui::IGUIFontBitmap* bitfont = 0;
+        if (builtinfont && builtinfont->getType() == EGFT_BITMAP)
+            bitfont = (IGUIFontBitmap*)builtinfont;
+
+        IGUISpriteBank* bank = 0;
+        skin->setFont(builtinfont);
+
+        if (bitfont)
+            bank = bitfont->getSpriteBank();
+
+        gui::IGUIFont* def_font = env->getFont("fonthaettenschweiler.bmp");
+        if (def_font)
+            skin->setFont(def_font);
+    }
 
     env->setSkin(skin);
     skin->drop();
@@ -671,7 +688,6 @@ void GUI_layout::initialize(core::rect<s32> win_rect)
     skin->setColor(EGDC_3D_SHADOW, video::SColor(255, 32, 32, 32));
     skin->setColor(EGDC_3D_DARK_SHADOW, video::SColor(255, 16, 16, 16));
 
-
     for (int i = 0; i < irr::gui::EGDC_COUNT; i++)
     {
         video::SColor col = skin->getColor((EGUI_DEFAULT_COLOR)i);
@@ -679,7 +695,11 @@ void GUI_layout::initialize(core::rect<s32> win_rect)
         skin->setColor((EGUI_DEFAULT_COLOR)i, col);
     }
 
-    core::rect<s32> quad_rect(core::position2d<s32>(32, 20), main_panel_rect.LowerRightCorner);
+    menu_layout();
+
+    s32 menu_height = skin->getFont()->getDimension(L"A").Height + 5;
+
+    core::rect<s32> quad_rect(core::position2d<s32>(32, menu_height), main_panel_rect.LowerRightCorner);
 
     cameraQuad = new CameraQuad(env, main_panel,GUI_ID_CAMERA_QUAD, quad_rect, driver);
 
@@ -699,13 +719,15 @@ void GUI_layout::resize(core::rect<s32> win_rect)
 
     core::rect<s32> main_panel_rect = win_rect;
 
-    main_panel_rect.LowerRightCorner.X -= 300;
+    main_panel_rect.LowerRightCorner.X -= 400;
 
     main_panel = new gui::IGUIElement(gui::EGUIET_ELEMENT, env, env->getRootGUIElement(), -1, main_panel_rect);
 
     menu_layout();
 
-    core::rect<s32> quad_rect(core::position2d<s32>(32, 20), main_panel_rect.LowerRightCorner);
+    s32 menu_height = env->getSkin()->getFont()->getDimension(L"A").Height + 5;
+
+    core::rect<s32> quad_rect(core::position2d<s32>(32, menu_height), main_panel_rect.LowerRightCorner);
 
     main_panel->addChild(cameraQuad);
     cameraQuad->drop();

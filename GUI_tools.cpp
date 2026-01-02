@@ -24,7 +24,7 @@ void Reflected_Widget_EditArea::show(bool editable, void* obj)
     edit_panel = new gui::IGUIElement(gui::EGUIET_ELEMENT, Environment, this, -1, pr);
 
     form = new Reflected_GUI_Edit_Form(Environment, edit_panel, g_scene, my_ID + 1,
-        core::rect<s32>(core::vector2di(x_offset, 4), core::dimension2du(120, 128)));
+        core::rect<s32>(core::vector2di(x_offset, 4), core::dimension2du(getRelativePosition().getWidth()-x_offset, 128)));
 
     form->drop();
 
@@ -405,7 +405,7 @@ void Reflected_Widget_EditArea::draw()
 
 
 multi_tool_panel::multi_tool_panel(gui::IGUIEnvironment* env, gui::IGUIElement* parent,s32 id,core::rect<s32> rect) :
-    gui::IGUIElement(gui::EGUIET_WINDOW,env,parent,id,rect)
+    gui::IGUIElement(gui::EGUIET_WINDOW,env,parent,id,rect), tool_header_height{ (int)env->getSkin()->getFont()->getDimension(L"A").Height + 5 }
 {
     clientRect = NULL;
 }
@@ -484,7 +484,7 @@ void multi_tool_panel::do_layout()
 
     for(int i=0;i<my_tools.size(); i++)
     {
-        core::rect<s32> header_rect(core::vector2di(0,24*i),core::vector2di(getRelativePosition().getWidth(),24*(i+1)));
+        core::rect<s32> header_rect(core::vector2di(0,tool_header_height*i),core::vector2di(getRelativePosition().getWidth(),tool_header_height*(i+1)));
         tool_header* header = new tool_header(Environment,this,ID+1+i,header_rect);
         header->tool_no=i;
         header->setText(my_tools[i]->getName());
@@ -587,7 +587,7 @@ void multi_tool_panel::updateClientRect()
     v1-=core::vector2di(1,1);
 
     clientRect = new gui::IGUIElement(gui::EGUIET_ELEMENT,Environment,this,-1,
-                        core::rect<s32>(core::vector2di(1,nHeaders*24),v1));
+                        core::rect<s32>(core::vector2di(1,nHeaders*tool_header_height),v1));
     clientRect->drop();
 }
 
@@ -623,8 +623,8 @@ void tool_header::setText(std::wstring txt)
 {
     if(my_text)
         my_text->remove();
-    my_text = Environment->addStaticText(txt.c_str(),core::rect<s32>(core::vector2di(0+4,0 + 2),core::vector2di(200,24)),false,false,this,-1);
-    //my_text->setOverrideColor(video::SColor(255,255,255,255));
+
+    my_text = Environment->addStaticText(txt.c_str(), core::rect<s32>(core::vector2di(0 + 4, 0 + 2), core::vector2di(this->getRelativePosition().getWidth(), this->getRelativePosition().getHeight())), false, false, this, -1);
 }
 
 tool_header::tool_header(gui::IGUIEnvironment* env, gui::IGUIElement* parent,s32 id,core::rect<s32> rect)

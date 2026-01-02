@@ -35,6 +35,7 @@ void node_class_item::write_attributes(reflect::Member* m_struct)
 	m_type->hasSubs = this->sub_classes.size() > 0;
 	m_type->my_attributes.placeable = typeDescriptor->placeable;
 	m_type->my_attributes.selected = selected;
+	m_type->my_attributes.name = this->class_name;
 }
 
 node_class_item* node_class_item::find_type(reflect::TypeDescriptor_Struct* tD)
@@ -71,7 +72,7 @@ void node_class_item::my_typeDesc::addFormWidget(Reflected_GUI_Edit_Form* win, T
 			String_StaticField* f = new String_StaticField();
 
 			//f->setText(type_struct->members[m_i].name);
-			f->init("             ", tree_0, offset + ALIGN_BYTES, tab, bVisible);
+			f->init(my_attributes.name, tree_0, offset + ALIGN_BYTES, tab, bVisible);
 			f->bCanSelect = true;
 
 			if (my_attributes.placeable == false)

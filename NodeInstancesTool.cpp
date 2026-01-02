@@ -43,12 +43,15 @@ void node_instance::write_attributes(reflect::Member* m_struct)
 	node_instance::my_typeDesc* m_type = (node_instance::my_typeDesc*)(m_struct->type);
 
 	m_type->my_attributes.selected = this->selected;
+	m_type->my_attributes.name = this->name;
 }
 
 void node_tree_item::write_attributes(reflect::Member* m_struct)
 {
 	m_struct->expanded = this->expanded;
 	node_tree_item::my_typeDesc* m_type = (node_tree_item::my_typeDesc*)(m_struct->type);
+
+	m_type->my_attributes.name = this->class_name;
 
 	((node_tree_item::my_typeDesc*)(m_struct->type))->hasSubs = this->hasSubs;
 
@@ -99,7 +102,7 @@ void node_instance::my_typeDesc::addFormWidget(Reflected_GUI_Edit_Form* win, Typ
 	String_StaticField* f = new String_StaticField();
 
 	f->setText(type_struct->members[m_i].name);
-	f->init("             ", tree, offset + ALIGN_BYTES, tab, bVisible);
+	f->init(my_attributes.name, tree, offset + ALIGN_BYTES, tab, bVisible);
 
 	if (my_attributes.selected)
 		//f->bBorder = true;
@@ -123,7 +126,7 @@ void node_tree_item::my_typeDesc::addFormWidget(Reflected_GUI_Edit_Form* win, Ty
 			String_StaticField* f = new String_StaticField();
 
 			f->setText(type_struct->members[m_i].name);
-			f->init("             ", tree_0, offset + ALIGN_BYTES*2, tab, bVisible);
+			f->init(my_attributes.name, tree_0, offset + ALIGN_BYTES*2, tab, bVisible);
 			
 			f->text_color = FORM_TEXT_COLOR_GREY;
 

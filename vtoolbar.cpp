@@ -31,7 +31,7 @@ VToolBar::VToolBar(IGUIEnvironment* environment, IGUIElement* parent, s32 id, co
 				y = r.LowerRightCorner.Y;
 		}
 	}
-	y=20;
+	//y=20;
 
 	core::rect<s32> rr;
 	rr.UpperLeftCorner.X = 0;
