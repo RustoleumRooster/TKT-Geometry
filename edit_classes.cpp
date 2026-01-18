@@ -83,22 +83,32 @@ namespace reflect
     void TypeDescriptor_Texture::addFormWidget(Reflected_GUI_Edit_Form* win, TypeDescriptor_Struct* type_struct, std::vector<int> tree, size_t offset_base, bool bVisible, bool bEditable, int tab)
     {
         int m_i = tree[tree.size() - 1];
-        std::string name = type_struct->members[m_i].name;
+        std::string name = type_struct->members[m_i].getDisplayName();
         size_t offset = type_struct->members[m_i].offset + offset_base;
 
         Texture_FormField* f;
+
+        ExButton_FormField* ff = new ExButton_FormField();
+
+        ff->tree_pos = tree;
+        ff->text = type_struct->members[m_i].expanded ? "-" : "+";
+        ff->tab = (tab == -1 ? 0 : tab);
+        ff->setVisible(bVisible);
+        win->addEditField(ff);
 
         {
             if (bEditable)
             {
                 f = new Texture_EditField();
                 f->init(name, tree, offset, tab, bVisible);
+                f->bExpanded = type_struct->members[m_i].expanded;
                 win->addEditField(f);
             }
             else
             {
                 f = new Texture_StaticField();
                 f->init(name, tree, offset, tab, bVisible);
+                f->bExpanded = type_struct->members[m_i].expanded;
                 win->addEditField(f);
             }
         }
@@ -107,7 +117,7 @@ namespace reflect
     void TypeDescriptor_MultiOption::addFormWidget(Reflected_GUI_Edit_Form* win, TypeDescriptor_Struct* type_struct, std::vector<int> tree, size_t offset_base, bool bVisible, bool bEditable, int tab)
     {
         int m_i = tree[tree.size()-1];
-        std::string name = type_struct->members[m_i].name;
+        std::string name = type_struct->members[m_i].getDisplayName();
         size_t offset = type_struct->members[m_i].offset+offset_base;
 
         ComboBox_FormField* f;
@@ -118,8 +128,9 @@ namespace reflect
             f = new ComboBox_StaticField();
 
         f->init(name, tree, offset, tab, bVisible);
+
         for(std::string str : labels)
-            f->AddItem(str);
+            f->AddItem(wstring(str.begin(),str.end()));
 
 
         win->addEditField(f);
@@ -128,7 +139,7 @@ namespace reflect
     void TypeDescriptor_U32::addFormWidget(Reflected_GUI_Edit_Form* win, TypeDescriptor_Struct* type_struct, std::vector<int> tree, size_t offset_base, bool bVisible, bool bEditable, int tab)
     {
         int m_i = tree[tree.size() - 1];
-        std::string name = type_struct->members[m_i].name;
+        std::string name = type_struct->members[m_i].getDisplayName();
         size_t offset = type_struct->members[m_i].offset + offset_base;
 
         if (type_struct->members[m_i].flags & FLAG_UINT_WIDGET_POWER2)
@@ -162,7 +173,7 @@ namespace reflect
     void TypeDescriptor_Int::addFormWidget(Reflected_GUI_Edit_Form* win, TypeDescriptor_Struct* type_struct, std::vector<int> tree, size_t offset_base, bool bVisible, bool bEditable, int tab)
     {
         int m_i = tree[tree.size()-1];
-        std::string name = type_struct->members[m_i].name;
+        std::string name = type_struct->members[m_i].getDisplayName();
         size_t offset = type_struct->members[m_i].offset+offset_base;
 
         if (type_struct->members[m_i].flags & FLAG_UINT_WIDGET_POWER2)
@@ -196,7 +207,7 @@ namespace reflect
     void TypeDescriptor_Byte::addFormWidget(Reflected_GUI_Edit_Form* win, TypeDescriptor_Struct* type_struct, std::vector<int> tree, size_t offset_base, bool bVisible, bool bEditable, int tab)
     {
         int m_i = tree[tree.size()-1];
-        std::string name = type_struct->members[m_i].name;
+        std::string name = type_struct->members[m_i].getDisplayName();
         size_t offset = type_struct->members[m_i].offset+offset_base;
 
         Byte_FormField* f;
@@ -214,7 +225,7 @@ namespace reflect
     void TypeDescriptor_Bool::addFormWidget(Reflected_GUI_Edit_Form* win, TypeDescriptor_Struct* type_struct, std::vector<int> tree, size_t offset_base, bool bVisible, bool bEditable, int tab)
     {
         int m_i = tree[tree.size()-1];
-        std::string name = type_struct->members[m_i].name;
+        std::string name = type_struct->members[m_i].getDisplayName();
         size_t offset = type_struct->members[m_i].offset+offset_base;
 
         CheckBox_FormField* f;
@@ -232,7 +243,7 @@ namespace reflect
     void TypeDescriptor_Float::addFormWidget(Reflected_GUI_Edit_Form* win, TypeDescriptor_Struct* type_struct, std::vector<int> tree, size_t offset_base, bool bVisible, bool bEditable, int tab)
     {
         int m_i = tree[tree.size()-1];
-        std::string name = type_struct->members[m_i].name;
+        std::string name = type_struct->members[m_i].getDisplayName();
         size_t offset = type_struct->members[m_i].offset+offset_base;
 
         Float_FormField* f;
@@ -251,7 +262,7 @@ namespace reflect
 	{
 
 		int m_i = tree[tree.size() - 1];
-		std::string name = type_struct->members[m_i].name;
+        std::string name = type_struct->members[m_i].getDisplayName();
 		size_t offset = type_struct->members[m_i].offset + offset_base;
 
 		Color_FormField* cf;
@@ -266,7 +277,7 @@ namespace reflect
     void uid_reference::my_typeDesc::addFormWidget(Reflected_GUI_Edit_Form* win, TypeDescriptor_Struct* type_struct, std::vector<int> tree, size_t offset_base, bool bVisible, bool bEditable, int tab)
     {
         int m_i = tree[tree.size() - 1];
-        std::string name = type_struct->members[m_i].name;
+        std::string name = type_struct->members[m_i].getDisplayName();
         size_t offset = type_struct->members[m_i].offset + offset_base;
 
         UID_Reference_FormField* f;
@@ -293,7 +304,7 @@ namespace reflect
 void EditWindow::Show(reflect::TypeDescriptor_Struct* typeDesc, void* obj)
 {
     form = new Reflected_GUI_Edit_Form(Environment,this,g_scene,GUI_ID_REFLECTED_BASE,
-                                            core::rect<s32>(core::vector2di(0,28),core::dimension2du(120,128)));
+                                            core::rect<s32>(core::vector2di(16,28 + 4),core::dimension2du(400,128)));
 
     typeDesc->addFormWidget(form,NULL,std::vector<int>{},0,true,true,-1);
 
@@ -303,12 +314,12 @@ void EditWindow::Show(reflect::TypeDescriptor_Struct* typeDesc, void* obj)
         form->read(obj);
 
     core::vector2di pos = getRelativePosition().UpperLeftCorner;
-    this->DesiredRect = core::rect<s32>(pos,core::dimension2d<u32>(196,form->getTotalHeight()+86));
+    this->DesiredRect = core::rect<s32>(pos,core::dimension2d<u32>(form->getTotalWidth()+48, form->getTotalHeight() + 86));
     this->recalculateAbsolutePosition(true);
 
     int ypos = form->getTotalHeight()+40;
 
-    Environment->addButton(core::rect<s32>(core::vector2di(120,ypos),core::vector2di(180,ypos+28)),this,OK_BUTTON_ID,L"Ok");
+    Environment->addButton(core::rect<s32>(core::vector2di(form->getTotalWidth()  + 32 - 80 ,ypos),core::vector2di(form->getTotalWidth() + 16,ypos+28)),this,OK_BUTTON_ID,L"Ok");
 
     bringToFront(form);
 
@@ -348,14 +359,17 @@ bool EditWindow::OnEvent(const SEvent& event)
 {
     if(event.EventType == EET_GUI_EVENT)
     {
-        s32 id = event.GUIEvent.Caller->getID();
-        gui::IGUIEnvironment* env = device->getGUIEnvironment();
-
-        switch(event.GUIEvent.EventType)
+        if(event.GUIEvent.Caller)
         {
+            s32 id = event.GUIEvent.Caller->getID();
+
+            gui::IGUIEnvironment* env = device->getGUIEnvironment();
+
+            switch (event.GUIEvent.EventType)
+            {
             case EGET_BUTTON_CLICKED:
             {
-                if(id==OK_BUTTON_ID)
+                if (id == OK_BUTTON_ID)
                 {
                     click_OK();
                     return true;
@@ -363,22 +377,23 @@ bool EditWindow::OnEvent(const SEvent& event)
                 else
                 {
                     FormField* field = form->getFieldFromId(id);
-                    if(field)
+                    if (field)
                     {
-                        if(field->getButtonType() == FORM_FIELD_EXPAND_BUTTON)
+                        if (field->getButtonType() == FORM_FIELD_EXPAND_BUTTON)
                         {
-                           // ((ExButton_FormField*)field)->toggle(my_typeDesc);
+                            // ((ExButton_FormField*)field)->toggle(my_typeDesc);
                             refresh();
                         }
-                        else if(field->getButtonType() ==  FORM_FIELD_BUTTON)
+                        else if (field->getButtonType() == FORM_FIELD_BUTTON)
                         {
                             field->clickButton(id, NULL);
                         }
                     }
-                break;
+                    break;
                 }
 
             } break;
+            }
         }
     }
 
@@ -403,8 +418,8 @@ Reflected_GUI_Edit_Form::~Reflected_GUI_Edit_Form()
         delete this->edit_fields;
     this->edit_fields=NULL;
 
-    if (my_columns)
-        delete[] my_columns;
+   // if (my_columns)
+   //     delete[] my_columns;
 
     if (cell_by_rc)
         delete[] cell_by_rc;
@@ -417,11 +432,13 @@ bool Reflected_GUI_Edit_Form::OnEvent(const SEvent& event)
 {
     if (event.EventType == EET_GUI_EVENT)
     {
-        s32 id = event.GUIEvent.Caller->getID();
-
-        switch (event.GUIEvent.EventType)
+        if(event.GUIEvent.Caller)
         {
-        case EGET_BUTTON_CLICKED:
+            s32 id = event.GUIEvent.Caller->getID();
+
+            switch (event.GUIEvent.EventType)
+            {
+            case EGET_BUTTON_CLICKED:
             {
                 FormField* field = getFieldFromId(id);
 
@@ -429,6 +446,7 @@ bool Reflected_GUI_Edit_Form::OnEvent(const SEvent& event)
                 {
                     field->clickButton(id);
                 }
+            }
             }
         }
     }
@@ -486,7 +504,7 @@ FormField* Reflected_GUI_Edit_Form::getParentField(FormField* field)
 
 core::rect<s32> Reflected_GUI_Edit_Form::getCell(int row, int column, int tab)
 {
-    int tabdist = tab == 1 ? 24 : tab * 16;
+    int tabdist = tab * device->getGUIEnvironment()->getSkin()->getSize(EGDS_WINDOW_BUTTON_WIDTH);
 
     if (column == 0)
         return core::rect<s32>(
@@ -508,12 +526,26 @@ core::rect<s32> Reflected_GUI_Edit_Form::getCell(int row, int column)
     return core::rect<s32>();
 }
 
+core::rect<s32> Reflected_GUI_Edit_Form::getCell(int row, int column, int tab, int len)
+{
+    int tabdist = tab * device->getGUIEnvironment()->getSkin()->getSize(EGDS_WINDOW_BUTTON_WIDTH);
+
+    if (column < n_columns)
+    {
+        return core::rect<s32>(
+            core::vector2di(my_columns[column].left_pos + tabdist, row * line_height),
+            core::vector2di(my_columns[column].left_pos + tabdist + len, (row + 1) * line_height));
+    }
+
+    return core::rect<s32>();
+}
+
 cell_background* Reflected_GUI_Edit_Form::getCellPanel(int row, int column)
 {
     if (column < n_columns && row < n_rows && cell_by_rc != NULL)
     {
         if(cell_by_rc[row * n_columns + column])
-            return cell_by_rc[row * n_columns + column]->cell;
+            return cell_by_rc[row * n_columns + column]->cell_panel;
     }
     return NULL;
 }
@@ -535,11 +567,14 @@ FormField* Reflected_GUI_Edit_Form::getFieldFromId(int ID_)
 
 int Reflected_GUI_Edit_Form::ShowWidgets(int start_ID)
 {
-    if (my_columns == NULL)
-    {
-        setColumns(std::vector<s32>{60, 60,60});
-    }
-	calculateSize();
+    //if (my_columns == NULL)
+    //{
+    //    setColumns(std::vector<s32>{90, 60,60});
+    //}
+	//calculateSize();
+
+    //n_columns = 2;
+    //my_columns = new column_info[2];
 
     core::vector2di pos = getRelativePosition().UpperLeftCorner;
     this->DesiredRect = core::rect<s32>(pos, core::dimension2d<u32>(getRelativePosition().getWidth(), getTotalHeight()));
@@ -587,58 +622,10 @@ int Reflected_GUI_Edit_Form::ShowWidgets(int start_ID)
     return cur_ID;
 }
 
-void Reflected_GUI_Edit_Form::setColumns(std::vector<s32> width)
-{
-    if (my_columns != NULL)
-        delete[] my_columns;
-
-    n_columns = width.size();
-
-    my_columns = new column_info[n_columns];
-
-    for (int i = 0; i < n_columns; i++)
-    {
-        my_columns[i].left_pos = 0;
-        my_columns[i].right_pos = width[i];
-    }
-}
-
-void Reflected_GUI_Edit_Form::calculateSize()
-{
-    if (n_columns > 0)
-    {
-        FormField* f = edit_fields;
-        my_columns[0].left_pos = 0;
-        my_columns[0].right_pos = 0;
-
-        while (f)
-        {
-            my_columns[0].right_pos = std::max(my_columns[0].right_pos, f->getWidth(0));
-            f = f->next;
-        }
-
-        if (n_columns > 1)
-        {
-            my_columns[1].left_pos += my_columns[0].right_pos+24;
-            my_columns[1].right_pos += my_columns[0].right_pos+24;
-        }
-
-        if(n_columns > 2)
-            for (int i = 2; i < n_columns; i++)
-            {
-                my_columns[i].left_pos += my_columns[i-1].right_pos;
-                my_columns[i].right_pos += my_columns[i-1].right_pos;
-				//std::cout<< my_columns[i].left_pos<<" - "<< my_columns[i].right_pos<<"\n";
-            }
-
-       // std::cout << "columns: " << my_columns[0].left_pos << ", " << column_left_end << " / " << my_columns[1].left_pos << ", " << column_right_end << "\n";
-    }
-}
-
 void Reflected_GUI_Edit_Form::adjustCellDimensions()
 {
     vector<int> desired_column_width;
-    desired_column_width.assign(3,0);
+    desired_column_width.assign(2,0);
     int desired_column_0_width_min_tab = 0;
     int total_width = this->AbsoluteRect.getWidth();
     int tab_dist = Environment->getSkin()->getSize(EGDS_WINDOW_BUTTON_WIDTH);
@@ -668,17 +655,24 @@ void Reflected_GUI_Edit_Form::adjustCellDimensions()
             {
                 if (cell_by_rc[i * n_columns + j])
                 {
-                    desired_column_width[j] = std::max(desired_column_width[j],
+                    desired_column_width[j] = 
+                        std::max(desired_column_width[j],
                         cell_by_rc[i * n_columns + j]->desired_width);
                 }
             }
         }
     }
 
-    if (desired_column_width[0] + desired_column_width[1] + desired_column_width[2] >= total_width)
+    if (desired_column_width[0] + desired_column_width[1] >= total_width)
     {
-        desired_column_width[0] = total_width - (desired_column_width[1] + desired_column_width[2]);
+        desired_column_width[0] = total_width - (desired_column_width[1] );
     }
+
+    my_columns[0].left_pos = 0;
+    my_columns[0].right_pos = desired_column_width[0];
+    my_columns[1].left_pos = desired_column_width[0];
+    my_columns[1].right_pos = std::min(desired_column_width[0] + desired_column_width[1] + tab_dist / 2, total_width);
+
 
     {
         for (int i = 0; i < n_rows; i++)
@@ -747,7 +741,14 @@ FormField* Reflected_GUI_Edit_Form::getField(int row, int column)
 void Form_Cell::createElements(Reflected_GUI_Edit_Form* form)
 {
     IGUIEnvironment* env = device->getGUIEnvironment();
-    cell_background* cell_panel = new cell_background(env, form, field, -1, draw_rect);
+
+    //if(!cell_panel)
+    //cell_background*    cell_panel = new cell_background(env, form, field, -1, draw_rect);
+
+    if (cell_panel)
+        cell_panel->remove();
+
+    cell_panel = new cell_background(env, form, field, -1, draw_rect);
 
     video::SColor color;
 
@@ -762,7 +763,7 @@ void Form_Cell::createElements(Reflected_GUI_Edit_Form* form)
 
     switch (element_type)
     {
-    case CELL_ELEMENT_TEXT:
+    case CELL_ELEMENT_LABEL:
         {
             gui::IGUIStaticText* stxt = env->addStaticText(text.c_str(),
                 recti(0,0,draw_rect.getWidth(),draw_rect.getHeight()), false, false, cell_panel, ID);
@@ -774,6 +775,19 @@ void Form_Cell::createElements(Reflected_GUI_Edit_Form* form)
 
             break;
         }
+    case CELL_ELEMENT_TEXT_DATA:
+    {
+        gui::IGUIStaticText* stxt = env->addStaticText(text.c_str(),
+            recti(0, 0, draw_rect.getWidth(), draw_rect.getHeight()), false, false, cell_panel, ID);
+
+        cell_panel->my_element = stxt;
+        cell_panel->border = field->bBorder;
+        cell_panel->highlight = false;
+
+        stxt->setOverrideColor(video::SColor(255, 128, 190, 100));
+
+        break;
+    }
     case CELL_ELEMENT_EDITBOX:
         {
             gui::IGUIEditBox* box = env->addEditBox(L"", recti(0, 0, draw_rect.getWidth(), draw_rect.getHeight()), false, cell_panel, ID);
@@ -798,18 +812,37 @@ void Form_Cell::createElements(Reflected_GUI_Edit_Form* form)
         cell_panel->can_select = true;
         break;
         }
+    case CELL_ELEMENT_COMBOBOX:
+    {
+        vector2di pos = cell_panel->getRelativePosition().UpperLeftCorner;
+
+        //little hack to make sure it comes to the front when clicked... don't know why this is necessary
+        gui::IGUIComboBox* box = env->addComboBox( recti(pos, dimension2du(draw_rect.getWidth(), draw_rect.getHeight())), cell_panel->getParent(), ID + 1);
+
+        ComboBox_FormField* combo_ff = (ComboBox_FormField*)(field);
+
+        if(combo_ff)
+        {
+            for (int i = 0; i < combo_ff->items.size(); i++)
+            {
+                box->addItem(combo_ff->items[i].c_str(), i);
+            }
+        }
+        break;
+    }
     }
 
     cell_panel->drop();
 }
 
-void Reflected_GUI_Edit_Form::addCell(FormField* field, int element_type, std::wstring text, int min_tab, int tab, int row, int column, int ID)
+void Reflected_GUI_Edit_Form::addCell(FormField* field, int element_type, int width, int min_tab, int tab, int row, int column, int ID)
 {
     Form_Cell* cell = new Form_Cell;
     cell->field = field;
-    cell->text = text;
+    cell->text = wstring(field->text.begin(), field->text.end());
     cell->element_type = element_type;
-    cell->desired_width = std::max(24u, Environment->getSkin()->getFont()->getDimension(text.c_str()).Width);
+    //cell->desired_width = std::max(24u, Environment->getSkin()->getFont()->getDimension(text.c_str()).Width);
+    cell->desired_width = width;
     cell->min_tab = min_tab;
     cell->desired_tab = tab;
     cell->ID = ID;
@@ -826,30 +859,41 @@ void Reflected_GUI_Edit_Form::addCell(FormField* field, int element_type, std::w
 //
 //
 
+int FormField::getDesiredLabelWidth()
+{
+    return device->getGUIEnvironment()->getSkin()->getFont()->getDimension(wstring(text.begin(),text.end()).c_str()).Width;
+}
+
+int FormField::getDesiredFieldWidth()
+{
+    return device->getGUIEnvironment()->getSkin()->getFont()->getDimension(wstring(text.begin(), text.end()).c_str()).Width;
+}
+
 void FormField::addStaticTextLabel(std::string text, int row, int tab, int ID)
 {
-    owner->addCell(this, CELL_ELEMENT_TEXT, wstring(text.begin(),text.end()), tab, tab, row, 0, ID);
+    owner->addCell(this, CELL_ELEMENT_LABEL, getDesiredLabelWidth(), tab, tab, row, 0, ID);
 }
 void FormField::addTextLabelEdit(int row, int column, int tab, int ID)
 {
-    owner->addCell(this, CELL_ELEMENT_TEXT, wstring(text.begin(), text.end()), tab, tab, row, column, ID);
+    owner->addCell(this, CELL_ELEMENT_LABEL, getDesiredLabelWidth(), tab, tab, row, column, ID);
 }
 void FormField::addStaticTextCell(std::string text, int row, int column, int ID)
 {
-    owner->addCell(this, CELL_ELEMENT_TEXT, wstring(text.begin(), text.end()), tab, tab, row, column, ID);
+    owner->addCell(this, CELL_ELEMENT_TEXT_DATA, getDesiredFieldWidth(), 0, 0, row, column, ID);
 }
    
 void FormField::addTextEditCell(std::string text, int row, int column, int ID)
 {
-    owner->addCell(this, CELL_ELEMENT_EDITBOX, wstring(text.begin(), text.end()), 0, 0, row, column, ID);
+    owner->addCell(this, CELL_ELEMENT_EDITBOX, getDesiredFieldWidth(), 0, 0, row, column, ID);
 }
 void FormField::addComboBoxCell(int row, int column, int ID)
 {
+    owner->addCell(this, CELL_ELEMENT_COMBOBOX, getDesiredFieldWidth(), 0, 0, row, column, ID);
     //owner->addComboBoxCell(this, row, column, ID);
 }
 void FormField::addCheckBoxCell(int row, int column, int ID)
 {
-    owner->addCell(this, CELL_ELEMENT_CHECKBOX, L"", 0, 0, row, column, ID);
+    owner->addCell(this, CELL_ELEMENT_CHECKBOX, getDesiredFieldWidth(), 0, 0, row, column, ID);
 }
 
 gui::IGUIElement* FormField::getEditElement(int n)
@@ -891,22 +935,6 @@ void FormField::initInline(std::string text_, std::vector<int> tree_pos_, size_t
 	my_column = column;
 	bVisible = visible;
 	bInline = true;
-}
-
-//DEPRECATED
-int FormField::getWidth(int column)
-{
-    if(column == 0)
-    {
-        int tabdist = tab == 1 ? 20 : tab * 16;
-        return tabdist + text.length() * 6 + 16;
-    }
-    else if (column > 0)
-    {
-        return 48;
-    }
-
-    return 0;
 }
 
 //
@@ -953,7 +981,7 @@ int ExButton_FormField::addWidget(Reflected_GUI_Edit_Form* win, int ID, int row)
     int tabdist = tab * env->getSkin()->getSize(EGDS_WINDOW_BUTTON_WIDTH);
 
     int box_size = env->getSkin()->getSize(EGDS_WINDOW_BUTTON_WIDTH);
-    int x = win->my_columns[0].left_pos + tabdist - (box_size * 1.0);
+    int x =  tabdist - (box_size * 1.0);
     int y = ypos + (win->line_height - box_size) * 0.5;
 
     core::rect<s32> rect(x, y, x + box_size, y + box_size);
@@ -1156,6 +1184,10 @@ void Float_FormField::readValue(void* obj)
     }
 }
 
+int Float_FormField::getDesiredFieldWidth()
+{
+    return device->getGUIEnvironment()->getSkin()->getFont()->getDimension(L"-123.456").Width;
+}
 //
 //  Integer
 //
@@ -1176,7 +1208,7 @@ int Int_EditField::addWidget(Reflected_GUI_Edit_Form* win, int ID, int row)
     BEGIN_WIDGET()
 
     addStaticTextLabel(text, row, tab, ID);
-    addTextEditCell("00000", row, 1, ID+1);
+    addTextEditCell("12345", row, 1, ID+1);
 
     END_WIDGET()
 }
@@ -1185,7 +1217,7 @@ int Int_EditField::addInlineWidget(Reflected_GUI_Edit_Form* win, int ID, int row
 {
 	BEGIN_WIDGET()
 
-	addTextEditCell("00000", row, my_column, ID);
+	addTextEditCell("12345", row, my_column, ID);
 
 	END_WIDGET()
 }
@@ -1223,6 +1255,11 @@ void Int_FormField::readValue(void* obj)
     }
 }
 
+int Int_FormField::getDesiredFieldWidth()
+{
+    return device->getGUIEnvironment()->getSkin()->getFont()->getDimension(L"12345").Width;
+}
+
 void Int_EditField::writeValue(void* obj)
 {
     if(this->owner && obj && bVisible)
@@ -1239,6 +1276,21 @@ void Int_EditField::writeValue(void* obj)
 //
 //  Texture
 //
+
+int Texture_FormField::getHeight() 
+{ 
+    if (!bVisible)
+        return 0;
+    else if (bExpanded)
+        return 3;
+    else
+        return 1;
+}
+
+int Texture_FormField::getNumIds() 
+{
+    return 3; 
+}
 
 void Texture_EditField::setActive(int status)
 {
@@ -1257,7 +1309,23 @@ int Texture_EditField::addWidget(Reflected_GUI_Edit_Form* win, int ID, int row)
     BEGIN_WIDGET()
 
     addStaticTextLabel(text, row, tab, ID);
-    env->addButton(win->getCell(row, 1),win,ID+1,L"Set Texture");
+    //env->addButton(win->getCell(row, 1),win,ID+1,L"Set Texture");
+    addStaticTextCell("", row, 1, ID + 1);
+
+    if (bExpanded)
+    {
+        //addStaticTextLabel("Use Current", row + 1, tab+1, ID + 2);
+        //addStaticTextLabel("Clear", row + 2, tab+1, ID + 3);
+        //env->addButton(win->getCell(row+1, 0), win, ID + 1, L"Choose");
+        //env->addButton(win->getCell(row+2, 0), win, ID + 2, L"Clear");
+        int len = env->getSkin()->getFont()->getDimension(L"Choose").Width;
+        Flat_Button* my_button = new Flat_Button(env, win, ID + 1, win->getCell(row + 1, 0, tab+1, len + 16));
+        my_button->setText(L"Choose");
+
+        len = env->getSkin()->getFont()->getDimension(L"Use Current").Width;
+        my_button = new Flat_Button(env, win, ID + 2, win->getCell(row + 2, 0, tab + 1, len + 16));
+        my_button->setText(L"Use Current");
+    }
 
     END_WIDGET()
 }
@@ -1276,7 +1344,31 @@ void Texture_FormField::readValue(void* obj)
 {
     if(this->owner && obj && bVisible)
     {
-        gui::IGUIElement* editbox =  (gui::IGUIElement*)(owner->getElementFromId(my_ID+1,true));
+        //gui::IGUIElement* editbox =  (gui::IGUIElement*)(owner->getElementFromId(my_ID+1,true));
+
+        Form_Cell* cell = owner->cell_by_rc[this->my_row * owner->n_columns + 1];
+
+        //======================
+        //not enough to set the widget text, have to delete and create with new size
+
+        if(cell->element)
+            cell->element->remove();
+
+        my_texture = *get(obj);
+        if (my_texture != NULL)
+        {
+            cell->text = my_texture->name.c_str();
+        }
+        else
+            cell->text = L"no texture";
+
+        int len = device->getGUIEnvironment()->getSkin()->getFont()->getDimension(cell->text.c_str()).Width;
+        int x1 = cell->draw_rect.UpperLeftCorner.X + len;
+
+        cell->draw_rect.LowerRightCorner.X = std::min(x1,owner->getRelativePosition().getWidth());
+        cell->createElements(this->owner);
+
+        /*
         if(editbox)
         {
             my_texture = *get(obj);
@@ -1287,7 +1379,7 @@ void Texture_FormField::readValue(void* obj)
             }
             else
                 editbox->setText(L"no texture");
-        }
+        }*/
     }
 }
 
@@ -1297,7 +1389,8 @@ bool Texture_FormField::clickButton(s32 id, reflected_tool_base* base)
     {
         my_texture = TexturePicker_Tool::getCurrentTexture();
 
-        gui::IGUIElement* editbox =  (gui::IGUIElement*)(owner->getElementFromId(my_ID+1,true));
+        gui::IGUIElement* editbox;
+        editbox =  (gui::IGUIElement*)(owner->getElementFromId(my_ID+1,true));
         if(editbox)
         {
             if(my_texture != NULL)
@@ -1649,6 +1742,11 @@ void Byte_FormField::readValue(void* obj)
     }
 }
 
+int Byte_FormField::getDesiredFieldWidth()
+{
+    return 0;
+}
+
 void Byte_EditField::writeValue(void* obj)
 {
     if(this->owner && obj && bVisible)
@@ -1667,7 +1765,7 @@ void Byte_EditField::writeValue(void* obj)
 //  ComboBox
 //
 
-void ComboBox_FormField::AddItem(std::string text)
+void ComboBox_FormField::AddItem(std::wstring text)
 {
     items.push_back(text);
 }
@@ -1677,13 +1775,15 @@ int ComboBox_EditField::addWidget(Reflected_GUI_Edit_Form* win, int ID, int row)
     BEGIN_WIDGET()
 
     addStaticTextLabel(text, row, tab, ID);
+    addComboBoxCell(row, 1, ID + 1);
+    /*
     gui::IGUIComboBox* box = env->addComboBox(win->getCell(row, 1),win,ID+1);
 
     for(int i=0;i<this->items.size();i++)
     {
         std::wstring s(items[i].begin(),items[i].end());
         box->addItem(s.c_str(),i);
-    }
+    }*/
 
     END_WIDGET()
 }
@@ -1750,6 +1850,21 @@ void ComboBox_FormField::setActive(int status)
         if (cell)
             cell->setStatus(status);
     }
+}
+
+int ComboBox_FormField::getDesiredFieldWidth()
+{
+    gui::IGUIFont* font = device->getGUIEnvironment()->getSkin()->getFont();
+
+    int w = 0;
+    for (std::wstring wstr: items)
+    {
+        w += font->getDimension(wstr.c_str()).Width;
+    }
+
+    w /= items.size();
+
+    return w + 24;
 }
 
 //

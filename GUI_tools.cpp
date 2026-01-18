@@ -28,8 +28,8 @@ void Reflected_Widget_EditArea::show(bool editable, void* obj)
 
     form->drop();
 
-	if(override_columns.size() > 0)
-		form->setColumns(override_columns);
+	///if(override_columns.size() > 0)
+	//	form->setColumns(override_columns);
 
     if (!m_typeDesc)
     {

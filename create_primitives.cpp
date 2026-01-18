@@ -153,7 +153,7 @@ void GeometryFactory::MakePlaneWindow()
 
 void GeometryFactory::MakeCubeWindow()
 {
-    EditCubeWindow* win = new EditCubeWindow(env,env->getRootGUIElement(),-1,core::rect<s32>(140,200,16+196,64+196));
+    EditCubeWindow* win = new EditCubeWindow(env,env->getRootGUIElement(),-1,core::rect<s32>(200,200,400,400));
     win->setText(L"Make a cube");
 
     reflect::TypeDescriptor_Struct* typeDesc = (reflect::TypeDescriptor_Struct*)reflect::TypeResolver<Cube>::get();
@@ -221,16 +221,21 @@ REFLECT_STRUCT_BEGIN(GeometryFactory::Cylinder)
     REFLECT_STRUCT_MEMBER(height)
     REFLECT_STRUCT_MEMBER(radius)
     REFLECT_STRUCT_MEMBER(nSides)
+        REFLECT_STRUCT_MEMBER_ALIAS("# sides")
     REFLECT_STRUCT_MEMBER(radius_type)
+        REFLECT_STRUCT_MEMBER_ALIAS("radius type")
     REFLECT_STRUCT_MEMBER(align_to_side)
+        REFLECT_STRUCT_MEMBER_ALIAS("align to side")
 REFLECT_STRUCT_END()
 
 REFLECT_STRUCT_BEGIN(GeometryFactory::Sphere)
     REFLECT_STRUCT_MEMBER(type)
     REFLECT_STRUCT_MEMBER(radius)
     REFLECT_STRUCT_MEMBER(nSides)
+        REFLECT_STRUCT_MEMBER_ALIAS("# vertical sides")
     REFLECT_STRUCT_MEMBER(nZenSides)
-    REFLECT_STRUCT_MEMBER(simplify)
+    REFLECT_STRUCT_MEMBER_ALIAS("# horizontal sides")
+        REFLECT_STRUCT_MEMBER(simplify)
 REFLECT_STRUCT_END()
 
 REFLECT_STRUCT_BEGIN(GeometryFactory::Plane)
@@ -242,14 +247,21 @@ REFLECT_STRUCT_BEGIN(GeometryFactory::Cone)
     REFLECT_STRUCT_MEMBER(height)
     REFLECT_STRUCT_MEMBER(radius)
     REFLECT_STRUCT_MEMBER(nSides)
+        REFLECT_STRUCT_MEMBER_ALIAS("# sides")
 REFLECT_STRUCT_END()
 
 REFLECT_STRUCT_BEGIN(GeometryFactory::Curve)
     REFLECT_STRUCT_MEMBER(degStart)
+        REFLECT_STRUCT_MEMBER_ALIAS("start (deg)")
     REFLECT_STRUCT_MEMBER(degEnd)
+        REFLECT_STRUCT_MEMBER_ALIAS("end (deg)")
     REFLECT_STRUCT_MEMBER(innerRadius)
+        REFLECT_STRUCT_MEMBER_ALIAS("inner radius")
     REFLECT_STRUCT_MEMBER(outerRadius)
+        REFLECT_STRUCT_MEMBER_ALIAS("outer radius")
     REFLECT_STRUCT_MEMBER(height)
     REFLECT_STRUCT_MEMBER(nSections)
+        REFLECT_STRUCT_MEMBER_ALIAS("# sections")
     REFLECT_STRUCT_MEMBER(radius_type)
+        REFLECT_STRUCT_MEMBER_ALIAS("radius type")
 REFLECT_STRUCT_END()

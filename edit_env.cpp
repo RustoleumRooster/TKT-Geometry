@@ -364,6 +364,9 @@ bool MyEventReceiver::OnEvent(const SEvent& event)
 
     if(event.EventType == EET_GUI_EVENT)
     {
+        if (!event.GUIEvent.Caller)
+            return false;
+
         s32 id = event.GUIEvent.Caller->getID();
         gui::IGUIEnvironment* env = device->getGUIEnvironment();
 

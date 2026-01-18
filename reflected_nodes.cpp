@@ -17,7 +17,7 @@ using namespace gui;
 extern IrrlichtDevice* device;
 extern SceneCoordinator* gs_coordinator;
 
-video::E_MATERIAL_TYPE Reflected_SceneNode::base_material_type = video::EMT_SOLID;
+video::E_MATERIAL_TYPE Reflected_SceneNode::base_material_type = video::EMT_TRANSPARENT_ADD_COLOR;
 video::E_MATERIAL_TYPE Reflected_SceneNode::special_material_type = video::EMT_SOLID;
 
 
@@ -147,18 +147,18 @@ void Reflected_SceneNode::draw_box(video::IVideoDriver* driver, core::aabbox3df 
     b.getEdges(edges);
 
 
-    driver->draw3DLine(edges[0],edges[1],video::SColor(128,255,255,255));
-    driver->draw3DLine(edges[0],edges[2],video::SColor(128,255,255,255));
-    driver->draw3DLine(edges[0],edges[4],video::SColor(128,255,255,255));
-    driver->draw3DLine(edges[2],edges[3],video::SColor(128,255,255,255));
-    driver->draw3DLine(edges[2],edges[6],video::SColor(128,255,255,255));
-    driver->draw3DLine(edges[6],edges[7],video::SColor(128,255,255,255));
-    driver->draw3DLine(edges[6],edges[4],video::SColor(128,255,255,255));
-    driver->draw3DLine(edges[4],edges[5],video::SColor(128,255,255,255));
-    driver->draw3DLine(edges[1],edges[5],video::SColor(128,255,255,255));
-    driver->draw3DLine(edges[5],edges[7],video::SColor(128,255,255,255));
-    driver->draw3DLine(edges[3],edges[1],video::SColor(128,255,255,255));
-    driver->draw3DLine(edges[3],edges[7],video::SColor(128,255,255,255));
+    driver->draw3DLine(edges[0],edges[1],video::SColor(255,255,255,255));
+    driver->draw3DLine(edges[0],edges[2],video::SColor(255,255,255,255));
+    driver->draw3DLine(edges[0],edges[4],video::SColor(255,255,255,255));
+    driver->draw3DLine(edges[2],edges[3],video::SColor(255,255,255,255));
+    driver->draw3DLine(edges[2],edges[6],video::SColor(255,255,255,255));
+    driver->draw3DLine(edges[6],edges[7],video::SColor(255,255,255,255));
+    driver->draw3DLine(edges[6],edges[4],video::SColor(255,255,255,255));
+    driver->draw3DLine(edges[4],edges[5],video::SColor(255,255,255,255));
+    driver->draw3DLine(edges[1],edges[5],video::SColor(255,255,255,255));
+    driver->draw3DLine(edges[5],edges[7],video::SColor(255,255,255,255));
+    driver->draw3DLine(edges[3],edges[1],video::SColor(255,255,255,255));
+    driver->draw3DLine(edges[3],edges[7],video::SColor(255,255,255,255));
 
     delete[] edges;
 }
@@ -277,8 +277,8 @@ Reflected_Sprite_SceneNode::Reflected_Sprite_SceneNode(USceneNode* parent, geome
     Buffer = new scene::SMeshBuffer();
     Buffer->Material.Lighting = false;
     Buffer->Material.setTexture(0,m_texture);
-    //Buffer->Material.MaterialType = video::EMT_TRANSPARENT_ADD_COLOR;
-    Buffer->Material.MaterialType = video::EMT_SOLID;
+    Buffer->Material.MaterialType = video::EMT_TRANSPARENT_ADD_COLOR;
+    //Buffer->Material.MaterialType = video::EMT_SOLID;
     //MaterialType = video::EMT_SOLID;
 
     Buffer->Vertices.set_used(4);

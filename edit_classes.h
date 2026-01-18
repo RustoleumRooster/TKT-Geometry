@@ -62,9 +62,11 @@ enum
 
 enum
 {
-    CELL_ELEMENT_TEXT,
+    CELL_ELEMENT_LABEL,
     CELL_ELEMENT_EDITBOX,
-    CELL_ELEMENT_CHECKBOX
+    CELL_ELEMENT_TEXT_DATA,
+    CELL_ELEMENT_CHECKBOX,
+    CELL_ELEMENT_COMBOBOX
 };
 
 class cell_background : public gui::IGUIElement
@@ -81,7 +83,7 @@ public:
     
 
     int my_status = CELL_STATUS_NONE;
-    int cell_element_type = CELL_ELEMENT_TEXT;
+    int cell_element_type = CELL_ELEMENT_LABEL;
     bool can_select = true;
     bool selected = false;
     bool hovered = false;
@@ -103,7 +105,7 @@ class Form_Cell
 public:
     void createElements(Reflected_GUI_Edit_Form* form);
 
-    cell_background* cell = NULL;
+    cell_background* cell_panel = NULL;
     gui::IGUIElement* element = NULL;
 
     std::wstring text;
@@ -152,10 +154,11 @@ public:
     FormField* getParentField(FormField*);
 
     core::rect<s32> getCell(int row, int column, int tab);
+    core::rect<s32> getCell(int row, int column, int tab, int len);
     core::rect<s32> getCell(int row, int column);
     cell_background* getCellPanel(int row, int column);
 
-    void addCell(FormField* field, int element_type, std::wstring text, int min_tab, int tab, int row, int column, int ID);
+    void addCell(FormField* field, int element_type, int width, int min_tab, int tab, int row, int column, int ID);
 
     void setColumns(std::vector<s32> width);
 
@@ -170,9 +173,11 @@ public:
     int line_height;
     int text_height;
 
-    column_info* my_columns = NULL;
-private: 
-    int n_columns = 0;
+   // column_info* my_columns = NULL;
+
+    column_info my_columns[2];
+
+    int n_columns = 2;
     int n_rows = 0;
     
     Form_Cell** cell_by_rc = NULL;
@@ -215,10 +220,11 @@ public:
     virtual int getHeight(){return (bVisible&&(!bInline))?1:0;}
     virtual int getNumIds(){return 2;}
     virtual int getButtonType() {return FORM_FIELD_NO_BUTTON;}
+    virtual int getDesiredLabelWidth();
+    virtual int getDesiredFieldWidth();
     virtual bool clickButton(s32 id, reflected_tool_base*) { return false; } /*Only return true if this will cause panel to unshow*/
     virtual void clickButton(s32 id) {}
     virtual void copy(void*, void*) {}
-    virtual int getWidth(int column);
 
     void addStaticTextLabel(std::string text, int row, int tab, int ID);
     void addTextLabelEdit(int row, int column, int tab, int ID);
@@ -245,6 +251,7 @@ public:
 	bool bBorder = false;
     bool bHighlight = false;
     bool bCanSelect = false;
+    bool bExpanded = false;
 
     int text_color = FORM_TEXT_COLOR_NORMAL;
     size_t offset = 0;
@@ -324,6 +331,7 @@ public:
     virtual void readValue(void* obj);
     virtual void writeValue(void* obj)=0;
     virtual void setActive(int) {};
+    virtual int getDesiredFieldWidth();
     virtual void copy(void* obj, void* obj2){
         *get(obj) = *get(obj2);
     }
@@ -515,6 +523,7 @@ public:
     virtual void readValue(void* obj);
     virtual void writeValue(void* obj)=0;
     virtual void setActive(int) {};
+    virtual int getDesiredFieldWidth();
     virtual void copy(void* obj, void* obj2){
         *get(obj) = *get(obj2);
     }
@@ -551,6 +560,8 @@ public:
     virtual void readValue(void* obj);
     virtual void writeValue(void* obj)=0;
     virtual void setActive(int) {};
+    virtual int getHeight();
+    virtual int getNumIds();
     //virtual int getHeight(){return 2;}
     virtual int getButtonType() {return FORM_FIELD_BUTTON;}
     virtual bool clickButton(s32 id, reflected_tool_base*) override;
@@ -589,6 +600,7 @@ public:
     virtual void readValue(void* obj);
     virtual void writeValue(void* obj)=0;
     virtual void setActive(int) {};
+    virtual int getDesiredFieldWidth();
     virtual void copy(void* obj, void* obj2){
         *get(obj) = *get(obj2);
     }
@@ -622,12 +634,13 @@ public:
 class ComboBox_FormField : public FormField
 {
 public:
-    void AddItem(std::string);
+    void AddItem(std::wstring);
 
     virtual int addWidget(Reflected_GUI_Edit_Form* win, int ID, int ypos)=0;
     virtual void writeValue(void* obj)=0;
     virtual void readValue(void* obj)=0;
     virtual void setActive(int);
+    virtual int getDesiredFieldWidth();
     virtual void copy(void* obj, void* obj2){
         *get(obj) = *get(obj2);
     }
@@ -635,7 +648,7 @@ public:
         return *get(a) == *get(b);
     }
 
-    std::vector<std::string> items;
+    std::vector<std::wstring> items;
     int* get(void* obj_) {return (int*)((char*)obj_ + offset);}
 };
 

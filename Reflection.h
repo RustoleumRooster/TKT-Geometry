@@ -183,6 +183,15 @@ struct Member {
         bool readwrite;  //for editor widgets
         bool modified;   //for editor widgets
         char flags = 0;
+        const char* alias = NULL;
+
+        const char* getDisplayName()
+        {
+            if (alias)
+                return alias;
+            else
+                return name;
+        }
 
         void* get(const void* obj)
         {
@@ -436,6 +445,9 @@ struct TypeDescriptor_Struct : TypeDescriptor {
 
 #define REFLECT_STRUCT_MEMBER_FLAG(flag) \
         typeDesc->members[typeDesc->members.size()-1].flags |= flag;
+
+#define REFLECT_STRUCT_MEMBER_ALIAS(name) \
+            typeDesc->members[typeDesc->members.size()-1].alias = name;
 
 #define REFLECT_STRUCT_END() \
     }
