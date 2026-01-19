@@ -410,14 +410,13 @@ void LM_Viewer_Panel::showMaterialGroup(int mg_n)
         {
             current_mat_group = mg_n;
 
-            for (int f_i : mat_groups[mg_n].faces)
             for (const Lightmap_Block& b : mat_groups[mg_n].blocks)
             {
                 int offset = geo_scene->geoNode()->get_element_by_id(b.element_id)->surfaces[b.surface_no].face_index_offset;
                 for (int f_i : b.faces)
                 {
                     make_face(pf, f_i + offset, NULL);
-                    faces.push_back(f_i);
+                    faces.push_back(f_i + offset);
                 }
             }
 
@@ -778,9 +777,9 @@ void LM_Viewer_Panel::render()
             }
         }
 
-        if (bShowGeometry)
-            for (geo_element geo : this->uv_scene->elements)
-                geo.draw_geometry(driver, someMaterial);
+        //if (bShowGeometry)
+        //    for (geo_element geo : this->uv_scene->elements)
+        //        geo.draw_geometry(driver, someMaterial);
     }
 
     driver->setRenderTarget(0, true, true, video::SColor(0, 0, 0, 0));
@@ -903,9 +902,9 @@ void material_group_struct::my_typeDesc::addFormWidget(Reflected_GUI_Edit_Form* 
         f->initInline("faces", tree, offset, 1, bVisible);
         win->addEditField(f);
 
-        f = new Text_StaticField();
-        f->initInline("triangles", tree, offset, 2, bVisible);
-        win->addEditField(f);
+       // f = new Text_StaticField();
+       // f->initInline("triangles", tree, offset, 2, bVisible);
+       // win->addEditField(f);
 
         f = new Text_StaticField();
         f->init(" ", tree, offset, tab, bVisible);
@@ -919,10 +918,10 @@ void material_group_struct::my_typeDesc::addFormWidget(Reflected_GUI_Edit_Form* 
         f->bBorder = true;
         win->addEditField(f);
 
-        f = new Int_StaticField();
-        f->initInline("", tree, offset + 16, 2, bVisible);
-        f->bBorder = true;
-        win->addEditField(f);
+       // f = new Int_StaticField();
+       // f->initInline("", tree, offset + 16, 2, bVisible);
+       // f->bBorder = true;
+       // win->addEditField(f);
     }
 
     Text_StaticField* f = new Text_StaticLabel();
@@ -1175,17 +1174,22 @@ bool Material_Buffers_Widget::OnEvent(const SEvent& event)
                     g_scene->setSelectedFaces(surface);
 
                 int f_i = g_scene->getSelectedFaces()[0];
-                int mg = 0;// g_scene->geoNode()->final_meshnode_interface.get_material_group_by_face(f_i);
 
-                int mg2 = 0;// g_scene->geoNode()->edit_meshnode_interface.get_material_group_by_face(f_i);
+                //int mb_i = g_scene->geoNode()->edit_meshnode_interface.get_buffer_index_by_face(f_i);
+                //int mg = g_scene->geoNode()->edit_meshnode_interface.get_material_group_by_face(mb_i);
+
+                //same as above
+                int mg = g_scene->geoNode()->final_meshnode_interface.get_buffer_index_by_face(f_i);
+                //int mg2 =  g_scene->geoNode()->final_meshnode_interface.get_material_group_by_face(mb_i2);
+                /*
                 int lm_block_i = -1;// g_scene->geoNode()->edit_meshnode_interface.get_lm_block_by_face(f_i);
 
-                if (mg2 != -1 && lm_block_i != -1)
+                if (mg != -1 && lm_block_i != -1)
                 {
-                    Lightmap_Block& block = g_scene->geoNode()->edit_meshnode_interface.get_lm_block(mg2, lm_block_i);
+                    Lightmap_Block& block = g_scene->geoNode()->edit_meshnode_interface.get_lm_block(mg, lm_block_i);
                     //my_base->set_lm_dims(block.width, block.height);
                 }
-
+                */
                 if (mg != g_scene->get_selected_material_group())
                 {
                     g_scene->set_selected_material_group(mg);
@@ -1359,10 +1363,10 @@ void Material_Buffers_Base::select(int sel)
 
     for (int i = 0; i < m_struct.material_groups.size(); i++)
     {
-        if (i == sel)
-            m_struct.material_groups[i].selected = true;
-        else
-            m_struct.material_groups[i].selected = false;
+        //if (i == sel)
+       //     m_struct.material_groups[i].selected = true;
+       // else
+       //     m_struct.material_groups[i].selected = false;
     }
 
 }
