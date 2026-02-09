@@ -24,9 +24,11 @@ extern VkDevice vk_device = NULL;
 
 static std::vector<Vulkan_Module*>* all_vulkan_modules = NULL;
 
+reflect::Vulkan_Reflection_Factory Vulkan_Module::factory{};
+
 vector<Vulkan_Module*>* get_all_vk_modules()
 {
-	return all_vulkan_modules;
+	return  all_vulkan_modules;
 }
 
 /*
@@ -69,6 +71,7 @@ REFLECT_STRUCT_END()
 REFLECT_CUSTOM_STRUCT_BEGIN_TEMPLATE(vkImageArrayResource, reflect::output)
 	INHERIT_FROM(reflect::output_type)
 	REFLECT_STRUCT_MEMBER(output_uids)
+	REFLECT_STRUCT_MEMBER(output_member);
 REFLECT_STRUCT_END()
 
 REFLECT_CUSTOM_STRUCT_BEGIN_TEMPLATE(vkMultiImageResource, reflect::input)
@@ -80,11 +83,13 @@ REFLECT_STRUCT_END()
 REFLECT_CUSTOM_STRUCT_BEGIN_TEMPLATE(vkMultiImageResource, reflect::output)
 	INHERIT_FROM(reflect::output_type)
 	REFLECT_STRUCT_MEMBER(output_uids)
+	REFLECT_STRUCT_MEMBER(output_member);
 REFLECT_STRUCT_END()
 
 REFLECT_CUSTOM_STRUCT_BEGIN_TEMPLATE(vkBufferResource, reflect::output)
 	INHERIT_FROM(reflect::output_type)
 	REFLECT_STRUCT_MEMBER(output_uids)
+	REFLECT_STRUCT_MEMBER(output_member);
 REFLECT_STRUCT_END()
 
 REFLECT_CUSTOM_STRUCT_BEGIN_TEMPLATE(vkBufferResource, reflect::input)
@@ -121,7 +126,7 @@ namespace reflect
 		static TypeDescriptor_U64 typeDesc;
 		return &typeDesc;
 	}
-
+	/*
 	void connect(output<vkImageArrayResource>* in, input<vkMultiImageResource>* out)
 	{
 		ImageArray_To_MultiImage_Module* link_module = (ImageArray_To_MultiImage_Module* )in->owner->vulkan->create_module<ImageArray_To_MultiImage_Module>();
@@ -136,7 +141,7 @@ namespace reflect
 	
 		connect(in, &link_module->images_in);
 		connect(&link_module->images_out, out);
-	}
+	}*/
 
 }
 
@@ -168,20 +173,26 @@ void Vulkan_App::cleanup()
 
 	for (Vulkan_Module* module : all_modules)
 	{
-		delete module;
+		//delete module;
 	}
 }
 
-REFLECT_STRUCT3_BEGIN(Vulkan_Module)
+REFLECT_VKMOD_BEGIN(Vulkan_Module)
+	REFLECT_STRUCT_MEMBER(pos);
 REFLECT_STRUCT3_END()
 
-Vulkan_Module::Vulkan_Module(Vulkan_App* vulkan)
+Vulkan_Module::Vulkan_Module()
 	: vulkan{ vulkan }
 {
+	m_uid = random_number();
+}
+
+void Vulkan_Module::initialize(Vulkan_App* vulkan)
+{
+	this->vulkan = vulkan;
+	vulkan->all_modules.push_back(this);
 	m_device = vulkan->m_device;
 	m_DescriptorPool = vulkan->m_DescriptorPool;
-	m_uid = random_number();
-	vulkan->all_modules.push_back(this);
 }
 
 bool Vulkan_Module::all_resources_ready()
@@ -1105,3 +1116,133 @@ void vkMemoryResource::consume(reflect::input_type* in)
 		destroy(vk_device);
 	}
 }
+namespace reflect
+{
+	template <>
+	TypeDescriptor* getPrimitiveDescriptor<VkMod_Reference>() {
+		static TypeDescriptor_VkMod_Reference typeDesc;
+		return &typeDesc;
+	}
+}
+
+namespace reflect
+{
+	void TypeDescriptor_VkMod_Reference::dump(const void* obj, int indent/* unused */) const
+	{
+		if (isNull(obj))
+		{
+			std::cout << "NULL\n";
+		}
+		else
+		{
+			reflect::TypeDescriptor_Struct* td = ((Vulkan_Module*)getItem(obj))->GetDynamicReflection();
+			std::cout << "reference<"<<td->name<<">\n";
+			std::cout << std::string(4 * (indent+1), ' ');
+			td->dump(getItem(obj), indent + 1);
+		}
+	}
+
+	void TypeDescriptor_VkMod_Reference::serialize(std::ofstream& f, const void* obj)
+	{
+		char first_byte;
+
+		if (isNull(obj))
+		{
+			first_byte = 0;
+			f.write((char*)&first_byte, sizeof(char));
+		}
+		else
+		{
+
+			first_byte = 1;
+			f.write((char*)&first_byte, sizeof(char));
+
+			reflect::TypeDescriptor_Struct* td = ((Vulkan_Module*)getItem(obj))->GetDynamicReflection();
+			f << td->name << '\0';
+
+			while (td)
+			{
+				td->serialize(f, getItem(obj));
+				td = td->inherited_type;
+			}
+		}
+	}
+
+	void TypeDescriptor_VkMod_Reference::deserialize(std::ifstream& f, void* obj)
+	{
+		char first_byte;
+		f.read((char*)&first_byte, sizeof(char));
+
+		std::string line;
+
+		if (first_byte == 0)
+		{
+			void** ptr = (void**)obj;
+			*ptr = NULL;
+		}
+		else
+		{
+			void** ptr = (void**)obj;
+
+			std::getline(f, line, '\0');
+			reflect::TypeDescriptor_VkMod_Struct* tD =
+				(reflect::TypeDescriptor_VkMod_Struct*)Vulkan_Module::factory.getNodeTypeDescriptorByName(line);
+
+			*ptr = tD->getNew();
+			while (tD)
+			{
+				tD->deserialize(f, getItem_nc(obj));
+				tD = (reflect::TypeDescriptor_VkMod_Struct*)tD->inherited_type;
+			}
+		}
+	}
+}
+
+//
+//============================================================================
+//  REFLECTED MODULE FACTORY CLASS
+//
+//
+
+namespace reflect
+{
+	TypeDescriptor_VkMod_Struct::TypeDescriptor_VkMod_Struct(void (*init)(TypeDescriptor_Struct*)) : reflect::TypeDescriptor_Struct(init)
+	{
+		Vulkan_Module::factory.addType(this);
+	}
+
+	void Vulkan_Reflection_Factory::addType(reflect::TypeDescriptor_VkMod_Struct* typeDesc)
+	{
+		Module_Types.push_back(typeDesc);
+		cout << typeDesc->name << "\n";
+	}
+
+	int Vulkan_Reflection_Factory::getNumTypes()
+	{
+		return Module_Types.size();
+	}
+
+	reflect::TypeDescriptor_Struct* Vulkan_Reflection_Factory::getNodeTypeDescriptorByName(std::string name)
+	{
+		for (reflect::TypeDescriptor_Struct* typeDesc : Module_Types)
+		{
+			if (typeDesc->name == name)
+				return typeDesc;
+		}
+		return NULL;
+	}
+
+	int Vulkan_Reflection_Factory::getTypeNum(reflect::TypeDescriptor_Struct* td)
+	{
+		for (int i = 0; i < Module_Types.size(); i++)
+		{
+			if (Module_Types[i] == td)
+				return i;
+		}
+		return 0;
+	}
+}
+
+REFLECT_STRUCT_BEGIN(Vulkan_Workflow)
+	REFLECT_STRUCT_MEMBER(Modules)
+REFLECT_STRUCT_END()

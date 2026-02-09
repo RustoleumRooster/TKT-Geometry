@@ -42,7 +42,9 @@ class BouncedLight_Module : public Vulkan_Module
 	};
 
 public:
-	BouncedLight_Module(Vulkan_App* vulkan);
+	BouncedLight_Module();
+
+	virtual void initialize(Vulkan_App* vulkan);
 
 	void createDescriptorSetLayout();
 	void createDescriptorSets(int);
@@ -91,7 +93,7 @@ public:
 
 	LineHolder graph;
 
-	REFLECT3()
+	REFLECT_VKMOD()
 
 };
 #endif

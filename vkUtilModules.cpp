@@ -9,6 +9,8 @@
 #include "my_reflected_nodes.h"
 #include <vulkan/vulkan.h>
 #include "reflect_custom_types.h"
+#include "vkAreaLightModule.h"
+#include "vkBouncedLightModule.h"
 
 using namespace irr;
 using namespace core;
@@ -20,7 +22,8 @@ extern IrrlichtDevice* device;
 // Geometry
 //
 
-REFLECT_STRUCT3_BEGIN(Geometry_Module)
+REFLECT_VKMOD_BEGIN(Geometry_Module)
+	INHERIT_FROM(Vulkan_Module)
 	REFLECT_STRUCT_MEMBER(indices)
 	REFLECT_STRUCT_MEMBER(vertices)
 	REFLECT_STRUCT_MEMBER(lm_uvs)
@@ -28,11 +31,17 @@ REFLECT_STRUCT3_BEGIN(Geometry_Module)
 	REFLECT_STRUCT_MEMBER(edges)
 	REFLECT_STRUCT_MEMBER(scratchpad)
 	REFLECT_STRUCT_MEMBER(area_lights)
-REFLECT_STRUCT3_END()
+REFLECT_VKMOD_END()
 
-Geometry_Module::Geometry_Module(Vulkan_App* vulkan) : Vulkan_Module(vulkan), geo_assets{ vulkan->geo_assets }
+Geometry_Module::Geometry_Module() 
 {
 	set_ptrs();
+}
+
+void Geometry_Module::initialize(Vulkan_App* vulkan)
+{
+	geo_assets = vulkan->geo_assets;
+	Vulkan_Module::initialize(vulkan);
 
 	indices_soa = &geo_assets->indices_soa;
 	vertices_soa = &geo_assets->vertices_soa;
@@ -194,9 +203,10 @@ void Geometry_Module::run()
 // Create Lightmap Images
 //
 
-REFLECT_STRUCT3_BEGIN(Create_Lightmap_Images_Module)
+REFLECT_VKMOD_BEGIN(Create_Lightmap_Images_Module)
+	INHERIT_FROM(Vulkan_Module)
 	REFLECT_STRUCT_MEMBER(images_out)
-REFLECT_STRUCT3_END()
+REFLECT_VKMOD_END()
 
 void Create_Lightmap_Images_Module::run()
 {
@@ -206,6 +216,12 @@ void Create_Lightmap_Images_Module::run()
 	createImages();
 
 	images_out.ready = true;
+}
+
+void Create_Lightmap_Images_Module::initialize(Vulkan_App* vulkan)
+{
+	Vulkan_Module::initialize(vulkan);
+	configuration = vulkan->configuration;
 }
 
 void Create_Lightmap_Images_Module::createImages()
@@ -229,14 +245,21 @@ void Create_Lightmap_Images_Module::createImages()
 // Create Texture Images
 //
 
-REFLECT_STRUCT3_BEGIN(MultiImage_To_ImageArray_Module)
+REFLECT_VKMOD_BEGIN(MultiImage_To_ImageArray_Module)
+	INHERIT_FROM(Vulkan_Module)
 	REFLECT_STRUCT_MEMBER(images_in)
 	REFLECT_STRUCT_MEMBER(images_out)
-REFLECT_STRUCT3_END()
+REFLECT_VKMOD_END()
 
 void MultiImage_To_ImageArray_Module::run()
 {
 	createImages();
+}
+
+void MultiImage_To_ImageArray_Module::initialize(Vulkan_App* vulkan)
+{
+	Vulkan_Module::initialize(vulkan);
+	configuration = vulkan->configuration;
 }
 
 void MultiImage_To_ImageArray_Module::createImages()
@@ -274,14 +297,21 @@ void MultiImage_To_ImageArray_Module::createImages()
 		images_out.ready = true;
 }
 
-REFLECT_STRUCT3_BEGIN(ImageArray_To_MultiImage_Module)
+REFLECT_VKMOD_BEGIN(ImageArray_To_MultiImage_Module)
+	INHERIT_FROM(Vulkan_Module)
 	REFLECT_STRUCT_MEMBER(images_in)
 	REFLECT_STRUCT_MEMBER(images_out)
-REFLECT_STRUCT3_END()
+REFLECT_VKMOD_END()
 
 void ImageArray_To_MultiImage_Module::run()
 {
 	createImages();
+}
+
+void ImageArray_To_MultiImage_Module::initialize(Vulkan_App* vulkan)
+{
+	Vulkan_Module::initialize(vulkan);
+	configuration = vulkan->configuration;
 }
 
 void ImageArray_To_MultiImage_Module::createImages()
@@ -321,10 +351,11 @@ void ImageArray_To_MultiImage_Module::createImages()
 // MultiImage Copy
 //
 
-REFLECT_STRUCT3_BEGIN(MultiImage_Copy_Module)
+REFLECT_VKMOD_BEGIN(MultiImage_Copy_Module)
+	INHERIT_FROM(Vulkan_Module)
 	REFLECT_STRUCT_MEMBER(images_in)
 	REFLECT_STRUCT_MEMBER(images_out)
-REFLECT_STRUCT3_END()
+REFLECT_VKMOD_END()
 
 void MultiImage_Copy_Module::run()
 {
@@ -365,12 +396,20 @@ void MultiImage_Copy_Module::run()
 // Create Texture Images
 //
 
-REFLECT_STRUCT3_BEGIN(Create_Texture_Images_Module)
+REFLECT_VKMOD_BEGIN(Create_Texture_Images_Module)
+	INHERIT_FROM(Vulkan_Module)
 	REFLECT_STRUCT_MEMBER(images_out)
-REFLECT_STRUCT3_END()
+REFLECT_VKMOD_END()
 
 void Create_Texture_Images_Module::run()
 {
+}
+
+void Create_Texture_Images_Module::initialize(Vulkan_App* vulkan)
+{
+	Vulkan_Module::initialize(vulkan);
+	configuration = vulkan->configuration;
+	driver = vulkan->driver;
 }
 
 Create_Texture_Images_Module::~Create_Texture_Images_Module()
@@ -418,6 +457,13 @@ void Create_Texture_Images_Module::index_materials(Lightmap_Configuration* confi
 //==========================================
 // Load Textures
 //
+
+void Load_Textures_Module::initialize(Vulkan_App* vulkan)
+{
+	Vulkan_Module::initialize(vulkan);
+	configuration = vulkan->configuration;
+	driver = vulkan->driver;
+}
 
 void Load_Textures_Module::run()
 {
@@ -496,9 +542,10 @@ void Load_Textures_Module::destroyImages()
 // Download Textures
 //
 
-REFLECT_STRUCT3_BEGIN(Download_Textures_Module)
+REFLECT_VKMOD_BEGIN(Download_Textures_Module)
+	INHERIT_FROM(Vulkan_Module)
 	REFLECT_STRUCT_MEMBER(images_in)
-REFLECT_STRUCT3_END()
+REFLECT_VKMOD_END()
 
 void Download_Textures_Module::run()
 {
@@ -547,9 +594,10 @@ void Download_Textures_Module::run()
 // Download Textures
 //
 
-REFLECT_STRUCT3_BEGIN(Download_TextureArray_Module)
+REFLECT_VKMOD_BEGIN(Download_TextureArray_Module)
+	INHERIT_FROM(Vulkan_Module)
 	REFLECT_STRUCT_MEMBER(images_in)
-REFLECT_STRUCT3_END()
+REFLECT_VKMOD_END()
 
 void Download_TextureArray_Module::run()
 {
@@ -596,10 +644,17 @@ void Download_TextureArray_Module::run()
 // Lightmap Edge/Corner Correction
 //
 
-REFLECT_STRUCT3_BEGIN(Lightmap_Edges_Module)
+REFLECT_VKMOD_BEGIN(Lightmap_Edges_Module)
+	INHERIT_FROM(Vulkan_Module)
 	REFLECT_STRUCT_MEMBER(images_in)
 	REFLECT_STRUCT_MEMBER(images_out)
-REFLECT_STRUCT3_END()
+REFLECT_VKMOD_END()
+
+void Lightmap_Edges_Module::initialize(Vulkan_App* vulkan)
+{
+	Vulkan_Module::initialize(vulkan);
+	configuration = vulkan->configuration;
+}
 
 void Lightmap_Edges_Module::run()
 {
@@ -749,12 +804,13 @@ void Lightmap_Edges_Module::createComputePipeline()
 // Merge Images
 //
 
-REFLECT_STRUCT3_BEGIN(Merge_Images_Module)
+REFLECT_VKMOD_BEGIN(Merge_Images_Module)
+	INHERIT_FROM(Vulkan_Module)
 	REFLECT_STRUCT_MEMBER(images_in_0)
 	REFLECT_STRUCT_MEMBER(images_in_1)
 	REFLECT_STRUCT_MEMBER(images_out)
 	REFLECT_STRUCT_MEMBER_FORWARD(images_in_1, images_out)
-REFLECT_STRUCT3_END()
+REFLECT_VKMOD_END()
 
 
 void Merge_Images_Module::run()
@@ -786,6 +842,12 @@ void Merge_Images_Module::run()
 
 	images_out.X = images_in_1.X;
 	images_out.ready = true;
+}
+
+void Merge_Images_Module::initialize(Vulkan_App* vulkan)
+{
+	Vulkan_Module::initialize(vulkan);
+	configuration = vulkan->configuration;
 }
 
 void Merge_Images_Module::createDescriptorSetLayout()
@@ -853,3 +915,50 @@ void Merge_Images_Module::cleanup()
 
 	vkDestroyPipelineLayout(m_device->getDevice(), pipelineLayout, nullptr);
 }
+
+void MultiImage_Copy_Module::initialize(Vulkan_App* vulkan)
+{
+	Vulkan_Module::initialize(vulkan);
+	configuration = vulkan->configuration;
+}
+
+void Download_Textures_Module::initialize(Vulkan_App* vulkan)
+{
+	Vulkan_Module::initialize(vulkan);
+	configuration = vulkan->configuration;
+	driver = vulkan->driver;
+}
+
+void Download_TextureArray_Module::initialize(Vulkan_App* vulkan)
+{
+	Vulkan_Module::initialize(vulkan);
+	configuration = vulkan->configuration;
+	driver = vulkan->driver;
+}
+
+REFLECT_VKMOD_BEGIN(AreaLight_Module)
+INHERIT_FROM(Vulkan_Module)
+REFLECT_STRUCT_MEMBER(indices)
+REFLECT_STRUCT_MEMBER(vertices)
+REFLECT_STRUCT_MEMBER(lm_uvs)
+REFLECT_STRUCT_MEMBER(bvh_nodes)
+REFLECT_STRUCT_MEMBER(edges)
+REFLECT_STRUCT_MEMBER(scratchpad)
+REFLECT_STRUCT_MEMBER(area_lights)
+REFLECT_STRUCT_MEMBER(images_in)
+REFLECT_STRUCT_MEMBER(images_out)
+REFLECT_STRUCT_MEMBER_FORWARD(images_in, images_out)
+REFLECT_VKMOD_END()
+
+REFLECT_VKMOD_BEGIN(BouncedLight_Module)
+REFLECT_STRUCT_MEMBER(indices)
+REFLECT_STRUCT_MEMBER(vertices)
+REFLECT_STRUCT_MEMBER(lm_uvs)
+REFLECT_STRUCT_MEMBER(bvh_nodes)
+REFLECT_STRUCT_MEMBER(edges)
+REFLECT_STRUCT_MEMBER(scratchpad)
+REFLECT_STRUCT_MEMBER(area_lights)
+REFLECT_STRUCT_MEMBER(images_in)
+REFLECT_STRUCT_MEMBER(images_out)
+//REFLECT_STRUCT_MEMBER_FORWARD(images_in,images_out)
+REFLECT_VKMOD_END()

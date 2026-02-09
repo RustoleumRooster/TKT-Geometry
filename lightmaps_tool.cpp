@@ -321,10 +321,10 @@ void Lightmap_Resize_Base::ApplyResize()
 // UV Editor Camera Panel
 //
 
-LM_Viewer_Panel::LM_Viewer_Panel(IGUIEnvironment* environment, video::IVideoDriver* driver, IGUIElement* parent, LM_Viewer_Window* win, s32 id, core::rect<s32> rectangle)
+LM_Viewer_Panel::LM_Viewer_Panel(IGUIEnvironment* environment, video::IVideoDriver* driver, IGUIElement* parent, s32 id, core::rect<s32> rectangle)
     : TestPanel_2D(environment, driver, parent, id, rectangle)
 {
-    my_window = win;
+    //my_window = win;
     vHorizontal = core::vector3df(0, 0, 1);
     vVertical = core::vector3df(1, 0, 0);
     vAxis = core::vector3df(0, 1, 0);
@@ -1293,7 +1293,7 @@ void Material_Buffers_Base::initialize()
     if (uv_edit)
         delete uv_edit;
 
-    uv_edit = new LM_Viewer_Panel(env, device->getVideoDriver(), NULL, NULL, 0, core::recti());
+    uv_edit = new LM_Viewer_Panel(env, device->getVideoDriver(), NULL, 0, core::recti());
     uv_edit->Initialize(g_scene);
 }
 

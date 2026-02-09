@@ -6,23 +6,18 @@
 
 #define PRINTV(x) << x.X <<","<<x.Y<<","<<x.Z<<" "
 
-REFLECT_STRUCT3_BEGIN(AreaLight_Module)
-	REFLECT_STRUCT_MEMBER(indices)
-	REFLECT_STRUCT_MEMBER(vertices)
-	REFLECT_STRUCT_MEMBER(lm_uvs)
-	REFLECT_STRUCT_MEMBER(bvh_nodes)
-	REFLECT_STRUCT_MEMBER(edges)
-	REFLECT_STRUCT_MEMBER(scratchpad)
-	REFLECT_STRUCT_MEMBER(area_lights)
-	REFLECT_STRUCT_MEMBER(images_in)
-	REFLECT_STRUCT_MEMBER(images_out)
-	REFLECT_STRUCT_MEMBER_FORWARD(images_in, images_out)
-REFLECT_STRUCT3_END()
 
-AreaLight_Module::AreaLight_Module(Vulkan_App* vulkan)
-	: Vulkan_Module(vulkan), configuration{ vulkan->configuration }
+
+AreaLight_Module::AreaLight_Module()
+	: Vulkan_Module()
 {
 	set_ptrs();
+}
+
+void AreaLight_Module::initialize(Vulkan_App* vulkan)
+{
+	Vulkan_Module::initialize(vulkan);
+	configuration = vulkan->configuration;
 
 	Geometry_Module* geo_mod = vulkan->geo_module;
 	Geometry_Assets* geo_assets = vulkan->geo_module->geo_assets;
@@ -39,10 +34,10 @@ AreaLight_Module::AreaLight_Module(Vulkan_App* vulkan)
 
 	materials = &configuration->get_materials();
 
-	reflect::connect(&geo_mod->vertices,&this->vertices);
-	reflect::connect(&geo_mod->indices,&this->indices);
-	reflect::connect(&geo_mod->lm_uvs,&this->lm_uvs);
-	reflect::connect(&geo_mod->bvh_nodes,&this->bvh_nodes);
+	reflect::connect(&geo_mod->vertices, &this->vertices);
+	reflect::connect(&geo_mod->indices, &this->indices);
+	reflect::connect(&geo_mod->lm_uvs, &this->lm_uvs);
+	reflect::connect(&geo_mod->bvh_nodes, &this->bvh_nodes);
 	reflect::connect(&geo_mod->edges, &this->edges);
 	reflect::connect(&geo_mod->scratchpad, &this->scratchpad);
 	reflect::connect(&geo_mod->area_lights, &this->area_lights);

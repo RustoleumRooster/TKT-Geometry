@@ -27,7 +27,9 @@ class Geometry_Module : public Vulkan_Module
 {
 public:
 
-	Geometry_Module(Vulkan_App* vulkan);
+	Geometry_Module();
+
+	virtual void initialize(Vulkan_App* vulkan);
 
 	void initBuffers();
 	void init_area_light_buffer();
@@ -60,18 +62,19 @@ public:
 
 	Geometry_Assets* geo_assets;
 
-	REFLECT3()
+	REFLECT_VKMOD()
 };
 
 class MultiImage_To_ImageArray_Module : public Vulkan_Module
 {
 public:
 
-	MultiImage_To_ImageArray_Module(Vulkan_App* vulkan)
-		: Vulkan_Module(vulkan), configuration{ vulkan->configuration }
+	MultiImage_To_ImageArray_Module()
 	{
 		set_ptrs();
 	}
+
+	virtual void initialize(Vulkan_App* vulkan);
 
 	virtual void run();
 	void createImages();
@@ -81,18 +84,19 @@ public:
 	reflect::input<vkMultiImageResource> images_in;
 	reflect::output<vkImageArrayResource> images_out;
 
-	REFLECT3()
+	REFLECT_VKMOD()
 };
 
 class ImageArray_To_MultiImage_Module : public Vulkan_Module
 {
 public:
 
-	ImageArray_To_MultiImage_Module(Vulkan_App* vulkan)
-		: Vulkan_Module(vulkan), configuration{ vulkan->configuration }
+	ImageArray_To_MultiImage_Module()
 	{
 		set_ptrs();
 	}
+
+	virtual void initialize(Vulkan_App* vulkan);
 
 	virtual void run();
 	void createImages();
@@ -102,18 +106,19 @@ public:
 	reflect::input<vkImageArrayResource> images_in;
 	reflect::output<vkMultiImageResource> images_out;
 	
-	REFLECT3()
+	REFLECT_VKMOD()
 };
 
 class MultiImage_Copy_Module : public Vulkan_Module
 {
 public:
 
-	MultiImage_Copy_Module(Vulkan_App* vulkan)
-		: Vulkan_Module(vulkan), configuration{ configuration }
+	MultiImage_Copy_Module()
 	{
 		set_ptrs();
 	}
+
+	virtual void initialize(Vulkan_App* vulkan);
 
 	virtual void run();
 	void createImages();
@@ -123,7 +128,7 @@ public:
 	reflect::input<vkMultiImageResource> images_in;
 	reflect::output<vkMultiImageResource> images_out;
 
-	REFLECT3()
+	REFLECT_VKMOD()
 };
 
 class Merge_Images_Module : public Vulkan_Module
@@ -135,11 +140,12 @@ class Merge_Images_Module : public Vulkan_Module
 
 public:
 
-	Merge_Images_Module(Vulkan_App* vulkan)
-		: Vulkan_Module(vulkan), configuration{ vulkan->configuration }
+	Merge_Images_Module()
 	{
 		set_ptrs();
 	}
+
+	virtual void initialize(Vulkan_App* vulkan);
 
 	void createDescriptorSetLayout();
 	void createDescriptorSets(int);
@@ -157,18 +163,19 @@ public:
 	reflect::input<vkMultiImageResource> images_in_1;
 	reflect::output<vkMultiImageResource> images_out;
 
-	REFLECT3()
+	REFLECT_VKMOD()
 };
 
 class Create_Lightmap_Images_Module : public Vulkan_Module
 {
 public:
 
-	Create_Lightmap_Images_Module(Vulkan_App* vulkan)
-		: Vulkan_Module(vulkan), configuration{ vulkan->configuration }
+	Create_Lightmap_Images_Module()
 	{
 		set_ptrs();
 	}
+
+	virtual void initialize(Vulkan_App* vulkan);
 
 	virtual void run();
 	void createImages();
@@ -177,18 +184,20 @@ public:
 
 	reflect::output<vkMultiImageResource> images_out;
 
-	REFLECT3()
+	REFLECT_VKMOD()
 };
 
 class Create_Texture_Images_Module : public Vulkan_Module
 {
 public:
 
-	Create_Texture_Images_Module(Vulkan_App* vulkan)
-		: Vulkan_Module(vulkan), configuration{ vulkan->configuration }, driver{ vulkan->driver }
+	Create_Texture_Images_Module()
 	{
 		set_ptrs();
 	}
+
+	virtual void initialize(Vulkan_App* vulkan);
+
 	~Create_Texture_Images_Module();
 
 	virtual void run();
@@ -202,7 +211,7 @@ public:
 
 	video::IVideoDriver* driver;
 
-	REFLECT3()
+	REFLECT_VKMOD()
 };
 
 class Lightmap_Edges_Module : public Vulkan_Module
@@ -214,11 +223,12 @@ class Lightmap_Edges_Module : public Vulkan_Module
 
 public:
 
-	Lightmap_Edges_Module(Vulkan_App* vulkan)
-		: Vulkan_Module(vulkan), configuration{ vulkan->configuration }
+	Lightmap_Edges_Module()
 	{
 		set_ptrs();
 	}
+
+	virtual void initialize(Vulkan_App* vulkan);
 
 	void createDescriptorSetLayout();
 	void createDescriptorSets(int);
@@ -234,17 +244,18 @@ public:
 	reflect::input<vkMultiImageResource> images_in;
 	reflect::output<vkMultiImageResource> images_out;
 
-	REFLECT3()
+	REFLECT_VKMOD()
 };
 
 class Load_Textures_Module : public Vulkan_Module
 {
 public:
-	Load_Textures_Module(Vulkan_App* vulkan)
-		: Vulkan_Module(vulkan), configuration{ vulkan->configuration }, driver{ vulkan->driver }
+	Load_Textures_Module()
 	{
 		set_ptrs();
 	}
+
+	virtual void initialize(Vulkan_App* vulkan);
 
 	virtual void run() override;
 	void createImages();
@@ -263,11 +274,12 @@ public:
 class Download_Textures_Module : public Vulkan_Module
 {
 public:
-	Download_Textures_Module(Vulkan_App* vulkan)
-		:Vulkan_Module(vulkan), configuration{ vulkan->configuration }, driver{ vulkan->driver }
+	Download_Textures_Module()
 	{
 		set_ptrs();
 	}
+
+	virtual void initialize(Vulkan_App* vulkan);
 
 	virtual void run() override;
 
@@ -280,18 +292,19 @@ public:
 
 	bool bFlip = false;
 
-	REFLECT3()
+	REFLECT_VKMOD()
 };
 
 class Download_TextureArray_Module : public Vulkan_Module
 {
 public:
 
-	Download_TextureArray_Module(Vulkan_App* vulkan)
-		: Vulkan_Module(vulkan), configuration{ vulkan->configuration }, driver{vulkan->driver}
+	Download_TextureArray_Module()
 	{
 		set_ptrs();
 	}
+
+	virtual void initialize(Vulkan_App* vulkan);
 
 	virtual void run() override;
 
@@ -304,7 +317,7 @@ public:
 
 	bool bFlip = false;
 
-	REFLECT3()
+	REFLECT_VKMOD()
 };
 
 

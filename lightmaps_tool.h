@@ -45,7 +45,7 @@ class GeometryStack;
 class LM_Viewer_Panel : public TestPanel_2D
 {
 public:
-    LM_Viewer_Panel(gui::IGUIEnvironment* environment, video::IVideoDriver* driver, gui::IGUIElement* parent, LM_Viewer_Window* win, s32 id, core::rect<s32> rectangle);
+    LM_Viewer_Panel(gui::IGUIEnvironment* environment, video::IVideoDriver* driver, gui::IGUIElement* parent, s32 id, core::rect<s32> rectangle);
     ~LM_Viewer_Panel();
 
     virtual scene::ICameraSceneNode* getCamera();
@@ -90,7 +90,7 @@ protected:
     
     TextureImage* my_image = NULL;
 
-    LM_Viewer_Window* my_window = NULL;
+    //LM_Viewer_Window* my_window = NULL;
     //LM_Viewer_Base* my_base = NULL;
     GeometryStack* uv_scene = NULL;
     std::vector<int> faces;

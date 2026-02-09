@@ -40,10 +40,10 @@ class Sunlight_Module : public Vulkan_Module
 	};
 
 public:
-	Sunlight_Module(Vulkan_App* vulkan) : 
-		Vulkan_Module(vulkan)
-	{
-	}
+	Sunlight_Module()
+	{}
+
+	virtual void initialize(Vulkan_App* vulkan);
 
 	void createComputePipeline();
 	void createDescriptorSetLayout();

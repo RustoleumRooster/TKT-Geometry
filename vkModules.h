@@ -15,21 +15,94 @@
 #include "vkBufferObject.h"
 #include "vkComputePipeline.h"
 #include "reflect_custom_types.h"
+#include <fstream>
 
 
 class GeometryStack;
 class geometry_scene;
 class MyDescriptorPool;
 class Lightmap_Configuration;
+class Download_Textures_Module;
+class Vulkan_Module;
 
 void Lightmap_Routine(geometry_scene*, Lightmap_Configuration*, std::vector<irr::video::ITexture*>&, Lightmap_Configuration*);
 
+
+class Reflected_Module;
 
 namespace reflect 
 {
 
 	struct input_type;
 	struct output_type;
+
+	struct TypeDescriptor_VkMod_Struct : TypeDescriptor_Struct
+	{
+		bool placeable;
+		//Reflected_SceneNode* (*create_func)(USceneNode* parent, geometry_scene*, irr::scene::ISceneManager* smgr, int id, const irr::core::vector3df& pos);
+		TypeDescriptor_VkMod_Struct(void (*init)(TypeDescriptor_Struct*));
+		Vulkan_Module* (*getNew)();
+	};
+
+	struct TypeDescriptor_VkMod_Reference : TypeDescriptor {
+		//TypeDescriptor* itemType;
+		const void* (*getItem)(const void*);
+		void* (*getItem_nc)(void*);
+
+		TypeDescriptor_VkMod_Reference() : TypeDescriptor{ "Ref", sizeof(char*) }
+		{
+			getItem = [](const void* ptr_to_ptr) -> const void* {
+				const Vulkan_Module* ptr = *(const Vulkan_Module**)ptr_to_ptr;
+				return (const void*)ptr;
+				};
+
+			getItem_nc = [](void* ptr_to_ptr) -> void* {
+				Vulkan_Module* ptr = *(Vulkan_Module**)ptr_to_ptr;
+				return (void*)ptr;
+				};
+		}
+
+		bool isNull(const void* obj) const
+		{
+			return getItem(obj) == NULL;
+		}
+
+		virtual std::string getFullName() const override {
+			return std::string("pointer<") +  ">";
+		}
+
+		virtual void dump(const void* obj, int indent/* unused */) const override;
+
+		virtual void serialize(std::ofstream& f, const void* obj) override;
+		virtual void deserialize(std::ifstream& f, void* obj) override;
+
+		virtual void addFormWidget(Reflected_GUI_Edit_Form*, TypeDescriptor_Struct*, std::vector<int> tree, size_t offset, bool bVisible, bool bEditable, int tab) override
+		{}
+	};
+
+#define REFLECT_VKMOD() \
+        virtual reflect::TypeDescriptor_Struct* GetDynamicReflection(); \
+        friend struct reflect::DefaultResolver; \
+        static reflect::TypeDescriptor_VkMod_Struct Reflection; \
+        static void initReflection(reflect::TypeDescriptor_Struct*); \
+		static Vulkan_Module* getNew();
+
+#define REFLECT_VKMOD_BEGIN(type) \
+        reflect::TypeDescriptor_VkMod_Struct type::Reflection{type::initReflection}; \
+		Vulkan_Module* type::getNew(){ \
+            return new type();\
+            }\
+        reflect::TypeDescriptor_Struct* type::GetDynamicReflection() {\
+            return &type::Reflection;\
+            }\
+        void type::initReflection(reflect::TypeDescriptor_Struct* typeDesc) { \
+            using T = type; \
+            typeDesc->name = #type; \
+            typeDesc->size = sizeof(T); \
+            typeDesc->inherited_type = NULL; \
+            typeDesc->name_func = NULL; \
+            typeDesc->alias = typeDesc->name;\
+			((reflect::TypeDescriptor_VkMod_Struct*)typeDesc)->getNew = type::getNew;
 
 #define REFLECT3() \
         virtual reflect::TypeDescriptor_Struct* GetDynamicReflection(); \
@@ -48,7 +121,7 @@ namespace reflect
             typeDesc->size = sizeof(T); \
             typeDesc->inherited_type = NULL; \
             typeDesc->name_func = NULL; \
-            typeDesc->alias = typeDesc->name;
+            typeDesc->alias = typeDesc->name;\
 
 #define REFLECT_STRUCT_MEMBER_FORWARD(name0,name1) \
 		int a = offsetof(T,name0);int b = offsetof(T,name1);\
@@ -65,6 +138,30 @@ namespace reflect
 
 #define REFLECT_STRUCT3_END() \
 		}
+
+#define REFLECT_VKMOD_END() \
+		}
+
+	//========================================================================================
+	//  FACTORY CLASS
+	//
+	//
+
+	class Vulkan_Reflection_Factory
+	{
+	public:
+
+		void addType(reflect::TypeDescriptor_VkMod_Struct*);
+		int getNumTypes();
+		reflect::TypeDescriptor_Struct* getNodeTypeDescriptorByName(std::string name);
+		//static Reflected_SceneNode* CreateNodeByTypeName(std::string name, USceneNode* parent, geometry_scene* geo_scene, irr::scene::ISceneManager* smgr);
+		int getTypeNum(reflect::TypeDescriptor_Struct*);
+		std::vector<reflect::TypeDescriptor_Struct*> getAllTypes() {
+			return Module_Types;
+		}
+	private:
+		std::vector<reflect::TypeDescriptor_Struct*> Module_Types;
+	};
 }
 
 enum {
@@ -459,15 +556,22 @@ enum
 	VK_MODULE_RAN
 };
 
+struct VkMod_Reference
+{
+	Vulkan_Module* X;
+};
+
 class Vulkan_Module
 {
 public:
 
-	Vulkan_Module(Vulkan_App* vulkan);
+	Vulkan_Module();
+
+	virtual void initialize(Vulkan_App* vulkan);
 
 	void createComputePipeline(const char* shader_path);
 
-	virtual void run() = 0;
+	virtual void run() {}
 	//bool load_resources();
 	bool all_resources_ready();
 	bool signaled();
@@ -487,7 +591,11 @@ public:
 	int my_status = VK_MODULE_NOT_RAN;
 	bool enabled = true;
 
-	REFLECT3()
+	static reflect::Vulkan_Reflection_Factory factory;
+
+	reflect::vector2i pos{ 0,0 };
+
+	REFLECT_VKMOD()
 };
 
 class Geometry_Module;
@@ -535,9 +643,30 @@ Vulkan_Module* Vulkan_App::create_module()
 	void* mem = malloc(descriptor->size);
 	T* module = (T*)mem;
 
-	new(module) T(this);
+	new(module) T();
+	module->initialize(this);
 
 	return module;
 }
+
+class Vulkan_Workflow
+{
+public:
+	~Vulkan_Workflow();
+
+	std::vector<VkMod_Reference> Modules;
+	Download_Textures_Module* texture_module = NULL;
+
+	std::vector<Vulkan_Module*> modules; //not reflected
+	void make_default_workflow();
+	void initialize_and_run(Vulkan_App* vulkan);
+
+	void save();
+	void load();
+
+	REFLECT()
+};
+
+
 
 #endif

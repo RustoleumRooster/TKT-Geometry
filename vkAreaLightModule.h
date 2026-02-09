@@ -44,7 +44,9 @@ class AreaLight_Module : public Vulkan_Module
 	};
 
 public:
-	AreaLight_Module(Vulkan_App*);
+	AreaLight_Module();
+
+	virtual void initialize(Vulkan_App* vulkan);
 
 	void createDescriptorSetLayout();
 	void createDescriptorSets(int);
@@ -96,6 +98,6 @@ public:
 
 	LineHolder graph;
 
-	REFLECT3()
+	REFLECT_VKMOD()
 };
 #endif

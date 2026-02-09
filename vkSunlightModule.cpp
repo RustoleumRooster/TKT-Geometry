@@ -3,6 +3,11 @@
 #include "LightMaps.h"
 
 
+void Sunlight_Module::initialize(Vulkan_App* vulkan)
+{
+	Vulkan_Module ::initialize(vulkan);
+}
+
 void Sunlight_Module::createDescriptorSets(int lightmap_n)
 {
 	MyDescriptorWriter writer(*descriptorSetLayout, *m_DescriptorPool);

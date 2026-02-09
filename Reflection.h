@@ -239,6 +239,10 @@ struct TypeDescriptor_Struct : TypeDescriptor {
    // TypeDescriptor_Struct(const char* name, size_t size, const std::initializer_list<Member>& init) : TypeDescriptor{nullptr, 0}, members{init} {
    // }
     virtual void dump(const void* obj, int indentLevel) const override {
+        if (inherited_type)
+        {
+            inherited_type->dump(obj, indentLevel);
+        }
         std::cout << name <<" "<<obj<<" {" << std::endl;
         for (const Member& member : members) {
             std::cout << std::string(4 * (indentLevel + 1), ' ') << member.name << " = ";
@@ -555,6 +559,7 @@ struct TypeDescriptor_StdVector : TypeDescriptor {
             std::cout << "{" << std::endl;
             for (size_t index = 0; index < numItems; index++) {
                 std::cout << std::string(4 * (indentLevel + 1), ' ') << "[" << index << "] ";
+                //std::cout << getItem(obj, index) << " ";
                 itemType->dump(getItem(obj, index), indentLevel + 1);
                 std::cout << std::endl;
             }
