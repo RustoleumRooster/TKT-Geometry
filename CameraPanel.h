@@ -98,6 +98,8 @@ public:
 
     core::dimension2d<u32> getSize() { return panel_size; }
 
+    core::list<IGUIElement*>& getChildren() { return this->Children; }
+
 private:
     s32 clickx;
     s32 clicky;
@@ -138,6 +140,7 @@ public:
     }
 
     void hookup_aux_panel(TestPanel* pan);
+    void hookup_fullscreen_panel(TestPanel* pan);
 
     core::vector3df get_fp_camera_pos();
     core::vector3df get_fp_camera_rot();
@@ -384,6 +387,10 @@ public:
     virtual void SetMeshNodesVisible();
 
     virtual bool GetScreenCoords(core::vector3df V, core::vector2di &out_coords);
+    virtual void startCameraPan(vector2di);
+    virtual void cameraPan(vector2di);
+
+    bool TestPanel_2D::Get3DPosFromScreenCoords(core::vector2di sreen_pos, core::vector3df& out_coords);
 
     core::dimension2du getViewSize() {
         return viewSize;
@@ -405,7 +412,10 @@ protected:
     core::vector3df vVertical;
     core::vector3df vAxis;
 
+    bool bZoomAllowed = true;
+
 private:
+
     bool GetOrthoScreenCoords(core::vector3df V, core::vector2di &out_coords);
     void delete_selected_brushes();
 
@@ -424,8 +434,12 @@ private:
     bool bRotateNode=false;
     bool bDragNode=false;
 
+    
+
     int selected_brush=0;
     std::vector<int> selections;
+
+    vector2di camera_movement;
 
     int m_axis=0;
     int grid_interval=16;

@@ -28,7 +28,11 @@ class Vulkan_Module;
 void Lightmap_Routine(geometry_scene*, Lightmap_Configuration*, std::vector<irr::video::ITexture*>&, Lightmap_Configuration*);
 
 
-class Reflected_Module;
+class Module_GUI_Element;
+class System_GUI_Element;
+class Light_System_Base;
+class CachedText;
+class AGG_TT_Font;
 
 namespace reflect 
 {
@@ -42,6 +46,11 @@ namespace reflect
 		//Reflected_SceneNode* (*create_func)(USceneNode* parent, geometry_scene*, irr::scene::ISceneManager* smgr, int id, const irr::core::vector3df& pos);
 		TypeDescriptor_VkMod_Struct(void (*init)(TypeDescriptor_Struct*));
 		Vulkan_Module* (*getNew)();
+
+		gui::IGUIElement* get_gui_element(System_GUI_Element* system, Light_System_Base* base, gui::IGUIEnvironment* environment, s32 id, core::rect<s32> rectangle, void* obj);
+		int addComponents(Light_System_Base*, gui::IGUIEnvironment*, gui::IGUIElement*, CachedText&, vector2di, void* obj);
+		int calculate_height();
+
 	};
 
 	struct TypeDescriptor_VkMod_Reference : TypeDescriptor {
@@ -284,6 +293,8 @@ std::vector<Vulkan_Module*>* get_all_vk_modules();
 
 Vulkan_Module* get_module_by_uid(std::vector<Vulkan_Module*>*, u64 uid);
 
+class Hookup_GUI_Element;
+
 namespace reflect
 {
 
@@ -293,6 +304,11 @@ namespace reflect
 	template <typename TY>
 	void connect(input<TY>* in, output<TY>* out);
 
+	struct inout_gui_type
+	{
+		Hookup_GUI_Element* m_gui_element = NULL;
+	};
+
 	struct output_type;
 
 	enum {
@@ -301,7 +317,7 @@ namespace reflect
 		INPUT_FINISHED
 	};
 
-	struct input_type
+	struct input_type : public inout_gui_type
 	{
 		//u64 my_uid = 0;
 		
@@ -323,7 +339,7 @@ namespace reflect
 		REFLECT3()
 	};
 
-	struct output_type
+	struct output_type : public inout_gui_type
 	{
 		//u64 my_uid = 0;
 		std::vector<u64> output_uids;

@@ -3,6 +3,8 @@
 #include "LightSystemTool.h"
 #include "GUI_tools.h"
 #include "vkModules.h"
+#include "edit_classes.h"
+#include "ex_gui_elements.h"
 
 using namespace irr;
 using namespace gui;
@@ -12,36 +14,48 @@ extern IrrlichtDevice* device;
 Light_System_Base* Light_System_Tool::base = NULL;
 multi_tool_panel* Light_System_Tool::panel = NULL;
 
+
+
+
+//======================================================
+// System_GUI_Element
+//
+
+
+
+System_GUI_Element::System_GUI_Element(Light_System_Base* base, gui::IGUIEnvironment* environment, IGUIElement* parent, s32 id, core::rect<s32> rectangle)
+    : IGUIElement(EGUIET_ELEMENT, environment, parent, id, rectangle), my_base{base}
+{
+
+}
+
+System_GUI_Element::~System_GUI_Element()
+{
+
+}
+
+void System_GUI_Element::draw()
+{
+    
+    gui::IGUIElement::draw();
+
+    my_base->draw_text();
+    my_base->draw_lines();
+}
+
+bool System_GUI_Element::OnEvent(const SEvent& event)
+{
+    return gui::IGUIElement::OnEvent(event);
+}
+
 //======================================================
 // Module_GUI_Element
 //
 
-class Module_GUI_Element : public gui::IGUIElement
-{
-public:
-    //! constructor
-    Module_GUI_Element(IGUIEnvironment* environment, IGUIElement* parent, s32 id, core::rect<s32> rectangle);
 
-    //! destructor
-    virtual ~Module_GUI_Element();
 
-    virtual void draw();
-
-    virtual bool OnEvent(const SEvent& event);
-
-    void left_click();
-
-    std::wstring text;
-    vector2di click_pos;
-    vector2di drag_pos;
-    bool bDragging = false;
-    bool bMouseDown = false;
-    Vulkan_Module* m_module = NULL;
-
-};
-
-Module_GUI_Element::Module_GUI_Element(IGUIEnvironment* environment, IGUIElement* parent, s32 id, core::rect<s32> rectangle)
-    : IGUIElement(EGUIET_ELEMENT, environment, parent, id, rectangle)
+Module_GUI_Element::Module_GUI_Element(Light_System_Base* base, IGUIEnvironment* environment, IGUIElement* parent, s32 id, core::rect<s32> rectangle)
+    : IGUIElement(EGUIET_ELEMENT, environment, parent, id, rectangle), my_base{base}
 {
 
 }
@@ -90,6 +104,12 @@ bool Module_GUI_Element::OnEvent(const SEvent& event)
     return IGUIElement::OnEvent(event);
 }
 
+void Module_GUI_Element::resize(core::dimension2di nsize)
+{
+    this->DesiredRect = recti{ this->RelativeRect.UpperLeftCorner,nsize };
+    this->updateAbsolutePosition();
+}
+
 void Module_GUI_Element::left_click()
 {
 }
@@ -103,15 +123,393 @@ void Module_GUI_Element::draw()
     video::IVideoDriver* driver = Environment->getVideoDriver();
 
     skin->draw3DToolBar(this,
-        AbsoluteRect,
+       AbsoluteRect,
         &AbsoluteClippingRect);
 
-    recti r(0, 0, 128, 32);
+    IGUIElement::draw();
+}
 
-    gui::IGUIStaticText* stxt = Environment->addStaticText(text.c_str(),
-        r, false, false, this, -1);
+void Module_GUI_Element::move(vector2di d)
+{
+    m_module->pos.X += d.X;
+    m_module->pos.Y += d.Y;
+
+    my_base->cached_texts[0]->pos[module_index] += d;
+    my_base->cached_texts[1]->pos[module_index] += d;
+    //my_base->cached_texts->move(module_index, d);
+    this->Parent->move(d);
+
+    //IGUIElement::move(d);
+}
+
+//======================================================
+// Hookup_GUI_Element
+//
+
+
+
+Hookup_GUI_Element::Hookup_GUI_Element(Light_System_Base* base, IGUIEnvironment* environment, IGUIElement* parent, s32 id, core::rect<s32> rectangle)
+    : IGUIElement(EGUIET_ELEMENT, environment, parent, id, rectangle), my_base{ base }
+{
+
+}
+
+void Hookup_GUI_Element::draw()
+{
+    gui::IGUISkin* skin = Environment->getSkin();
+    video::IVideoDriver* driver = Environment->getVideoDriver();
+
+    if(bMouseDown)
+    {
+        ((MySkin*)skin)->draw3DButtonPanePressed(this,
+            AbsoluteRect,
+            &my_base->m_panel->getViewPanel()->getAbsoluteClippingRect());
+    }
+    else
+    {
+        ((MySkin*)skin)->draw3DButtonPaneStandard(this,
+            AbsoluteRect,
+            &my_base->m_panel->getViewPanel()->getAbsoluteClippingRect());
+    }
 
     IGUIElement::draw();
+}
+
+bool Hookup_GUI_Element::OnEvent(const SEvent& event)
+{
+    if (event.EventType == EET_MOUSE_INPUT_EVENT)
+    {
+        vector2di mouse_pos = vector2di{ event.MouseInput.X,event.MouseInput.Y };
+
+        switch (event.MouseInput.Event)
+        {
+        case EMIE_LMOUSE_LEFT_UP:
+            bMouseDown = false;
+            if (mouse_pos == click_pos)
+            {
+                left_click();
+            }
+            break;
+        case EMIE_LMOUSE_PRESSED_DOWN:
+            click_pos = mouse_pos;
+
+            if (!bMouseDown)
+            {
+                bMouseDown = true;
+            }
+            break;
+        }
+
+        return true;
+    }
+
+    return IGUIElement::OnEvent(event);
+}
+
+void Hookup_GUI_Element::left_click()
+{
+}
+
+/*
+void Hookup_GUI_Element::move(vector2di d)
+{
+}
+*/
+
+//======================================================
+// Vulkan Module
+//
+
+int reflect::TypeDescriptor_VkMod_Struct::calculate_height()
+{
+    int h = 8;
+    int n_inputs = 0;
+
+    for (reflect::Member& m : this->members)
+    {
+        reflect::TypeDescriptor_Struct* m_tD = (reflect::TypeDescriptor_Struct*)m.type;
+
+        if (m_tD->inherited_type == &reflect::input_type::Reflection)
+        {
+        h += 20;
+        n_inputs++;
+        }
+    }
+
+    if(n_inputs > 0)
+        h += 8;
+
+    for (reflect::Member& m : this->members)
+    {
+        reflect::TypeDescriptor_Struct* m_tD = (reflect::TypeDescriptor_Struct*)m.type;
+
+        if (m_tD->inherited_type == &reflect::output_type::Reflection)
+        {
+            h += 20;
+        }
+    }
+
+    h += 2;
+
+    return h;
+}
+
+int reflect::TypeDescriptor_VkMod_Struct::addComponents(Light_System_Base* base, gui::IGUIEnvironment* env, IGUIElement* module_base_element, CachedText& cache, vector2di module_pos, void* obj)
+{
+    dimension2di size{ 128,0 };
+
+    int h = 8;
+    int n_inputs = 0;
+    int idx = 0;
+
+    for (reflect::Member& m : this->members)
+    {
+        reflect::TypeDescriptor_Struct* m_tD = (reflect::TypeDescriptor_Struct*)m.type;
+
+        if (m_tD->inherited_type == &reflect::input_type::Reflection)
+        {
+            reflect::input_type* in = (reflect::input_type*)m.get(obj);
+
+            std::string sname;
+
+            if (m.alias)
+                sname = m.alias;
+            else
+                sname = m.name;
+
+            position2di pos{ -18, h };
+
+            Hookup_GUI_Element* hookup = new Hookup_GUI_Element(base, env, module_base_element, -1, recti(pos + position2di{ 16,16 }, dimension2di{ 16,16 }));
+            hookup->member_idx = idx;
+            hookup->drop();
+
+            in->m_gui_element = hookup;
+            hookup->m_inout = in;
+            
+            h += 20;
+            n_inputs++;
+
+            base->font->getCachedText(cache, std::wstring(sname.begin(), sname.end()).c_str(), module_pos + position2di{ 0, h }, dimension2di{ 128,32 }, TKT_ALIGN_LEFT);
+        }
+        idx++;
+    }
+
+    if (n_inputs > 0)
+        h += 8;
+
+    idx = 0;
+    for (reflect::Member& m : this->members)
+    {
+        reflect::TypeDescriptor_Struct* m_tD = (reflect::TypeDescriptor_Struct*)m.type;
+
+        if (m_tD->inherited_type == &reflect::output_type::Reflection)
+        {
+            reflect::output_type* out = (reflect::output_type*)m.get(obj);
+
+            std::string sname;
+
+            if (m.alias)
+                sname = m.alias;
+            else
+                sname = m.name;
+
+            //position2di pos{ -18, h };
+            position2di pos{ (int)size.Width + 2, h };
+
+            Hookup_GUI_Element* hookup = new Hookup_GUI_Element(base, env, module_base_element, -1, recti(pos + position2di{ 16,16 }, dimension2di{ 16,16 }));
+            hookup->member_idx = idx;
+            hookup->drop();
+
+            h += 20;
+            base->font->getCachedText(cache, std::wstring(sname.begin(), sname.end()).c_str(), module_pos + position2di{ 0, h }, dimension2di{ 128,32 }, TKT_ALIGN_RIGHT);
+
+            out->m_gui_element = hookup;
+            hookup->m_inout = out;
+        }
+        idx++;
+    }
+
+    h += 2;
+
+    return h;
+}
+
+IGUIElement* reflect::TypeDescriptor_VkMod_Struct::get_gui_element(System_GUI_Element* system, Light_System_Base* base, gui::IGUIEnvironment* env, s32 id, core::rect<s32> rectangle, void* obj)
+{
+    vector2di pos = vector2di{ ((Vulkan_Module*)obj)->pos };
+
+    int h = calculate_height();
+
+    recti r0{ recti(pos - position2di{16,16}, dimension2du{128,(u32)h} + dimension2du{32,32}) };
+
+    IGUIElement* module_base_element = new IGUIElement(EGUIET_ELEMENT, env, system, -1, r0);
+    module_base_element->drop();
+
+    Module_GUI_Element* element = new Module_GUI_Element(base, env, module_base_element, -1, recti(position2di{ 16,16 }, dimension2du{ 128,128 }));
+
+    dimension2di size = dimension2di{ 128,128 };
+    std::string mod_name;
+
+    if (this->alias)
+        mod_name = this->alias;
+    else
+        mod_name = (this->name);
+
+    wstring wname = wstring(mod_name.begin(), mod_name.end());
+
+    CachedText cache0;
+    base->font->getCachedText(cache0, wname.c_str(), pos, dimension2di{ 128,32 }, TKT_ALIGN_LEFT);
+
+    CachedText cache1;
+    addComponents(base,env,module_base_element,cache1,pos,obj);
+    size.Height = h;
+    element->resize(size);
+
+    base->cached_texts[0]->cache(cache0, position2di{ 0,-24 });
+    base->cached_texts[1]->cache(cache1, position2di{ 0,-24 });
+
+    element->text = wname;
+    element->m_module = (Vulkan_Module*)obj;
+    element->drop();
+
+    return element;
+    
+}
+
+//======================================================
+// Widget
+//
+
+void Light_System_Widget::show()
+{
+    core::rect<s32> pr(0, 0, getRelativePosition().getWidth(), getRelativePosition().getHeight());
+    edit_panel = new gui::IGUIElement(gui::EGUIET_ELEMENT, Environment, this, -1, pr);
+
+    OK_BUTTON_ID = my_ID + 1;
+
+    my_widget = new Reflected_Widget_EditArea(Environment, edit_panel, g_scene, my_base, my_ID + 2, pr);
+    my_widget->show(false, my_base->getObj());
+
+    int ypos = my_widget->getEditAreaHeight() + 8;
+
+    ypos += 24;
+
+
+    my_base->setWidgetHeight(ypos);
+
+    core::rect<s32> tr = core::rect<s32>(32, ypos, getRelativePosition().getWidth() - 80, ypos + 24);
+
+    my_button = new Flat_Button(Environment, this, OK_BUTTON_ID, tr);
+    my_button->setText(L"Ok");
+
+    edit_panel->drop();
+    my_widget->drop();
+
+}
+
+void Light_System_Widget::click_OK()
+{
+    my_base->save_workflow();
+    cout << "click!\n";
+}
+
+void Light_System_Widget::onRefresh()
+{
+    //Display options
+
+    int ypos = my_widget->getEditAreaHeight() + 8;
+
+    core::rect<s32> pr2(0, ypos, getRelativePosition().getWidth(), ypos + 120);
+
+
+    core::rect<s32> tr = core::rect<s32>(32, ypos, getRelativePosition().getWidth() - 80, ypos + 24);
+
+    my_button = new Flat_Button(Environment, this, OK_BUTTON_ID, tr);
+    my_button->setText(L"Ok");
+
+    my_base->setWidgetHeight(ypos);
+}
+
+bool Light_System_Widget::OnEvent(const SEvent& event)
+{
+    if (event.EventType == EET_USER_EVENT)
+    {
+        if (event.UserEvent.UserData1 == USER_EVENT_REFLECTED_FORM_REFRESHED)
+        {
+            onRefresh();
+
+            return true;
+        }
+    }
+    else if (event.EventType == EET_GUI_EVENT)
+    {
+        s32 id = event.GUIEvent.Caller->getID();
+
+        if (event.GUIEvent.EventType == EGET_BUTTON_CLICKED)
+        {
+            if (event.GUIEvent.Caller == (gui::IGUIElement*)my_button)
+            {
+                click_OK();
+                return true;
+            }
+            else
+            {
+                FormField* field = my_widget->form->getFieldFromId(id);
+
+                if (field)
+                {
+                    if (field->getButtonType() == FORM_FIELD_LABEL)
+                    {
+                        std::vector<int> leaf = field->tree_pos;
+                        leaf.push_back(0); //node_class_item.id
+
+                        reflect::Member* m = my_widget->m_typeDesc->getTreeNode(leaf);
+                        size_t offset = my_widget->m_typeDesc->getTreeNodeOffset(leaf);
+
+                        int sel;
+
+                        m->type->copy(&sel, (char*)((char*)my_widget->temp_object) + offset);
+
+                        //my_base->select(sel);
+
+                        //my_widget->refresh();
+                        //onRefresh();
+
+                        MyEventReceiver* event_receiver = (MyEventReceiver*)device->getEventReceiver();
+                        SEvent event;
+                        event.EventType = EET_USER_EVENT;
+                        event.UserEvent.UserData1 = USER_EVENT_MATERIAL_GROUP_SELECTION_CHANGED;
+                        event_receiver->OnEvent(event);
+
+                        return true;
+                    }
+                }
+            }
+            return true;
+        }
+        else if (event.GUIEvent.EventType == EGET_CHECKBOX_CHANGED)
+        {
+            //options_form->write(my_base->getOptions());
+            my_base->refresh_panel_view();
+        }
+    }
+
+    return IGUIElement::OnEvent(event);
+}
+
+Light_System_Widget::Light_System_Widget(gui::IGUIEnvironment* env, gui::IGUIElement* parent, Light_System_Base* base, s32 id, core::rect<s32> rect)
+    : gui::IGUIElement(gui::EGUIET_ELEMENT, env, parent, id, rect), my_base(base), my_ID(id)
+{
+    MyEventReceiver* receiver = (MyEventReceiver*)device->getEventReceiver();
+    receiver->Register(this);
+}
+
+Light_System_Widget::~Light_System_Widget()
+{
+    MyEventReceiver* receiver = (MyEventReceiver*)device->getEventReceiver();
+    receiver->UnRegister(this);
+
+    my_base->close_uv_panel();
 }
 
 
@@ -174,25 +572,29 @@ void LM_System_Panel::clear_childern()
         m_viewPanel->removeChild(*it);
 }
 
-void LM_System_Panel::cameraPan(vector2di mov)
+void LM_System_Panel::startCameraPan(vector2di r)
 {
-    core::list<IGUIElement*>::Iterator it = m_viewPanel->getChildren().begin();
-    for (; it != m_viewPanel->getChildren().end(); ++it)
-    {
-        (*it)->move(-mov);
-    }
-}
-/*
-void LM_System_Panel::showTriangles(bool bShowTriangles)
-{
-    bShowBrushes = bShowTriangles;
+    cameraDragStartPos = vector2di{ 0,0 };
 }
 
-void LM_System_Panel::showLightmap(bool bShowLightmap)
+void LM_System_Panel::cameraPan(vector2di mov)
 {
-    bRenderLightmap = bShowLightmap;
+    core::list<IGUIElement*>::ConstIterator it = system_gui_element->getChildren().begin();
+
+    for (; it != system_gui_element->getChildren().end(); ++it)
+    {
+        (*it)->move(mov - cameraDragStartPos);
+    }
+
+    for(int i=0;i< m_base->cached_texts[0]->pos.size();i++)
+    {
+        m_base->cached_texts[0]->pos[i] += mov - cameraDragStartPos;
+        m_base->cached_texts[1]->pos[i] += mov - cameraDragStartPos;
+    }
+
+    cameraDragStartPos = mov;
 }
-*/
+
 scene::ICameraSceneNode* LM_System_Panel::getCamera()
 {
     if (this->camera == NULL)
@@ -209,64 +611,6 @@ scene::ICameraSceneNode* LM_System_Panel::getCamera()
     }
     return this->camera;
 }
-/*
-void LM_System_Panel::showMaterialGroup(int mg_n)
-{
-    if (uv_scene)
-    {
-        uv_scene->elements.clear();
-        faces.clear();
-
-        polyfold* pf = geo_scene->geoNode()->get_total_geometry();
-
-        const vector<TextureMaterial>& mat_groups = geo_scene->geoNode()->final_meshnode_interface.get_materials_used();
-
-        if (mg_n < mat_groups.size())
-        {
-            current_mat_group = mg_n;
-
-            for (const Lightmap_Block& b : mat_groups[mg_n].blocks)
-            {
-                int offset = geo_scene->geoNode()->get_element_by_id(b.element_id)->surfaces[b.surface_no].face_index_offset;
-                for (int f_i : b.faces)
-                {
-                    make_face(pf, f_i + offset, NULL);
-                    faces.push_back(f_i + offset);
-                }
-            }
-
-            vector<int> selection = geo_scene->getSelectedFaces();
-            for (int i = 0; i < faces.size(); i++)
-            {
-                for (int f_j : selection)
-                {
-                    if (f_j == faces[i] && i < uv_scene->elements.size())
-                    {
-                        uv_scene->elements[i].bSelected = true;
-                    }
-                }
-            }
-
-            if (bRenderLightmap)
-            {
-
-                if (my_image)
-                    delete my_image;
-                my_image = NULL;
-
-                //vector<video::ITexture*>& lm_textures = Lightmaps_Tool::get_manager()->lightmap_textures;
-                const vector<video::ITexture*>& lm_textures = geo_scene->geoNode()->get_lightmap_config().get_textures();
-
-                if (mat_groups[mg_n].lightmap_no < lm_textures.size() && mat_groups[mg_n].has_lightmap
-                    && lm_textures[mat_groups[mg_n].lightmap_no] != NULL)
-                {
-                    my_image = new TextureImage(lm_textures[mat_groups[mg_n].lightmap_no]);
-                }
-            }
-        }
-    }
-}
-*/
 bool LM_System_Panel::OnEvent(const SEvent& event)
 {
     switch (event.EventType)
@@ -344,9 +688,7 @@ void LM_System_Panel::render()
     driver->setMaterial(someMaterial);
 
     //if (bShowGrid)
-    this->drawGrid(driver, someMaterial);
-
-    
+    //this->drawGrid(driver, someMaterial);
 
     driver->setRenderTarget(0, true, true, video::SColor(0, 0, 0, 0));
 }
@@ -391,6 +733,8 @@ void LM_System_Panel::setAxis(int axis)
 
 void Light_System_Base::initialize()
 {
+    m_typeDescriptor = (reflect::TypeDescriptor_Struct*)reflect::TypeResolver<lm_system_struct>::get();
+
     if (m_panel)
         delete m_panel;
 
@@ -411,7 +755,7 @@ void Light_System_Base::refresh_panel_view()
     {
         if (m_panel->hooked_up() == false)
         {
-            cameraQuad->hookup_aux_panel(m_panel);
+            cameraQuad->hookup_fullscreen_panel(m_panel);
         }/*
         else if (mb_options.show_uv_view == false && m_panel->hooked_up() == true)
         {
@@ -420,9 +764,6 @@ void Light_System_Base::refresh_panel_view()
 
         if (m_panel->hooked_up() == true)
         {
-            //m_panel->showTriangles(mb_options.show_triangles);
-            //m_panel->showLightmap(mb_options.show_lightmap);
-
             MyEventReceiver* event_receiver = (MyEventReceiver*)device->getEventReceiver();
             SEvent event;
             event.EventType = EET_USER_EVENT;
@@ -434,16 +775,44 @@ void Light_System_Base::refresh_panel_view()
 
         if (m_panel->getViewPanel())
         {
-            for (Reflected_Module& mod : modules)
+            recti r{ position2di{0,0}, m_panel->getViewPanel()->getAbsoluteClippingRect().getSize() };
+            
+            System_GUI_Element* system_element = new System_GUI_Element(this, env, m_panel->getViewPanel(), -1, r);
+            system_element->drop();
+
+            m_panel->system_gui_element = system_element;
+
+            int i = 0;
+            for (Vulkan_Module* mod : workflow->modules)
             {
-                Module_GUI_Element* element = new Module_GUI_Element(env, m_panel->getViewPanel(), -1, recti(mod.pos, mod.size));
-                element->text = mod.name;
-                element->m_module = mod.m_module;
-                m_panel->getViewPanel()->bringToFront(element);
-                element->drop();
+                reflect::TypeDescriptor_VkMod_Struct* tD = (reflect::TypeDescriptor_VkMod_Struct*)mod->GetDynamicReflection();
+                Module_GUI_Element* element = (Module_GUI_Element * )tD->get_gui_element(system_element, this, env, -1, recti(position2di{ 16,16 }, dimension2du{ 128,128 }),mod);
+
+                element->module_index = i;
+                i++;
+            }
+
+            for (Vulkan_Module* mod : workflow->modules)
+            {
+                typedef std::pair<Hookup_GUI_Element*, Hookup_GUI_Element*> hookup_pair;
+                reflect::TypeDescriptor_VkMod_Struct* tD = (reflect::TypeDescriptor_VkMod_Struct*)mod->GetDynamicReflection();
+
+                for (reflect::Member& m : tD->members)
+                {
+                    reflect::TypeDescriptor_Struct* m_tD = (reflect::TypeDescriptor_Struct*)m.type;
+
+                    if (m_tD->inherited_type == &reflect::output_type::Reflection)
+                    {
+                        reflect::output_type* out = (reflect::output_type*)m.get(mod);
+
+                        for (reflect::input_type* in : out->dest_inputs)
+                        {
+                            this->gui_connections.push_back(hookup_pair(in->m_gui_element, out->m_gui_element));
+                        }
+                    }
+                }
             }
         }
-
     }
 }
 
@@ -453,6 +822,12 @@ void Light_System_Base::init_member(reflect::TypeDescriptor_Struct* flat_typeDes
 
 void Light_System_Base::write_attributes(reflect::TypeDescriptor_Struct* flat_typeDescriptor)
 {
+}
+
+void Light_System_Base::save_workflow()
+{
+    workflow->save();
+    cout << "workflow saved\n";
 }
 
 Light_System_Base::~Light_System_Base()
@@ -465,19 +840,65 @@ void Light_System_Base::show()
         delete workflow;
 
     workflow = new Vulkan_Workflow();
-    workflow->load();
+    workflow->make_default_workflow();
+    //workflow->load();
     
-    modules.clear();
+    //modules.clear();
 
-    for (Vulkan_Module* mod : workflow->modules)
-    {
-        std::string str(mod->GetDynamicReflection()->name);
-        vector2di pos = vector2di(10 + mod->pos.X, 10 + mod->pos.Y);
-        //vector2di pos = vector2di(10, 10);
-        modules.push_back(Reflected_Module{ wstring(str.begin(),str.end()), pos, dimension2du{128,128},mod});
-    }
+    cached_texts[0] = new CachedText_Manager((AGG_TT_Font*)env->getSkin()->getFont());
+    cached_texts[1] = new CachedText_Manager((AGG_TT_Font*)env->getSkin()->getFont());
+
+    core::rect<s32> client_rect(core::vector2di(0, 0),
+        core::dimension2du(this->panel->getClientRect()->getAbsolutePosition().getWidth(),
+            this->panel->getClientRect()->getAbsolutePosition().getHeight()));
+
+    Light_System_Widget* widget = new Light_System_Widget(env, this->panel->getClientRect(), this, GUI_ID_LIGHT_SYSTEM_BASE, client_rect);
+
+    widget->show();
+    widget->drop();
     
     refresh_panel_view();
+
+    cached_texts[0]->fill_positions();
+    cached_texts[1]->fill_positions();
+}
+
+s32 Light_System_Base::getWidgetHeight()
+{
+    return widget_total_height;
+}
+
+void Light_System_Base::setWidgetHeight(s32 h)
+{
+    widget_total_height = h;
+}
+
+void Light_System_Base::draw_text()
+{
+    const rect<s32> panel_rect = m_panel->getViewPanel()->getAbsoluteClippingRect();
+    cached_texts[0]->draw(panel_rect.UpperLeftCorner, video::SColor(255, 80, 80, 80), &panel_rect);
+    cached_texts[1]->draw(panel_rect.UpperLeftCorner, video::SColor(255, 70, 70, 160), &panel_rect);
+}
+
+
+void Light_System_Base::draw_lines()
+{
+    typedef std::pair<Hookup_GUI_Element*, Hookup_GUI_Element*> hookup_pair;
+
+    for (hookup_pair& hookup : gui_connections)
+    {
+        vector3df pos0;
+        vector3df pos1;
+
+       // this->m_panel->Get3DPosFromScreenCoords(hookup.first->getRelativePosition().UpperLeftCorner, pos0);
+       // this->m_panel->Get3DPosFromScreenCoords(hookup.first->getRelativePosition().UpperLeftCorner, pos1);
+        if(hookup.first && hookup.second)
+        {
+            vector2di pos0 = hookup.first->getAbsolutePosition().UpperLeftCorner + vector2di{ 8,8 };
+            vector2di pos1 = hookup.second->getAbsolutePosition().UpperLeftCorner + vector2di{ 8,8 };
+            device->getVideoDriver()->draw2DLine(pos0, pos1, video::SColor(50, 150, 100, 255));
+        }
+    }
 }
 
 void Light_System_Base::set_scene(geometry_scene* gs)
@@ -488,40 +909,7 @@ void Light_System_Base::set_scene(geometry_scene* gs)
         m_panel->set_scene(gs);
 }
 
-void Reflected_Module::addComponents(reflect::TypeDescriptor_Struct* typeDescriptor, Vulkan_Module* obj)
-{
-    for (reflect::Member& m : typeDescriptor->members)
-    {
-        reflect::TypeDescriptor_Struct* m_tD = (reflect::TypeDescriptor_Struct*)m.type;
+REFLECT_STRUCT_BEGIN(lm_system_struct)
+    REFLECT_STRUCT_MEMBER(aVariable)
+REFLECT_STRUCT_END()
 
-        if (m_tD->inherited_type == &reflect::input_type::Reflection)
-        {
-            reflect::input_type* in = (reflect::input_type*)m.get(this);
-
-            std::string name(m.alias);
-
-            inputs.push_back(module_connector{ std::wstring(name.begin(),name.end()) });
-        }
-        else if (m_tD->inherited_type == &reflect::output_type::Reflection)
-        {
-            reflect::output_type* out = (reflect::output_type*)m.get(this);
-
-            std::string name(m.alias);
-
-            outputs.push_back(module_connector{ std::wstring(name.begin(),name.end()) });
-        }
-    }
-}
-
-Module_GUI_Element* Reflected_Module::get_GUI_Element(IGUIEnvironment* env, IGUIElement* parent, s32 id)
-{
-
-    size.Width = 128;
-    size.Height = 64 + 24*(inputs.size()+outputs.size());
-
-    Module_GUI_Element* element = new Module_GUI_Element(env, parent, -1, recti{position2di{0,0},size});
-    element->text = name;
-    element->drop();
-
-    return element;
-}

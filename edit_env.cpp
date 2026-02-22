@@ -25,6 +25,7 @@
 #include "material_groups.h"
 #include "RenderTargetsTool.h"
 #include "SceneTool.h"
+#include "LightSystemTool.h"
 
 #include <sstream>
 
@@ -324,6 +325,11 @@ void OnMenuItemSelected(IGUIContextMenu* menu)
     case GUI_ID_MENU_VIEW_SCENE_INSTANCES:
     {
         Scene_Instances_Tool::show();
+        break;
+    }
+    case GUI_ID_MENU_VIEW_LIGHT_SYSTEM:
+    {
+        Light_System_Tool::show();
         break;
     }
     case GUI_ID_MENU_VIEW_GEOSETTINGS:
@@ -798,6 +804,7 @@ void GUI_layout::menu_layout()
     submenu->addItem(L"Editor Settings", GUI_ID_MENU_VIEW_GEOSETTINGS, true, false, false, false);
     submenu->addItem(L"UV Editor", GUI_ID_MENU_VIEW_UV_EDITOR, true, false, false, false);
     submenu->addItem(L"Scene Instances", GUI_ID_MENU_VIEW_SCENE_INSTANCES, true, false, false, false);
+    submenu->addItem(L"Light System", GUI_ID_MENU_VIEW_LIGHT_SYSTEM, true, false, false, false);
 
     VToolBar* bar = new VToolBar(env, main_panel, -1, core::rect<s32>(0, 0, 10, 10));
 

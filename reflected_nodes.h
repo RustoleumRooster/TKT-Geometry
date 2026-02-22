@@ -77,6 +77,13 @@ namespace reflect
             Y = v.Y;
         }
 
+        operator core::vector2di() const {
+            core::vector2di ret;
+            ret.X = X;
+            ret.Y = Y;
+            return ret;
+        }
+
         REFLECT()
     };
 

@@ -177,10 +177,6 @@ void Vulkan_App::cleanup()
 	}
 }
 
-REFLECT_VKMOD_BEGIN(Vulkan_Module)
-	REFLECT_STRUCT_MEMBER(pos);
-REFLECT_STRUCT3_END()
-
 Vulkan_Module::Vulkan_Module()
 	: vulkan{ vulkan }
 {
@@ -1242,6 +1238,10 @@ namespace reflect
 		return 0;
 	}
 }
+
+REFLECT_VKMOD_BEGIN(Vulkan_Module)
+	REFLECT_STRUCT_MEMBER(pos);
+REFLECT_STRUCT3_END()
 
 REFLECT_STRUCT_BEGIN(Vulkan_Workflow)
 	REFLECT_STRUCT_MEMBER(Modules)

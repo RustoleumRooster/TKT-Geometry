@@ -204,6 +204,7 @@ void Geometry_Module::run()
 //
 
 REFLECT_VKMOD_BEGIN(Create_Lightmap_Images_Module)
+	ALIAS("Create Lightmap Images")
 	INHERIT_FROM(Vulkan_Module)
 	REFLECT_STRUCT_MEMBER(images_out)
 REFLECT_VKMOD_END()
@@ -246,6 +247,7 @@ void Create_Lightmap_Images_Module::createImages()
 //
 
 REFLECT_VKMOD_BEGIN(MultiImage_To_ImageArray_Module)
+	ALIAS("Images to Image Array")
 	INHERIT_FROM(Vulkan_Module)
 	REFLECT_STRUCT_MEMBER(images_in)
 	REFLECT_STRUCT_MEMBER(images_out)
@@ -298,6 +300,7 @@ void MultiImage_To_ImageArray_Module::createImages()
 }
 
 REFLECT_VKMOD_BEGIN(ImageArray_To_MultiImage_Module)
+	ALIAS("Image Array to Images")
 	INHERIT_FROM(Vulkan_Module)
 	REFLECT_STRUCT_MEMBER(images_in)
 	REFLECT_STRUCT_MEMBER(images_out)
@@ -352,6 +355,7 @@ void ImageArray_To_MultiImage_Module::createImages()
 //
 
 REFLECT_VKMOD_BEGIN(MultiImage_Copy_Module)
+	ALIAS("Copy Images")
 	INHERIT_FROM(Vulkan_Module)
 	REFLECT_STRUCT_MEMBER(images_in)
 	REFLECT_STRUCT_MEMBER(images_out)
@@ -397,6 +401,7 @@ void MultiImage_Copy_Module::run()
 //
 
 REFLECT_VKMOD_BEGIN(Create_Texture_Images_Module)
+	ALIAS("Create Textures")
 	INHERIT_FROM(Vulkan_Module)
 	REFLECT_STRUCT_MEMBER(images_out)
 REFLECT_VKMOD_END()
@@ -543,6 +548,7 @@ void Load_Textures_Module::destroyImages()
 //
 
 REFLECT_VKMOD_BEGIN(Download_Textures_Module)
+	ALIAS("Download Textures")
 	INHERIT_FROM(Vulkan_Module)
 	REFLECT_STRUCT_MEMBER(images_in)
 REFLECT_VKMOD_END()
@@ -595,6 +601,7 @@ void Download_Textures_Module::run()
 //
 
 REFLECT_VKMOD_BEGIN(Download_TextureArray_Module)
+	ALIAS("Download Textures [Array]")
 	INHERIT_FROM(Vulkan_Module)
 	REFLECT_STRUCT_MEMBER(images_in)
 REFLECT_VKMOD_END()
@@ -645,6 +652,7 @@ void Download_TextureArray_Module::run()
 //
 
 REFLECT_VKMOD_BEGIN(Lightmap_Edges_Module)
+	ALIAS("Edge Correction")
 	INHERIT_FROM(Vulkan_Module)
 	REFLECT_STRUCT_MEMBER(images_in)
 	REFLECT_STRUCT_MEMBER(images_out)
@@ -805,6 +813,7 @@ void Lightmap_Edges_Module::createComputePipeline()
 //
 
 REFLECT_VKMOD_BEGIN(Merge_Images_Module)
+	ALIAS("Merge Images")
 	INHERIT_FROM(Vulkan_Module)
 	REFLECT_STRUCT_MEMBER(images_in_0)
 	REFLECT_STRUCT_MEMBER(images_in_1)
