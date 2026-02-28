@@ -308,6 +308,43 @@ void Vulkan_Module::set_ptrs()
 	}
 }
 
+reflect::input_type* Vulkan_Module::get_input_by_name(std::string str)
+{
+	reflect::TypeDescriptor_Struct* tD = GetDynamicReflection();
+
+	//tD->dump((void*)this, 0);
+
+	reflect::TypeDescriptor* input_tD = reflect::TypeResolver<reflect::input_type>::get();
+	reflect::TypeDescriptor* output_tD = reflect::TypeResolver<reflect::output_type>::get();
+	
+	for (reflect::Member& m : tD->members)
+	{
+		reflect::TypeDescriptor_Struct* m_tD = (reflect::TypeDescriptor_Struct*)m.type;
+
+		if (strcmp(m.name, str.c_str()) == 0)
+		{
+			return (reflect::input_type*)m.get(this);
+		}
+		/*
+		if (m_tD->inherited_type == input_tD)
+		{
+			reflect::input_type* in = (reflect::input_type*)m.get(this);
+			in->owner = this;
+
+			if (m.forward_output != 0xFF)
+			{
+				reflect::Member& forward_m = tD->members[m.forward_output];
+				in->forward_output = (reflect::output_type*)forward_m.get(this);
+			}
+		}
+		else if (m_tD->inherited_type == output_tD)
+		{
+			reflect::output_type* out = (reflect::output_type*)m.get(this);
+			out->owner = this;
+		}*/
+	}
+}
+
 Vulkan_Module* get_module_by_uid(std::vector<Vulkan_Module*>* modules, u64 uid)
 {
 	for (Vulkan_Module* m : *modules)
@@ -1194,6 +1231,65 @@ namespace reflect
 	}
 }
 
+namespace reflect
+{
+	void TypeDescriptor_VkWorkflow_Struct::serialize(std::ofstream& f, const void* obj)
+	{
+		TypeDescriptor_Struct::serialize(f, obj);
+	}
+
+	void TypeDescriptor_VkWorkflow_Struct::deserialize(std::ifstream& f, void* obj)
+	{
+		TypeDescriptor_Struct::deserialize(f, obj);
+
+		Vulkan_Workflow* workflow = (Vulkan_Workflow*)obj;
+
+		//Set input/output pointers
+		for (VkMod_Reference& m : workflow->Modules)
+		{
+			Vulkan_Module* mod = m.X;
+
+			reflect::TypeDescriptor_Struct* tD = mod->GetDynamicReflection();
+
+			//tD->dump((void*)mod,0);
+
+			for (reflect::Member& m : tD->members)
+			{
+				reflect::TypeDescriptor_Struct* m_tD = (reflect::TypeDescriptor_Struct*)m.type;
+
+				if (m_tD->inherited_type == &reflect::output_type::Reflection)
+				{
+					reflect::output_type* out = (reflect::output_type*)m.get(mod);
+					
+					for (int i=0; i<out->output_uids.size() ; i++)
+					{
+						Vulkan_Module* mod2 = workflow->get_module_by_uid(out->output_uids[i]);
+						if (mod2)
+						{
+							//reflect::input_type* in = (reflect::input_type *)mod2->get_inout_by_name(out->output_member[i]);
+							//reflect::inout_gui_type* in_ = mod2->get_input_by_name(out->output_member[i]);
+							reflect::input_type* in = mod2->get_input_by_name(out->output_member[i]);
+							if (in)
+							{
+								out->dest_inputs.push_back(in);
+								in->src_output = out;
+							}
+							else
+							{
+								cout << "could not find " << out->output_member[i] << "\n";
+							}
+						}
+						else
+						{
+							cout << "could not find " << out->output_uids[i] << "\n";
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
 //
 //============================================================================
 //  REFLECTED MODULE FACTORY CLASS
@@ -1241,8 +1337,9 @@ namespace reflect
 
 REFLECT_VKMOD_BEGIN(Vulkan_Module)
 	REFLECT_STRUCT_MEMBER(pos);
+	REFLECT_STRUCT_MEMBER(m_uid);
 REFLECT_STRUCT3_END()
 
-REFLECT_STRUCT_BEGIN(Vulkan_Workflow)
+REFLECT_VK_WORKFLOW_BEGIN(Vulkan_Workflow)
 	REFLECT_STRUCT_MEMBER(Modules)
 REFLECT_STRUCT_END()

@@ -43,6 +43,7 @@ void Vulkan_Workflow::make_default_workflow()
 	ImageArray_To_MultiImage_Module* link2 = new ImageArray_To_MultiImage_Module();
 	MultiImage_To_ImageArray_Module* link3 = new MultiImage_To_ImageArray_Module();
 
+	
 	Modules.push_back(VkMod_Reference{ create_images });
 	Modules.push_back(VkMod_Reference{ arealights });
 	Modules.push_back(VkMod_Reference{ edges });
@@ -114,7 +115,7 @@ void Vulkan_Workflow::save()
 	}
 
 	reflect::TypeDescriptor_Struct* tD = &Vulkan_Workflow::Reflection;
-	tD->dump(this, 0);
+	//tD->dump(this, 0);
 	tD->serialize(wf, this);
 
 }
@@ -131,7 +132,7 @@ void Vulkan_Workflow::load()
 
 	reflect::TypeDescriptor_Struct* tD = &Vulkan_Workflow::Reflection;
 	tD->deserialize(rf, this);
-	tD->dump(this, 0);
+	//tD->dump(this, 0);
 
 	modules.clear();
 	for (VkMod_Reference& ref : Modules)

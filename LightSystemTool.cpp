@@ -40,7 +40,7 @@ void System_GUI_Element::draw()
     gui::IGUIElement::draw();
 
     my_base->draw_text();
-    my_base->draw_lines();
+    //my_base->draw_lines();
 }
 
 bool System_GUI_Element::OnEvent(const SEvent& event)
@@ -252,6 +252,36 @@ int reflect::TypeDescriptor_VkMod_Struct::calculate_height()
     h += 2;
 
     return h;
+}
+
+reflect::input_type* reflect::TypeDescriptor_VkMod_Struct::get_input0(void* obj)
+{
+    for (reflect::Member& m : this->members)
+    {
+        reflect::TypeDescriptor_Struct* m_tD = (reflect::TypeDescriptor_Struct*)m.type;
+
+        if (m_tD->inherited_type == &reflect::input_type::Reflection)
+        {
+            return (reflect::input_type*)m.get(obj);
+        }
+    }
+
+    return nullptr;
+}
+
+reflect::output_type* reflect::TypeDescriptor_VkMod_Struct::get_output0(void* obj)
+{
+    for (reflect::Member& m : this->members)
+    {
+        reflect::TypeDescriptor_Struct* m_tD = (reflect::TypeDescriptor_Struct*)m.type;
+
+        if (m_tD->inherited_type == &reflect::output_type::Reflection)
+        {
+            return (reflect::output_type*)m.get(obj);
+        }
+    }
+
+    return nullptr;
 }
 
 int reflect::TypeDescriptor_VkMod_Struct::addComponents(Light_System_Base* base, gui::IGUIEnvironment* env, IGUIElement* module_base_element, CachedText& cache, vector2di module_pos, void* obj)
@@ -680,12 +710,16 @@ void LM_System_Panel::render()
 
     video::SMaterial someMaterial;
     someMaterial.Lighting = false;
-    someMaterial.Thickness = 1.0;
+    someMaterial.Thickness = 2.0;
     someMaterial.MaterialType = video::EMT_SOLID;
+    //someMaterial.
 
+    
 
     driver->setTransform(video::ETS_WORLD, core::IdentityMatrix);
     driver->setMaterial(someMaterial);
+
+    this->m_base->draw_lines(driver);
 
     //if (bShowGrid)
     //this->drawGrid(driver, someMaterial);
@@ -786,30 +820,52 @@ void Light_System_Base::refresh_panel_view()
             for (Vulkan_Module* mod : workflow->modules)
             {
                 reflect::TypeDescriptor_VkMod_Struct* tD = (reflect::TypeDescriptor_VkMod_Struct*)mod->GetDynamicReflection();
-                Module_GUI_Element* element = (Module_GUI_Element * )tD->get_gui_element(system_element, this, env, -1, recti(position2di{ 16,16 }, dimension2du{ 128,128 }),mod);
+                
+                if (!(tD->flags & REFLECT_VKMOD_FLAG_TRANSITION_MODULE))
+                {
+                    Module_GUI_Element* element = (Module_GUI_Element*)tD->get_gui_element(system_element, this, env, -1, recti(position2di{ 16,16 }, dimension2du{ 128,128 }), mod);
 
-                element->module_index = i;
-                i++;
+                    element->module_index = i;
+                    i++;
+                }
             }
 
             for (Vulkan_Module* mod : workflow->modules)
             {
                 typedef std::pair<Hookup_GUI_Element*, Hookup_GUI_Element*> hookup_pair;
                 reflect::TypeDescriptor_VkMod_Struct* tD = (reflect::TypeDescriptor_VkMod_Struct*)mod->GetDynamicReflection();
-
-                for (reflect::Member& m : tD->members)
+                
+                //normal connections
+                if (!(tD->flags & REFLECT_VKMOD_FLAG_TRANSITION_MODULE))
                 {
-                    reflect::TypeDescriptor_Struct* m_tD = (reflect::TypeDescriptor_Struct*)m.type;
-
-                    if (m_tD->inherited_type == &reflect::output_type::Reflection)
+                    for (reflect::Member& m : tD->members)
                     {
-                        reflect::output_type* out = (reflect::output_type*)m.get(mod);
+                        reflect::TypeDescriptor_Struct* m_tD = (reflect::TypeDescriptor_Struct*)m.type;
 
-                        for (reflect::input_type* in : out->dest_inputs)
+                        if (m_tD->inherited_type == &reflect::output_type::Reflection)
                         {
-                            this->gui_connections.push_back(hookup_pair(in->m_gui_element, out->m_gui_element));
+                            reflect::output_type* out = (reflect::output_type*)m.get(mod);
+
+                            for (reflect::input_type* in : out->dest_inputs)
+                            {
+                                this->gui_connections.push_back(hookup_pair(in->m_gui_element, out->m_gui_element));
+                            }
                         }
+
+
                     }
+                }
+                else //connections that have a hidden transition module
+                {
+                    reflect::output_type* out0 = tD->get_output0(mod);
+                    reflect::input_type* in0 = out0->dest_inputs[0];
+                    
+                    reflect::input_type* in1 = tD->get_input0(mod);
+                    reflect::output_type* out1 = in1->src_output;
+
+                    this->gui_connections.push_back(hookup_pair(in0->m_gui_element, out1->m_gui_element));
+
+                    cout << "new connection\n";
                 }
             }
         }
@@ -840,8 +896,8 @@ void Light_System_Base::show()
         delete workflow;
 
     workflow = new Vulkan_Workflow();
-    workflow->make_default_workflow();
-    //workflow->load();
+    //workflow->make_default_workflow();
+    workflow->load();
     
     //modules.clear();
 
@@ -881,7 +937,7 @@ void Light_System_Base::draw_text()
 }
 
 
-void Light_System_Base::draw_lines()
+void Light_System_Base::draw_lines(video::IVideoDriver* driver)
 {
     typedef std::pair<Hookup_GUI_Element*, Hookup_GUI_Element*> hookup_pair;
 
@@ -894,9 +950,11 @@ void Light_System_Base::draw_lines()
        // this->m_panel->Get3DPosFromScreenCoords(hookup.first->getRelativePosition().UpperLeftCorner, pos1);
         if(hookup.first && hookup.second)
         {
-            vector2di pos0 = hookup.first->getAbsolutePosition().UpperLeftCorner + vector2di{ 8,8 };
-            vector2di pos1 = hookup.second->getAbsolutePosition().UpperLeftCorner + vector2di{ 8,8 };
-            device->getVideoDriver()->draw2DLine(pos0, pos1, video::SColor(50, 150, 100, 255));
+            vector2di panel_offset = m_panel->getViewPanel()->getAbsolutePosition().UpperLeftCorner;
+            vector2di pos0 = hookup.first->getAbsolutePosition().UpperLeftCorner + vector2di{ 8,8 } - panel_offset;
+            vector2di pos1 = hookup.second->getAbsolutePosition().UpperLeftCorner + vector2di{ 8,8 } - panel_offset;
+            driver->draw2DLine(pos0, pos1, video::SColor(255, 180, 100, 120));
+          //driver->draw3DLine(vector3df{ (f32)pos0.X+100,-100,(f32)pos0.Y+100 }, vector3df{ (f32)pos1.X-100,-100,(f32)pos1.Y-100 }, video::SColor(50, 150, 100, 255));
         }
     }
 }

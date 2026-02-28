@@ -40,17 +40,40 @@ namespace reflect
 	struct input_type;
 	struct output_type;
 
+	struct TypeDescriptor_VkWorkflow_Struct : TypeDescriptor_Struct
+	{
+		bool placeable;
+		//Reflected_SceneNode* (*create_func)(USceneNode* parent, geometry_scene*, irr::scene::ISceneManager* smgr, int id, const irr::core::vector3df& pos);
+		TypeDescriptor_VkWorkflow_Struct(void (*init)(TypeDescriptor_Struct*))
+			: TypeDescriptor_Struct(init)
+		{}
+
+		virtual void serialize(std::ofstream& f, const void* obj) override;
+		// {
+		//		TypeDescriptor_Struct::serialize(f, obj);
+		//}
+
+		virtual void deserialize(std::ifstream& f, void* obj) override;
+		//{
+		//	TypeDescriptor_Struct::deserialize(f, obj);
+		//}
+
+
+	};
+
 	struct TypeDescriptor_VkMod_Struct : TypeDescriptor_Struct
 	{
 		bool placeable;
 		//Reflected_SceneNode* (*create_func)(USceneNode* parent, geometry_scene*, irr::scene::ISceneManager* smgr, int id, const irr::core::vector3df& pos);
 		TypeDescriptor_VkMod_Struct(void (*init)(TypeDescriptor_Struct*));
 		Vulkan_Module* (*getNew)();
+		int flags;
 
 		gui::IGUIElement* get_gui_element(System_GUI_Element* system, Light_System_Base* base, gui::IGUIEnvironment* environment, s32 id, core::rect<s32> rectangle, void* obj);
 		int addComponents(Light_System_Base*, gui::IGUIEnvironment*, gui::IGUIElement*, CachedText&, vector2di, void* obj);
 		int calculate_height();
-
+		input_type* get_input0(void* obj);
+		output_type* get_output0(void* obj);
 	};
 
 	struct TypeDescriptor_VkMod_Reference : TypeDescriptor {
@@ -113,6 +136,10 @@ namespace reflect
             typeDesc->alias = typeDesc->name;\
 			((reflect::TypeDescriptor_VkMod_Struct*)typeDesc)->getNew = type::getNew;
 
+
+#define REFLECT_VKMOD_FLAG(f) \
+			((reflect::TypeDescriptor_VkMod_Struct*)typeDesc)->flags |= f;
+
 #define REFLECT3() \
         virtual reflect::TypeDescriptor_Struct* GetDynamicReflection(); \
         friend struct reflect::DefaultResolver; \
@@ -150,6 +177,27 @@ namespace reflect
 
 #define REFLECT_VKMOD_END() \
 		}
+
+#define REFLECT_VK_WORKFLOW() \
+        virtual reflect::TypeDescriptor_Struct* GetDynamicReflection(); \
+        friend struct reflect::DefaultResolver; \
+        static reflect::TypeDescriptor_VkWorkflow_Struct Reflection; \
+        static void initReflection(reflect::TypeDescriptor_Struct*); 
+
+#define REFLECT_VK_WORKFLOW_BEGIN(type) \
+        reflect::TypeDescriptor_VkWorkflow_Struct type::Reflection{type::initReflection}; \
+        reflect::TypeDescriptor_Struct* type::GetDynamicReflection() {\
+            return &type::Reflection;\
+            }\
+        void type::initReflection(reflect::TypeDescriptor_Struct* typeDesc) { \
+            using T = type; \
+            typeDesc->name = #type; \
+            typeDesc->size = sizeof(T); \
+            typeDesc->inherited_type = NULL; \
+            typeDesc->name_func = NULL; \
+            typeDesc->alias = typeDesc->name;
+
+	#define REFLECT_VKMOD_FLAG_TRANSITION_MODULE	2
 
 	//========================================================================================
 	//  FACTORY CLASS
@@ -594,6 +642,8 @@ public:
 	void run_and_push();
 	void set_ptrs();
 
+	reflect::input_type* get_input_by_name(std::string);
+
 	Vulkan_App* vulkan = NULL;
 	MyDevice* m_device = NULL;
 	MyDescriptorPool* m_DescriptorPool = NULL;
@@ -671,7 +721,7 @@ public:
 	~Vulkan_Workflow();
 
 	std::vector<VkMod_Reference> Modules;
-	Download_Textures_Module* texture_module = NULL;
+	Download_Textures_Module* texture_module = NULL; //not reflected
 
 	std::vector<Vulkan_Module*> modules; //not reflected
 	void make_default_workflow();
@@ -680,9 +730,18 @@ public:
 	void save();
 	void load();
 
-	REFLECT()
-};
+	Vulkan_Module* get_module_by_uid(u64 uid)
+	{
+		for (VkMod_Reference& m : Modules)
+		{
+			if (m.X->m_uid == uid)
+				return m.X;
+		}
+		return NULL;
+	}
 
+	REFLECT_VK_WORKFLOW()
+};
 
 
 #endif

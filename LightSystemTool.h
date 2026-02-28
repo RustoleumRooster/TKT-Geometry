@@ -224,7 +224,7 @@ public:
     void setWidgetHeight(s32);
 
     void draw_text();
-    void draw_lines();
+    void draw_lines(video::IVideoDriver*);
 //private:
 
 
