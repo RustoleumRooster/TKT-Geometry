@@ -818,25 +818,7 @@ void geometry_scene::setSelectedFaces_ShiftAdd(int new_sel)
 }
 
 void geometry_scene::setSelectedNodes_ShiftAdd(Reflected_SceneNode* new_sel)
-{
-    bool b = false;
-    std::vector<Reflected_SceneNode*> selection;
-
-    for(Reflected_SceneNode* n : getSelectedNodes())
-    {
-        if(n == new_sel)
-        {
-            b = true;
-        }
-        else
-            selection.push_back(n);
-    }
-
-    if(!b)
-        selection.push_back(new_sel);
-
-    setSelectedNodes(selection);
-}
+    { setSelected_ShiftAdd(new_sel); }
 
 void geometry_scene::setSelectedFaces(std::vector<int> selection, bool force)
 {
@@ -882,36 +864,25 @@ void geometry_scene::setSelectedFaces(std::vector<int> selection, bool force)
 
 }
 
-void geometry_scene::setSelectedNodes(std::vector<Reflected_SceneNode*> selection)
+void geometry_scene::onSelectionChanged(
+    const std::vector<Reflected_SceneNode*>&,
+    const std::vector<Reflected_SceneNode*>& new_sel)
 {
     auto IsInSelection = [&](Reflected_SceneNode* node) -> bool {
-        bool b = false;
-        for (Reflected_SceneNode* n: selection)
-        {
-            if (node == n)
-            {
-                b = true;
-                break;
-            }
-        }
-        return b;
-        };
-
-    for(ISceneNode* it : this->editor_nodes->getChildren())
+        for (Reflected_SceneNode* n : new_sel)
+            if (node == n) return true;
+        return false;
+    };
+    for (ISceneNode* it : this->editor_nodes->getChildren())
     {
         Reflected_SceneNode* node = (Reflected_SceneNode*)it;
-        if(IsInSelection(node))
-        {
-            node->Select();
-        }
-        else
-        {
-            node->UnSelect();
-        }
+        if (IsInSelection(node)) node->Select();
+        else node->UnSelect();
     }
-
-    this->selected_scene_nodes = selection;
 }
+
+void geometry_scene::setSelectedNodes(std::vector<Reflected_SceneNode*> selection)
+    { setSelected(selection); }
 
 
 void geometry_scene::selectSurfaceGroup()
@@ -1079,9 +1050,7 @@ std::vector<int> geometry_scene::getSelectedFaces()
 }
 
 std::vector<Reflected_SceneNode*> geometry_scene::getSelectedNodes()
-{
-    return this->selected_scene_nodes;
-}
+    { return getSelected(); }
 
 std::vector<int> geometry_scene::getBrushSelection()
 {
@@ -1606,7 +1575,7 @@ void geometry_scene::clear_scene()
 {
     this->selected_brushes.clear();
     this->selected_faces.clear();
-    this->selected_scene_nodes.clear();
+    setSelected({});
 
     core::list<scene::ISceneNode*> child_list = actual_nodes->getChildren();
     core::list<scene::ISceneNode*>::Iterator it = child_list.begin();
@@ -1684,12 +1653,12 @@ void geometry_scene::addSceneSelectedSceneNodeType(core::vector3df pos)
 
 void geometry_scene::deleteSelectedNodes()
 {
-    if (selected_scene_nodes.size() == 0)
+    if (getSelected().size() == 0)
         return;
 
     core::list<scene::ISceneNode*> child_list = editor_nodes->getChildren();
 
-    for (Reflected_SceneNode* n : selected_scene_nodes)
+    for (Reflected_SceneNode* n : getSelected())
     {
         core::list<scene::ISceneNode*>::Iterator it = child_list.begin();
         for (; it != child_list.end(); ++it)
@@ -1710,7 +1679,7 @@ void geometry_scene::deleteSelectedNodes()
         }
     }
 
-    selected_scene_nodes.clear();
+    setSelected({});
 
     selectionChanged();
 

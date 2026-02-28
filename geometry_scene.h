@@ -8,6 +8,7 @@
 #include "GeometryStack.h"
 #include "utils.h"
 #include "CameraPanel.h"
+#include "tkt_set.h"
 
 void print_geometry_ops_timers();
 void reset_geometry_ops_timers();
@@ -54,7 +55,7 @@ private:
     io::IFileSystem* FileSystem = NULL;
 };
 
-class geometry_scene : public irr::IEventReceiver
+class geometry_scene : public irr::IEventReceiver, public tkt_set<Reflected_SceneNode>
 {
 public:
 
@@ -139,6 +140,9 @@ public:
     void setSelectedNodes_ShiftAdd(Reflected_SceneNode*);
     std::vector<Reflected_SceneNode*> getSelectedNodes();
 
+    virtual void onSelectionChanged(const std::vector<Reflected_SceneNode*>& old_sel,
+                                    const std::vector<Reflected_SceneNode*>& new_sel) override;
+
     void calc_lighting_vectors();
 
     void deleteSelectedNodes();
@@ -190,7 +194,6 @@ private:
 
     std::vector<int> selected_brushes;
     std::vector<int> selected_faces;
-    std::vector<Reflected_SceneNode*> selected_scene_nodes;
     //int selected_triangle = 0;
     //vector3df last_click_coords{ vector3df(0,0,0) };
 

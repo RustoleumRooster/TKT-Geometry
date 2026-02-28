@@ -86,9 +86,9 @@ void Vulkan_Workflow::make_default_workflow()
 
 	reflect::connect(&merge_images2->images_out, &download_textures->images_in);
 
-	modules.clear();
+	items.clear();
 	for (VkMod_Reference& ref : Modules)
-		modules.push_back(ref.X);
+		items.push_back(ref.X);
 
 	texture_module = download_textures;
 }
@@ -134,9 +134,9 @@ void Vulkan_Workflow::load()
 	tD->deserialize(rf, this);
 	//tD->dump(this, 0);
 
-	modules.clear();
+	items.clear();
 	for (VkMod_Reference& ref : Modules)
-		modules.push_back(ref.X);
+		items.push_back(ref.X);
 
 }
 

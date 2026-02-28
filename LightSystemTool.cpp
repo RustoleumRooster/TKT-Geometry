@@ -817,7 +817,7 @@ void Light_System_Base::refresh_panel_view()
             m_panel->system_gui_element = system_element;
 
             int i = 0;
-            for (Vulkan_Module* mod : workflow->modules)
+            for (Vulkan_Module* mod : workflow->items)
             {
                 reflect::TypeDescriptor_VkMod_Struct* tD = (reflect::TypeDescriptor_VkMod_Struct*)mod->GetDynamicReflection();
                 
@@ -830,7 +830,7 @@ void Light_System_Base::refresh_panel_view()
                 }
             }
 
-            for (Vulkan_Module* mod : workflow->modules)
+            for (Vulkan_Module* mod : workflow->items)
             {
                 typedef std::pair<Hookup_GUI_Element*, Hookup_GUI_Element*> hookup_pair;
                 reflect::TypeDescriptor_VkMod_Struct* tD = (reflect::TypeDescriptor_VkMod_Struct*)mod->GetDynamicReflection();

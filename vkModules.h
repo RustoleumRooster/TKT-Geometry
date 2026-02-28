@@ -16,6 +16,7 @@
 #include "vkComputePipeline.h"
 #include "reflect_custom_types.h"
 #include <fstream>
+#include "tkt_set.h"
 
 
 class GeometryStack;
@@ -715,7 +716,7 @@ Vulkan_Module* Vulkan_App::create_module()
 	return module;
 }
 
-class Vulkan_Workflow
+class Vulkan_Workflow : public tkt_set<Vulkan_Module>
 {
 public:
 	~Vulkan_Workflow();
@@ -723,7 +724,6 @@ public:
 	std::vector<VkMod_Reference> Modules;
 	Download_Textures_Module* texture_module = NULL; //not reflected
 
-	std::vector<Vulkan_Module*> modules; //not reflected
 	void make_default_workflow();
 	void initialize_and_run(Vulkan_App* vulkan);
 
