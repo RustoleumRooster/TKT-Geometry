@@ -763,74 +763,78 @@ void Form_Cell::createElements(Reflected_GUI_Edit_Form* form)
 
     switch (element_type)
     {
-    case CELL_ELEMENT_LABEL:
+        case CELL_ELEMENT_LABEL:
+            {
+                gui::IGUIStaticText* stxt = env->addStaticText(text.c_str(),
+                    recti(0,0,draw_rect.getWidth(),draw_rect.getHeight()), false, false, cell_panel, ID);
+
+                cell_panel->my_element = stxt;
+                cell_panel->border = field->bBorder;
+                cell_panel->highlight = field->bHighlight;
+                cell_panel->can_select = field->getButtonType() != FORM_FIELD_NO_BUTTON;
+                stxt->setOverrideColor(color);
+
+                break;
+            }
+        case CELL_ELEMENT_TEXT_DATA:
         {
             gui::IGUIStaticText* stxt = env->addStaticText(text.c_str(),
-                recti(0,0,draw_rect.getWidth(),draw_rect.getHeight()), false, false, cell_panel, ID);
+                recti(0, 0, draw_rect.getWidth(), draw_rect.getHeight()), false, false, cell_panel, ID);
 
             cell_panel->my_element = stxt;
             cell_panel->border = field->bBorder;
-            cell_panel->highlight = field->bHighlight;
-            stxt->setOverrideColor(color);
+            cell_panel->highlight = false;
+            cell_panel->can_select = false;
+
+            stxt->setOverrideColor(video::SColor(255, 128, 190, 100));
 
             break;
         }
-    case CELL_ELEMENT_TEXT_DATA:
-    {
-        gui::IGUIStaticText* stxt = env->addStaticText(text.c_str(),
-            recti(0, 0, draw_rect.getWidth(), draw_rect.getHeight()), false, false, cell_panel, ID);
+        case CELL_ELEMENT_EDITBOX:
+            {
+                gui::IGUIEditBox* box = env->addEditBox(L"", recti(0, 0, draw_rect.getWidth(), draw_rect.getHeight()), false, cell_panel, ID);
 
-        cell_panel->my_element = stxt;
-        cell_panel->border = field->bBorder;
-        cell_panel->highlight = false;
+                box->setDrawBackground(false);
 
-        stxt->setOverrideColor(video::SColor(255, 128, 190, 100));
+                cell_panel->my_element = box;
+                cell_panel->border = true;
+                cell_panel->can_select = true;
+                cell_panel->highlight = field->bHighlight;
+                box->setOverrideColor(video::SColor(255, 128, 190, 100));
 
-        break;
-    }
-    case CELL_ELEMENT_EDITBOX:
-        {
-            gui::IGUIEditBox* box = env->addEditBox(L"", recti(0, 0, draw_rect.getWidth(), draw_rect.getHeight()), false, cell_panel, ID);
+                break;
+            }
+        case CELL_ELEMENT_CHECKBOX:
+            {
+            gui::IGUICheckBox* box = env->addCheckBox(false, recti(0, 0, draw_rect.getWidth(), draw_rect.getHeight()), cell_panel, ID);
 
             box->setDrawBackground(false);
 
             cell_panel->my_element = box;
-            cell_panel->border = true;
             cell_panel->can_select = true;
-            cell_panel->highlight = field->bHighlight;
-            box->setOverrideColor(video::SColor(255, 128, 190, 100));
+            break;
+            }
+        case CELL_ELEMENT_COMBOBOX:
+        {
+            vector2di pos = cell_panel->getRelativePosition().UpperLeftCorner;
 
+            //little hack to make sure it comes to the front when clicked... don't know why this is necessary
+            gui::IGUIComboBox* box = env->addComboBox( recti(pos, dimension2du(draw_rect.getWidth(), draw_rect.getHeight())), cell_panel->getParent(), ID + 1);
+
+            ComboBox_FormField* combo_ff = (ComboBox_FormField*)(field);
+
+            if(combo_ff)
+            {
+                for (int i = 0; i < combo_ff->items.size(); i++)
+                {
+                    box->addItem(combo_ff->items[i].c_str(), i);
+                }
+            }
             break;
         }
-    case CELL_ELEMENT_CHECKBOX:
-        {
-        gui::IGUICheckBox* box = env->addCheckBox(false, recti(0, 0, draw_rect.getWidth(), draw_rect.getHeight()), cell_panel, ID);
-
-        box->setDrawBackground(false);
-
-        cell_panel->my_element = box;
-        cell_panel->can_select = true;
-        break;
-        }
-    case CELL_ELEMENT_COMBOBOX:
-    {
-        vector2di pos = cell_panel->getRelativePosition().UpperLeftCorner;
-
-        //little hack to make sure it comes to the front when clicked... don't know why this is necessary
-        gui::IGUIComboBox* box = env->addComboBox( recti(pos, dimension2du(draw_rect.getWidth(), draw_rect.getHeight())), cell_panel->getParent(), ID + 1);
-
-        ComboBox_FormField* combo_ff = (ComboBox_FormField*)(field);
-
-        if(combo_ff)
-        {
-            for (int i = 0; i < combo_ff->items.size(); i++)
-            {
-                box->addItem(combo_ff->items[i].c_str(), i);
-            }
-        }
-        break;
     }
-    }
+
+    field->postCreateElement(form);
 
     cell_panel->drop();
 }
@@ -1021,6 +1025,11 @@ int String_StaticField::addWidget(Reflected_GUI_Edit_Form* win, int ID, int row)
     addStaticTextLabel(text, row, tab, ID);
 
     END_WIDGET()
+}
+
+int String_FormField::addWidget(Reflected_GUI_Edit_Form* win, int ID, int row)
+{
+    return 0;
 }
 
 void String_FormField::readValue(void* obj)
@@ -1488,11 +1497,13 @@ bool UID_Reference_FormField::clickButton(s32 id, reflected_tool_base* base)
 
         if (id == my_ID + 1)
         {
-            node_properties_base->choose_node_selection(this->tree_pos);
+            //TODO:
+            //node_properties_base->choose_node_selection(this->tree_pos);
         }
         else if (id == my_ID + 2)
         {
-            node_properties_base->clear_selection(this->tree_pos);
+            //TODO:
+            //node_properties_base->clear_selection(this->tree_pos);
         }
 
         return true;
@@ -1532,19 +1543,6 @@ int Pwr2_EditField::addWidget(Reflected_GUI_Edit_Form* win, int ID, int row)
     addStaticTextLabel(text, row, tab, ID);
 
     addStaticTextCell("0", row, 1, ID + 1);
-
-    core::recti r = win->getCell(row, 2);
-
-    core::recti r0 = r;
-    core::recti r1 = r;
-
-    u32 midpoint = r.UpperLeftCorner.X + (r.LowerRightCorner.X - r.UpperLeftCorner.X) * 0.5;
-
-    r0.LowerRightCorner.X = midpoint;
-    r1.UpperLeftCorner.X = midpoint;
-
-    env->addButton(r0, win, ID + 2, L"-");
-    env->addButton(r1, win, ID + 3, L"+");
 
     END_WIDGET()
 }
@@ -1589,6 +1587,12 @@ void Pwr2_FormField::clickButton(s32 id)
     }
 }
 
+int Pwr2_FormField::getDesiredFieldWidth()
+{
+    gui::IGUIEnvironment* env = device->getGUIEnvironment();
+    return env->getSkin()->getFont()->getDimension(L"012345678").Width;
+}
+
 void Pwr2_FormField::readValue(void* obj)
 {
     if (this->owner && obj && bVisible)
@@ -1612,6 +1616,28 @@ void Pwr2_EditField::writeValue(void* obj)
             *get(obj) = my_no;
         }
     }
+}
+
+void Pwr2_EditField::postCreateElement(Reflected_GUI_Edit_Form* win)
+{
+    video::IVideoDriver* driver = owner->getEnvironment()->getVideoDriver();
+    gui::IGUIEnvironment* env = device->getGUIEnvironment();
+
+    core::recti r = win->getCell(my_row, 1);
+
+    int len = env->getSkin()->getFont()->getDimension(L"012345").Width;
+    r.UpperLeftCorner.X += len;
+
+    core::recti r0 = r;
+    core::recti r1 = r;
+
+    u32 midpoint = r.UpperLeftCorner.X + (r.LowerRightCorner.X - r.UpperLeftCorner.X) * 0.5;
+
+    r0.LowerRightCorner.X = midpoint;
+    r1.UpperLeftCorner.X = midpoint;
+
+    env->addButton(r0, win, my_ID + 2, L"-");
+    env->addButton(r1, win, my_ID + 3, L"+");
 }
 
 int Pwr2_FormField::getHeight()
@@ -1744,7 +1770,7 @@ void Byte_FormField::readValue(void* obj)
 
 int Byte_FormField::getDesiredFieldWidth()
 {
-    return 0;
+    return 80;
 }
 
 void Byte_EditField::writeValue(void* obj)

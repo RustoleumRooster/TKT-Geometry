@@ -1,7 +1,12 @@
+#ifndef _EX_GUI_ELEMENTS_H_
+#define _EX_GUI_ELEMENTS_H_
+
 #include <irrlicht.h>
 #include "CGUIButton.h"
 #include "CGUISkin.h"
 #include <string>
+
+
 
 using namespace irr;
 
@@ -59,3 +64,5 @@ private:
     bool pressed = false;
     bool DrawBorder = true;
 };
+
+#endif

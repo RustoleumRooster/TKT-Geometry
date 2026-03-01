@@ -222,6 +222,7 @@ public:
     virtual int getButtonType() {return FORM_FIELD_NO_BUTTON;}
     virtual int getDesiredLabelWidth();
     virtual int getDesiredFieldWidth();
+    virtual void postCreateElement(Reflected_GUI_Edit_Form*) {}
     virtual bool clickButton(s32 id, reflected_tool_base*) { return false; } /*Only return true if this will cause panel to unshow*/
     virtual void clickButton(s32 id) {}
     virtual void copy(void*, void*) {}
@@ -438,7 +439,9 @@ public:
     virtual void writeValue(void* obj) {}
     virtual int getHeight();
     virtual int getButtonType() { return FORM_FIELD_BUTTON; }
+    virtual void postCreateElement(Reflected_GUI_Edit_Form*) override {}
    // virtual bool clickButton(s32 id, reflected_tool_base*) override;
+    virtual int getDesiredFieldWidth() override;
     virtual void clickButton(s32 id) override;
     virtual int getNumIds() override { return 4; }
 
@@ -460,6 +463,7 @@ public:
 class Pwr2_EditField : public Pwr2_FormField
 {
 public:
+    virtual void postCreateElement(Reflected_GUI_Edit_Form*);
     virtual void setActive(int);
     virtual int addWidget(Reflected_GUI_Edit_Form* win, int ID, int ypos);
     virtual void writeValue(void* obj);
