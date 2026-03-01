@@ -773,58 +773,27 @@ void Reflected_MeshBuffer_Water_SceneNode::set_connected(bool b)
 }
 
 
-//
 //============================================================================
 //  REFLECTED NODE FACTORY CLASS
 //
 //
 
-namespace reflect 
+namespace reflect
 {
     TypeDescriptor_SN_Struct::TypeDescriptor_SN_Struct(void (*init)(TypeDescriptor_Struct*)) : reflect::TypeDescriptor_Struct(init)
     {
-        Reflected_SceneNode_Factory::addType(this);
+        Reflected_SceneNode::factory.addType(this);
     }
-}
-
-void Reflected_SceneNode_Factory::addType(reflect::TypeDescriptor_SN_Struct* typeDesc)
-{
-    SceneNode_Types.push_back(typeDesc);
-}
-
-int Reflected_SceneNode_Factory::getNumTypes()
-{
-    return SceneNode_Types.size();
-}
-
-reflect::TypeDescriptor_Struct* Reflected_SceneNode_Factory::getNodeTypeDescriptorByName(std::string name)
-{
-    for (reflect::TypeDescriptor_Struct* typeDesc : SceneNode_Types)
-    {
-        if (typeDesc->name == name)
-            return typeDesc;
-    }
-    return NULL;
 }
 
 Reflected_SceneNode* Reflected_SceneNode_Factory::CreateNodeByTypeName(std::string name, USceneNode* parent, geometry_scene* geo_scene, ISceneManager* smgr)
 {
-    for (reflect::TypeDescriptor_Struct* typeDesc : SceneNode_Types)
+    for (reflect::TypeDescriptor_Struct* typeDesc : getAllTypes())
     {
         if (typeDesc->name == name)
             return ((reflect::TypeDescriptor_SN_Struct*)typeDesc)->create_func(parent, geo_scene, smgr, -1, core::vector3df(0, 0, 0));
     }
     return NULL;
-}
-
-int Reflected_SceneNode_Factory::getTypeNum(reflect::TypeDescriptor_Struct* td)
-{
-    for (int i = 0; i < SceneNode_Types.size(); i++)
-    {
-        if (SceneNode_Types[i] == td)
-            return i;
-    }
-    return 0;
 }
 
 

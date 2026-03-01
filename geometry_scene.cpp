@@ -475,10 +475,10 @@ bool Geometry_Scene_File_IO::DeserializeSceneNodesFromFile(geometry_scene* geo_s
     for (int i = 0; i < n_nodes; i++)
     {
         getline(rf, line, '\0');
-        reflect::TypeDescriptor_Struct* typeDescriptor = Reflected_SceneNode_Factory::getNodeTypeDescriptorByName(line);
+        reflect::TypeDescriptor_Struct* typeDescriptor = Reflected_SceneNode::factory.getNodeTypeDescriptorByName(line);
         if (typeDescriptor)
         {
-            Reflected_SceneNode* new_node = Reflected_SceneNode_Factory::CreateNodeByTypeName(typeDescriptor->name, geo_scene->editor_nodes, geo_scene, geo_scene->smgr);
+            Reflected_SceneNode* new_node = Reflected_SceneNode::factory.CreateNodeByTypeName(typeDescriptor->name, geo_scene->editor_nodes, geo_scene, geo_scene->smgr);
             if (new_node)
             {
                 reflect::TypeDescriptor_Struct* td = typeDescriptor;
@@ -1296,7 +1296,7 @@ std::vector<u64> geometry_scene::get_reflected_node_uids_by_type(const char* nod
     reflect::TypeDescriptor_Struct* tD = NULL;
 
     if (node_type_name != NULL)
-        tD = Reflected_SceneNode_Factory::getNodeTypeDescriptorByName(node_type_name);
+        tD = Reflected_SceneNode::factory.getNodeTypeDescriptorByName(node_type_name);
 
     if(tD == NULL)
         return std::vector<u64>{};
@@ -1323,7 +1323,7 @@ std::vector<Reflected_SceneNode*> geometry_scene::get_reflected_nodes_by_type(co
     reflect::TypeDescriptor_Struct* tD = NULL;
 
     if (node_type_name != NULL)
-        tD = Reflected_SceneNode_Factory::getNodeTypeDescriptorByName(node_type_name);
+        tD = Reflected_SceneNode::factory.getNodeTypeDescriptorByName(node_type_name);
 
     if (tD == NULL)
         return std::vector<Reflected_SceneNode*>{};
@@ -1349,7 +1349,7 @@ void geometry_scene::setFaceNodeType(const std::vector<int>& faces_i, const char
 {
     reflect::TypeDescriptor_Struct* tD = NULL;
     if (node_type_name != NULL)
-        tD = Reflected_SceneNode_Factory::getNodeTypeDescriptorByName(node_type_name);
+        tD = Reflected_SceneNode::factory.getNodeTypeDescriptorByName(node_type_name);
 
     reflect::TypeDescriptor_Struct* MeshBufferNode_tD = 
         (reflect::TypeDescriptor_Struct*)(reflect::TypeResolver<Reflected_MeshBuffer_SceneNode>::get());
@@ -1637,7 +1637,7 @@ void geometry_scene::addSceneSelectedSceneNodeType(core::vector3df pos)
     reflect::TypeDescriptor_Struct* typeDescriptor = Node_Classes_Tool::get_base()->getSelectedTypeDescriptor();
     if(typeDescriptor)
     {
-        Reflected_SceneNode* a_thing = Reflected_SceneNode_Factory::CreateNodeByTypeName(typeDescriptor->name, editor_nodes, this, smgr);
+        Reflected_SceneNode* a_thing = Reflected_SceneNode::factory.CreateNodeByTypeName(typeDescriptor->name, editor_nodes, this, smgr);
         if(a_thing)
         {
             a_thing->drop();

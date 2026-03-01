@@ -7,6 +7,7 @@
 #include "GUI_tools.h"
 #include "reflect_custom_types.h"
 #include "USceneNode.h"
+#include "tkt_reflection_factory.h"
 
 using namespace irr;
 using namespace scene;
@@ -181,6 +182,12 @@ namespace reflect
     };*/
 }
 
+class Reflected_SceneNode_Factory : public tkt_reflection_factory<reflect::TypeDescriptor_SN_Struct>
+{
+public:
+    Reflected_SceneNode* CreateNodeByTypeName(std::string name, USceneNode* parent, geometry_scene* geo_scene, irr::scene::ISceneManager* smgr);
+};
+
 //
 //========================================================================================
 //  REFLECTED IRRLICHT SCENE NODES
@@ -249,6 +256,8 @@ public:
 
     static video::E_MATERIAL_TYPE base_material_type;
     static video::E_MATERIAL_TYPE special_material_type;
+
+    static Reflected_SceneNode_Factory factory;
 
     //Each Node instance has a unique color and a texture of this color
     video::SColor m_unique_color;
@@ -431,21 +440,6 @@ void Reflected_SceneNode::resolve_match_all_references(geometry_scene* a_geo_sce
 //
 //
 
-class Reflected_SceneNode_Factory
-{
-public:
-
-    static void addType(reflect::TypeDescriptor_SN_Struct*);
-    static int getNumTypes();
-    static reflect::TypeDescriptor_Struct* getNodeTypeDescriptorByName(std::string name);
-    static Reflected_SceneNode* CreateNodeByTypeName(std::string name, USceneNode* parent, geometry_scene* geo_scene, irr::scene::ISceneManager* smgr);
-    static int getTypeNum(reflect::TypeDescriptor_Struct*);
-    static std::vector<reflect::TypeDescriptor_Struct*> getAllTypes() {
-        return SceneNode_Types;
-    }
-private:
-    static std::vector<reflect::TypeDescriptor_Struct*> SceneNode_Types;
-};
 
 
 #endif

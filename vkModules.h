@@ -17,6 +17,7 @@
 #include "reflect_custom_types.h"
 #include <fstream>
 #include "tkt_set.h"
+#include "tkt_reflection_factory.h"
 
 
 class GeometryStack;
@@ -205,21 +206,7 @@ namespace reflect
 	//
 	//
 
-	class Vulkan_Reflection_Factory
-	{
-	public:
-
-		void addType(reflect::TypeDescriptor_VkMod_Struct*);
-		int getNumTypes();
-		reflect::TypeDescriptor_Struct* getNodeTypeDescriptorByName(std::string name);
-		//static Reflected_SceneNode* CreateNodeByTypeName(std::string name, USceneNode* parent, geometry_scene* geo_scene, irr::scene::ISceneManager* smgr);
-		int getTypeNum(reflect::TypeDescriptor_Struct*);
-		std::vector<reflect::TypeDescriptor_Struct*> getAllTypes() {
-			return Module_Types;
-		}
-	private:
-		std::vector<reflect::TypeDescriptor_Struct*> Module_Types;
-	};
+	using Vulkan_Reflection_Factory = ::tkt_reflection_factory<TypeDescriptor_VkMod_Struct>;
 }
 
 enum {

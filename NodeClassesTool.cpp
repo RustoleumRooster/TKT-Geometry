@@ -264,7 +264,7 @@ std::string Node_Classes_Base::getStaticString()
 
 void Node_Classes_Base::select(int sel)
 {
-	reflect::TypeDescriptor_Struct* td = Reflected_SceneNode_Factory::getAllTypes()[sel];
+	reflect::TypeDescriptor_Struct* td = Reflected_SceneNode::factory.getAllTypes()[sel];
 	selected_type = td;
 
 	m_struct.set_selected_recursive(this);
@@ -320,7 +320,7 @@ void Node_Classes_Base::show()
 
 void Node_Classes_Base::build_struct()
 {
-	std::vector<reflect::TypeDescriptor_Struct*> all_classes = Reflected_SceneNode_Factory::getAllTypes();
+	std::vector<reflect::TypeDescriptor_Struct*> all_classes = Reflected_SceneNode::factory.getAllTypes();
 
 	m_struct.sub_classes.clear();
 	int index;
@@ -333,7 +333,7 @@ void Node_Classes_Base::build_struct()
 		{
 			node_class_item nc;
 			nc.typeDescriptor = (reflect::TypeDescriptor_SN_Struct*) all_classes[index];
-			nc.id = Reflected_SceneNode_Factory::getTypeNum(nc.typeDescriptor);
+			nc.id = Reflected_SceneNode::factory.getTypeNum(nc.typeDescriptor);
 			nc.class_name = std::string(nc.typeDescriptor->alias);
 			nc.expanded = true;
 			nc.selected = nc.typeDescriptor == selected_type;
@@ -363,7 +363,7 @@ void Node_Classes_Base::build_struct()
 					node_class_item nc;
 					
 					nc.typeDescriptor = (reflect::TypeDescriptor_SN_Struct*) all_classes[index];
-					nc.id = Reflected_SceneNode_Factory::getTypeNum(nc.typeDescriptor);
+					nc.id = Reflected_SceneNode::factory.getTypeNum(nc.typeDescriptor);
 					nc.class_name = std::string(nc.typeDescriptor->alias);
 					nc.expanded = true;
 					nc.selected = nc.typeDescriptor == selected_type;

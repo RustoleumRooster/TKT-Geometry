@@ -1290,48 +1290,16 @@ namespace reflect
 	}
 }
 
-//
+
 //============================================================================
-//  REFLECTED MODULE FACTORY CLASS
-//
-//
+//  Add type to factory at initialization
+
 
 namespace reflect
 {
 	TypeDescriptor_VkMod_Struct::TypeDescriptor_VkMod_Struct(void (*init)(TypeDescriptor_Struct*)) : reflect::TypeDescriptor_Struct(init)
 	{
 		Vulkan_Module::factory.addType(this);
-	}
-
-	void Vulkan_Reflection_Factory::addType(reflect::TypeDescriptor_VkMod_Struct* typeDesc)
-	{
-		Module_Types.push_back(typeDesc);
-		cout << typeDesc->name << "\n";
-	}
-
-	int Vulkan_Reflection_Factory::getNumTypes()
-	{
-		return Module_Types.size();
-	}
-
-	reflect::TypeDescriptor_Struct* Vulkan_Reflection_Factory::getNodeTypeDescriptorByName(std::string name)
-	{
-		for (reflect::TypeDescriptor_Struct* typeDesc : Module_Types)
-		{
-			if (typeDesc->name == name)
-				return typeDesc;
-		}
-		return NULL;
-	}
-
-	int Vulkan_Reflection_Factory::getTypeNum(reflect::TypeDescriptor_Struct* td)
-	{
-		for (int i = 0; i < Module_Types.size(); i++)
-		{
-			if (Module_Types[i] == td)
-				return i;
-		}
-		return 0;
 	}
 }
 

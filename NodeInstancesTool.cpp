@@ -431,7 +431,7 @@ void Node_Instances_Base::show_window()
 
 void Node_Instances_Base::build_initial_struct()
 {
-	std::vector<reflect::TypeDescriptor_Struct*> all_classes = Reflected_SceneNode_Factory::getAllTypes();
+	std::vector<reflect::TypeDescriptor_Struct*> all_classes = Reflected_SceneNode::factory.getAllTypes();
 
 	m_initial_struct.sub_classes.clear();
 	int index;

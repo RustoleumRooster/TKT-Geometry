@@ -24,7 +24,7 @@ extern float g_time;
 //NB: If you add new source files that have reflected scene nodes, you may have to move this
 //initialization to ensure that it executes before the initialization of the reflected scene nodes, 
 //or they will register ahead of time and get wiped off of the master list
-std::vector<reflect::TypeDescriptor_Struct*> Reflected_SceneNode_Factory::SceneNode_Types{};
+Reflected_SceneNode_Factory Reflected_SceneNode::factory{};
 
 //============================================================================
 //  Reflected_LightSceneNode

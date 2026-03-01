@@ -223,7 +223,7 @@ void Node_Classes_Base::show()
 
 void Node_Classes_Base::build_struct()
 {
-	std::vector<reflect::TypeDescriptor_Struct*> all_classes = Reflected_SceneNode_Factory::getAllTypes();
+	std::vector<reflect::TypeDescriptor_Struct*> all_classes = Reflected_SceneNode::factory.getAllTypes();
 	//m_struct.nClasses = all_classes.size();
 
 	m_struct.sub_classes.clear();
