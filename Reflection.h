@@ -754,7 +754,112 @@ struct TypeDescriptor_Reference : TypeDescriptor {
         }
     }
 
-    virtual void addFormWidget(Reflected_GUI_Edit_Form*, TypeDescriptor_Struct*, std::vector<int> tree, size_t offset, bool bVisible, bool bEditable, int tab) override 
+    virtual void addFormWidget(Reflected_GUI_Edit_Form*, TypeDescriptor_Struct*, std::vector<int> tree, size_t offset, bool bVisible, bool bEditable, int tab) override
+    {}
+};
+
+// Polymorphic reference descriptor for factory-managed types.
+// T is the base class of the pointed-to objects (e.g. Vulkan_Module).
+// T::factory must be a tkt_reflection_factory<TD> for some TD that has getNew().
+// serialize writes the runtime type name; deserialize uses T::factory to look
+// up the type and call getNew(), then walks inherited_type for full init.
+template<typename T>
+struct TypeDescriptor_Typeless_Reference : TypeDescriptor {
+    const void* (*getItem)(const void*);
+    void* (*getItem_nc)(void*);
+
+    TypeDescriptor_Typeless_Reference() : TypeDescriptor{ "Ref", sizeof(char*) }
+    {
+        getItem = [](const void* ptr_to_ptr) -> const void* {
+            const T* ptr = *(const T**)ptr_to_ptr;
+            return (const void*)ptr;
+        };
+
+        getItem_nc = [](void* ptr_to_ptr) -> void* {
+            T* ptr = *(T**)ptr_to_ptr;
+            return (void*)ptr;
+        };
+    }
+
+    bool isNull(const void* obj) const
+    {
+        return getItem(obj) == NULL;
+    }
+
+    virtual std::string getFullName() const override {
+        return std::string("pointer<") + ">";
+    }
+
+    virtual void dump(const void* obj, int indent) const override
+    {
+        if (isNull(obj))
+        {
+            std::cout << "NULL\n";
+        }
+        else
+        {
+            TypeDescriptor_Struct* td = ((T*)getItem(obj))->GetDynamicReflection();
+            std::cout << "reference<" << td->name << ">\n";
+            std::cout << std::string(4 * (indent + 1), ' ');
+            td->dump(getItem(obj), indent + 1);
+        }
+    }
+
+    virtual void serialize(std::ofstream& f, const void* obj) override
+    {
+        char first_byte;
+
+        if (isNull(obj))
+        {
+            first_byte = 0;
+            f.write((char*)&first_byte, sizeof(char));
+        }
+        else
+        {
+            first_byte = 1;
+            f.write((char*)&first_byte, sizeof(char));
+
+            TypeDescriptor_Struct* td = ((T*)getItem(obj))->GetDynamicReflection();
+            f << td->name << '\0';
+
+            while (td)
+            {
+                td->serialize(f, getItem(obj));
+                td = td->inherited_type;
+            }
+        }
+    }
+
+    virtual void deserialize(std::ifstream& f, void* obj) override
+    {
+        char first_byte;
+        f.read((char*)&first_byte, sizeof(char));
+
+        std::string line;
+
+        if (first_byte == 0)
+        {
+            void** ptr = (void**)obj;
+            *ptr = NULL;
+        }
+        else
+        {
+            void** ptr = (void**)obj;
+            std::getline(f, line, '\0');
+
+            using TD = typename decltype(T::factory)::descriptor_type;
+            TD* tD = (TD*)T::factory.getNodeTypeDescriptorByName(line);
+
+            *ptr = tD->getNew();
+            while (tD)
+            {
+                tD->deserialize(f, getItem_nc(obj));
+                tD = (TD*)tD->inherited_type;
+            }
+        }
+    }
+
+    virtual void addFormWidget(Reflected_GUI_Edit_Form*, TypeDescriptor_Struct*, std::vector<int> tree, size_t offset, bool bVisible, bool bEditable, int tab) override
     {}
 };
 

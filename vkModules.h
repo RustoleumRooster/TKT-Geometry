@@ -78,41 +78,7 @@ namespace reflect
 		output_type* get_output0(void* obj);
 	};
 
-	struct TypeDescriptor_VkMod_Reference : TypeDescriptor {
-		//TypeDescriptor* itemType;
-		const void* (*getItem)(const void*);
-		void* (*getItem_nc)(void*);
-
-		TypeDescriptor_VkMod_Reference() : TypeDescriptor{ "Ref", sizeof(char*) }
-		{
-			getItem = [](const void* ptr_to_ptr) -> const void* {
-				const Vulkan_Module* ptr = *(const Vulkan_Module**)ptr_to_ptr;
-				return (const void*)ptr;
-				};
-
-			getItem_nc = [](void* ptr_to_ptr) -> void* {
-				Vulkan_Module* ptr = *(Vulkan_Module**)ptr_to_ptr;
-				return (void*)ptr;
-				};
-		}
-
-		bool isNull(const void* obj) const
-		{
-			return getItem(obj) == NULL;
-		}
-
-		virtual std::string getFullName() const override {
-			return std::string("pointer<") +  ">";
-		}
-
-		virtual void dump(const void* obj, int indent/* unused */) const override;
-
-		virtual void serialize(std::ofstream& f, const void* obj) override;
-		virtual void deserialize(std::ifstream& f, void* obj) override;
-
-		virtual void addFormWidget(Reflected_GUI_Edit_Form*, TypeDescriptor_Struct*, std::vector<int> tree, size_t offset, bool bVisible, bool bEditable, int tab) override
-		{}
-	};
+	using TypeDescriptor_VkMod_Reference = TypeDescriptor_Typeless_Reference<Vulkan_Module>;
 
 #define REFLECT_VKMOD() \
         virtual reflect::TypeDescriptor_Struct* GetDynamicReflection(); \
