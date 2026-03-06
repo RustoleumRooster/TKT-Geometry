@@ -7,26 +7,14 @@ class Scene_Instances_Base;
 
 struct scene_instance_item
 {
-    //ATTRIBUTES:
-    //display attributes contained in the reflected type descriptor 
-    //initialized through write_attributes()
-    //and accesible from addFormWidget()
-    struct attributes
-    {
-        bool selected;
-        bool editable;
-    };
-
     //REFLECTED MEMBERS:
     int id;
     std::string scene_name;
 
     //DEFINES:
     DECLARE_TREE_FUNCTIONS(scene_instance_item)
-    REFLECT_CUSTOM_TREE_STRUCT()
 
     //NON REFLECTED MEMBERS:
-
     bool selected = false;
     bool editable = false;
     //node_class_item* find_type(reflect::TypeDescriptor_Struct* tD);

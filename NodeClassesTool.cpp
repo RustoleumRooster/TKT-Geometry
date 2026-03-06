@@ -26,18 +26,6 @@ REFLECT_STRUCT_END()
 
 DEFINE_TREE_FUNCTIONS(node_class_item)
 
-void node_class_item::write_attributes(reflect::Member* m_struct)
-{
-	m_struct->expanded = this->expanded;
-
-	node_class_item::my_typeDesc* m_type = (node_class_item::my_typeDesc*)(m_struct->type);
-
-	m_type->hasSubs = this->sub_classes.size() > 0;
-	m_type->my_attributes.placeable = typeDescriptor->placeable;
-	m_type->my_attributes.selected = selected;
-	m_type->my_attributes.name = this->class_name;
-}
-
 node_class_item* node_class_item::find_type(reflect::TypeDescriptor_Struct* tD)
 {
 	if (this->typeDescriptor == tD)
@@ -72,15 +60,15 @@ void node_class_item::my_typeDesc::addFormWidget(Reflected_GUI_Edit_Form* win, T
 			String_StaticField* f = new String_StaticField();
 
 			//f->setText(type_struct->members[m_i].name);
-			f->init(my_attributes.name, tree_0, offset + ALIGN_BYTES, tab, bVisible);
+			f->init(self_pointer->class_name, tree_0, offset + ALIGN_BYTES, tab, bVisible);
 			f->bCanSelect = true;
 
-			if (my_attributes.placeable == false)
+			if (self_pointer->placeable == false)
 			{
 				f->text_color = FORM_TEXT_COLOR_GREY;
 				f->bCanSelect = false;
 			}
-			if (my_attributes.selected)
+			if (self_pointer->selected)
 			{
 				f->bHighlight = true;
 			}
@@ -333,6 +321,7 @@ void Node_Classes_Base::build_struct()
 		{
 			node_class_item nc;
 			nc.typeDescriptor = (reflect::TypeDescriptor_SN_Struct*) all_classes[index];
+			//nc.Reflection.self_pointer = &nc;
 			nc.id = Reflected_SceneNode::factory.getTypeNum(nc.typeDescriptor);
 			nc.class_name = std::string(nc.typeDescriptor->alias);
 			nc.expanded = true;

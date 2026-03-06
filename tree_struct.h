@@ -22,26 +22,26 @@ using namespace irr;
 	T::bool_pos = typeDesc->members.size()-2; \
 	T::vec_pos = typeDesc->members.size()-1;
 
-
+//#define REFLECT_CUSTOM_TREE_STRUCT(tree_type)
 #define DECLARE_TREE_FUNCTIONS(tree_type) \
+	tree_type() {Reflection.self_pointer = this;} \
 	bool expanded = false; \
 	std::vector<tree_type> sub_classes; \
     tree_type* find_node(std::vector<int> tree_pos); \
     void write_attributes_recursive(reflect::TypeDescriptor_Struct* tD, std::vector<int> tree_0); \
 	void write_attributes(reflect::Member* m_struct);\
-    void read_expanded(reflect::TypeDescriptor_Struct* tD, std::vector<int> tree_0, int tab);
-
-
-#define REFLECT_CUSTOM_TREE_STRUCT() \
+    void read_expanded(reflect::TypeDescriptor_Struct* tD, std::vector<int> tree_0, int tab); \
 	static u32 bool_pos; \
     static u32 vec_pos; \
 	struct my_typeDesc : reflect::TypeDescriptor_Struct { \
 		bool hasSubs=true; \
-		attributes my_attributes;\
+		tree_type* self_pointer = nullptr; \
         my_typeDesc(void (*init)(reflect::TypeDescriptor_Struct*)) : reflect::TypeDescriptor_Struct(init) {} \
         virtual void addFormWidget(Reflected_GUI_Edit_Form* win, reflect::TypeDescriptor_Struct* type_struct, std::vector<int> tree, size_t offset, bool bVisible, bool bEditable, int tab); \
         virtual reflect::TypeDescriptor* get_flat_copy(void* obj, int indent) { \
-            return TypeDescriptor_Struct::get_flat_copy(obj,indent); \
+            my_typeDesc* ret = (my_typeDesc*)TypeDescriptor_Struct::get_flat_copy(obj, indent); \
+            ret->self_pointer = (tree_type*)obj; \
+            return ret; \
             } \
         virtual reflect::TypeDescriptor_Struct* getNewEmptyStruct();\
         }; \
@@ -76,6 +76,11 @@ using namespace irr;
 			this->sub_classes[i].write_attributes_recursive(tD, tree); \
 		} \
 	} \
+	void tree_type::write_attributes(reflect::Member* m_struct) { \
+		m_struct->expanded = this->expanded; \
+		((tree_type::my_typeDesc*)(m_struct->type))->hasSubs = this->sub_classes.size() > 0; \
+	} \
+	\
 	void tree_type::read_expanded(reflect::TypeDescriptor_Struct* tD, std::vector<int> tree_0, int tab = 0) { \
 		/*std::cout << std::string(3 * (tab + 1), ' ')<<" ";*/\
 		/*for(int i=0; i<tree_b.size(); i++) std::cout << tree_b[i] <<" "; std::cout<<", subs = ";*/\

@@ -21,24 +21,12 @@ namespace reflect
 
 struct node_class_item
 {
-    //ATTRIBUTES:
-    //display attributes contained in the reflected type descriptor 
-    //initialized through write_attributes()
-    //and accesible from addFormWidget()
-    struct attributes
-    {
-        bool placeable;
-        bool selected;
-        std::string name;
-    };
-    
     //REFLECTED MEMBERS:
     int id;
     std::string class_name;
 
     //DEFINES:
     DECLARE_TREE_FUNCTIONS(node_class_item)
-    REFLECT_CUSTOM_TREE_STRUCT()
 
     //NON REFLECTED MEMBERS:
     reflect::TypeDescriptor_SN_Struct* typeDescriptor;

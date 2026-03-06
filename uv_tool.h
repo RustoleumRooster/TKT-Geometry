@@ -130,7 +130,6 @@ public:
     }
 
     virtual void init_member(reflect::TypeDescriptor_Struct* flat_typeDescriptor, std::vector<int> tree_pos);
-    virtual void write_attributes(reflect::TypeDescriptor_Struct* flat_typeDescriptor);
 
     std::string GetSelectedString();
     video::ITexture* GetSelectedTexture();

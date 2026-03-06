@@ -38,11 +38,13 @@ namespace reflect
 
 #define REFLECT_CUSTOM_STRUCT() \
 	struct my_typeDesc : reflect::TypeDescriptor_Struct { \
-        attributes my_attributes;\
+        void* self_pointer = nullptr;\
         my_typeDesc(void (*init)(reflect::TypeDescriptor_Struct*)) : reflect::TypeDescriptor_Struct(init) {} \
         virtual void addFormWidget(Reflected_GUI_Edit_Form* win, reflect::TypeDescriptor_Struct* type_struct, std::vector<int> tree, size_t offset, bool bVisible, bool bEditable, int tab); \
         virtual reflect::TypeDescriptor* get_flat_copy(void* obj, int indent) { \
-            return TypeDescriptor_Struct::get_flat_copy(obj,indent); \
+            my_typeDesc* ret = (my_typeDesc*)TypeDescriptor_Struct::get_flat_copy(obj, indent); \
+            ret->self_pointer = obj; \
+            return ret; \
             } \
         virtual reflect::TypeDescriptor_Struct* getNewEmptyStruct();\
         }; \

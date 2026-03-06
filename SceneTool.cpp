@@ -24,17 +24,6 @@ REFLECT_STRUCT_END()
 
 DEFINE_TREE_FUNCTIONS(scene_instance_item)
 
-void scene_instance_item::write_attributes(reflect::Member* m_struct)
-{
-	m_struct->expanded = this->expanded;
-
-	scene_instance_item::my_typeDesc* m_type = (scene_instance_item::my_typeDesc*)(m_struct->type);
-
-	m_type->hasSubs = this->sub_classes.size() > 0;
-	m_type->my_attributes.selected = selected;
-	m_type->my_attributes.editable = editable;
-}
-
 void scene_instance_item::my_typeDesc::addFormWidget(Reflected_GUI_Edit_Form* win, TypeDescriptor_Struct* type_struct, std::vector<int> tree_0, size_t offset_base, bool bVisible, bool bEditable, int tab)
 {
 	TREE_STRUCT_ADD_FORMWIDGET_HEADER()
@@ -45,7 +34,7 @@ void scene_instance_item::my_typeDesc::addFormWidget(Reflected_GUI_Edit_Form* wi
 
 			String_FormField* f;
 
-			if (my_attributes.editable)
+			if (self_pointer->editable)
 			{
 				f = new String_EditField();
 				//f->bAskForFocus = true;
@@ -57,7 +46,7 @@ void scene_instance_item::my_typeDesc::addFormWidget(Reflected_GUI_Edit_Form* wi
 			f->init("             ", tree_0, offset + ALIGN_BYTES, tab, bVisible);
 			f->bCanSelect = true;
 
-			if (my_attributes.selected)
+			if (self_pointer->selected)
 			{
 				f->bHighlight = true;
 			}

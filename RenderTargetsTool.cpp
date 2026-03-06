@@ -181,21 +181,6 @@ void Render_Tool_Base::init_member(reflect::TypeDescriptor_Struct* flat_typeDesc
     }
 }
 
-void Render_Tool_Base::write_attributes(reflect::TypeDescriptor_Struct* flat_typeDescriptor)
-{
-    /*
-    for (int i = 0; i < m_struct.material_groups.size(); i++)
-    {
-        std::vector<int> tree_pos{ 1, i };
-//
-        reflect::Member* m = flat_typeDescriptor->getTreeNode(tree_pos);
-
-        material_group_struct::my_typeDesc* m_type = (material_group_struct::my_typeDesc*)(m->type);
-        m_type->my_attributes.selected = m_struct.material_groups[i].selected;
-    }*/
-}
-
-
 ITexture* Render_Tool_Base::getRender()
 {
 

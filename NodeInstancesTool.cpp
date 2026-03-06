@@ -38,30 +38,6 @@ REFLECT_STRUCT_END()
 DEFINE_TREE_FUNCTIONS(node_tree_item)
 
 
-void node_instance::write_attributes(reflect::Member* m_struct)
-{
-	node_instance::my_typeDesc* m_type = (node_instance::my_typeDesc*)(m_struct->type);
-
-	m_type->my_attributes.selected = this->selected;
-	m_type->my_attributes.name = this->name;
-}
-
-void node_tree_item::write_attributes(reflect::Member* m_struct)
-{
-	m_struct->expanded = this->expanded;
-	node_tree_item::my_typeDesc* m_type = (node_tree_item::my_typeDesc*)(m_struct->type);
-
-	m_type->my_attributes.name = this->class_name;
-
-	((node_tree_item::my_typeDesc*)(m_struct->type))->hasSubs = this->hasSubs;
-
-	for (int i = 0; i < instances.size(); i++)
-	{
-		reflect::Member* M = &m_type->members[3];
-		instances[i].write_attributes(&((node_instance::my_typeDesc*)(M->type))->members[i]);
-	}
-}
-
 node_tree_item* node_tree_item::find_type(reflect::TypeDescriptor_Struct* tD)
 {
 	if (this->typeDescriptor == tD)
@@ -102,9 +78,9 @@ void node_instance::my_typeDesc::addFormWidget(Reflected_GUI_Edit_Form* win, Typ
 	String_StaticField* f = new String_StaticField();
 
 	f->setText(type_struct->members[m_i].name);
-	f->init(my_attributes.name, tree, offset + ALIGN_BYTES, tab, bVisible);
+	f->init(((node_instance*)self_pointer)->name, tree, offset + ALIGN_BYTES, tab, bVisible);
 
-	if (my_attributes.selected)
+	if (((node_instance*)self_pointer)->selected)
 		//f->bBorder = true;
 		f->bHighlight = true;
 
@@ -114,6 +90,8 @@ void node_instance::my_typeDesc::addFormWidget(Reflected_GUI_Edit_Form* win, Typ
 
 void node_tree_item::my_typeDesc::addFormWidget(Reflected_GUI_Edit_Form* win, TypeDescriptor_Struct* type_struct, std::vector<int> tree_0, size_t offset_base, bool bVisible, bool bEditable, int tab)
 {
+	hasSubs = self_pointer->hasSubs;
+
 	TREE_STRUCT_ADD_FORMWIDGET_HEADER()
 
 		if (!hasSubs)
@@ -126,7 +104,7 @@ void node_tree_item::my_typeDesc::addFormWidget(Reflected_GUI_Edit_Form* win, Ty
 			String_StaticField* f = new String_StaticField();
 
 			f->setText(type_struct->members[m_i].name);
-			f->init(my_attributes.name, tree_0, offset + ALIGN_BYTES*2, tab, bVisible);
+			f->init(self_pointer->class_name, tree_0, offset + ALIGN_BYTES*2, tab, bVisible);
 			
 			f->text_color = FORM_TEXT_COLOR_GREY;
 

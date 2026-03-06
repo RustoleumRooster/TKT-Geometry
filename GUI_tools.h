@@ -199,13 +199,6 @@ struct folder_tree_item
         ITEM_TYPE_INSTANCE
     };
 
-    //ATTRIBUTES:
-    struct attributes
-    {
-        bool selected = false;
-        bool isDirectory = false;
-    };
-
     //REFLECTED MEMBERS:
     //int item_type;
     int id = 0;
@@ -213,7 +206,6 @@ struct folder_tree_item
 
     //DEFINES:
     DECLARE_TREE_FUNCTIONS(folder_tree_item)
-    REFLECT_CUSTOM_TREE_STRUCT()
 
     //NON REFLECTED MEMBERS:
     bool hasSubs = true;

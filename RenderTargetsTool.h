@@ -100,7 +100,6 @@ public:
     }
 
     virtual void init_member(reflect::TypeDescriptor_Struct* flat_typeDescriptor, std::vector<int> tree_pos);
-    virtual void write_attributes(reflect::TypeDescriptor_Struct* flat_typeDescriptor);
     void setRenderList(RenderList* renderList_);
 
     video::ITexture* getRender();

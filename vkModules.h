@@ -363,10 +363,6 @@ namespace reflect
 	template <typename TY>
 	struct input : public input_type
 	{
-		struct attributes
-		{
-		};
-
 		input() {}
 
 		u64 old_uid;	//not reflected
@@ -381,10 +377,6 @@ namespace reflect
 	template <typename TY>
 	struct output : public output_type
 	{
-		struct attributes
-		{
-		};
-
 		output() {}
 
 		virtual void consume(input_type*);

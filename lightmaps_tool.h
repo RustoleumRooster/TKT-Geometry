@@ -14,12 +14,6 @@ class TextureInfo;
 
 struct material_group_struct
 {
-    //ATTRIBUTES:
-    struct attributes
-    {
-        bool selected;
-    };
-
     //REFLECTED MEMBERS:
     int id;
     int nFaces;
@@ -147,7 +141,6 @@ public:
     virtual void write_obj_by_field(reflect::TypeDescriptor_Struct* flat_typeDescriptor, std::vector<int> tree_pos, void* obj) override;
     virtual void save_expanded_status(reflect::TypeDescriptor_Struct* flat_typeDescriptor, std::vector<int> tree_pos) override;
     virtual void init_member(reflect::TypeDescriptor_Struct* flat_typeDescriptor, std::vector<int> tree_pos) override;
-    virtual void write_attributes(reflect::TypeDescriptor_Struct* flat_typeDescriptor) {}
     virtual void* getObj() override;
 
     s32 getWidgetHeight();
@@ -252,7 +245,6 @@ public:
     }
 
     virtual void init_member(reflect::TypeDescriptor_Struct* flat_typeDescriptor, std::vector<int> tree_pos);
-    virtual void write_attributes(reflect::TypeDescriptor_Struct* flat_typeDescriptor);
 
     std::string GetSelectedString();
     TextureInfo* GetSelectedTexture();

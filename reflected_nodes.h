@@ -144,10 +144,6 @@ namespace reflect
 
 	struct color3
 	{
-        struct attributes
-        {
-        };
-
 		char Blue;
 		char Green;
 		char Red;
@@ -158,10 +154,6 @@ namespace reflect
 
     struct uid_reference
     {
-        struct attributes
-        {
-        };
-
         std::vector<u64> uids;
         std::vector<u64> old_uids; //not reflected
 

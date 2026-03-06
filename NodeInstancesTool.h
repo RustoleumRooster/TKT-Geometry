@@ -17,25 +17,16 @@ class Flat_Button;
 
 struct node_instance
 {
-    //ATTRIBUTES:
-    struct attributes
-    {
-        bool selected;
-        std::string name;
-    };
-
     //REFLECTED MEMBERS:
     int id;
     std::string name;
     char* node_ptr = NULL;
- 
+
     //DEFINES:
     REFLECT_CUSTOM_STRUCT()
 
     //NON REFLECTED MEMBERS:
-    
     bool selected = false;
-    void write_attributes(reflect::Member* m_struct);
 };
 
 struct node_tree_item
@@ -46,16 +37,6 @@ struct node_tree_item
         ITEM_TYPE_INSTANCE
     };
 
-    //ATTRIBUTES:
-    //display attributes contained in the reflected type descriptor 
-    //initialized through write_attributes()
-    //and accesible from addFormWidget()
-    struct attributes
-    {
-        bool selected;
-        std::string name;
-    };
-
     //REFLECTED MEMBERS:
     int item_type;
     int id;
@@ -64,7 +45,7 @@ struct node_tree_item
     
     //DEFINES:
     DECLARE_TREE_FUNCTIONS(node_tree_item)
-    REFLECT_CUSTOM_TREE_STRUCT()
+    //REFLECT_CUSTOM_TREE_STRUCT()
 
     //NON REFLECTED MEMBERS:
     bool hasSubs;

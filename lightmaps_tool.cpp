@@ -937,7 +937,7 @@ void material_group_struct::my_typeDesc::addFormWidget(Reflected_GUI_Edit_Form* 
     f->setVisible(bVisible);
     f->tree_pos = tree;
 
-    if (my_attributes.selected)
+    if (((material_group_struct*)self_pointer)->selected)
     {
         f->bHighlight = true;
     }
@@ -1422,19 +1422,6 @@ void Material_Buffers_Base::init_member(reflect::TypeDescriptor_Struct* flat_typ
     if (tree_pos.size() > 1)
     {
         //m_type->my_attributes.selected = m_struct.material_groups[tree_pos[1]].selected;
-    }
-}
-
-void Material_Buffers_Base::write_attributes(reflect::TypeDescriptor_Struct* flat_typeDescriptor)
-{
-    for (int i = 0; i < m_struct.material_groups.size(); i++)
-    {
-        std::vector<int> tree_pos{ 1, i };
-
-        reflect::Member* m = flat_typeDescriptor->getTreeNode(tree_pos);
-
-        material_group_struct::my_typeDesc* m_type = (material_group_struct::my_typeDesc*)(m->type);
-        m_type->my_attributes.selected = m_struct.material_groups[i].selected;
     }
 }
 

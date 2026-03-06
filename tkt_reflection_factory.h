@@ -16,6 +16,8 @@ template<typename T>
 class tkt_reflection_factory
 {
 public:
+    using descriptor_type = T;
+
     void addType(T* typeDesc)
     {
         Types.push_back(typeDesc);
