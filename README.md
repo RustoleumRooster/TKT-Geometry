@@ -16,7 +16,7 @@ TKT is a full featured level editor built on the Irrlicht 3D game engine, intend
 
 5. Easily support custom Nodes using the built in Reflection system.
 
-6. Create lightmaps. Lightmap creation uses Vulkan. (Under development)
+6. Sophisticated modular Lightmap generation system using Vulkan. Generate global soft, raytraced lightmaps from both point and area-emitter light sources as well as bounced light.  
 
 7. Export level geometry, triangulated meshes, and nodes to binary files, which are easily imported into any other program by using the Reflection system.
 
