@@ -262,8 +262,10 @@ uint indexed(uint v_i, uint offset)
 // Private variables
 //
 
-uint[12] stack;
-float[12] stack_distance;
+#define STACK_SIZE 16
+
+uint[STACK_SIZE] stack;
+float[STACK_SIZE] stack_distance;
 uint stack_n;
 
 //==================================================
@@ -273,6 +275,10 @@ uint stack_n;
 void open_node(uint node_i, vec3 eye, vec3 ray)
 {
 	float left,right;
+
+	//Pushing past the end of the stack would corrupt stack_n
+	if(stack_n + 2 > STACK_SIZE)
+		return;
 
 	left = trace_node_hit(global_nodes[node_i].left_node,eye,ray);
 
@@ -691,6 +697,24 @@ float MinorX(float y)
 	return 0;
 }
 
+//A triangle that is flat in UV space gives an inf/NaN slope, and uint() of that can be 0xFFFFFFFF,
+//which makes the row loop run forever. Skip such rows and keep the rest inside the lightmap.
+void set_row_bounds(float left, float right)
+{
+	float a = params.lm_width * left;
+	float b = params.lm_width * right;
+
+	if(isnan(a) || isnan(b) || isinf(a) || isinf(b))
+	{
+		x0 = 1;
+		x1 = 0;
+		return;
+	}
+
+	x0 = uint(clamp(a, 0.0, float(params.lm_width - 1)));
+	x1 = uint(clamp(b, 0.0, float(params.lm_width - 1)));
+}
+
 
 void main()
 {
@@ -855,15 +879,9 @@ void main()
 		if(ix == 0 && iy == 0)
 		{
 			if(bNegativeX==false)
-				{
-						x0 = uint(params.lm_width * MajorX(y0));
-						x1 = uint(params.lm_width * MinorX(y0));
-				}
+				set_row_bounds(MajorX(y0), MinorX(y0));
 			else
-				{
-						x0 = uint(params.lm_width * MinorX(y0));
-						x1 = uint(params.lm_width * MajorX(y0));
-				}
+				set_row_bounds(MinorX(y0), MajorX(y0));
 		}
 
 		barrier();
@@ -967,16 +985,20 @@ void main()
 
 					//Actual Lighting Calcs
 
-					uint hit_id,hit_id0;
+					uint hit_id,hit_id0 = 0;
 					uint lightmap_no;
 
 					vec3 ray = rand_hemisphere_ray(Normal,Tan,Bitan,rand_state);
 
 					float hit_score = trace_scene_hit(pos,ray,hit_id0);
 
-					//if(hit_score != 0xFFFF)
+					//A miss leaves hit_id0 unwritten, so skip the lookups rather than index with garbage
+					bool hit = hit_score < 0xFFFF;
+					float p = 0;
+
+					if(hit)
 					{
-						if(hit_id % 2 == 0 )
+						if(hit_id0 % 2 == 0 )
 						{
 							//hit_id = floatBitsToUint(global_nodes[hit_id0/2].padding[0]) & 0xFFFF;
 							//lightmap_no = floatBitsToUint(global_nodes[hit_id0/2].padding[1]) & 0xFFFF;
@@ -1034,16 +1056,15 @@ void main()
 						//if(hit_score < 1.0)
 						//	hit_score = 1;
 
-						float p = 48  *  value.x * dotproduct / (hit_score*hit_score);
+						p = 48  *  value.x * dotproduct / (hit_score*hit_score);
 						//float p = value.x;
 
 						//hits[ix + iy*32].x = p;
-
-						subgroup_total = subgroupAdd( hit_score != 0xFFFF && valid_pos ? p : 0 );
-						//subgroup_total = subgroupAdd( hit_score != 0xFFFF && valid_pos ? 0.1 : 0 );
-						
-
 					}
+
+					//Kept outside the branch so the whole subgroup reaches subgroupAdd
+					subgroup_total = subgroupAdd( hit && valid_pos ? p : 0 );
+					//subgroup_total = subgroupAdd( hit && valid_pos ? 0.1 : 0 );
 
 					subgroupBarrier();
 
