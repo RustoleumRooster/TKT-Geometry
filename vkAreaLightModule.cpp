@@ -168,7 +168,7 @@ void AreaLight_Module::runMaterial(int mat_n)
 
 	std::cout << "execute " << n_WorkGroups_x << " workgroups\n";
 
-	vkCmdDispatch(commandBuffer, n_WorkGroups_x, 1, 1);
+	m_device->dispatch(commandBuffer, n_WorkGroups_x, 1, 1);
 
 	m_device->endSingleTimeCommands(commandBuffer);
 
@@ -176,6 +176,49 @@ void AreaLight_Module::runMaterial(int mat_n)
 
 	vkDeviceWaitIdle(m_device->getDevice());
 
+	estimateRays(mat_n);
+}
+
+void AreaLight_Module::estimateRays(int mat_n)
+{
+	//Per texel the shader traces one ray per thread (256) for each light triangle in front of the
+	//surface, up to the 8 nearest. In front is tested against the triangle's plane, so it's the same for every texel.
+	const u32 threads_per_workgroup = 32 * 8;
+	const u32 max_lights = 8;
+
+	u32 n_lights = lightsource_indices_soa->size() / 2;
+	u32 lm_size = materials->data()[mat_n].lightmap_size;
+	u32 first = indices_soa->offset[mat_n];
+	u32 n_triangles = indices_soa->len[mat_n] / 3;
+
+	auto vert = [&](u32 index_i) { return vertices_soa->data0[indices_soa->data[index_i].x].V; };
+
+	for (u32 t = 0; t < n_triangles; t++)
+	{
+		u32 i_0 = first + t * 3;
+
+		u32 texels = triangle_trans->count_texels(i_0, lm_size);
+
+		vector3df P = vert(i_0);
+		vector3df N = (vert(i_0 + 1) - vert(i_0)).crossProduct(vert(i_0 + 2) - vert(i_0 + 1));
+
+		u32 lights_facing = 0;
+		for (u32 l = 0; l < n_lights; l++)
+		{
+			u32 light_idx = (*lightsource_indices_soa)[l * 2].x;
+			for (int k = 0; k < 3; k++)
+			{
+				if (N.dotProduct(vert(light_idx * 3 + k) - P) > 0)
+				{
+					lights_facing++;
+					break;
+				}
+			}
+		}
+
+		texels_shaded += texels;
+		rays_traced += (u64)texels * threads_per_workgroup * std::min(lights_facing, max_lights);
+	}
 }
 
 void AreaLight_Module::runTriangle(int mat_n, int triangle_offset)
@@ -196,7 +239,7 @@ void AreaLight_Module::runTriangle(int mat_n, int triangle_offset)
 		&descriptorSets[0], 0, 0);
 
 	std::cout << "execute...\n";
-	vkCmdDispatch(commandBuffer, 1, 1, 1);
+	m_device->dispatch(commandBuffer, 1, 1, 1);
 
 	m_device->endSingleTimeCommands(commandBuffer);
 

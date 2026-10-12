@@ -59,6 +59,7 @@ public:
 
 
 	void runMaterial(int);
+	void estimateRays(int);
 	void runTriangle(int mat_n, int triangle_offset);
 	void writeUBO(int);
 	void writeUBO2(int mg , int triangle_n);

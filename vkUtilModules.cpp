@@ -731,7 +731,7 @@ void Lightmap_Edges_Module::execute(int n)
 
 	std::cout << "executing compute shader (" << n_WorkGroups_x << " / " << n_WorkGroups_y << ")\n";
 
-	vkCmdDispatch(commandBuffer, n_WorkGroups_x, n_WorkGroups_y, 1);
+	m_device->dispatch(commandBuffer, n_WorkGroups_x, n_WorkGroups_y, 1);
 
 	m_device->endSingleTimeCommands(commandBuffer);
 
@@ -908,7 +908,7 @@ void Merge_Images_Module::execute(u32 n)
 
 	std::cout << "executing compute shader (" << n_WorkGroups_x << " / " << n_WorkGroups_y << ")\n";
 
-	vkCmdDispatch(commandBuffer, n_WorkGroups_x, n_WorkGroups_y, 1);
+	m_device->dispatch(commandBuffer, n_WorkGroups_x, n_WorkGroups_y, 1);
 
 	m_device->endSingleTimeCommands(commandBuffer);
 

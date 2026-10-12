@@ -396,10 +396,86 @@ void MyDevice::endSingleTimeCommands(VkCommandBuffer commandBuffer) {
 	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 	submitInfo.commandBufferCount = 1;
 	submitInfo.pCommandBuffers = &commandBuffer;
-	vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
-	vkQueueWaitIdle(graphicsQueue);
+	VkResult result = vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
+	if (result == VK_SUCCESS)
+		result = vkQueueWaitIdle(graphicsQueue);
+
+	//If the GPU timed out (VK_ERROR_DEVICE_LOST) the command buffer is still pending; freeing it is invalid
+	if (result != VK_SUCCESS) {
+		std::cout << "endSingleTimeCommands: queue submit/wait failed, VkResult = " << result
+			<< (result == VK_ERROR_DEVICE_LOST ? " (device lost - shader probably hung or hit the GPU timeout)" : "") << "\n";
+		pendingTimestamps = 0;
+		return;
+	}
 
 	vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
+
+	collectTimestamps();
+}
+
+void MyDevice::createTimestampPool() {
+	VkPhysicalDeviceProperties props;
+	vkGetPhysicalDeviceProperties(physicalDevice, &props);
+
+	uint32_t queueFamilyCount = 0;
+	vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, nullptr);
+	std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
+	vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, queueFamilies.data());
+
+	uint32_t validBits = queueFamilies[findQueueFamilies().graphicsFamily].timestampValidBits;
+
+	if (validBits == 0 || props.limits.timestampPeriod == 0) {
+		std::cout << "GPU timestamps not supported on this queue, kernel times will not be reported\n";
+		return;
+	}
+
+	timestampPeriodNs = props.limits.timestampPeriod;
+	timestampMask = validBits >= 64 ? ~0ull : ((1ull << validBits) - 1);
+
+	VkQueryPoolCreateInfo poolInfo{};
+	poolInfo.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
+	poolInfo.queryType = VK_QUERY_TYPE_TIMESTAMP;
+	poolInfo.queryCount = MAX_TIMESTAMPS;
+
+	if (vkCreateQueryPool(device, &poolInfo, nullptr, &timestampPool) != VK_SUCCESS) {
+		timestampPool = VK_NULL_HANDLE;
+		std::cout << "failed to create timestamp query pool\n";
+	}
+}
+
+void MyDevice::dispatch(VkCommandBuffer commandBuffer, uint32_t x, uint32_t y, uint32_t z) {
+	bool timed = timestampPool != VK_NULL_HANDLE && pendingTimestamps + 2 <= MAX_TIMESTAMPS;
+
+	if (timed) {
+		if (pendingTimestamps == 0)
+			vkCmdResetQueryPool(commandBuffer, timestampPool, 0, MAX_TIMESTAMPS);
+		vkCmdWriteTimestamp(commandBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, timestampPool, pendingTimestamps++);
+	}
+
+	vkCmdDispatch(commandBuffer, x, y, z);
+
+	if (timed)
+		vkCmdWriteTimestamp(commandBuffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, timestampPool, pendingTimestamps++);
+
+	dispatch_stats.n_dispatches++;
+	dispatch_stats.n_workgroups += (uint64_t)x * y * z;
+}
+
+//Called after the queue is idle; accumulates GPU time for every dispatch in the last submitted command buffer
+void MyDevice::collectTimestamps() {
+	if (pendingTimestamps == 0)
+		return;
+
+	std::vector<uint64_t> results(pendingTimestamps);
+	if (vkGetQueryPoolResults(device, timestampPool, 0, pendingTimestamps, results.size() * sizeof(uint64_t),
+		results.data(), sizeof(uint64_t), VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WAIT_BIT) == VK_SUCCESS)
+	{
+		for (uint32_t i = 0; i + 1 < pendingTimestamps; i += 2) {
+			uint64_t ticks = ((results[i + 1] & timestampMask) - (results[i] & timestampMask)) & timestampMask;
+			dispatch_stats.gpu_ms += ticks * timestampPeriodNs * 1e-6;
+		}
+	}
+	pendingTimestamps = 0;
 }
 
 void MyDevice::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size) {

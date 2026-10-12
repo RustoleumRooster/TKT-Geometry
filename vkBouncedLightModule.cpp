@@ -183,7 +183,7 @@ void BouncedLight_Module::runMaterial(int mat_n)
 	std::cout << "execute " << n_WorkGroups_x << " workgroups\n";
 
 	//std::cout << "execute...\n";
-	vkCmdDispatch(commandBuffer, n_WorkGroups_x, 1, 1);
+	m_device->dispatch(commandBuffer, n_WorkGroups_x, 1, 1);
 
 	m_device->endSingleTimeCommands(commandBuffer);
 
@@ -191,6 +191,26 @@ void BouncedLight_Module::runMaterial(int mat_n)
 
 	vkDeviceWaitIdle(m_device->getDevice());
 
+	estimateRays(mat_n);
+}
+
+void BouncedLight_Module::estimateRays(int mat_n)
+{
+	//Per texel the shader traces 4 hemisphere rays from each of its 256 threads
+	const u32 threads_per_workgroup = 32 * 8;
+	const u32 rays_per_thread = 4;
+
+	u32 lm_size = materials->data()[mat_n].lightmap_size;
+	u32 first = indices_soa->offset[mat_n];
+	u32 n_triangles = indices_soa->len[mat_n] / 3;
+
+	for (u32 t = 0; t < n_triangles; t++)
+	{
+		u32 texels = triangle_trans->count_texels(first + t * 3, lm_size);
+
+		texels_shaded += texels;
+		rays_traced += (u64)texels * threads_per_workgroup * rays_per_thread;
+	}
 }
 
 void BouncedLight_Module::runTriangle(int mat_n, int triangle_offset)
@@ -213,7 +233,7 @@ void BouncedLight_Module::runTriangle(int mat_n, int triangle_offset)
 		&descriptorSets[0], 0, 0);
 
 	std::cout << "execute...\n";
-	vkCmdDispatch(commandBuffer, 1, 1, 1);
+	m_device->dispatch(commandBuffer, 1, 1, 1);
 
 	m_device->endSingleTimeCommands(commandBuffer);
 

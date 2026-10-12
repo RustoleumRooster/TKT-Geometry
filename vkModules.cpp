@@ -11,6 +11,9 @@
 #include "my_reflected_nodes.h"
 #include <vulkan/vulkan.h>
 #include "reflect_custom_types.h"
+#include <chrono>
+#include <iomanip>
+#include <algorithm>
 
 using namespace irr;
 using namespace core;
@@ -209,6 +212,31 @@ bool Vulkan_Module::all_resources_ready()
 	return true;
 }
 
+//Runs the module and records its wall time and the compute dispatches it issued
+void Vulkan_Module::timed_run()
+{
+	DispatchStats before = m_device->getDispatchStats();
+	texels_shaded = 0;
+	rays_traced = 0;
+	auto t0 = std::chrono::high_resolution_clock::now();
+
+	run();
+
+	auto t1 = std::chrono::high_resolution_clock::now();
+	const DispatchStats& after = m_device->getDispatchStats();
+
+	Module_Run_Stats stats;
+	stats.name = GetDynamicReflection()->name;
+	stats.wall_ms = std::chrono::duration<double, std::milli>(t1 - t0).count();
+	stats.dispatches.n_dispatches = after.n_dispatches - before.n_dispatches;
+	stats.dispatches.n_workgroups = after.n_workgroups - before.n_workgroups;
+	stats.dispatches.gpu_ms = after.gpu_ms - before.gpu_ms;
+	stats.texels_shaded = texels_shaded;
+	stats.rays_traced = rays_traced;
+
+	vulkan->run_stats.push_back(stats);
+}
+
 bool Vulkan_Module::signaled()
 {
 	if (my_status != VK_MODULE_NOT_RAN)
@@ -222,7 +250,7 @@ bool Vulkan_Module::signaled()
 
 		cout << tD->name << ": running \n";
 
-		run();
+		timed_run();
 
 		for (reflect::Member& m : tD->members)
 		{
@@ -260,7 +288,7 @@ void Vulkan_Module::run_and_push()
 
 		cout << tD->name << ": running \n";
 
-		run();
+		timed_run();
 
 		for (reflect::Member& m : tD->members)
 		{
@@ -536,6 +564,10 @@ void Vulkan_App::run_workflow()
 		}
 	}
 
+	run_stats.clear();
+	m_device->resetDispatchStats();
+	auto t0 = std::chrono::high_resolution_clock::now();
+
 	geo_module->run_and_push();
 
 	bool still_running = true;
@@ -589,6 +621,61 @@ void Vulkan_App::run_workflow()
 		cout << "All resources consumed\n";
 	}
 	cout << "Finished running workflow\n";
+
+	auto t1 = std::chrono::high_resolution_clock::now();
+	print_run_stats(std::chrono::duration<double, std::milli>(t1 - t0).count());
+}
+
+void Vulkan_App::print_run_stats(double total_ms)
+{
+	const DispatchStats& total = m_device->getDispatchStats();
+
+	cout << "\n===== Lightmap workflow performance =====\n";
+	cout << "Triangles:   " << geo_assets->master_triangle_list.size() << "\n";
+	cout << "BVH nodes:   " << geo_assets->bvh.nodes.size() << "\n";
+	cout << "Area lights: " << geo_assets->area_lights.size()
+		<< " (" << geo_assets->area_light_indices.size() / 2 << " light triangles)\n\n";
+
+	u64 total_texels = 0;
+	u64 total_rays = 0;
+	double raytrace_gpu_ms = 0;
+
+	cout << std::fixed << std::setprecision(2);
+	cout << std::left << std::setw(32) << "Module"
+		<< std::right << std::setw(11) << "Dispatches" << std::setw(12) << "Workgroups"
+		<< std::setw(12) << "Texels" << std::setw(15) << "Rays" << std::setw(11) << "Rays/texel"
+		<< std::setw(11) << "GPU ms" << std::setw(11) << "Wall ms" << "\n";
+
+	for (const Module_Run_Stats& s : run_stats)
+	{
+		cout << std::left << std::setw(32) << s.name
+			<< std::right << std::setw(11) << s.dispatches.n_dispatches << std::setw(12) << s.dispatches.n_workgroups
+			<< std::setw(12) << s.texels_shaded << std::setw(15) << s.rays_traced
+			<< std::setw(11) << (s.texels_shaded ? (double)s.rays_traced / s.texels_shaded : 0.0)
+			<< std::setw(11) << s.dispatches.gpu_ms << std::setw(11) << s.wall_ms << "\n";
+
+		total_texels += s.texels_shaded;
+		total_rays += s.rays_traced;
+		if (s.rays_traced > 0)
+			raytrace_gpu_ms += s.dispatches.gpu_ms;
+	}
+
+	cout << std::left << std::setw(32) << "TOTAL"
+		<< std::right << std::setw(11) << total.n_dispatches << std::setw(12) << total.n_workgroups
+		<< std::setw(12) << total_texels << std::setw(15) << total_rays << std::setw(11) << ""
+		<< std::setw(11) << total.gpu_ms << std::setw(11) << total_ms << "\n";
+
+	if (raytrace_gpu_ms > 0)
+		cout << "\nRaytracing throughput: " << (total_rays / (raytrace_gpu_ms * 1e-3)) / 1e6 << " Mrays/s (GPU time)\n";
+
+	cout << "Texel and ray counts are CPU estimates: texels = texel visits per triangle (shared edge texels count once per triangle),\n"
+		<< "rays = all 256 threads per texel, including samples rejected as off-triangle\n";
+
+	if (!m_device->timestampsSupported())
+		cout << "(GPU timestamps unavailable, GPU ms not measured)\n";
+
+	cout << "=========================================\n\n";
+	cout << std::defaultfloat;
 }
 
 Geometry_Assets::Geometry_Assets(geometry_scene* g_scene, Lightmap_Configuration* config)
@@ -880,6 +967,76 @@ bool Triangle_Transformer::get_uvs_for_triangle(int triangle_no, int lm_size, ve
 	w2 = vector3df(floor_x_value(map_uvs[v_2].V.X, lm_size), floor_y_value(map_uvs[v_2].V.Y, lm_size), 0);
 
 	return true;
+}
+
+u32 Triangle_Transformer::count_texels(u32 index_offset, u32 lm_size)
+{
+	//Mirrors main() in shader_arealight.comp / shader_bounced_light.comp, using the same float math
+	const vector<aligned_vec3>& map_uvs = vertices_soa.data1;
+
+	vector3df w0, w1, w2;
+	get_uvs_for_triangle(index_offset, lm_size, w0, w1, w2);
+
+	//get_uvs_for_triangle sorts the vertices but doesn't return the indices; the raw uvs are needed for b0/b1
+	f32 y_raw[3] = { map_uvs[indexed(index_offset)].V.Y, map_uvs[indexed(index_offset, 1)].V.Y, map_uvs[indexed(index_offset, 2)].V.Y };
+	std::sort(y_raw, y_raw + 3);
+
+	f32 W = (f32)lm_size;
+	f32 H = (f32)lm_size;
+
+	//Degenerate in v: the shader divides by zero here, treat it as doing no work
+	if (w1.Y - w0.Y == 0)
+		return 0;
+
+	f32 m0 = (w1.X - w0.X) / (w1.Y - w0.Y);
+	f32 m1 = (w2.X - w0.X) / (w2.Y - w0.Y);
+	f32 m2 = (w1.X - w2.X) / (w1.Y - w2.Y);
+
+	bool b0 = y_raw[1] > y_raw[0] + 0.0001f;
+	bool b1 = y_raw[2] > y_raw[1] + 0.0001f;
+
+	auto MajorX = [&](f32 y) { return w0.X + (m0 * (y - w0.Y)); };
+	bool bNegativeX = MajorX(w2.Y) > w2.X;
+
+	auto MinorX = [&](f32 y) -> f32 {
+		if (b0 && b1)
+		{
+			if (bNegativeX)
+				return std::max(w0.X + (m1 * (y - w0.Y)), w2.X + (m2 * (y - w2.Y)));
+			else
+				return std::min(w0.X + (m1 * (y - w0.Y)), w2.X + (m2 * (y - w2.Y)));
+		}
+		else if (b0)
+			return w0.X + (m1 * (y - w0.Y));
+		else if (b1)
+			return w2.X + (m2 * (y - w2.Y));
+		return 0;
+		};
+
+	auto to_uint = [](f32 x) -> s64 { return x < 0 ? 0 : (s64)x; };
+
+	u32 count = 0;
+	f32 ystep = 1.0f / H;
+
+	for (f32 y0 = w0.Y; y0 < w1.Y + 0.001f; y0 += ystep)
+	{
+		s64 x0, x1;
+		if (!bNegativeX)
+		{
+			x0 = to_uint(W * MajorX(y0));
+			x1 = to_uint(W * MinorX(y0));
+		}
+		else
+		{
+			x0 = to_uint(W * MinorX(y0));
+			x1 = to_uint(W * MajorX(y0));
+		}
+
+		if (x1 >= x0)
+			count += (u32)(x1 - x0 + 1);
+	}
+
+	return count;
 }
 
 void vkImageSubresource::destroy(VkDevice device)

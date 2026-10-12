@@ -42,6 +42,13 @@ const bool enableValidationLayers = false;
 const bool enableValidationLayers = true;
 #endif
 
+//Counters for compute dispatches recorded through MyDevice::dispatch
+struct DispatchStats {
+	uint64_t n_dispatches = 0;
+	uint64_t n_workgroups = 0;
+	double gpu_ms = 0;	//measured with timestamp queries, 0 if unsupported
+};
+
 struct QueueFamilyIndices {
 	uint32_t graphicsFamily;
 	uint32_t presentFamily;
@@ -58,6 +65,8 @@ public:
 	}
 
 	void cleanup() {
+		if (timestampPool != VK_NULL_HANDLE)
+			vkDestroyQueryPool(device, timestampPool, nullptr);
 		vkDestroyCommandPool(device, commandPool, nullptr);
 		vkDestroyDevice(device, nullptr);
 		//vkDestroySurfaceKHR(instance, surface, nullptr);
@@ -113,6 +122,12 @@ public:
 	VkCommandBuffer beginSingleTimeCommands();
 	void endSingleTimeCommands(VkCommandBuffer commandBuffer);
 
+	//Records a vkCmdDispatch bracketed by timestamp queries; results are collected in endSingleTimeCommands
+	void dispatch(VkCommandBuffer commandBuffer, uint32_t x, uint32_t y, uint32_t z);
+	const DispatchStats& getDispatchStats() { return dispatch_stats; }
+	void resetDispatchStats() { dispatch_stats = DispatchStats{}; }
+	bool timestampsSupported() { return timestampPool != VK_NULL_HANDLE; }
+
 
 	void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 
@@ -134,7 +149,11 @@ private:
 		pickPhysicalDevice();
 		createLogicalDevice();
 		createCommandPool();
+		createTimestampPool();
 	}
+
+	void createTimestampPool();
+	void collectTimestamps();
 
 	//void createSurface();
 	bool checkValidationLayerSupport();
@@ -154,4 +173,11 @@ private:
 
 	VkQueue graphicsQueue;
 	//VkQueue presentQueue;
+
+	static const uint32_t MAX_TIMESTAMPS = 128;
+	VkQueryPool timestampPool = VK_NULL_HANDLE;
+	double timestampPeriodNs = 1.0;
+	uint64_t timestampMask = ~0ull;
+	uint32_t pendingTimestamps = 0;
+	DispatchStats dispatch_stats;
 };

@@ -196,7 +196,7 @@ void Sunlight_Module::runMaterial(int mat_n)
 	std::cout << n_WorkGroups_x << " workgroups\n";
 
 	std::cout << "execute...\n";
-	vkCmdDispatch(commandBuffer, n_WorkGroups_x, 1, 1);
+	m_device->dispatch(commandBuffer, n_WorkGroups_x, 1, 1);
 
 	m_device->endSingleTimeCommands(commandBuffer);
 

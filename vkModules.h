@@ -535,6 +535,9 @@ public:
 
 	bool get_uvs_for_triangle(int triangle_no, int lm_size, vector3df& w0, vector3df& w1, vector3df& w2);
 
+	//CPU replica of the lightmap shaders' scanline loop: number of texels one workgroup iterates over for this triangle
+	u32 count_texels(u32 index_offset, u32 lm_size);
+
 	const soa_struct_2<aligned_vec3, aligned_vec3>& vertices_soa;
 	const soa_struct<aligned_uint>& indices_soa;
 };
@@ -582,6 +585,7 @@ public:
 	void createComputePipeline(const char* shader_path);
 
 	virtual void run() {}
+	void timed_run();
 	//bool load_resources();
 	bool all_resources_ready();
 	bool signaled();
@@ -600,6 +604,11 @@ public:
 	ComputePipeline* pipeline = NULL;
 
 	u64 m_uid;
+
+	//Raytracing workload, filled in by modules that trace rays (estimated on the CPU, see count_texels)
+	u64 texels_shaded = 0;
+	u64 rays_traced = 0;
+
 	int my_status = VK_MODULE_NOT_RAN;
 	bool enabled = true;
 
@@ -612,6 +621,15 @@ public:
 
 class Geometry_Module;
 
+struct Module_Run_Stats
+{
+	std::string name;
+	double wall_ms;
+	DispatchStats dispatches;
+	u64 texels_shaded;
+	u64 rays_traced;
+};
+
 class Vulkan_App
 {
 public:
@@ -622,6 +640,7 @@ public:
 	void cleanup();
 	void status();
 	void run_workflow();
+	void print_run_stats(double total_ms);
 
 	void createDescriptorPool();
 	void createCommandBuffers();
@@ -640,6 +659,7 @@ public:
 	MyDevice* m_device = NULL;
 	std::vector<Vulkan_Module*> all_modules;
 	std::vector<vkMemoryResource*> resources;
+	std::vector<Module_Run_Stats> run_stats;
 
 	video::IVideoDriver* driver;
 	Lightmap_Configuration* configuration;
