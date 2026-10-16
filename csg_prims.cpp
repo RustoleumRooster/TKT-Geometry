@@ -859,9 +859,21 @@ geo_element make_cone(int height, int radius, int faces)
     pf.surface_groups.push_back(sg);
 
     for(poly_face& face: pf.faces)
+    {
         face.surface_group=0;
+        face.uv_origin=pf.vertices[face.vertices[0]].V;
+    }
 
     //pf.faces[0].surface_group=0;
+
+    geo.surfaces.resize(pf.faces.size());
+
+    for (int i = 0; i < pf.faces.size(); i++)
+    {
+        geo.surfaces[i].surface_type = SURFACE_GROUP_STANDARD;
+        geo.surfaces[i].my_faces.push_back(i);
+        pf.faces[i].surface_no = i;
+    }
 
     return geo;
 }
