@@ -437,6 +437,22 @@ void GeometryStack::rebuild_geometry(bool only_build_new_geometry)
     for (int i = build_start; i < this->elements.size(); i++)
         this->elements[i].geometry = no_poly;
 
+    // An element which produces no scene geometry still keeps one geometry face per brush face, with no loops
+    auto make_empty_geometry = [](geo_element& el)
+    {
+        if (el.type == GEO_ADD)
+            el.brush.make_convex();
+        else if (el.type == GEO_SUBTRACT)
+            el.brush.make_concave();
+
+        el.geometry = el.brush;
+
+        for (poly_face& face : el.geometry.faces)
+            face.loops.clear();
+
+        el.geometry.reduce_edges_vertices();
+    };
+
     //intersections_graph.lines.clear();
 
     START_TIMER()
@@ -514,7 +530,7 @@ void GeometryStack::rebuild_geometry(bool only_build_new_geometry)
             }
             else
             {
-                this->elements[i].geometry = no_poly;
+                make_empty_geometry(this->elements[i]);
             }
         }
         else if(results.n_intersections == 0 && combo.faces.size() > 0 && this->elements[i].brush.vertices.size() > 0)
@@ -535,7 +551,7 @@ void GeometryStack::rebuild_geometry(bool only_build_new_geometry)
             }
             else
             {
-                this->elements[i].geometry = no_poly;
+                make_empty_geometry(this->elements[i]);
             }
         }
 
