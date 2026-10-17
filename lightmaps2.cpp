@@ -519,20 +519,15 @@ void initialize_lightmap_block(GeometryStack* geo_node, int element_id, int surf
 			}
 		}
 
-		//if (element->surfaces[surface_no].lightmap_info.bOverrideSize == true)
-		if(false)
+		//The size calculation above still runs for overridden surfaces, since it also sets up
+		//the face tangents / bboxes that the UV mapping relies on. bFlipped stays as computed.
+		if (element->surfaces[surface_no].lightmap_info.bOverrideSize == true)
 		{
-			b.bFlipped = element->surfaces[surface_no].lightmap_info.bFlipped;
 			b.height = element->surfaces[surface_no].lightmap_info.height;
 			b.width = element->surfaces[surface_no].lightmap_info.width;
-			b.faces = surface;
+			b.bOverrideSize = true;
 		}
-		else
-		{
-			element->surfaces[surface_no].lightmap_info.height = b.height;
-			element->surfaces[surface_no].lightmap_info.width = b.width;
-			element->surfaces[surface_no].lightmap_info.bFlipped = b.bFlipped;
-		}
+		//Non-overridden sizes are written back to lightmap_info in calc_lightmap_uvs, after reduction
 
 		*ret = b;
 		++ret;
@@ -552,10 +547,19 @@ void Lightmap_Configuration::calc_lightmap_uvs(const std::vector<TextureMaterial
 		{
 			Lightmap_Block& b = materials[i].blocks[j];
 
-			if (reduce_power != 0)
+			if (!b.bOverrideSize)
 			{
-				b.height = reduce_dimension_base2(b.height, reduce_power);
-				b.width = reduce_dimension_base2(b.width, reduce_power);
+				if (reduce_power != 0)
+				{
+					b.height = reduce_dimension_base2(b.height, reduce_power);
+					b.width = reduce_dimension_base2(b.width, reduce_power);
+				}
+
+				//Write the final size back so the UI shows what is actually used
+				lightmap_info_struct& lm_info = geo_node->get_element_by_id(b.element_id)->surfaces[b.surface_no].lightmap_info;
+				lm_info.height = b.height;
+				lm_info.width = b.width;
+				lm_info.bFlipped = b.bFlipped;
 			}
 
 			//to the raw lm uvs array
@@ -843,6 +847,9 @@ void Lightmap_Configuration::split_material_groups()
 
 void Lightmap_Configuration::layout_lightmaps()
 {
+	//Always clear. Read in later steps.
+	bl_combined.clear();
+
 	if (materials.size() == 0)
 		return;
 	
@@ -887,8 +894,6 @@ void Lightmap_Configuration::layout_lightmaps()
 
 	//=============
 	//Combine
-
-	bl_combined.clear();
 
 	auto blc_back = std::back_inserter(bl_combined);
 	vector<blocklist>::iterator& bl_it = blocklists.begin();
