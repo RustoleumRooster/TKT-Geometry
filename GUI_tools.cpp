@@ -547,11 +547,13 @@ bool multi_tool_panel::OnEvent(const SEvent& event)
                      remove_tool(header->tool_no);
                      return true;
                     }
+                    else if (event.GUIEvent.Caller == header)
+                    {
+                        show_tool(header->tool_no);
+                        return true;
+                    }
                 }
-                tool_header* th = (tool_header*)event.GUIEvent.Caller;
-                show_tool(th->tool_no);
-
-                return true;
+                //clicks bubbling up from inside a tool are not ours to handle
             }
         }
         else if(event.EventType ==  EET_MOUSE_INPUT_EVENT)

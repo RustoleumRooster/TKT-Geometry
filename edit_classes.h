@@ -400,7 +400,7 @@ public:
     virtual int getHeight();
     virtual int getButtonType() { return FORM_FIELD_BUTTON; }
     virtual bool clickButton(s32 id, reflected_tool_base*) override;
-    virtual int getNumIds() override {return 3;}
+    virtual int getNumIds() override {return 4;}   //label, Choose, Clear, "n selected"
 
     int ypos_ = 0;
     virtual bool is_equal(void* a, void* b) {
