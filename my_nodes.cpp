@@ -158,7 +158,9 @@ void WaterSurface_SceneNode::render()
     global_clipping_plane[2] = 0.0;
     global_clipping_plane[3] = -this->my_z_depth;
 
-    driver->enableClipPlane(0, true);
+    //shaders clip with global_clipping_plane; fixed function materials (eg EMT_SOLID emitters)
+    //use the driver's user clip plane, so give it the same plane
+    driver->setClipPlane(0, plane3df(vector3df(0, 1, 0), -this->my_z_depth), true);
 
     SceneManager->setActiveCamera(my_camera);
     my_camera->render();
@@ -188,6 +190,9 @@ void WaterSurface_SceneNode::render()
     global_clipping_plane[1] = -1.0;
     global_clipping_plane[2] = 0.0;
     global_clipping_plane[3] = this->my_z_depth;
+
+    //plane is re-uploaded by the driver on the next world/view transform
+    driver->setClipPlane(0, plane3df(vector3df(0, -1, 0), this->my_z_depth), true);
 
     video::SMaterial some_material;
     some_material.MaterialType = underwater_material;

@@ -54,6 +54,7 @@ void MeshNode_Interface_Edit::refresh_material_groups()
             int n_loops = 0;
             for (int f_i : s->my_faces)
             {
+
                 n_loops += geo_scene->elements[e_i].geometry.faces[f_i].loops.size();
             }
 
@@ -176,6 +177,7 @@ void MeshNode_Interface_Edit::generate_lightmap_info()
         pf->faces[f_i].temp_b = false;
     }
 
+    //These Lightmap functions happen FIRST, with the edit mesh 
     geo_scene->get_lightmap_config(0).initialize_soa_arrays(this->m_mesh);
     geo_scene->get_lightmap_config(1).initialize_soa_arrays(this->m_mesh);
 
@@ -243,6 +245,8 @@ const std::vector<TextureMaterial>& MeshNode_Interface_Final::get_materials_used
 
 void MeshNode_Interface_Final::generate_lightmap_info()
 {
+    //These Lightmap functions happen SECOND, AFTER the lightmap functions in the edit mesh 
+
     geo_scene->get_lightmap_config(0).layout_lightmaps();
     geo_scene->get_lightmap_config(1).layout_lightmaps();
 
@@ -314,6 +318,8 @@ void MeshNode_Interface_Edit::generate_mesh_buffer(SMesh* mesh)
 
                 //buffer->getMaterial().setTexture(0, driver->getTexture(geo_scene->face_texture_by_n(f_i).c_str()));
                 buffer->getMaterial().setTexture(0, TexturePicker_Tool::get_texture(geo_scene->face_texture_by_n(f_i).c_str()));
+                if(TexturePicker_Tool::get_texture_info(geo_scene->face_texture_by_n(f_i).c_str())->normal_map)
+                    buffer->getMaterial().setTexture(2, TexturePicker_Tool::get_texture_info(geo_scene->face_texture_by_n(f_i).c_str())->normal_map);
 
                 make_meshbuffer_from_triangles(th, buffer);
                 mesh->addMeshBuffer(buffer);
@@ -434,10 +440,20 @@ void MeshNode_Interface::calc_vertex_lighting_vectors(vector<Reflected_MeshBuffe
     typedef CMeshBuffer<video::S3DVertex2TCoords> mesh_buffer_type;
     scene::SMesh* mesh = getMesh();
 
+    Material_Groups_Base* material_groups_base = Material_Groups_Tool::get_base();
+    const std::vector<TextureMaterial>& materials_used = get_materials_used();
+
     //cout << "Light Sources:\n";
     for (int i = 0; i < mesh->getMeshBufferCount(); i++)
     {
         scene::IMeshBuffer* buffer = mesh->getMeshBuffer(i);
+
+        //the light vectors are packed into vertex colors; unlit buffers (eg emitters) render
+        //with fixed function EMT_SOLID, which multiplies the texture by vertex color, so leave them white
+        if (i < materials_used.size() &&
+            !material_groups_base->material_groups[materials_used[i].materialGroup].lightmap)
+            continue;
+
         for (int j = 0; j < buffer->getVertexCount(); j++)
         {
             video::S3DVertex2TCoords* vtx = &((video::S3DVertex2TCoords*)buffer->getVertices())[j];
@@ -449,12 +465,16 @@ void MeshNode_Interface::calc_vertex_lighting_vectors(vector<Reflected_MeshBuffe
             for (Reflected_MeshBuffer_AreaLight_SceneNode* node : lights)
             {
                 vector3df r = node->getPosition() - vtx->Pos;
+
+                if (vtx->Normal.dotProduct(r) < 0)
+                    continue;
+
                 f32 d = r.getLength();
                 d += 1.0;
                 d *= d;
                 r.normalize();
 
-                f32 power = fmax(0,-node->normal.dotProduct(r)) * fmax(0, vtx->Normal.dotProduct(r)) * node->power / (d);
+                f32 power = fmax(0,-node->normal.dotProduct(r) * -node->normal.dotProduct(r) * -node->normal.dotProduct(r)) * fmax(0, vtx->Normal.dotProduct(r)) * node->power / (d);
 
                 total_power += power;
 
@@ -1175,6 +1195,8 @@ void MeshNode_Interface_Final::generate_mesh_buffer(SMesh* mesh)
 
         buffer = new scene::CMeshBuffer<video::S3DVertex2TCoords>();
         buffer->getMaterial().setTexture(0,materials_used[t_i].texture->texture);
+        if(materials_used[t_i].texture->normal_map)
+            buffer->getMaterial().setTexture(2, materials_used[t_i].texture->normal_map);
 
         make_meshbuffer_from_triangles(triangle_groups,buffer);
 
