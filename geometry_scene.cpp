@@ -1388,8 +1388,10 @@ void geometry_scene::setFaceNodeType(const std::vector<int>& faces_i, const char
                     {
                         has_node[i] = true;
                     }
+
+                    //a node marks a single face; once removed it may already be freed
+                    break;
                 }
-                vector3df pos = pf->faces[f_i].m_center;
             }
         }
     }

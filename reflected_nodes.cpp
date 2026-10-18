@@ -586,10 +586,15 @@ void Reflected_MeshBuffer_SceneNode::restore_original_texture()
         if (pf->faces[f_i].element_id == this->element_id &&
             pf->faces[f_i].face_id == this->face_id)
         {
-            int face_i = pf->faces[f_i].face_id;
-            //geo_element* element = geo_scene->geoNode()->get_element_by_id(pf->faces[f_i].element_id);
+            //face_id is the face's index within its own element, so look the surface up
+            //through the element rather than with surface_by_n (which takes a global face index)
+            geo_element* element = geo_scene->geoNode()->get_element_by_id(this->element_id);
 
-            poly_surface* surface = geo_scene->geoNode()->surface_by_n(face_i);
+            if (!element || this->face_id >= element->brush.faces.size())
+                continue;
+
+            int surface_no = element->brush.faces[this->face_id].surface_no;
+            poly_surface* surface = &element->surfaces[surface_no];
 
            // video::ITexture* texture = device->getVideoDriver()->getTexture(surface->texture_name.c_str());
             video::ITexture* texture = TexturePicker_Tool::get_texture(surface->texture_name.c_str());

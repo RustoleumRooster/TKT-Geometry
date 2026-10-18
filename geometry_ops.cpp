@@ -1046,6 +1046,7 @@ geo_element* GeometryStack::get_element_by_id(int id)
         if (el.element_id == id)
             return &el;
     }
+    return NULL;
 }
 
 int GeometryStack::get_element_index_by_id(int id)
