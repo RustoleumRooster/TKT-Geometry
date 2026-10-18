@@ -147,6 +147,13 @@ public:
 
     virtual bool addSelfToScene(USceneNode* parent, irr::scene::ISceneManager* smgr, geometry_scene* geo_scene) override;
     virtual void onSceneInit() override;
+    virtual void postEdit() override;
+
+    void set_shader_params(IMeshBuffer* buffer);
+
+    f32 speed = 1.0;
+    f32 scale = 1.0;
+    f32 ambient = 0.5;          //fraction of the lightmap not redirected into caustics
 
     REFLECT2()
 };

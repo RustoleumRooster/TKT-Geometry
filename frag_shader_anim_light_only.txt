@@ -1,0 +1,72 @@
+
+uniform sampler2D myTexture;
+uniform sampler2D myTexture2;
+uniform sampler2D myTexture3;
+
+uniform float time;
+uniform float speed;	// playback rate multiplier
+uniform float scale;	// tile size multiplier (1.0 = TILE_SIZE world units)
+uniform float ambient;	// fraction of the lightmap left undisturbed (1.0 = no caustics)
+
+varying vec2 texcoord;
+varying vec2 texcoord2;
+varying vec3 worldpos;
+varying vec3 worldnormal;
+
+// atlas: 1024x1024, 128x128 frames in an 8x8 grid
+// the 32 frames occupy the bottom 4 rows of the image, ordered
+// left to right, bottom row first (rows 7,6,5,4 counting from the top)
+const float GRID = 8.0;
+const float N_FRAMES = 32.0;
+const float FIRST_ROW = 7.0;
+const float FRAME_TIME = 0.04;	// seconds per frame
+const float HALF_TEXEL = 0.5 / 128.0;	// keeps bilinear filtering from reading neighbouring cells
+
+// projection: the texture is cast along PROJ_DIR, like light from above
+const vec3 PROJ_DIR = vec3(0.3, -1.0, 0.2);
+const float TILE_SIZE = 128.0;	// world units covered by one tile at scale 1.0
+
+// average brightness of the caustics atlas, so the pattern redistributes light without changing the total
+const float CAUSTIC_MEAN = 0.28;
+
+// top-left corner of a frame's cell, in cell units
+vec2 frame_cell(float frame)
+{
+	return vec2(mod(frame, GRID), FIRST_ROW - floor(frame / GRID));
+}
+
+void main (void)
+{
+	// basis for the plane perpendicular to the projection direction
+	vec3 dir = normalize(PROJ_DIR);
+	vec3 up = abs(dir.y) < 0.99 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0);
+	vec3 tangent = normalize(cross(up, dir));
+	vec3 bitangent = cross(dir, tangent);
+
+	vec2 proj_uv = vec2(dot(worldpos, tangent), dot(worldpos, bitangent)) / (TILE_SIZE * max(scale, 0.001));
+
+	// crossfade between the current frame and the next
+	float t = time * speed / FRAME_TIME;
+	float frame = mod(floor(t), N_FRAMES);
+	float next_frame = mod(frame + 1.0, N_FRAMES);
+	float blend = fract(t);
+
+	vec2 tile_uv = clamp(fract(proj_uv), HALF_TEXEL, 1.0 - HALF_TEXEL);
+
+	vec3 caustic0 = texture2D(myTexture3, (frame_cell(frame) + tile_uv) / GRID).rgb;
+	vec3 caustic1 = texture2D(myTexture3, (frame_cell(next_frame) + tile_uv) / GRID).rgb;
+
+	vec3 caustic = mix(caustic0, caustic1, blend) / CAUSTIC_MEAN;
+
+	// surfaces facing away from the light get the plain lightmap
+	float facing = max(dot(normalize(worldnormal), -dir), 0.0);
+	caustic = mix(vec3(1.0), caustic, facing);
+
+	float lightmap = 0.2 + 0.8* texture2D(myTexture2, texcoord2).r;
+
+	lightmap = clamp(lightmap,0.0,1.0);
+
+	vec3 light = lightmap * (ambient + (1.0 - ambient) * caustic);
+
+	gl_FragColor = vec4(light, 1.0);
+}

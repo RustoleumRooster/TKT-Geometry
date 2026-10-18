@@ -1,0 +1,26 @@
+
+uniform sampler2D myTexture;
+uniform sampler2D myTexture2;
+uniform sampler2D myTexture3;
+
+uniform float time;
+
+varying vec2 texcoord;
+varying vec2 texcoord2;
+
+void main (void)
+{
+    	vec4 col = texture2D(myTexture, texcoord);
+
+	//float light = 0.2 + 0.8* texture2D(myTexture2, texcoord2).r;
+	float light = texture2D(myTexture2, texcoord2).r;
+
+	clamp(light,0,1);
+
+    	col = col * light;
+	col.a = 1.0;
+
+	gl_FragColor = col;
+	//gl_FragColor = vec4(1,1,1,1) * light;
+	//gl_FragColor = vec4(1,0,0,0);
+}

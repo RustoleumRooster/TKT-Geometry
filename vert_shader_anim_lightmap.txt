@@ -1,0 +1,20 @@
+
+uniform mat4 mWorldView;
+uniform mat4 mProj;
+uniform mat4 mWorld;
+
+varying vec2 texcoord;
+varying vec2 texcoord2;
+varying vec3 worldpos;
+varying vec3 worldnormal;
+
+void main(void)
+{
+	gl_Position = mProj * mWorldView * gl_Vertex;
+
+	texcoord = vec2(gl_MultiTexCoord0);
+	texcoord2 = vec2(gl_MultiTexCoord1);
+
+	worldpos = vec3(mWorld * gl_Vertex);
+	worldnormal = vec3(mWorld * vec4(gl_Normal, 0.0));
+}

@@ -169,6 +169,14 @@ class AnimatedLightmapShaderCallback : public video::IShaderConstantSetCallBack
 {
 public:
 
+	//per-buffer values, packed into the material by Reflected_MeshBuffer_AnimatedTexture_SceneNode
+	virtual void OnSetMaterial(const video::SMaterial& material) override
+	{
+		speed = material.MaterialTypeParam;
+		scale = material.MaterialTypeParam2;
+		ambient = material.Shininess;
+	}
+
 	virtual void OnSetConstants(video::IMaterialRendererServices* services,
 		s32 userData)
 	{
@@ -181,7 +189,13 @@ public:
 		core::matrix4 Proj = driver->getTransform(video::ETS_PROJECTION);
 		services->setVertexShaderConstant("mProj", Proj.pointer(), 16);
 
-		services->setVertexShaderConstant("time", &g_time, 1);
+		core::matrix4 World = driver->getTransform(video::ETS_WORLD);
+		services->setVertexShaderConstant("mWorld", World.pointer(), 16);
+
+		services->setPixelShaderConstant("time", &g_time, 1);
+		services->setPixelShaderConstant("speed", &speed, 1);
+		services->setPixelShaderConstant("scale", &scale, 1);
+		services->setPixelShaderConstant("ambient", &ambient, 1);
 
 		s32 TextureLayerID = 0;
 
@@ -191,7 +205,19 @@ public:
 
 		services->setPixelShaderConstant("myTexture2", &TextureLayerID, 1);
 
+		TextureLayerID = 2;
+
+		services->setPixelShaderConstant("myTexture3", &TextureLayerID, 1);
+
 	}
+
+	static void initialize();
+
+	static video::ITexture* texture0;
+
+	f32 speed = 1.0;
+	f32 scale = 1.0;
+	f32 ambient = 0.5;
 };
 
 class LightmapNormalShaderCallback : public video::IShaderConstantSetCallBack

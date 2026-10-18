@@ -607,11 +607,63 @@ bool Reflected_MeshBuffer_AnimatedTexture_SceneNode::addSelfToScene(USceneNode* 
 
 void Reflected_MeshBuffer_AnimatedTexture_SceneNode::onSceneInit()
 {
+    polyfold* pf = geo_scene->geoNode()->get_total_geometry();
 
+    for (int f_i = 0; f_i < pf->faces.size(); f_i++)
+    {
+        if (pf->faces[f_i].element_id == this->element_id &&
+            pf->faces[f_i].face_id == this->face_id)
+        {
+            MeshBuffer_Chunk chunk = geo_scene->geoNode()->final_meshnode_interface.get_mesh_buffer_by_face(f_i);
+
+            IMeshBuffer* buffer = chunk.buffer;
+
+            buffer->getMaterial().setTexture(2, AnimatedLightmapShaderCallback::texture0);
+
+            Material_Groups_Base* material_groups_base = Material_Groups_Tool::get_base();
+
+            E_MATERIAL_TYPE animated_material;
+
+            if (material_groups_base->lighting_mode == LIGHTING_LIGHT_ONLY)
+                animated_material = (E_MATERIAL_TYPE)material_groups_base->Material_AnimatedLightOnly_Type;
+            else
+                animated_material = (E_MATERIAL_TYPE)material_groups_base->Material_AnimatedLightmap_Type;
+
+            buffer->getMaterial().MaterialType = animated_material;
+
+            set_shader_params(buffer);
+        }
+    }
+}
+
+void Reflected_MeshBuffer_AnimatedTexture_SceneNode::set_shader_params(IMeshBuffer* buffer)
+{
+    //read back by AnimatedLightmapShaderCallback::OnSetMaterial
+    buffer->getMaterial().MaterialTypeParam = speed;
+    buffer->getMaterial().MaterialTypeParam2 = scale;
+    buffer->getMaterial().Shininess = core::clamp(ambient, 0.0f, 1.0f);
+}
+
+void Reflected_MeshBuffer_AnimatedTexture_SceneNode::postEdit()
+{
+    IMeshBuffer* buffer = get_mesh_buffer();
+
+    if (buffer)
+    {
+        set_shader_params(buffer);
+
+        if (geo_scene->getMeshNode())
+            geo_scene->getMeshNode()->copyMaterials();
+    }
+
+    Reflected_MeshBuffer_SceneNode::postEdit();
 }
 
 REFLECT_STRUCT2_BEGIN(Reflected_MeshBuffer_AnimatedTexture_SceneNode)
     ALIAS("Animated Texture")
     PLACEABLE(false)
+    REFLECT_STRUCT2_MEMBER(speed)
+    REFLECT_STRUCT2_MEMBER(scale)
+    REFLECT_STRUCT2_MEMBER(ambient)
     INHERIT_FROM(Reflected_MeshBuffer_SceneNode)
 REFLECT_STRUCT2_END()

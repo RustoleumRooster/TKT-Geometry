@@ -34,6 +34,22 @@ void CloudsShaderCallBack::initialize()
     texture2 = driver->getTexture("../media/new_pnoise3.bmp");
 }
 
+video::ITexture* AnimatedLightmapShaderCallback::texture0 = NULL;
+
+void AnimatedLightmapShaderCallback::initialize()
+{
+    video::IVideoDriver* driver = device->getVideoDriver();
+
+    //no mipmaps: the shader wraps uvs within atlas cells, and the derivative jump at each wrap
+    //would select the smallest mip and draw seams
+    bool mipmaps = driver->getTextureCreationFlag(video::ETCF_CREATE_MIP_MAPS);
+    driver->setTextureCreationFlag(video::ETCF_CREATE_MIP_MAPS, false);
+
+    texture0 = driver->getTexture("../media/caustics_01.bmp");
+
+    driver->setTextureCreationFlag(video::ETCF_CREATE_MIP_MAPS, mipmaps);
+}
+
 void initialize_tools(geometry_scene* scene, gui::IGUIEnvironment* gui, multi_tool_panel* tool_panel)
 {
     Material_Groups_Base* material_groups_base = new Material_Groups_Base(L"Materials", GUI_ID_MATERIAL_GROUPS_BASE, gui, tool_panel);
@@ -239,13 +255,13 @@ void initialize_materials(geometry_scene* scene)
             mc10, video::EMT_SOLID, 0);
 
         materialType_animated_lightmap = gpu->addHighLevelShaderMaterialFromFiles(
-            "vert_shader_animated_lightmap.txt", "vertexMain", video::EVST_VS_1_1,
-            "frag_shader_animated_lightmap.txt", "pixelMain", video::EPST_PS_1_1,
+            "vert_shader_anim_lightmap.txt", "vertexMain", video::EVST_VS_1_1,
+            "frag_shader_anim_lightmap.txt", "pixelMain", video::EPST_PS_1_1,
             mc11, video::EMT_SOLID, 0);
 
         materialType_animated_light_only = gpu->addHighLevelShaderMaterialFromFiles(
-            "vert_shader_animated_lightmap.txt", "vertexMain", video::EVST_VS_1_1,
-            "frag_shader_animated_light_only.txt", "pixelMain", video::EPST_PS_1_1,
+            "vert_shader_anim_lightmap.txt", "vertexMain", video::EVST_VS_1_1,
+            "frag_shader_anim_light_only.txt", "pixelMain", video::EPST_PS_1_1,
             mc11, video::EMT_SOLID, 0);
 
 
@@ -316,6 +332,7 @@ void initialize_materials(geometry_scene* scene)
     material_groups_base->material_groups.push_back(m8);
 
     CloudsShaderCallBack::initialize();
+    AnimatedLightmapShaderCallback::initialize();
 
 
     material_groups_base->LightingMaterial_Type = (video::E_MATERIAL_TYPE)materialType_lightmap_clipped;
