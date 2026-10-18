@@ -165,6 +165,70 @@ public:
 	}
 };
 
+class AnimatedLightmapShaderCallback : public video::IShaderConstantSetCallBack
+{
+public:
+
+	virtual void OnSetConstants(video::IMaterialRendererServices* services,
+		s32 userData)
+	{
+		video::IVideoDriver* driver = services->getVideoDriver();
+
+		core::matrix4 worldView = driver->getTransform(video::ETS_VIEW);
+		worldView *= driver->getTransform(video::ETS_WORLD);
+		services->setVertexShaderConstant("mWorldView", worldView.pointer(), 16);
+
+		core::matrix4 Proj = driver->getTransform(video::ETS_PROJECTION);
+		services->setVertexShaderConstant("mProj", Proj.pointer(), 16);
+
+		services->setVertexShaderConstant("time", &g_time, 1);
+
+		s32 TextureLayerID = 0;
+
+		services->setPixelShaderConstant("myTexture", &TextureLayerID, 1);
+
+		TextureLayerID = 1;
+
+		services->setPixelShaderConstant("myTexture2", &TextureLayerID, 1);
+
+	}
+};
+
+class LightmapNormalShaderCallback : public video::IShaderConstantSetCallBack
+{
+public:
+
+	virtual void OnSetConstants(video::IMaterialRendererServices* services,
+		s32 userData)
+	{
+		video::IVideoDriver* driver = services->getVideoDriver();
+
+		core::matrix4 worldView = driver->getTransform(video::ETS_VIEW);
+		worldView *= driver->getTransform(video::ETS_WORLD);
+		services->setVertexShaderConstant("mWorldView", worldView.pointer(), 16);
+
+		core::matrix4 Proj = driver->getTransform(video::ETS_PROJECTION);
+		services->setVertexShaderConstant("mProj", Proj.pointer(), 16);
+
+		core::matrix4 invWorldMat;
+		driver->getTransform(video::ETS_WORLD).getInverse(invWorldMat);
+		services->setVertexShaderConstant("invWorld", Proj.pointer(), 16);
+
+		s32 TextureLayerID = 0;
+
+		services->setPixelShaderConstant("myTexture", &TextureLayerID, 1);
+
+		TextureLayerID = 1;
+
+		services->setPixelShaderConstant("myTexture2", &TextureLayerID, 1);
+
+		TextureLayerID = 2;
+
+		services->setPixelShaderConstant("myTexture3", &TextureLayerID, 1);
+
+	}
+};
+
 class LightmapShaderCallbackClipped : public video::IShaderConstantSetCallBack
 {
 public:

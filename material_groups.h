@@ -106,6 +106,8 @@ public:
     video::E_MATERIAL_TYPE SolidMaterial_WaterSurface_Type = video::EMT_SOLID;
     video::E_MATERIAL_TYPE Material_Projection_Type = video::EMT_SOLID;
     video::E_MATERIAL_TYPE Material_Clouds_Type = video::EMT_SOLID;
+    video::E_MATERIAL_TYPE Material_AnimatedLightmap_Type = video::EMT_SOLID;
+    video::E_MATERIAL_TYPE Material_AnimatedLightOnly_Type = video::EMT_SOLID;
 
     friend int main();
 

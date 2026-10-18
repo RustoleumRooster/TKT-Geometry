@@ -584,3 +584,34 @@ REFLECT_STRUCT2_BEGIN(Reflected_MeshBuffer_AreaLight_SceneNode)
     REFLECT_STRUCT2_MEMBER(intensity)
     INHERIT_FROM(Reflected_MeshBuffer_SceneNode)
 REFLECT_STRUCT2_END()
+
+//==========================================================
+// Animated Texture Meshbuffer Node
+//
+
+Reflected_MeshBuffer_AnimatedTexture_SceneNode::Reflected_MeshBuffer_AnimatedTexture_SceneNode(USceneNode* parent, geometry_scene* geo_scene, irr::scene::ISceneManager* smgr, int id, const core::vector3df& pos)
+    :Reflected_MeshBuffer_SceneNode(parent, geo_scene, smgr, id, pos)
+{
+    m_texture = device->getVideoDriver()->getTexture("color_square_icon_good.png");
+}
+
+Reflected_MeshBuffer_AnimatedTexture_SceneNode::~Reflected_MeshBuffer_AnimatedTexture_SceneNode()
+{
+
+}
+
+bool Reflected_MeshBuffer_AnimatedTexture_SceneNode::addSelfToScene(USceneNode* parent, irr::scene::ISceneManager* smgr, geometry_scene* geo_scene)
+{
+    return false;
+}
+
+void Reflected_MeshBuffer_AnimatedTexture_SceneNode::onSceneInit()
+{
+
+}
+
+REFLECT_STRUCT2_BEGIN(Reflected_MeshBuffer_AnimatedTexture_SceneNode)
+    ALIAS("Animated Texture")
+    PLACEABLE(false)
+    INHERIT_FROM(Reflected_MeshBuffer_SceneNode)
+REFLECT_STRUCT2_END()

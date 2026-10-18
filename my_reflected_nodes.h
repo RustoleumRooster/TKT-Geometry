@@ -138,5 +138,18 @@ public:
     REFLECT2()
 };
 
+class Reflected_MeshBuffer_AnimatedTexture_SceneNode : public Reflected_MeshBuffer_SceneNode
+{
+public:
+
+    Reflected_MeshBuffer_AnimatedTexture_SceneNode(USceneNode* parent, geometry_scene* geo_scene, irr::scene::ISceneManager* smgr, int id, const core::vector3df& pos);
+    ~Reflected_MeshBuffer_AnimatedTexture_SceneNode();
+
+    virtual bool addSelfToScene(USceneNode* parent, irr::scene::ISceneManager* smgr, geometry_scene* geo_scene) override;
+    virtual void onSceneInit() override;
+
+    REFLECT2()
+};
+
 
 #endif

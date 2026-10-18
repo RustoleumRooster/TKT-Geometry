@@ -16,6 +16,7 @@
 #include "my_nodes.h"
 #include "edit_env.h"
 #include "SceneTool.h"
+#include "LightSystemTool.h"
 
 extern IrrlichtDevice* device;
 extern GUI_layout* gui_layout;
@@ -46,7 +47,7 @@ void initialize_tools(geometry_scene* scene, gui::IGUIEnvironment* gui, multi_to
     GeometryFactory::initialize(gui, scene);
     Texture_Adjust_Tool::initialize(gui, scene);
 
-    Node_Properties_Base* node_properties_base = new Node_Properties_Base(L"Properties", GUI_ID_NODE_PROPERTIES_BASE, gui, tool_panel);
+    Node_Properties_Base* node_properties_base = new Node_Properties_Base(L"Properties", GUI_ID_NODE_PROPERTIES_BASE, gui, tool_panel, scene);
     node_properties_base->set_scene(scene);
     NodeProperties_Tool::initialize(node_properties_base, tool_panel);
 
@@ -66,9 +67,9 @@ void initialize_tools(geometry_scene* scene, gui::IGUIEnvironment* gui, multi_to
 
     /*
     std::cout << "\nReflection:\n";
-    std::cout << Reflected_SceneNode_Factory::getNumTypes() << " reflected scene nodes registered:\n";
-    for (int i = 0; i < Reflected_SceneNode_Factory::getNumTypes(); i++)
-        std::cout << " " << Reflected_SceneNode_Factory::getAllTypes()[i]->alias << "\n";
+    std::cout << Reflected_SceneNode::factory.getNumTypes() << " reflected scene nodes registered:\n";
+    for (int i = 0; i < Reflected_SceneNode::factory.getNumTypes(); i++)
+        std::cout << " " << Reflected_SceneNode::factory.getAllTypes()[i]->alias << "\n";
         */
 
     Node_Classes_Base* node_classes_base = new Node_Classes_Base(L"All Node Classes", GUI_ID_NODE_CLASSES_BASE, gui, tool_panel);
@@ -97,6 +98,11 @@ void initialize_tools(geometry_scene* scene, gui::IGUIEnvironment* gui, multi_to
 
     Scene_Instances_Base* scene_instances_base = new Scene_Instances_Base(L"All Scenes", GUI_ID_SCENE_INSTANCES_BASE, gui, tool_panel);
     Scene_Instances_Tool::initialize(scene_instances_base, tool_panel);
+
+    Light_System_Base* light_system_base = new Light_System_Base(L"Lighting", GUI_ID_LIGHT_SYSTEM_BASE, gui, tool_panel);
+    light_system_base->set_scene(scene);
+    light_system_base->initialize();
+    Light_System_Tool::initialize(light_system_base, tool_panel);
 }
 
 void initialize_set_scene(geometry_scene* scene)
@@ -111,6 +117,7 @@ void initialize_set_scene(geometry_scene* scene)
 
     Material_Buffers_Tool::get_base()->set_scene(scene);
     Material_Buffers_Tool::get_base2()->set_scene(scene);
+    Light_System_Tool::get_base()->set_scene(scene);
 
     Node_Classes_Tool::get_base()->set_scene(scene);
     Node_Instances_Tool::get_base()->set_scene(scene);
@@ -133,6 +140,7 @@ void initialize_materials(geometry_scene* scene)
     s32 materialType_lightmap = 0;
     s32 materialType_lightmap_selected = 0;
     s32 materialType_light_only = 0;
+    s32 materialType_light_only_normalmap = 0;
     s32 materialType_light_only_selected = 0;
     s32 materialType_reflection_unlit = 0;
     s32 materialType_projection = 0;
@@ -141,12 +149,15 @@ void initialize_materials(geometry_scene* scene)
     s32 materialType_water_surface = 0;
     s32 materialType_passthru = 0;
     s32 materialType_clouds = 0;
+    s32 materialType_animated_lightmap = 0;
+    s32 materialType_animated_light_only = 0;
 
     if (gpu)
     {
         MyShaderCallBack* mc = new MyShaderCallBack();
         MyShaderCallBack2* mc2 = new MyShaderCallBack2();
         LightmapShaderCallback* mc3 = new LightmapShaderCallback();
+        LightmapNormalShaderCallback* mc32 = new LightmapNormalShaderCallback();
         ProjectionShaderCallback* mc4 = new ProjectionShaderCallback();
         MyShaderCallBackTwoTextures* mc5 = new MyShaderCallBackTwoTextures();
         LightmapShaderCallbackClipped* mc6 = new LightmapShaderCallbackClipped();
@@ -154,6 +165,7 @@ void initialize_materials(geometry_scene* scene)
         WaterSurfaceShaderCallback* mc8 = new WaterSurfaceShaderCallback();
         VanillaShaderCallBack* mc9 = new VanillaShaderCallBack();
         CloudsShaderCallBack* mc10 = new CloudsShaderCallBack();
+        AnimatedLightmapShaderCallback* mc11 = new AnimatedLightmapShaderCallback();
 
 
         materialType_unlit_selected = gpu->addHighLevelShaderMaterialFromFiles(
@@ -180,6 +192,11 @@ void initialize_materials(geometry_scene* scene)
             "vert_shader_lightmap.txt", "vertexMain", video::EVST_VS_1_1,
             "frag_shader_light_only.txt", "pixelMain", video::EPST_PS_1_1,
             mc3, video::EMT_SOLID, 0);
+
+        materialType_light_only_normalmap = gpu->addHighLevelShaderMaterialFromFiles(
+            "vert_shader_lightmap_nmap.txt", "vertexMain", video::EVST_VS_1_1,
+            "frag_shader_light_only_nmap.txt", "pixelMain", video::EPST_PS_1_1,
+            mc32, video::EMT_SOLID, 0);
 
         materialType_light_only_selected = gpu->addHighLevelShaderMaterialFromFiles(
             "vert_shader_lightmap.txt", "vertexMain", video::EVST_VS_1_1,
@@ -220,7 +237,17 @@ void initialize_materials(geometry_scene* scene)
             "vert_shader_default.txt", "vertexMain", video::EVST_VS_1_1,
             "frag_shader_clouds.txt", "pixelMain", video::EPST_PS_1_1,
             mc10, video::EMT_SOLID, 0);
-            
+
+        materialType_animated_lightmap = gpu->addHighLevelShaderMaterialFromFiles(
+            "vert_shader_animated_lightmap.txt", "vertexMain", video::EVST_VS_1_1,
+            "frag_shader_animated_lightmap.txt", "pixelMain", video::EPST_PS_1_1,
+            mc11, video::EMT_SOLID, 0);
+
+        materialType_animated_light_only = gpu->addHighLevelShaderMaterialFromFiles(
+            "vert_shader_animated_lightmap.txt", "vertexMain", video::EVST_VS_1_1,
+            "frag_shader_animated_light_only.txt", "pixelMain", video::EPST_PS_1_1,
+            mc11, video::EMT_SOLID, 0);
+
 
         mc->drop();
         mc2->drop();
@@ -232,6 +259,7 @@ void initialize_materials(geometry_scene* scene)
         mc8->drop();
         mc9->drop();
         mc10->drop();
+        mc11->drop();
     }
 
     Material_Groups_Base* material_groups_base = Material_Groups_Tool::get_base();
@@ -271,6 +299,11 @@ void initialize_materials(geometry_scene* scene)
     m7.use_unlit_texture = true;
     m7.meshBuffer_Node_typeName = "Reflected_MeshBuffer_AreaLight_SceneNode";
 
+    Material_Group m8{ "Animated Texture",video::SColor(255,128,128,64) };
+    m8.lightmap = true;
+    m8.create_meshBuffer_Node = true;
+    m8.meshBuffer_Node_typeName = "Reflected_MeshBuffer_AnimatedTexture_SceneNode";
+
 
     material_groups_base->material_groups.push_back(m0);
     material_groups_base->material_groups.push_back(m1);
@@ -280,6 +313,7 @@ void initialize_materials(geometry_scene* scene)
     material_groups_base->material_groups.push_back(m5);
     material_groups_base->material_groups.push_back(m6);
     material_groups_base->material_groups.push_back(m7);
+    material_groups_base->material_groups.push_back(m8);
 
     CloudsShaderCallBack::initialize();
 
@@ -293,6 +327,8 @@ void initialize_materials(geometry_scene* scene)
     material_groups_base->SolidMaterial_WaterSurface_Type = (video::E_MATERIAL_TYPE)materialType_water_surface;
     material_groups_base->Material_Projection_Type = (video::E_MATERIAL_TYPE)materialType_projection;
     material_groups_base->Material_Clouds_Type = (video::E_MATERIAL_TYPE)materialType_clouds;
+    material_groups_base->Material_AnimatedLightmap_Type = (video::E_MATERIAL_TYPE)materialType_animated_lightmap;
+    material_groups_base->Material_AnimatedLightOnly_Type = (video::E_MATERIAL_TYPE)materialType_animated_light_only;
 
    
 
@@ -316,6 +352,7 @@ void initialize_camera_quad(geometry_scene* scene, GUI_layout* gui_layout, Rende
     Material_Buffers_Tool::get_base()->setCameraQuad(cameraQuad);
     UV_Editor_Tool::get_base()->setCameraQuad(cameraQuad);
     Render_Tool::get_base()->setCameraQuad(cameraQuad);
+    Light_System_Tool::get_base()->setCameraQuad(cameraQuad);
 
     ((TestPanel_3D*)cameraQuad->getPanel(0))->SetViewStyle(PANEL3D_VIEW_RENDER);
 
