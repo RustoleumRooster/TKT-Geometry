@@ -152,7 +152,8 @@ void WaterSurface_SceneNode::render()
         my_skybox->render();
 
     ITexture* rtt = my_rtt;
-    driver->setRenderTarget(rtt, true, true, video::SColor(255, 16, 16, 16));
+    //alpha 0 marks pixels nothing was drawn into; the animated water shader avoids distorting into them
+    driver->setRenderTarget(rtt, true, true, video::SColor(0, 16, 16, 16));
 
     global_clipping_plane[0] = 0.0;
     global_clipping_plane[1] = 1.0;
@@ -180,7 +181,7 @@ void WaterSurface_SceneNode::render()
 
     ITexture* rtt2 = my_rtt2;
 
-    driver->setRenderTarget(rtt2, true, true, video::SColor(255, 16, 16, 16));
+    driver->setRenderTarget(rtt2, true, true, video::SColor(0, 16, 16, 16));
     plane3df clip_plane2(vector3df(0, 4.0, 0), vector3df(0, -1, 0));
 
     SceneManager->setActiveCamera(fp_camera);

@@ -56,8 +56,15 @@ void main (void)
 	vec2 texCoords = (v.xy /v.w )* 0.5 + vec2(0.5,0.5);
 	vec2 flipped_texcoord = vec2(texCoords.x, 1.0 - texCoords.y);
 
+	// the render targets are cleared with alpha 0, so a distorted lookup that lands on an empty
+	// pixel (eg just past the waterline on a wall, which is clipped out) falls back to the undistorted one
 	vec4 col = texture2D(myTexture, flipped_texcoord + offset);
+	if (col.a < 0.5)
+		col = texture2D(myTexture, flipped_texcoord);
+
 	vec4 col2 = texture2D(myTexture2, texCoords + offset);
+	if (col2.a < 0.5)
+		col2 = texture2D(myTexture2, texCoords);
 
 	// fresnel term from the perturbed normal: looking straight down shows more of what's underneath
 	vec3 eye_ray = normalize(CamPos - world_pos);
