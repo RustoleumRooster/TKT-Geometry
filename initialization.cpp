@@ -50,6 +50,21 @@ void AnimatedLightmapShaderCallback::initialize()
     driver->setTextureCreationFlag(video::ETCF_CREATE_MIP_MAPS, mipmaps);
 }
 
+video::ITexture* WaterSurfaceShaderCallback::normal_atlas = NULL;
+
+void WaterSurfaceShaderCallback::initialize()
+{
+    video::IVideoDriver* driver = device->getVideoDriver();
+
+    //no mipmaps, for the same reason as the caustics atlas
+    bool mipmaps = driver->getTextureCreationFlag(video::ETCF_CREATE_MIP_MAPS);
+    driver->setTextureCreationFlag(video::ETCF_CREATE_MIP_MAPS, false);
+
+    normal_atlas = driver->getTexture("../media/water_normals_01.bmp");
+
+    driver->setTextureCreationFlag(video::ETCF_CREATE_MIP_MAPS, mipmaps);
+}
+
 void initialize_tools(geometry_scene* scene, gui::IGUIEnvironment* gui, multi_tool_panel* tool_panel)
 {
     Material_Groups_Base* material_groups_base = new Material_Groups_Base(L"Materials", GUI_ID_MATERIAL_GROUPS_BASE, gui, tool_panel);
@@ -163,6 +178,7 @@ void initialize_materials(geometry_scene* scene)
     s32 materialType_lightmap_clipped = 0;
     s32 materialType_underwater = 0;
     s32 materialType_water_surface = 0;
+    s32 materialType_water_surface_anim = 0;
     s32 materialType_passthru = 0;
     s32 materialType_clouds = 0;
     s32 materialType_animated_lightmap = 0;
@@ -242,6 +258,11 @@ void initialize_materials(geometry_scene* scene)
         materialType_water_surface = gpu->addHighLevelShaderMaterialFromFiles(
             "vert_shader_water_surface.txt", "vertexMain", video::EVST_VS_1_1,
             "frag_shader_water_surface.txt", "pixelMain", video::EPST_PS_1_1,
+            mc8, video::EMT_SOLID, 0);
+
+        materialType_water_surface_anim = gpu->addHighLevelShaderMaterialFromFiles(
+            "vert_shader_water_surface.txt", "vertexMain", video::EVST_VS_1_1,
+            "frag_shader_water_surface_anim.txt", "pixelMain", video::EPST_PS_1_1,
             mc8, video::EMT_SOLID, 0);
 
         materialType_passthru = gpu->addHighLevelShaderMaterialFromFiles(
@@ -333,6 +354,7 @@ void initialize_materials(geometry_scene* scene)
 
     CloudsShaderCallBack::initialize();
     AnimatedLightmapShaderCallback::initialize();
+    WaterSurfaceShaderCallback::initialize();
 
 
     material_groups_base->LightingMaterial_Type = (video::E_MATERIAL_TYPE)materialType_lightmap_clipped;
@@ -342,6 +364,7 @@ void initialize_materials(geometry_scene* scene)
     material_groups_base->SolidMaterial_Type = video::EMT_SOLID;
     material_groups_base->SolidMaterial_Selected_Type = (video::E_MATERIAL_TYPE)materialType_unlit_selected;
     material_groups_base->SolidMaterial_WaterSurface_Type = (video::E_MATERIAL_TYPE)materialType_water_surface;
+    material_groups_base->SolidMaterial_WaterSurface_Anim_Type = (video::E_MATERIAL_TYPE)materialType_water_surface_anim;
     material_groups_base->Material_Projection_Type = (video::E_MATERIAL_TYPE)materialType_projection;
     material_groups_base->Material_Clouds_Type = (video::E_MATERIAL_TYPE)materialType_clouds;
     material_groups_base->Material_AnimatedLightmap_Type = (video::E_MATERIAL_TYPE)materialType_animated_lightmap;

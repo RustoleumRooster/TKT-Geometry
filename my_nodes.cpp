@@ -6,6 +6,7 @@
 #include "CMeshSceneNode.h"
 #include "material_groups.h"
 #include "RenderTargetsTool.h"
+#include "ShaderCallbacks.h"
 
 using namespace irr;
 using namespace video;
@@ -233,12 +234,22 @@ void WaterSurface_SceneNode::attach_to_buffer(IMeshBuffer* buffer)
 {
     buffers.push_back(buffer);
 
-    E_MATERIAL_TYPE water_material = Material_Groups_Tool::get_base()->SolidMaterial_WaterSurface_Type;
+    Material_Groups_Base* material_groups_base = Material_Groups_Tool::get_base();
+
+    //use the animated normal map version when its atlas loaded, otherwise the plain water shader
+    E_MATERIAL_TYPE water_material = WaterSurfaceShaderCallback::normal_atlas ?
+        material_groups_base->SolidMaterial_WaterSurface_Anim_Type :
+        material_groups_base->SolidMaterial_WaterSurface_Type;
 
     buffer->getMaterial().MaterialType = water_material;
 
     buffer->getMaterial().setTexture(0, getRTT());
     buffer->getMaterial().setTexture(1, getRTT2());
+    buffer->getMaterial().setTexture(2, WaterSurfaceShaderCallback::normal_atlas);
+
+    //speed / scale, read back by WaterSurfaceShaderCallback::OnSetMaterial
+    buffer->getMaterial().MaterialTypeParam = 1.0;
+    buffer->getMaterial().MaterialTypeParam2 = 1.0;
 
     my_box.addInternalBox(buffer->getBoundingBox());
 

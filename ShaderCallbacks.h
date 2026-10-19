@@ -192,6 +192,8 @@ public:
 		core::matrix4 World = driver->getTransform(video::ETS_WORLD);
 		services->setVertexShaderConstant("mWorld", World.pointer(), 16);
 
+		services->setVertexShaderConstant("plane", &global_clipping_plane[0], 4);
+
 		services->setPixelShaderConstant("time", &g_time, 1);
 		services->setPixelShaderConstant("speed", &speed, 1);
 		services->setPixelShaderConstant("scale", &scale, 1);
@@ -367,6 +369,13 @@ class WaterSurfaceShaderCallback : public video::IShaderConstantSetCallBack
 {
 public:
 
+	//per-buffer animation values, packed into the material by WaterSurface_SceneNode::attach_to_buffer
+	virtual void OnSetMaterial(const video::SMaterial& material) override
+	{
+		speed = material.MaterialTypeParam;
+		scale = material.MaterialTypeParam2;
+	}
+
 	virtual void OnSetConstants(video::IMaterialRendererServices* services,
 		s32 userData)
 	{
@@ -397,8 +406,22 @@ core::matrix4 World = driver->getTransform(video::ETS_WORLD);
 
 		services->setPixelShaderConstant("myTexture2", &TextureLayerID, 1);
 
+		//used by the animated water surface shader only
+		TextureLayerID = 2;
 
+		services->setPixelShaderConstant("myTexture3", &TextureLayerID, 1);
+
+		services->setPixelShaderConstant("time", &g_time, 1);
+		services->setPixelShaderConstant("speed", &speed, 1);
+		services->setPixelShaderConstant("scale", &scale, 1);
 	}
+
+	static void initialize();
+
+	static video::ITexture* normal_atlas;
+
+	f32 speed = 1.0;
+	f32 scale = 1.0;
 
 	//core::matrix4 mView;
 	//core::matrix4 mProj;

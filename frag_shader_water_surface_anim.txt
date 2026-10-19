@@ -1,0 +1,68 @@
+
+uniform sampler2D myTexture;	// reflection (scene above water, mirrored)
+uniform sampler2D myTexture2;	// refraction (scene below water)
+uniform sampler2D myTexture3;	// animated normal map atlas
+
+uniform vec3 CamPos;
+uniform vec4 plane;
+
+uniform float time;
+uniform float speed;	// playback rate multiplier
+uniform float scale;	// tile size multiplier (1.0 = TILE_SIZE world units)
+
+varying vec3 world_pos;
+varying vec4 v;
+
+// atlas: 1024x512, 128x128 frames in an 8 wide x 4 high grid, every cell filled
+// frames are ordered left to right, top row first
+const vec2 GRID = vec2(8.0, 4.0);
+const float N_FRAMES = 32.0;
+const float FRAME_TIME = 0.04;	// seconds per frame
+const float HALF_TEXEL = 0.5 / 128.0;	// keeps bilinear filtering from reading neighbouring cells
+
+// the normal map is projected straight down onto the water plane
+const float TILE_SIZE = 128.0;	// world units covered by one tile at scale 1.0
+
+// how far the normals push the reflection / refraction lookups, in screen uv units
+const float DISTORTION = 0.02;
+
+// top-left corner of a frame's cell, in cell units
+vec2 frame_cell(float frame)
+{
+	return vec2(mod(frame, GRID.x), floor(frame / GRID.x));
+}
+
+void main (void)
+{
+	vec2 proj_uv = world_pos.xz / (TILE_SIZE * max(scale, 0.001));
+
+	// crossfade between the current frame and the next
+	float t = time * speed / FRAME_TIME;
+	float frame = mod(floor(t), N_FRAMES);
+	float next_frame = mod(frame + 1.0, N_FRAMES);
+	float blend = fract(t);
+
+	vec2 tile_uv = clamp(fract(proj_uv), HALF_TEXEL, 1.0 - HALF_TEXEL);
+
+	vec3 n0 = texture2D(myTexture3, (frame_cell(frame) + tile_uv) / GRID).rgb;
+	vec3 n1 = texture2D(myTexture3, (frame_cell(next_frame) + tile_uv) / GRID).rgb;
+
+	// tangent space normal (z out of the surface) -> world space, with the water facing +y
+	vec3 tn = normalize(mix(n0, n1, blend) * 2.0 - 1.0);
+	vec3 N = normalize(vec3(tn.x, tn.z, tn.y));
+
+	vec2 offset = tn.xy * DISTORTION;
+
+	vec2 texCoords = (v.xy /v.w )* 0.5 + vec2(0.5,0.5);
+	vec2 flipped_texcoord = vec2(texCoords.x, 1.0 - texCoords.y);
+
+	vec4 col = texture2D(myTexture, flipped_texcoord + offset);
+	vec4 col2 = texture2D(myTexture2, texCoords + offset);
+
+	// fresnel term from the perturbed normal: looking straight down shows more of what's underneath
+	vec3 eye_ray = normalize(CamPos - world_pos);
+	float p = clamp(dot(eye_ray, N), 0.0, 1.0);
+	p = p*p;
+
+	gl_FragColor = col*(1.0-p)*0.8 + col2 * p;
+}
