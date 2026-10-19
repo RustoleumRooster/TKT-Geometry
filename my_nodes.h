@@ -94,6 +94,7 @@ public:
 
     void attach_to_buffer(scene::IMeshBuffer*);
     void set_z_depth(f32 z) { my_z_depth = z; }
+    void set_animation(f32 speed, f32 scale);
 
     void getReflectedCamera(scene::ICameraSceneNode* camera, f32 z, const scene::ICameraSceneNode* src);
 
@@ -116,6 +117,10 @@ private:
     std::vector<scene::IMeshBuffer*> buffers;
 
     f32 my_z_depth = 0.0;
+
+    //animated normal map
+    f32 anim_speed = 1.0;
+    f32 anim_scale = 1.0;
 };
 
 //=================================================================================================

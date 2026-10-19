@@ -102,7 +102,11 @@ public:
 
     bool enabled = true;
     reflect::uid_reference target;
-    
+
+    //animated normal map
+    f32 speed = 1.0;
+    f32 scale = 1.0;            //tile size multiplier (1.0 = 128 world units)
+
     WaterSurface_SceneNode* my_node = NULL;
 
     REFLECT2()

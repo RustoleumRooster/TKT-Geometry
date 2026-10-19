@@ -203,6 +203,8 @@ REFLECT_STRUCT2_BEGIN(Reflected_WaterSurfaceNode)
     ALIAS("Water Surface")
     REFLECT_STRUCT2_MEMBER(enabled)
     REFLECT_STRUCT2_MEMBER(target)
+    REFLECT_STRUCT2_MEMBER(speed)
+    REFLECT_STRUCT2_MEMBER(scale)
     INHERIT_FROM(Reflected_Sprite_SceneNode)
 REFLECT_STRUCT2_END()
 
@@ -227,6 +229,9 @@ bool Reflected_WaterSurfaceNode::addSelfToScene(USceneNode* parent, irr::scene::
     node->drop();
 
     my_node = node;
+
+    //before onSceneInit attaches the buffers, so attach_to_buffer picks these up
+    my_node->set_animation(speed, scale);
 
     
     return true;
@@ -295,11 +300,22 @@ void Reflected_WaterSurfaceNode::postEdit()
         }
     }
 
+    //live update while the final scene is running
+    if (my_node)
+    {
+        my_node->set_animation(speed, scale);
+
+        if (geo_scene->getMeshNode())
+            geo_scene->getMeshNode()->copyMaterials();
+    }
+
     Reflected_Sprite_SceneNode::postEdit();
 }
 
 void Reflected_WaterSurfaceNode::endScene()
 {
+    //the WaterSurface_SceneNode is removed with the rest of the final scene
+    my_node = NULL;
 }
 
 void Reflected_WaterSurfaceNode::connect_sky_sceneNode(MySkybox_SceneNode* node)

@@ -248,10 +248,25 @@ void WaterSurface_SceneNode::attach_to_buffer(IMeshBuffer* buffer)
     buffer->getMaterial().setTexture(2, WaterSurfaceShaderCallback::normal_atlas);
 
     //speed / scale, read back by WaterSurfaceShaderCallback::OnSetMaterial
-    buffer->getMaterial().MaterialTypeParam = 1.0;
-    buffer->getMaterial().MaterialTypeParam2 = 1.0;
+    buffer->getMaterial().MaterialTypeParam = anim_speed;
+    buffer->getMaterial().MaterialTypeParam2 = anim_scale;
 
     my_box.addInternalBox(buffer->getBoundingBox());
+
+    //called by caller
+    //geoNode()->getMeshNode()->copyMaterials();
+}
+
+void WaterSurface_SceneNode::set_animation(f32 speed, f32 scale)
+{
+    anim_speed = speed;
+    anim_scale = scale;
+
+    for (IMeshBuffer* buffer : buffers)
+    {
+        buffer->getMaterial().MaterialTypeParam = anim_speed;
+        buffer->getMaterial().MaterialTypeParam2 = anim_scale;
+    }
 
     //called by caller
     //geoNode()->getMeshNode()->copyMaterials();
