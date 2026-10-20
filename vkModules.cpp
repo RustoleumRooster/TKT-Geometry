@@ -1087,7 +1087,7 @@ void vkImageResource::create_and_load_texture(MyDevice* device, video::IVideoDri
 	device->copyBufferToImage(stagingBuffer.getBuffer(), Image, static_cast<uint32_t>(width), static_cast<uint32_t>(height));
 
 	device->transitionImageLayout(Image, VK_FORMAT_R8G8B8A8_UNORM,
-		VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
+		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
 }
 
 
@@ -1125,7 +1125,7 @@ void vkImageSubresource::create_and_load_texture(MyDevice* device, video::IVideo
 	device->copyBufferToImage(stagingBuffer.getBuffer(), Image, static_cast<uint32_t>(width), static_cast<uint32_t>(height));
 
 	device->transitionImageLayout(Image, VK_FORMAT_R8G8B8A8_UNORM,
-		VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
+		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
 }
 
 VkDescriptorSetLayoutBinding vkMultiImageResource::getDescriptorSetLayout(u32 binding_no)
