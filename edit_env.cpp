@@ -272,6 +272,11 @@ void OnMenuItemSelected(IGUIContextMenu* menu)
         {
             break;
         }
+    case GUI_ID_MENU_BRUSHES_CURVE:
+        {
+            GeometryFactory::MakeCurveWindow();
+            break;
+        }
     case GUI_ID_MENU_FILE_NEW:
         {
             do_new_scene();
@@ -402,8 +407,7 @@ bool MyEventReceiver::OnEvent(const SEvent& event)
                         //std::cout<<"Sphere\n";
                         break;
                     case GUI_ID_BUTTON_CONE:
-                        //GeometryFactory::MakeConeWindow();
-                        GeometryFactory::MakeCurveWindow();
+                        GeometryFactory::MakeConeWindow();
                         //std::cout<<"Cone\n";
                         break;
                     case GUI_ID_BUTTON_PLANE:
@@ -805,6 +809,10 @@ void GUI_layout::menu_layout()
     submenu->addItem(L"UV Editor", GUI_ID_MENU_VIEW_UV_EDITOR, true, false, false, false);
     submenu->addItem(L"Scene Instances", GUI_ID_MENU_VIEW_SCENE_INSTANCES, true, false, false, false);
     submenu->addItem(L"Light System", GUI_ID_MENU_VIEW_LIGHT_SYSTEM, true, false, false, false);
+
+    menu->addItem(L"Brushes", -1, true, true);
+    submenu = menu->getSubMenu(4);
+    submenu->addItem(L"Curve", GUI_ID_MENU_BRUSHES_CURVE, true, false, false, false);
 
     VToolBar* bar = new VToolBar(env, main_panel, -1, core::rect<s32>(0, 0, 10, 10));
 
