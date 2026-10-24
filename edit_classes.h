@@ -415,6 +415,7 @@ public:
 class UID_Reference_EditField : public UID_Reference_FormField
 {
 public:
+    virtual void postCreateElement(Reflected_GUI_Edit_Form*) override;
     virtual void setActive(int);
     virtual int addWidget(Reflected_GUI_Edit_Form* win, int ID, int ypos);
     virtual void writeValue(void* obj);

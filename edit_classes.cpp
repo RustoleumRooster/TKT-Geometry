@@ -16,6 +16,7 @@
 #include "geometry_scene.h"
 #include "texture_picker.h"
 #include "node_properties.h"
+#include "NodeInstancesTool.h"
 
 extern IrrlichtDevice* device;
 using namespace irr;
@@ -819,7 +820,7 @@ void Form_Cell::createElements(Reflected_GUI_Edit_Form* form)
             vector2di pos = cell_panel->getRelativePosition().UpperLeftCorner;
 
             //little hack to make sure it comes to the front when clicked... don't know why this is necessary
-            gui::IGUIComboBox* box = env->addComboBox( recti(pos, dimension2du(draw_rect.getWidth(), draw_rect.getHeight())), cell_panel->getParent(), ID + 1);
+            gui::IGUIComboBox* box = env->addComboBox( recti(pos, dimension2du(draw_rect.getWidth(), draw_rect.getHeight())), cell_panel->getParent(), ID);
 
             ComboBox_FormField* combo_ff = (ComboBox_FormField*)(field);
 
@@ -1443,12 +1444,31 @@ int UID_Reference_EditField::addWidget(Reflected_GUI_Edit_Form* win, int ID, int
     BEGIN_WIDGET()
 
     addStaticTextLabel(text, row, tab, ID);
-    env->addButton(win->getCell(row, 1), win, ID + 1, L"Choose");
-    env->addButton(win->getCell(row, 2), win, ID + 2, L"Clear");
+
+    //Choose / Clear buttons are added in postCreateElement, once the columns are laid out
 
     addStaticTextLabel("0 selected", row + 1, tab + 2, ID + 3);
 
     END_WIDGET()
+}
+
+void UID_Reference_EditField::postCreateElement(Reflected_GUI_Edit_Form* win)
+{
+    //called once per cell; this field has two, so only add the buttons the first time
+    if (owner->getElementFromId(my_ID + 1, true))
+        return;
+
+    gui::IGUIEnvironment* env = device->getGUIEnvironment();
+
+    core::recti r = win->getCell(my_row, 1);
+
+    int button_width = env->getSkin()->getFont()->getDimension(L"Choose").Width + 16;
+
+    core::recti r0(r.UpperLeftCorner.X, r.UpperLeftCorner.Y, r.UpperLeftCorner.X + button_width, r.LowerRightCorner.Y);
+    core::recti r1(r0.LowerRightCorner.X, r.UpperLeftCorner.Y, r0.LowerRightCorner.X + button_width, r.LowerRightCorner.Y);
+
+    env->addButton(r0, win, my_ID + 1, L"Choose");
+    env->addButton(r1, win, my_ID + 2, L"Clear");
 }
 
 void UID_Reference_EditField::writeValue(void* obj)
@@ -1497,13 +1517,14 @@ bool UID_Reference_FormField::clickButton(s32 id, reflected_tool_base* base)
 
         if (id == my_ID + 1)
         {
-            //TODO:
-            //node_properties_base->choose_node_selection(this->tree_pos);
+            node_properties_base->choose_item_selection(this->tree_pos);
+
+            //uid references point at scene nodes, so the scene node picker is the selector
+            Node_Selector_Tool::show();
         }
         else if (id == my_ID + 2)
         {
-            //TODO:
-            //node_properties_base->clear_selection(this->tree_pos);
+            node_properties_base->clear_item_selection(this->tree_pos);
         }
 
         return true;
