@@ -676,10 +676,15 @@ void TestPanel_2D::right_click(core::vector2di pos)
         {
             int n = typeDescriptors.size()-1;
             std::wstring txt(typeDescriptors[n]->alias,typeDescriptors[n]->alias+strlen(typeDescriptors[n]->alias));
+            std::wstring txt0(L"delete ");
+            txt0 += txt;
+            txt0 += std::wstring(L"(s)");
             txt += std::wstring(L" properties");
 
         menu->addItem(txt.c_str(),GUI_ID_VIEWPORT_2D_RIGHTCLICK_MENU_ITEM_NODE_PROPERTIES,true,false,false,false);
         menu->addItem(L"Save selection", GUI_ID_VIEWPORT_2D_RIGHTCLICK_MENU_ITEM_SAVE_NODE_SELECTION, true, false, false, false);
+        menu->addSeparator();
+        menu->addItem(txt0.c_str(), GUI_ID_VIEWPORT_2D_RIGHTCLICK_MENU_ITEM_DELETE_NODE, true, false, false, false);
         ContextMenuOwner = this->m_viewPanel;
         }
     }
@@ -741,6 +746,10 @@ void TestPanel_2D::OnMenuItemSelected(IGUIContextMenu* menu)
         break;
     case GUI_ID_VIEWPORT_2D_RIGHTCLICK_MENU_ITEM_SAVE_NODE_SELECTION:
         //geo_scene->save_selection();
+        break;
+    case GUI_ID_VIEWPORT_2D_RIGHTCLICK_MENU_ITEM_DELETE_NODE:
+        if (geo_scene)
+            geo_scene->deleteSelectedNodes();
         break;
     default:
         break;
