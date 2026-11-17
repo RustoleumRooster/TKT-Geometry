@@ -394,7 +394,7 @@ TextureInfo& TexturePicker_Base::addTexture(std::string tex_name, std::string fn
 
     my_textures.push_back(texinfo);
 
-    return texinfo;
+    return my_textures[my_textures.size()-1];
 }
 
 TextureInfo& TexturePicker_Base::addTexture(std::string fname, std::string category)

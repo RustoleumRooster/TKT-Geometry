@@ -114,7 +114,7 @@ public:
 
 	std::vector<TextureMaterial> materials;
 	std::vector<min_lm_block> lightmap_blocks;
-	vector<blocklist> bl_combined;
+	std::vector<blocklist> bl_combined;
 
 	std::vector<dimension2du> lightmap_dimensions;
 

@@ -11,6 +11,7 @@
 #include "material_groups.h"
 #include "my_nodes.h"
 #include "ShaderCallbacks.h"
+#include "texture_picker.h"
 
 using namespace irr;
 using namespace video;
@@ -193,6 +194,173 @@ bool Reflected_SimpleEmitterSceneNode::addSelfToScene(USceneNode* parent, scene:
     paf->drop();
     */
     return true;
+}
+
+//============================================================================
+//  Reflected_ReferenceImageNode
+//
+
+REFLECT_STRUCT2_BEGIN(Reflected_ReferenceImageNode)
+    ALIAS("Reference Image")
+    INHERIT_FROM(Reflected_SceneNode)
+    REFLECT_STRUCT2_MEMBER(texture)
+    REFLECT_STRUCT2_MEMBER(Size)
+    REFLECT_STRUCT2_MEMBER(texture_name)
+REFLECT_STRUCT2_END()
+
+Reflected_ReferenceImageNode::Reflected_ReferenceImageNode(USceneNode* parent, geometry_scene* geo_scene, irr::scene::ISceneManager* smgr, int id, const core::vector3df& pos)
+    : Reflected_SceneNode(parent, geo_scene, smgr, id, pos)
+{
+    Size.X = 512;
+    Size.Y = 512;
+
+    setAutomaticCulling(scene::EAC_OFF);
+
+    Buffer = new scene::SMeshBuffer();
+    Buffer->Material.Lighting = false;
+    Buffer->Material.BackfaceCulling = false;
+    Buffer->Material.MaterialType = video::EMT_SOLID;
+
+    Buffer->Vertices.set_used(4);
+    Buffer->Indices.set_used(6);
+
+    Buffer->Indices[0] = 0;
+    Buffer->Indices[1] = 1;
+    Buffer->Indices[2] = 2;
+    Buffer->Indices[3] = 0;
+    Buffer->Indices[4] = 2;
+    Buffer->Indices[5] = 3;
+
+    set_buffer();
+}
+
+Reflected_ReferenceImageNode::~Reflected_ReferenceImageNode()
+{
+    if (Buffer)
+        Buffer->drop();
+}
+
+void Reflected_ReferenceImageNode::set_buffer()
+{
+    f32 hx = Size.X * 0.5f;
+    f32 hz = Size.Y * 0.5f;
+
+    //Local XZ plane, facing +Y. Image top-left (0,0) maps to the -X,+Z corner.
+    core::vector3df pos[4] = {
+        core::vector3df(-hx, 0, hz),
+        core::vector3df(hx, 0, hz),
+        core::vector3df(hx, 0, -hz),
+        core::vector3df(-hx, 0, -hz) };
+
+    core::vector2df uv[4] = {
+        core::vector2df(0, 0),
+        core::vector2df(1, 0),
+        core::vector2df(1, 1),
+        core::vector2df(0, 1) };
+
+    Buffer->BoundingBox.reset(pos[0]);
+
+    for (int i = 0; i < 4; i++)
+    {
+        Buffer->Vertices[i].Pos = pos[i];
+        Buffer->Vertices[i].Normal = core::vector3df(0, 1, 0);
+        Buffer->Vertices[i].Color = video::SColor(255, 255, 255, 255);
+        Buffer->Vertices[i].TCoords = uv[i];
+        Buffer->BoundingBox.addInternalPoint(pos[i]);
+    }
+
+    Buffer->setDirty();
+}
+
+void Reflected_ReferenceImageNode::OnRegisterSceneNode()
+{
+    if (IsVisible)
+        SceneManager->registerNodeForRendering(this, scene::ESNRP_SOLID);
+
+    Reflected_SceneNode::OnRegisterSceneNode();
+}
+
+void Reflected_ReferenceImageNode::draw_outline(video::IVideoDriver* driver)
+{
+    video::SMaterial lineMaterial;
+    lineMaterial.Lighting = false;
+    lineMaterial.Thickness = 1.0;
+    lineMaterial.MaterialType = video::EMT_SOLID;
+
+    driver->setTransform(video::ETS_WORLD, AbsoluteTransformation);
+    driver->setMaterial(lineMaterial);
+
+    video::SColor col = bSelected ? video::SColor(255, 255, 255, 255) : video::SColor(255, 128, 128, 128);
+
+    for (int i = 0; i < 4; i++)
+        driver->draw3DLine(Buffer->Vertices[i].Pos, Buffer->Vertices[(i + 1) % 4].Pos, col);
+}
+
+void Reflected_ReferenceImageNode::render()
+{
+    video::IVideoDriver* driver = SceneManager->getVideoDriver();
+
+    if (!driver)
+        return;
+
+    Buffer->Material.setTexture(0, texture ? texture->texture : NULL);
+    Buffer->Material.MaterialType = bSelected ? Reflected_SceneNode::special_material_type : video::EMT_SOLID;
+
+    driver->setTransform(video::ETS_WORLD, AbsoluteTransformation);
+    driver->setMaterial(Buffer->Material);
+    driver->drawMeshBuffer(Buffer);
+
+    //The outline keeps the node visible and selectable-looking when viewed
+    //edge-on in the other 2D views, or when no texture is set
+    draw_outline(driver);
+
+    if (bSelected)
+        draw_arrow(driver, getPosition(), getRotation());
+
+    draw_inputs(driver);
+}
+
+void Reflected_ReferenceImageNode::render_special(video::SMaterial& material)
+{
+    video::IVideoDriver* driver = SceneManager->getVideoDriver();
+
+    if (!driver)
+        return;
+
+    driver->setTransform(video::ETS_WORLD, AbsoluteTransformation);
+
+    material.setTexture(0, m_color_tex);
+    material.BackfaceCulling = false;
+    driver->setMaterial(material);
+    driver->drawMeshBuffer(Buffer);
+}
+
+const core::aabbox3df& Reflected_ReferenceImageNode::getMyBoundingBox() const
+{
+    world_box = Buffer->BoundingBox;
+    getRelativeTransformation().transformBoxEx(world_box);
+    return world_box;
+}
+
+void Reflected_ReferenceImageNode::postEdit()
+{
+    if (bFirstEdit)
+    {
+        //Just created or just deserialized: the pointer may be a stale address
+        //from a previous session, so look the texture up by name.
+        texture = texture_name.empty() ? NULL : TexturePicker_Tool::get_texture_info(core::stringw(texture_name.c_str()));
+        bFirstEdit = false;
+    }
+
+    if (texture)
+        texture_name = core::stringc(texture->name).c_str();
+    else
+        texture_name.clear();
+
+    set_buffer();
+
+    Reflected_SceneNode::postEdit();
+    updateAbsolutePosition();
 }
 
 //============================================================================

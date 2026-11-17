@@ -57,6 +57,47 @@ public:
     REFLECT2()
 };
 
+//Editor-only textured plane, e.g. for displaying a heightmap as a reference
+//while building geometry. Lies in its local XZ plane facing +Y, so with zero
+//rotation it is visible in the top 2D view. Not added to the game scene.
+class Reflected_ReferenceImageNode : public Reflected_SceneNode
+{
+public:
+    Reflected_ReferenceImageNode(USceneNode* parent, geometry_scene* geo_scene, irr::scene::ISceneManager* smgr, int id, const core::vector3df& pos);
+    ~Reflected_ReferenceImageNode();
+
+    virtual bool bShowEditorArrow() { return true; }
+
+    virtual void OnRegisterSceneNode() override;
+    virtual void render() override;
+    virtual void render_special(video::SMaterial& material) override;
+    virtual const core::aabbox3df& getMyBoundingBox() const override;
+
+    virtual void postEdit() override;
+
+    TextureInfo* texture = NULL;
+    reflect::vector2 Size;
+
+    //Serialized stand-in for the texture pointer (TextureInfo* is saved as a
+    //raw address, which is meaningless after reload). Has no GUI widget.
+    std::string texture_name;
+
+private:
+    void set_buffer();
+    void draw_outline(video::IVideoDriver* driver);
+
+    scene::SMeshBuffer* Buffer = NULL;
+    mutable core::aabbox3df world_box;
+
+    //True until the first postEdit. On that call (right after creation or
+    //deserialization) the texture pointer is untrusted and is resolved from
+    //texture_name instead.
+    bool bFirstEdit = true;
+
+public:
+    REFLECT2()
+};
+
 class Reflected_SkyNode : public Reflected_Sprite_SceneNode
 {
 public:

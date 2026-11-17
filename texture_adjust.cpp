@@ -80,7 +80,8 @@ void Texture_Adjust_Window::refresh()
     {
         form->getFieldFromId(STYLE_ID)->setActive(false);
         gui::IGUIComboBox* box = (gui::IGUIComboBox*)form->getFieldFromId(STYLE_ID)->getEditElement(0);
-        box->setEnabled(false);
+        if(box)
+            box->setEnabled(false);
     }
 }
 
@@ -157,7 +158,7 @@ Texture_Adjust_Window::~Texture_Adjust_Window()
     receiver->OnEvent(event);
 }
 
-void  Texture_Adjust_Window::click_OK()
+void Texture_Adjust_Window::click_OK()
 {
     std::vector<int> selection = this->g_scene->getSelectedFaces();
 
@@ -196,7 +197,7 @@ void  Texture_Adjust_Window::click_OK()
         f->uv_mat.setTranslation(trans);
 
         gui::IGUIComboBox* box = (gui::IGUIComboBox*)form->getFieldFromId(STYLE_ID)->getEditElement(0);
-        if(box->isEnabled())
+        if(box && box->isEnabled())
         {
             if(tex_struct.style.value==0)
                 geo_node->elements[brush_j].brush.surface_groups[ f->surface_group ].type = SURFACE_GROUP_SPHERE;

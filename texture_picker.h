@@ -54,7 +54,7 @@ private:
     geometry_scene* geo_scene=NULL;
 
     video::IVideoDriver* driver=NULL;
-    int texture_icon_size = 100;
+    int texture_icon_size = 125;
     int layout_start=0;
     int selection = -1;
 
