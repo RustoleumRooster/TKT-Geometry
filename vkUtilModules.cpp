@@ -11,6 +11,7 @@
 #include "reflect_custom_types.h"
 #include "vkAreaLightModule.h"
 #include "vkBouncedLightModule.h"
+#include "vkSunlightModule.h"
 
 using namespace irr;
 using namespace core;
@@ -968,6 +969,18 @@ REFLECT_VKMOD_BEGIN(AreaLight_Module)
 	REFLECT_STRUCT_MEMBER(edges)
 	REFLECT_STRUCT_MEMBER(scratchpad)
 	REFLECT_STRUCT_MEMBER(area_lights)
+	REFLECT_STRUCT_MEMBER(images_in)
+	REFLECT_STRUCT_MEMBER(images_out)
+	REFLECT_STRUCT_MEMBER_FORWARD(images_in, images_out)
+REFLECT_VKMOD_END()
+
+REFLECT_VKMOD_BEGIN(Sunlight_Module)
+	INHERIT_FROM(Vulkan_Module)
+	REFLECT_STRUCT_MEMBER(indices)
+	REFLECT_STRUCT_MEMBER(vertices)
+	REFLECT_STRUCT_MEMBER(lm_uvs)
+	REFLECT_STRUCT_MEMBER(bvh_nodes)
+	REFLECT_STRUCT_MEMBER(edges)
 	REFLECT_STRUCT_MEMBER(images_in)
 	REFLECT_STRUCT_MEMBER(images_out)
 	REFLECT_STRUCT_MEMBER_FORWARD(images_in, images_out)

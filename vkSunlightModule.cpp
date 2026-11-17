@@ -1,11 +1,37 @@
 #include <vulkan/vulkan.h>
 #include "vkSunlightModule.h"
 #include "LightMaps.h"
+#include "vkUtilModules.h"
+#include <math.h>
 
+Sunlight_Module::Sunlight_Module()
+	: Vulkan_Module()
+{
+	set_ptrs();
+}
 
 void Sunlight_Module::initialize(Vulkan_App* vulkan)
 {
-	Vulkan_Module ::initialize(vulkan);
+	Vulkan_Module::initialize(vulkan);
+	configuration = vulkan->configuration;
+
+	Geometry_Module* geo_mod = vulkan->geo_module;
+	Geometry_Assets* geo_assets = vulkan->geo_module->geo_assets;
+
+	indices_soa = &geo_assets->indices_soa;
+	vertices_soa = &geo_assets->vertices_soa;
+	n_indices = geo_assets->indices_soa.data.size();
+	n_vertices = geo_assets->vertices_soa.data0.size();
+	n_nodes = geo_assets->bvh.node_count;
+	n_sky_triangles = geo_assets->triangle_lists[GPU_TRIS_SKY].count();
+
+	materials = &configuration->get_materials();
+
+	reflect::connect(&geo_mod->vertices, &this->vertices);
+	reflect::connect(&geo_mod->indices, &this->indices);
+	reflect::connect(&geo_mod->lm_uvs, &this->lm_uvs);
+	reflect::connect(&geo_mod->bvh_nodes, &this->bvh_nodes);
+	reflect::connect(&geo_mod->edges, &this->edges);
 }
 
 void Sunlight_Module::createDescriptorSets(int lightmap_n)
@@ -14,173 +40,86 @@ void Sunlight_Module::createDescriptorSets(int lightmap_n)
 
 	descriptorSets.resize(1);
 
-	VkDescriptorBufferInfo raytraceInfo{};
-	raytraceInfo.buffer = raytraceBufferObject->getBuffer();
-	raytraceInfo.offset = 0;
-	raytraceInfo.range = sizeof(RayTraceInfo);
-
-	VkDescriptorBufferInfo indexBufferInfo{};
-	indexBufferInfo.buffer = indexBuffer;
-	indexBufferInfo.offset = 0;
-	indexBufferInfo.range = sizeof(aligned_uint) * n_indices;
-
-	VkDescriptorBufferInfo vertexBufferInfo{};
-	vertexBufferInfo.buffer = vertexBuffer;
-	vertexBufferInfo.offset = 0;
-	vertexBufferInfo.range = sizeof(aligned_vec3) * n_vertices;
-
-	VkDescriptorBufferInfo uvBufferInfo{};
-	uvBufferInfo.buffer = uvBuffer;
-	uvBufferInfo.offset = 0;
-	uvBufferInfo.range = sizeof(aligned_vec3) * n_vertices;
-
-	VkDescriptorBufferInfo nodeBufferInfo{};
-	nodeBufferInfo.buffer = nodeBuffer;
-	nodeBufferInfo.offset = 0;
-	nodeBufferInfo.range = sizeof(BVH_node_gpu) * n_nodes;
-
-	VkDescriptorBufferInfo edgeBufferInfo{};
-	edgeBufferInfo.buffer = edgeBuffer;
-	edgeBufferInfo.offset = 0;
-	edgeBufferInfo.range = sizeof(aligned_uint) * n_indices;
-
-	/*
-	VkDescriptorBufferInfo outputBufferInfo{};
-	outputBufferInfo.buffer = outputBuffer;
-	outputBufferInfo.offset = 0;
-	outputBufferInfo.range = sizeof(aligned_uint) * n_indices;
-	*/
-
-	VkDescriptorImageInfo imageStorageInfo{};
-	imageStorageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
-	imageStorageInfo.imageView = lightmapImageViews[lightmap_n];
-
-	writer.writeBuffer(0, raytraceInfo);
-	writer.writeBuffer(1, indexBufferInfo);
-	writer.writeBuffer(2, vertexBufferInfo);
-	writer.writeBuffer(3, uvBufferInfo);
-	writer.writeBuffer(4, nodeBufferInfo);
-	writer.writeBuffer(5, edgeBufferInfo);
-	//writer.writeBuffer(6, outputBufferInfo);
-	writer.writeImage(6, imageStorageInfo);
+	writer.writeBuffer(0, ubo.getDescriptorBufferInfo());
+	writer.writeBuffer(1, indices.X->getDescriptorBufferInfo());
+	writer.writeBuffer(2, vertices.X->getDescriptorBufferInfo());
+	writer.writeBuffer(3, lm_uvs.X->getDescriptorBufferInfo());
+	writer.writeBuffer(4, bvh_nodes.X->getDescriptorBufferInfo());
+	writer.writeBuffer(5, edges.X->getDescriptorBufferInfo());
+	writer.writeImage(6, images_in.X->getDescriptorBufferInfo(lightmap_n));
 	writer.build(descriptorSets[0]);
 }
 
-
 void Sunlight_Module::createDescriptorSetLayout()
 {
-	VkDescriptorSetLayoutBinding raytraceBufferBinding{};
-	raytraceBufferBinding.binding = 0;
-	raytraceBufferBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	raytraceBufferBinding.descriptorCount = 1;
-	raytraceBufferBinding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
-	raytraceBufferBinding.pImmutableSamplers = nullptr; // Optional
-
-	VkDescriptorSetLayoutBinding indexBufferBinding{};
-	indexBufferBinding.binding = 1;
-	indexBufferBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-	indexBufferBinding.descriptorCount = 1;
-	indexBufferBinding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
-	indexBufferBinding.pImmutableSamplers = nullptr; // Optional
-
-	VkDescriptorSetLayoutBinding vertexBufferBinding{};
-	vertexBufferBinding.binding = 2;
-	vertexBufferBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-	vertexBufferBinding.descriptorCount = 1;
-	vertexBufferBinding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
-	vertexBufferBinding.pImmutableSamplers = nullptr; // Optional
-
-	VkDescriptorSetLayoutBinding uvBufferBinding{};
-	uvBufferBinding.binding = 3;
-	uvBufferBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-	uvBufferBinding.descriptorCount = 1;
-	uvBufferBinding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
-	uvBufferBinding.pImmutableSamplers = nullptr; // Optional
-
-	VkDescriptorSetLayoutBinding nodeBufferBinding{};
-	nodeBufferBinding.binding = 4;
-	nodeBufferBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-	nodeBufferBinding.descriptorCount = 1;
-	nodeBufferBinding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
-	nodeBufferBinding.pImmutableSamplers = nullptr; // Optional
-
-	VkDescriptorSetLayoutBinding edgeBufferBinding{};
-	edgeBufferBinding.binding = 5;
-	edgeBufferBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-	edgeBufferBinding.descriptorCount = 1;
-	edgeBufferBinding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
-	edgeBufferBinding.pImmutableSamplers = nullptr; // Optional
-
-	VkDescriptorSetLayoutBinding imageStorageBinding{};
-	imageStorageBinding.binding = 6;
-	imageStorageBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-	imageStorageBinding.descriptorCount = 1;
-	imageStorageBinding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
-	imageStorageBinding.pImmutableSamplers = nullptr; // Optional
-
 	std::vector<VkDescriptorSetLayoutBinding> bindings;
 	bindings.resize(7);
-	bindings = { raytraceBufferBinding, indexBufferBinding, vertexBufferBinding, uvBufferBinding, nodeBufferBinding, edgeBufferBinding, imageStorageBinding };
+
+	bindings[0] = ubo.getDescriptorSetLayout(0);
+	bindings[1] = indices.X->getDescriptorSetLayout(1);
+	bindings[2] = vertices.X->getDescriptorSetLayout(2);
+	bindings[3] = lm_uvs.X->getDescriptorSetLayout(3);
+	bindings[4] = bvh_nodes.X->getDescriptorSetLayout(4);
+	bindings[5] = edges.X->getDescriptorSetLayout(5);
+	bindings[6] = images_out.X->getDescriptorSetLayout(6);
 
 	descriptorSetLayout = new MyDescriptorSetLayout(m_device, bindings);
 }
 
-void Sunlight_Module::createComputePipeline()
+void Sunlight_Module::createUBO()
 {
-	VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
-	pipelineLayoutInfo.sType =
-		VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-	pipelineLayoutInfo.setLayoutCount = 1;
-	pipelineLayoutInfo.pSetLayouts = &(descriptorSetLayout->getDescriptorSetLayout());
+	ubo.range = sizeof(SunTraceInfo);
 
-	if (vkCreatePipelineLayout(m_device->getDevice(), &pipelineLayoutInfo, nullptr,
-		&pipelineLayout) != VK_SUCCESS) {
-		throw std::runtime_error("failed to create compute pipeline layout!");
-	}
-
-	pipeline = new ComputePipeline(m_device, "shaders/sunlight.spv", pipelineLayout);
+	m_device->createBuffer(ubo.range, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, ubo.Buffer,
+		ubo.BufferMemory);
 }
 
-void Sunlight_Module::createRaytraceInfoBuffer()
+void Sunlight_Module::writeUBO(int info_n)
 {
-	raytraceBufferObject = new MyBufferObject(m_device, sizeof(RayTraceInfo), 1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-		VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 16);
-}
-
-void Sunlight_Module::writeRaytraceInfoBuffer(int info_n)
-{
-	RayTraceInfo info{};
+	SunTraceInfo info{};
 
 	info.n_vertices = n_vertices;
 	info.n_triangles = n_indices / 3;
-	info.n_rays = 256;
 	info.n_nodes = n_nodes;
 
 	info.face_index_offset = indices_soa->offset[info_n];
 	info.face_n_indices = indices_soa->len[info_n];
 	info.face_vertex_offset = vertices_soa->offset[info_n];
 
-	std::cout << "Vertex offset " << info.face_vertex_offset << "\n";
-	std::cout << "index offset " << info.face_index_offset << "\n";
-	std::cout << "n indices " << info.face_n_indices << "\n";
-
 	info.lightmap_width = materials->data()[info_n].lightmap_size;
 	info.lightmap_height = materials->data()[info_n].lightmap_size;
 
-	core::vector3df x = sun_direction == core::vector3df(0, 1, 0) ? sun_direction.crossProduct(core::vector3df(1, 0, 0)) : sun_direction.crossProduct(core::vector3df(0, 1, 0));
-	core::vector3df y = x.crossProduct(sun_direction);
+	//=================================
+	// Sun cone, with an orthonormal basis around the sun direction
+	//
+	vector3df dir = sun_direction;
+	dir.normalize();
 
-	info.sun_dir.V = sun_direction;
-	info.sun_tan.V = x;
-	info.sun_bitan.V = y;
+	vector3df up = fabs(dir.Y) > 0.99f ? vector3df(1, 0, 0) : vector3df(0, 1, 0);
+	vector3df tan = dir.crossProduct(up);
+	tan.normalize();
+	vector3df bitan = tan.crossProduct(dir);
+	bitan.normalize();
 
-	raytraceBufferObject->writeToBuffer((void*)&info);
+	f32 half_angle = 0.5f * sun_angle * core::DEGTORAD;
+
+	info.sun_dir = dir;
+	info.sun_tan = tan;
+	info.sun_bitan = bitan;
+	info.cos_max = cosf(half_angle);
+	info.intensity = intensity;
+	info.n_passes = std::max(1u, n_passes);
+	info.miss_is_sky = miss_is_sky ? 1 : 0;
+	info.seed = info_n * 0x9E3779B9u;
+
+	ubo.writeToBuffer(m_device->getDevice(), (void*)&info);
 }
 
 void Sunlight_Module::runMaterial(int mat_n)
 {
-	writeRaytraceInfoBuffer(mat_n);
+	writeUBO(mat_n);
+
 	createDescriptorSets(materials->data()[mat_n].lightmap_no);
 
 	VkCommandBuffer commandBuffer = m_device->beginSingleTimeCommands();
@@ -193,9 +132,8 @@ void Sunlight_Module::runMaterial(int mat_n)
 
 	uint32_t n_WorkGroups_x = indices_soa->len[mat_n] / 3;
 
-	std::cout << n_WorkGroups_x << " workgroups\n";
+	std::cout << "sunlight: execute " << n_WorkGroups_x << " workgroups\n";
 
-	std::cout << "execute...\n";
 	m_device->dispatch(commandBuffer, n_WorkGroups_x, 1, 1);
 
 	m_device->endSingleTimeCommands(commandBuffer);
@@ -204,13 +142,43 @@ void Sunlight_Module::runMaterial(int mat_n)
 
 	vkDeviceWaitIdle(m_device->getDevice());
 
+	estimateRays(mat_n);
+}
+
+void Sunlight_Module::estimateRays(int mat_n)
+{
+	//Per texel every thread (256) traces one ray per pass. Unlike area lights there's
+	//no per-light loop, so the count only depends on the texels covered.
+	const u32 threads_per_workgroup = 32 * 8;
+
+	u32 lm_size = materials->data()[mat_n].lightmap_size;
+	u32 first = indices_soa->offset[mat_n];
+	u32 n_triangles = indices_soa->len[mat_n] / 3;
+
+	for (u32 t = 0; t < n_triangles; t++)
+	{
+		u32 texels = triangle_trans->count_texels(first + t * 3, lm_size);
+
+		texels_shaded += texels;
+		rays_traced += (u64)texels * threads_per_workgroup * std::max(1u, n_passes);
+	}
 }
 
 void Sunlight_Module::run()
 {
+	if (n_sky_triangles == 0 && !miss_is_sky)
+	{
+		cout << "sunlight: no sky triangles in the scene (and miss_is_sky is off), nothing can be lit\n";
+		images_out.X = images_in.X;
+		images_out.ready = true;
+		return;
+	}
+
 	createDescriptorSetLayout();
-	createComputePipeline();
-	createRaytraceInfoBuffer();
+	createComputePipeline("shaders/sunlight.spv");
+	createUBO();
+
+	triangle_trans = new Triangle_Transformer(*vertices_soa, *indices_soa);
 
 	for (int i = 0; i < materials->size(); i++)
 	{
@@ -218,19 +186,22 @@ void Sunlight_Module::run()
 			runMaterial(i);
 	}
 
+	delete triangle_trans;
+	triangle_trans = NULL;
+
 	cleanup();
+
+	images_out.X = images_in.X;
+	images_out.ready = true;
 }
 
-
-void Sunlight_Module::cleanup() 
+void Sunlight_Module::cleanup()
 {
 	descriptorSetLayout->cleanup();
 
-	delete raytraceBufferObject;
+	ubo.destroy(m_device->getDevice());
 
 	pipeline->cleanup();
 
 	vkDestroyPipelineLayout(m_device->getDevice(), pipelineLayout, nullptr);
 }
-
-

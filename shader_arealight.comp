@@ -455,6 +455,23 @@ bool is_on_edge(vec3 P, uint v0, uint v1)
 			length(P-global_vertices[indexed(i_0,v1)]) - 
 			length(global_vertices[indexed(i_0,v1)] - global_vertices[indexed(i_0,v0)]) < 0.05);
 }
+
+//At a concave edge the ray must also leave in front of the adjacent triangle,
+//otherwise it would start "inside" the neighbouring surface.
+//Samples away from every edge (or on an edge with no concave neighbour) always pass.
+bool edges_allow_ray(vec3 P, vec3 ray)
+{
+	if(edges[0] != 0xFFFF && is_on_edge(P,1,0) && dot(ray,EdgeNormal0) <= 0)
+		return false;
+
+	if(edges[1] != 0xFFFF && is_on_edge(P,1,2) && dot(ray,EdgeNormal1) <= 0)
+		return false;
+
+	if(edges[2] != 0xFFFF && is_on_edge(P,2,0) && dot(ray,EdgeNormal2) <= 0)
+		return false;
+
+	return true;
+}
 	
 /*
 //==============================
@@ -1027,11 +1044,8 @@ void main()
 
 							bool isHit = false;
 
-							if(hit_id == light_idx && ((dot(ray,Normal) > 0) && 
-							((point_type == 1) ||
-							(is_on_edge(pos,1,0) && (dot(ray,EdgeNormal0) > 0) || edges[0] == 0xFFFF) ||
-							(is_on_edge(pos,1,2) && (dot(ray,EdgeNormal1) > 0) || edges[1] == 0xFFFF) ||
-							(is_on_edge(pos,2,0) && (dot(ray,EdgeNormal2) > 0) || edges[2] == 0xFFFF) )))
+							if(hit_id == light_idx && dot(ray,Normal) > 0 &&
+								(point_type == 1 || edges_allow_ray(pos,ray)))
 							{
 								isHit = true;
 							}
@@ -1047,8 +1061,9 @@ void main()
 							subgroupBarrier();
 
 							//float p = 100000.0 * dot(-ray,src_normal)  * dot(ray,Normal) / (d*d);
-							float p =  dot(-ray,src_normal) * dot(-ray,src_normal) * dot(-ray,src_normal) * dot(ray,Normal) / (d*d);
-
+							//float p =  dot(-ray,src_normal) * dot(-ray,src_normal) * dot(-ray,src_normal) * dot(ray,Normal) / (d*d);
+							//float p =  dot(-ray,src_normal) * dot(-ray,src_normal) * dot(-ray,src_normal)  / (d*d);
+							float p = dot(-ray,src_normal) * 1.0 / (d*d);
 
 							//============================================
 							// Add up the contribution from each thread in the subgroup
