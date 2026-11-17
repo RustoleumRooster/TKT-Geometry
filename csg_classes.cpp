@@ -1281,6 +1281,34 @@ int polyfold::left_right_test(int f_i, int p_i, f32 vx, f32 vz, bool is_open, in
     int x_status=-1;
     int z_status=-1;
 
+    // A scan line that misses the loop's extent can only graze the extreme vertex within
+    // tolerance. That gives a phantom crossing on one of the vertex's two edges (e.g. a
+    // nearly-horizontal edge is skipped and only its neighbour counts), which contradicts
+    // the other scan. The callers' bbox tests admit points up to LOOP_BBOX_SMALL_NUMBER
+    // outside the loop, so such a scan must be ignored and the other scan decides.
+    f32 loop_min_x = verts[0].X, loop_max_x = verts[0].X;
+    f32 loop_min_z = verts[0].Z, loop_max_z = verts[0].Z;
+    for (const core::vector3df& v : verts)
+    {
+        loop_min_x = std::min(loop_min_x, v.X);
+        loop_max_x = std::max(loop_max_x, v.X);
+        loop_min_z = std::min(loop_min_z, v.Z);
+        loop_max_z = std::max(loop_max_z, v.Z);
+    }
+    const bool x_scan_valid = point.Z >= loop_min_z && point.Z <= loop_max_z; //scan along X at point.Z
+    const bool z_scan_valid = point.X >= loop_min_x && point.X <= loop_max_x; //scan along Z at point.X
+
+    if (!x_scan_valid && !z_scan_valid)
+    {
+        // diagonally beyond a corner of the bbox: inside only if within the include distance of a vertex
+        for (const core::vector3df& v : verts)
+        {
+            if (fabs(v.X - point.X) < LEFT_RIGHT_TEST_INCLUDE_NUMBER && fabs(v.Z - point.Z) < LEFT_RIGHT_TEST_INCLUDE_NUMBER)
+                return 1;
+        }
+        return 0;
+    }
+
     for(int i = 0 ; i<verts.size()-1; i++)
     {
         core::vector3df leftv,rightv;
@@ -1295,7 +1323,8 @@ int polyfold::left_right_test(int f_i, int p_i, f32 vx, f32 vz, bool is_open, in
             rightv = verts[i];
         }
 
-        if(point.X > leftv.X  - small_number &&
+        if(z_scan_valid &&
+           point.X > leftv.X  - small_number &&
            point.X < rightv.X + small_number &&
            fabs(rightv.X - leftv.X) > small_number)
         {
@@ -1359,7 +1388,8 @@ int polyfold::left_right_test(int f_i, int p_i, f32 vx, f32 vz, bool is_open, in
                 }
             }
         }
-        if (point.Z > std::min(verts[i].Z,verts[i+1].Z) - small_number &&
+        if (x_scan_valid &&
+           point.Z > std::min(verts[i].Z,verts[i+1].Z) - small_number &&
            point.Z < std::max(verts[i].Z,verts[i+1].Z) + small_number &&
            fabs(rightv.Z - leftv.Z) > small_number)
         {
