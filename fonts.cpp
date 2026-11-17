@@ -247,12 +247,18 @@ void AGG_TT_Font::resizeView(core::dimension2du new_size)
     if (test_tex)
         Driver->removeTexture(test_tex);
 
+    bool mip_maps = Driver->getTextureCreationFlag(irr::video::ETCF_CREATE_MIP_MAPS);
+    bool non_power_2 = Driver->getTextureCreationFlag(irr::video::ETCF_ALLOW_NON_POWER_2);
+
     Driver->setTextureCreationFlag(irr::video::ETCF_CREATE_MIP_MAPS, false);
     Driver->setTextureCreationFlag(irr::video::ETCF_ALLOW_NON_POWER_2, true);
 
     IImage* img = Driver->createImage(ECF_A8R8G8B8, new_size);
 
     ITexture* tex = Driver->addTexture("fonts", img);
+
+    Driver->setTextureCreationFlag(irr::video::ETCF_CREATE_MIP_MAPS, mip_maps);
+    Driver->setTextureCreationFlag(irr::video::ETCF_ALLOW_NON_POWER_2, non_power_2);
 
     SpriteBank->addTexture(0);
     SpriteBank->setTexture(0,tex);
@@ -270,6 +276,80 @@ void AGG_TT_Font::resizeView(core::dimension2du new_size)
 }*/
 
 
+int CachedText_Manager::cache(CachedText& text_, position2di pos_)
+{
+    text.push_back(text_);
+    pos.push_back(pos_);
+    return text.size() - 1;
+}
+
+CachedText_Manager::CachedText_Manager(AGG_TT_Font* font) : my_font(font), driver{device->getVideoDriver()},my_texture{font->SpriteBank->getTexture(0) }
+{
+}
+
+void CachedText_Manager::fill_positions()
+{
+    u32 n = text.size();
+
+    u32(*length)(vector<CachedText>*, u32);
+    vector2di(*item0)(vector<CachedText>*, u32, u32);
+    recti(*item1)(vector<CachedText>*, u32, u32);
+
+    length = [](vector<CachedText>* text_, u32 index) -> u32 {
+        return text_->data()[index].offsets.size();
+        };
+
+    item0 = [](vector<CachedText>* text_, u32 i, u32 j) -> vector2di {
+        return text_->data()[i].offsets[j];
+        };
+
+    item1 = [](vector<CachedText>* text_, u32 i, u32 j) -> recti {
+        return text_->data()[i].src_rects[j];
+        };
+
+    positions.fill_data(&text, n, length, item0);
+    image_batch.fill_data(&text, n, length, item0, item1);
+}
+
+void CachedText_Manager::draw(vector2di origin, video::SColor color, const core::rect<s32>* clip)
+{
+    memcpy(image_batch.data0.data(), positions.data.data(), positions.data.size() * sizeof(vector2di));
+
+    for (int i = 0; i < pos.size(); i++)
+    {
+        int offset = image_batch.offset[i];
+        for (int j = 0; j < image_batch.len[i]; j++)
+        {
+            //image_batch.data0.data()[offset + j] = positions.data.data()[offset + j];
+            image_batch.data0.data()[offset + j] += pos[i];
+            image_batch.data0.data()[offset + j] += origin;
+        }
+    }
+    
+    core::array<position2di> r;
+    core::array<recti> d;
+
+    r.set_pointer(image_batch.data0.data(), image_batch.data0.size(), false, false);
+    d.set_pointer(image_batch.data1.data(), image_batch.data1.size(), false, false);
+
+    driver->draw2DImageBatch(my_texture, r, d, clip, color, true);
+
+   // Driver->draw2DImageBatch(getTexture(i), drawBatches[i].positions,
+  //      drawBatches[i].sourceRects, clip, color, true);
+}
+
+void CachedText_Manager::setInitialTextPos()
+{
+    for (int i = 0; i < pos.size(); i++)
+    {
+        int offset = image_batch.offset[i];
+        for (int j = 0; j < image_batch.len[i]; j++)
+        {
+            //image_batch.data0.data()[offset + j] = positions.data.data()[offset + j];
+            //positions.data.data()[offset + j] -= pos[i];
+        }
+    }
+}
 
 void AGG_TT_Font::draw(const core::stringw& text, const core::rect<s32>& position, video::SColor color, bool hcenter, bool vcenter, const core::rect<s32>* clip)
 {
@@ -345,6 +425,104 @@ void AGG_TT_Font::draw(const core::stringw& text, const core::rect<s32>& positio
     }
 
     SpriteBank->draw2DSpriteBatch(indices, offsets, clip, color);
+}
+
+void AGG_TT_Font::getCachedText(CachedText& cache, const core::stringw& text, position2di pos, dimension2di rect, int alignment)
+{
+    //if (!Driver || !SpriteBank)
+    //    return;
+
+    //const core::rect<s32>& position{ 0,0 };
+
+    core::dimension2d<s32> textDimension;	// NOTE: don't make this u32 or the >> later on can fail when the dimension width is < position width
+    core::position2d<s32> offset = pos;
+
+    if (alignment == TKT_ALIGN_RIGHT)
+    {
+        textDimension = getDimension(text.c_str());
+        offset.X -= textDimension.Width - rect.Width;
+    }
+
+    /*
+    if (hcenter || vcenter || clip)
+        textDimension = getDimension(text.c_str());
+    
+    if (hcenter)
+    {
+        offset.X += (position.getWidth() - textDimension.Width) >> 1;
+    }
+
+    if (vcenter)
+    {
+        //offset.Y += (position.getHeight() - Cap_Height) >> 1;
+        offset.Y += (position.getHeight() - textDimension.Height) >> 1;
+    }*/
+
+    /*
+    if (clip)
+    {
+        core::rect<s32> clippedRect(offset, textDimension);
+        clippedRect.clipAgainst(*clip);
+        if (!clippedRect.isValid())
+            return;
+    }*/
+
+    //core::array<u32> indices(text.size());
+   // core::array<core::position2di> offsets(text.size());
+    //core::array<recti> src_rects(text.size());
+
+    int new_size = cache.src_rects.size() + text.size();
+
+    cache.src_rects.reallocate(new_size);
+    cache.offsets.reallocate(new_size);
+
+    for (u32 i = 0; i < text.size(); i++)
+    {
+        wchar_t c = text[i];
+
+        bool lineBreak = false;
+        if (c == L'\r') // Mac or Windows breaks
+        {
+            lineBreak = true;
+            if (text[i + 1] == L'\n') // Windows breaks
+                c = text[++i];
+        }
+        else if (c == L'\n') // Unix breaks
+        {
+            lineBreak = true;
+        }
+
+        if (lineBreak)
+        {
+            offset.Y += MaxHeight;
+            //offset.X = position.UpperLeftCorner.X;
+
+            //if (hcenter)
+            //{
+            //    offset.X += (position.getWidth() - textDimension.Width) >> 1;
+            //}
+            continue;
+        }
+
+        SFontArea& area = Areas[getAreaFromCharacter(c)];
+
+        offset.X += area.underhang;
+        if (Invisible.findFirst(c) < 0)
+        {
+            //indices.push_back(area.spriteno);
+            cache.src_rects.push_back(SpriteBank->getPositions()[area.spriteno]);
+            cache.offsets.push_back(offset);
+        }
+
+        offset.X += area.width + area.overhang + GlobalKerningWidth;
+    }
+
+    //return CachedText{ src_rects, offsets, clip };
+}
+
+void AGG_TT_Font::draw(CachedText& text, video::SColor color)
+{
+    //SpriteBank->draw2DSpriteBatch(text.src_rects, text.offsets, text.clip, color);
 }
 
 core::dimension2d<u32> AGG_TT_Font::getDimension(const wchar_t* text) const
@@ -450,15 +628,12 @@ AGG_TT_Font* AGG_TT_Font_Renderer::Render_Font(gui::IGUIEnvironment* env, const 
     Driver = env->getVideoDriver();
 
     bool flags[3];
-    popTextureCreationFlags(flags);
-
-    Driver->setTextureCreationFlag(irr::video::ETCF_CREATE_MIP_MAPS, false);
-    Driver->setTextureCreationFlag(irr::video::ETCF_ALLOW_NON_POWER_2, true);
+    pushTextureCreationFlags(flags);
 
     IImage* img = Driver->createImage(ECF_A8R8G8B8, dimension2du{ 256,256 });
     ITexture* tex = Driver->addTexture("fonts", img);
 
-    pushTextureCreationFlags(flags);
+    popTextureCreationFlags(flags);
 
     SpriteBank->addTexture(0);
     SpriteBank->setTexture(0, tex);
@@ -544,3 +719,5 @@ void AGG_TT_Font_Renderer::popTextureCreationFlags(const bool(&flags)[3])
     Driver->setTextureCreationFlag(video::ETCF_CREATE_MIP_MAPS, flags[1]);
     Driver->setTextureCreationFlag(video::ETCF_ALLOW_MEMORY_COPY, flags[2]);
 }
+
+

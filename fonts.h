@@ -4,10 +4,54 @@
 
 #include <irrlicht.h>
 #include "RenderTargetsTool.h"
+#include "soa.h"
 
 using namespace irr;
 
 class FontDraw;
+class AGG_TT_Font;
+
+struct CachedText
+{
+	//core::array<u32> indices;
+	core::array<recti> src_rects;
+	core::array<core::position2di> offsets;
+	const core::rect<s32>* clip;
+
+	//void append(core::array<recti> rects, core::array<core::position2di> off);
+};
+
+struct CachedText_Manager
+{
+	CachedText_Manager(AGG_TT_Font*);
+
+	//void start_cache();
+	//void end_cache();
+	int cache(CachedText&, position2di);
+	std::vector<CachedText> text;
+	std::vector<position2di> pos;
+
+	soa_struct<core::position2di> positions;
+	soa_struct_2<core::position2di,core::recti> image_batch;
+
+	void fill_positions();
+
+	void draw(vector2di origin, video::SColor color, const core::rect<s32>* clip);
+	void move(int, vector2di);
+	void setInitialTextPos();
+
+	//CachedText& current_cache;
+
+	AGG_TT_Font* my_font;
+	video::IVideoDriver* driver;
+	video::ITexture* my_texture;
+};
+
+enum
+{
+	TKT_ALIGN_LEFT,
+	TKT_ALIGN_RIGHT
+};
 
 class AGG_TT_Font : public gui::IGUIFont
 {
@@ -19,6 +63,10 @@ public:
 	virtual void draw(const core::stringw& text, const core::rect<s32>& position,
 		video::SColor color, bool hcenter = false, bool vcenter = false,
 		const core::rect<s32>* clip = 0);
+
+	virtual void draw(CachedText& text, video::SColor color);
+
+	void getCachedText(CachedText& cache, const core::stringw& text, position2di pos, dimension2di rect, int alignment);
 
 	virtual core::dimension2d<u32> getDimension(const wchar_t* text) const;
 	virtual s32 getCharacterFromPos(const wchar_t* text, s32 pixel_x) const;
