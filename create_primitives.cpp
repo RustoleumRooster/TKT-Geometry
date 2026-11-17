@@ -14,6 +14,7 @@ GeometryFactory::Plane GeometryFactory::plane{256,256};
 GeometryFactory::Cone GeometryFactory::cone{256,128,8};
 GeometryFactory::Curve GeometryFactory::curve{ 0,90,128,160,64,4 };
 GeometryFactory::TerrainGrid GeometryFactory::terrain_grid{ 128,64,8,8 };
+GeometryFactory::Staircase GeometryFactory::staircase{ 16,32,128,8 };
 
 void geometry_scene::InitializeEmptyScene()
 {
@@ -40,6 +41,12 @@ void EditCurveWindow::click_OK()
 void EditTerrainGridWindow::click_OK()
 {
     GeometryFactory::CreateTerrainGrid(this);
+    this->remove();
+}
+
+void EditStaircaseWindow::click_OK()
+{
+    GeometryFactory::CreateStaircase(this);
     this->remove();
 }
 
@@ -158,6 +165,17 @@ void GeometryFactory::CreateTerrainGrid(EditTerrainGridWindow* win)
     g_scene->geoNode()->elements[0].brush.translate(M);
 }
 
+void GeometryFactory::CreateStaircase(EditStaircaseWindow* win)
+{
+    win->write(&staircase);
+
+    core::matrix4 M;
+    M.setTranslation(g_scene->geoNode()->elements[0].brush.vertices[0].V);
+    g_scene->geoNode()->elements[0] = make_staircase(staircase.stepHeight, staircase.stepLength, staircase.width, staircase.nSteps);
+    g_scene->geoNode()->elements[0].type = GEO_RED;
+    g_scene->geoNode()->elements[0].brush.translate(M);
+}
+
 
 void GeometryFactory::MakePlaneWindow()
 {
@@ -226,6 +244,16 @@ void GeometryFactory::MakeTerrainGridWindow()
 
     reflect::TypeDescriptor_Struct* typeDesc = (reflect::TypeDescriptor_Struct*)reflect::TypeResolver<TerrainGrid>::get();
     win->Show(typeDesc, &terrain_grid);
+    win->drop();
+}
+
+void GeometryFactory::MakeStaircaseWindow()
+{
+    EditStaircaseWindow* win = new EditStaircaseWindow(env, env->getRootGUIElement(), -1, core::rect<s32>(140, 200, 16 + 196, 64 + 196));
+    win->setText(L"Make a staircase");
+
+    reflect::TypeDescriptor_Struct* typeDesc = (reflect::TypeDescriptor_Struct*)reflect::TypeResolver<Staircase>::get();
+    win->Show(typeDesc, &staircase);
     win->drop();
 }
 
@@ -302,4 +330,14 @@ REFLECT_STRUCT_BEGIN(GeometryFactory::TerrainGrid)
         REFLECT_STRUCT_MEMBER_ALIAS("# squares X")
     REFLECT_STRUCT_MEMBER(nY)
         REFLECT_STRUCT_MEMBER_ALIAS("# squares Y")
+REFLECT_STRUCT_END()
+
+REFLECT_STRUCT_BEGIN(GeometryFactory::Staircase)
+    REFLECT_STRUCT_MEMBER(stepHeight)
+        REFLECT_STRUCT_MEMBER_ALIAS("step height")
+    REFLECT_STRUCT_MEMBER(stepLength)
+        REFLECT_STRUCT_MEMBER_ALIAS("step length")
+    REFLECT_STRUCT_MEMBER(width)
+    REFLECT_STRUCT_MEMBER(nSteps)
+        REFLECT_STRUCT_MEMBER_ALIAS("# steps")
 REFLECT_STRUCT_END()

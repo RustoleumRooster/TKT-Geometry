@@ -82,6 +82,16 @@ private:
 };
 
 
+class EditStaircaseWindow : public  EditWindow
+{
+public:
+    EditStaircaseWindow(gui::IGUIEnvironment* env, gui::IGUIElement* parent, s32 id, core::rect<s32> rect)
+        : EditWindow(env, parent, NULL, id, rect) {}
+
+private:
+    virtual void click_OK();
+};
+
 class geometry_scene;
 
 class GeometryFactory
@@ -157,6 +167,15 @@ class GeometryFactory
         REFLECT()
     };
 
+    struct Staircase
+    {
+        int stepHeight;
+        int stepLength;
+        int width;
+        int nSteps;
+        REFLECT()
+    };
+
 public:
 
     static Cube cube;
@@ -166,6 +185,7 @@ public:
     static Cone cone;
     static Curve curve;
     static TerrainGrid terrain_grid;
+    static Staircase staircase;
 
     static gui::IGUIEnvironment* env;
     static geometry_scene* g_scene;
@@ -188,6 +208,7 @@ public:
     static void MakeConeWindow();
     static void MakeCurveWindow();
     static void MakeTerrainGridWindow();
+    static void MakeStaircaseWindow();
 
     static void CreateCube(EditCubeWindow*);
     static void CreateCylinder(EditCylinderWindow*);
@@ -196,6 +217,7 @@ public:
     static void CreateCone(EditConeWindow*);
     static void CreateCurve(EditCurveWindow*);
     static void CreateTerrainGrid(EditTerrainGridWindow*);
+    static void CreateStaircase(EditStaircaseWindow*);
 };
 
 
@@ -205,6 +227,7 @@ geo_element make_cylinder(int height, int radius, int faces, int radius_type);
 geo_element make_sphere(int radius, int faces, int zen_faces, bool simplify);
 geo_element make_cone(int height, int radius, int faces);
 geo_element make_terrain_grid(int height, int gridSize, int nX, int nY);
+geo_element make_staircase(int step_height, int step_length, int width, int nSteps);
 geo_element make_curve(int degrees_begin, int degrees_end, int inner_radius, int outer_radius, int height, int nSections, int radius_type);
 
 #endif

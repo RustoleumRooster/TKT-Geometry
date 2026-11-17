@@ -459,6 +459,116 @@ geo_element make_poly_plane(int length, int width)
     return geo;
 }
 
+// A straight staircase: steps rise along world Y and run along world X; width is world Z.
+// Each step is step_height tall and step_length deep, so the total run is nSteps * step_length
+// and the total rise is nSteps * step_height. The solid fills down to y = 0.
+// Built by extruding the sawtooth side profile along Z. The brush is non-convex, so normals
+// are assigned directly instead of via do_primitive_calculations (which orients them
+// away from the centroid and would flip the lower treads).
+geo_element make_staircase(int step_height, int step_length, int width, int nSteps)
+{
+    geo_element geo;
+    polyfold& pf = geo.brush;
+
+    if (nSteps < 1) nSteps = 1;
+    if (step_height < 1) step_height = 1;
+    if (step_length < 1) step_length = 1;
+    if (width < 1) width = 1;
+
+    // --- side profile in XY, clockwise (y up) ---
+    // (0,0), then for each step k=1..n: ((k-1)*L, k*H), (k*L, k*H), then (n*L, 0)
+    vector<vector2df> profile;
+    profile.push_back(vector2df(0, 0));
+    for (int k = 1; k <= nSteps; k++)
+    {
+        profile.push_back(vector2df((k - 1) * step_length, k * step_height));
+        profile.push_back(vector2df(k * step_length, k * step_height));
+    }
+    profile.push_back(vector2df(nSteps * step_length, 0));
+
+    const int P = profile.size();
+
+    // vertices: [0,P) at z = 0, [P,2P) at z = width
+    for (int p = 0; p < P; p++)
+        pf.vertices.push_back(poly_vert(profile[p].X, profile[p].Y, 0));
+    for (int p = 0; p < P; p++)
+        pf.vertices.push_back(poly_vert(profile[p].X, profile[p].Y, width));
+
+    auto finish_face = [&](int f_no, vector3df normal)
+    {
+        poly_face& f = pf.faces[f_no];
+        add_face_vertices_from_edges(pf, f);
+        pf.calc_center(f_no);
+        f.m_normal = normal;
+    };
+
+    // --- side faces (the sawtooth profile) ---
+    for (int side = 0; side < 2; side++)
+    {
+        pf.faces.push_back(poly_face{});
+        int f_no = pf.faces.size() - 1;
+        int base = side * P;
+
+        for (int p = 0; p < P; p++)
+        {
+            int e = pf.get_edge_or_add(base + p, base + (p + 1) % P, 0);
+            pf.faces[f_no].addEdge(e);
+        }
+
+        finish_face(f_no, side == 0 ? vector3df(0, 0, -1) : vector3df(0, 0, 1));
+    }
+
+    // --- one quad per profile edge: risers, treads, back and bottom ---
+    for (int p = 0; p < P; p++)
+    {
+        int q = (p + 1) % P;
+
+        pf.faces.push_back(poly_face{});
+        int f_no = pf.faces.size() - 1;
+        poly_face& f = pf.faces[f_no];
+
+        f.addEdge(pf.get_edge_or_add(p, q, 0));
+        f.addEdge(pf.get_edge_or_add(P + p, P + q, 0));
+        f.addEdge(pf.get_edge_or_add(p, P + p, 0));
+        f.addEdge(pf.get_edge_or_add(q, P + q, 0));
+
+        // outward normal of a clockwise profile edge (dx,dy) is (-dy,dx)
+        vector2df d = profile[q] - profile[p];
+        vector3df n(-d.Y, d.X, 0);
+        n.normalize();
+
+        finish_face(f_no, n);
+    }
+
+    for (int f_i = 0; f_i < pf.faces.size(); f_i++)
+        pf.faces[f_i].face_id = f_i;
+
+    pf.recalc_bbox_and_loops();
+    pf.topology = TOP_CONVEX; // same as make_curve, which is also non-convex
+
+    surface_group sg;
+    sg.type = SURFACE_GROUP_STANDARD;
+    sg.point = get_center(pf);
+    sg.vec = core::vector3df(0, 1, 0);
+    sg.vec1 = core::vector3df(0, 0, 1);
+    pf.surface_groups.push_back(sg);
+
+    geo.surfaces.resize(pf.faces.size());
+
+    for (int i = 0; i < pf.faces.size(); i++)
+    {
+        poly_face& face = pf.faces[i];
+        face.surface_group = 0;
+        face.uv_origin = pf.vertices[face.vertices[0]].V;
+
+        geo.surfaces[i].surface_type = SURFACE_GROUP_STANDARD;
+        geo.surfaces[i].my_faces.push_back(i);
+        face.surface_no = i;
+    }
+
+    return geo;
+}
+
 geo_element make_curve(int degrees_begin, int degrees_end, int inner_radius0, int outer_radius0, int height, int nSections, int radius_type)
 {
     geo_element geo;
