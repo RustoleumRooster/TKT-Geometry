@@ -106,10 +106,30 @@ public:
     TextureInfo& addTexture(std::string fname, std::string category);
     //TextureInfo& addTexture(video::ITexture* texture, std::string name, std::string category);
 
+    // Loads every image file in 'folder' that Irrlicht can read (not recursive).
+    // Files named <base>_normal.* / <base>_height.* are attached to <base>
+    // as normal / height maps instead of being added as standalone textures.
+    // Returns the number of textures added.
+    int addTexturesFromFolder(std::string folder, std::string category);
+
    // video::ITexture* getCurrentTexture();
     TextureInfo* getCurrentTexture();
 
+    // Moves (or adds) a texture to the front of the Recent list
+    void markRecent(const core::stringw& name);
+
+    // Fixed view indices in the category combo box
+    static const int ALL_CATEGORY = 0;
+    static const int RECENT_CATEGORY = 1;
+
 private:
+    // Resets the list if the scene changed, then appends any textures used
+    // by the current scene's surfaces that aren't already in the list
+    void refreshRecent();
+
+    std::vector<core::stringw> recent_names; // most recent first
+    geometry_scene* recent_scene = NULL;
+
     std::vector<TextureInfo> my_textures;
     std::vector<std::string> categories;
     int selection =-1;

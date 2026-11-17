@@ -97,6 +97,10 @@ void TexturePicker::selected(int sel)
         selection=sel;
         my_base->selection=texture_list[sel].texture_number;
 
+        // Only reorders the base list; the visible list is rebuilt on the
+        // next scrubList(), so the icon under the cursor doesn't jump.
+        my_base->markRecent(texture_list[sel].name);
+
         do_layout();
         if(this->geo_scene && this->geo_scene->getSelectedFaces().size() > 0)
         {
@@ -183,8 +187,24 @@ void TexturePicker::scrubList()
 
     int sel_cat = my_base->selected_category;
 
-    if( sel_cat == 0)
+    if( sel_cat == TexturePicker_Base::ALL_CATEGORY)
         texture_list = my_base->my_textures;
+    else if (sel_cat == TexturePicker_Base::RECENT_CATEGORY)
+    {
+        my_base->refreshRecent();
+
+        for (const core::stringw& name : my_base->recent_names)
+        {
+            for (const TextureInfo& texinfo : my_base->my_textures)
+            {
+                if (texinfo.name == name)
+                {
+                    texture_list.push_back(texinfo);
+                    break;
+                }
+            }
+        }
+    }
     else
     {
         for(TextureInfo texinfo : my_base->my_textures)
@@ -304,7 +324,59 @@ Texture_Picker_Window::~Texture_Picker_Window()
 TexturePicker_Base::TexturePicker_Base(std::wstring name, int my_id, gui::IGUIEnvironment* env, multi_tool_panel* panel)
     : tool_base(name,my_id,env,panel)
 {
-    categories.push_back("All Textures");
+    categories.push_back("All Textures");   // ALL_CATEGORY
+    categories.push_back("Recent");         // RECENT_CATEGORY
+}
+
+void TexturePicker_Base::markRecent(const core::stringw& name)
+{
+    if (name.size() == 0)
+        return;
+
+    refreshRecent();
+
+    for (size_t i = 0; i < recent_names.size(); i++)
+    {
+        if (recent_names[i] == name)
+        {
+            recent_names.erase(recent_names.begin() + i);
+            break;
+        }
+    }
+    recent_names.insert(recent_names.begin(), name);
+}
+
+void TexturePicker_Base::refreshRecent()
+{
+    if (g_scene != recent_scene)
+    {
+        recent_names.clear();
+        recent_scene = g_scene;
+    }
+
+    if (!g_scene || !g_scene->geoNode())
+        return;
+
+    for (const geo_element& element : g_scene->geoNode()->elements)
+    {
+        for (const poly_surface& surface : element.surfaces)
+        {
+            if (surface.texture_name.size() == 0)
+                continue;
+
+            bool found = false;
+            for (const core::stringw& n : recent_names)
+            {
+                if (n == surface.texture_name)
+                {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found)
+                recent_names.push_back(surface.texture_name);
+        }
+    }
 }
 
 void TexturePicker_Base::show()
@@ -404,6 +476,105 @@ TextureInfo& TexturePicker_Base::addTexture(std::string fname, std::string categ
     core::cutFilenameExtension(path, path);
 
     return addTexture(path.c_str(), fname, category);
+}
+
+static bool ends_with(const std::string& s, const std::string& suffix)
+{
+    return s.size() >= suffix.size() &&
+        s.compare(s.size() - suffix.size(), suffix.size(), suffix) == 0;
+}
+
+int TexturePicker_Base::addTexturesFromFolder(std::string folder, std::string category)
+{
+    video::IVideoDriver* driver = device->getVideoDriver();
+    io::IFileSystem* fs = device->getFileSystem();
+
+    while (!folder.empty() && (folder.back() == '/' || folder.back() == '\\'))
+        folder.pop_back();
+
+    // Irrlicht only lists the working directory, so switch temporarily
+    io::path old_cwd = fs->getWorkingDirectory();
+    if (!fs->changeWorkingDirectoryTo(folder.c_str()))
+    {
+        std::cout << "addTexturesFromFolder: could not open folder " << folder << "\n";
+        return 0;
+    }
+    io::IFileList* list = fs->createFileList();
+    fs->changeWorkingDirectoryTo(old_cwd);
+
+    if (!list)
+        return 0;
+
+    struct entry { std::string path; std::string stem; };
+    std::vector<entry> base_files;
+    std::vector<entry> normal_files;
+    std::vector<entry> height_files;
+
+    for (u32 i = 0; i < list->getFileCount(); i++)
+    {
+        if (list->isDirectory(i))
+            continue;
+
+        io::path fname = list->getFileName(i);
+
+        bool loadable = false;
+        for (u32 n = 0; n < driver->getImageLoaderCount(); n++)
+        {
+            if (driver->getImageLoader(n)->isALoadableFileExtension(fname))
+            {
+                loadable = true;
+                break;
+            }
+        }
+        if (!loadable)
+            continue;
+
+        io::path stem_p;
+        core::cutFilenameExtension(stem_p, fname);
+
+        entry e;
+        e.path = folder + "/" + fname.c_str();
+        e.stem = stem_p.c_str();
+
+        if (ends_with(e.stem, "_normal"))
+        {
+            e.stem.resize(e.stem.size() - 7);
+            normal_files.push_back(e);
+        }
+        else if (ends_with(e.stem, "_height"))
+        {
+            e.stem.resize(e.stem.size() - 7);
+            height_files.push_back(e);
+        }
+        else
+            base_files.push_back(e);
+    }
+    list->drop();
+
+    int count = 0;
+    for (const entry& e : base_files)
+    {
+        // addTexture() dereferences the texture, so check it loads first
+        // (the driver caches it, so this doesn't load it twice)
+        if (!driver->getTexture(e.path.c_str()))
+        {
+            std::cout << "addTexturesFromFolder: failed to load " << e.path << "\n";
+            continue;
+        }
+
+        TextureInfo& ti = addTexture(e.path, category);
+        count++;
+
+        for (const entry& nm : normal_files)
+            if (nm.stem == e.stem)
+                ti.set_normal_map(nm.path);
+
+        for (const entry& hm : height_files)
+            if (hm.stem == e.stem)
+                ti.set_height_map(hm.path);
+    }
+
+    return count;
 }
 
 TextureInfo* TexturePicker_Base::getCurrentTexture()
