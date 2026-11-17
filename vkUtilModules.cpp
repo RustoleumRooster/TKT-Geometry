@@ -31,9 +31,10 @@ REFLECT_VKMOD_BEGIN(Geometry_Module)
 	REFLECT_STRUCT_MEMBER(edges)
 	REFLECT_STRUCT_MEMBER(scratchpad)
 	REFLECT_STRUCT_MEMBER(area_lights)
+	REFLECT_STRUCT_MEMBER(sky_triangles)
 REFLECT_VKMOD_END()
 
-Geometry_Module::Geometry_Module() 
+Geometry_Module::Geometry_Module()
 {
 	set_ptrs();
 }
@@ -50,7 +51,6 @@ void Geometry_Module::initialize(Vulkan_App* vulkan)
 	n_vertices = geo_assets->vertices_soa.data0.size();
 	n_nodes = geo_assets->bvh.node_count;
 	triangle_edges = &geo_assets->triangle_edges;
-	area_light_indices = &geo_assets->area_light_indices;
 }
 
 void Geometry_Module::initBuffers()
@@ -101,9 +101,20 @@ void Geometry_Module::createVertexBuffer() {
 	vertices.ready = true;
 }
 
-void Geometry_Module::init_area_light_buffer() {
+void Geometry_Module::initTriangleListBuffers()
+{
+	uploadTriangleList(geo_assets->triangle_lists[GPU_TRIS_AREA_LIGHT], area_lights);
+	uploadTriangleList(geo_assets->triangle_lists[GPU_TRIS_SKY], sky_triangles);
+}
 
-	int n = area_light_indices->size();
+void Geometry_Module::uploadTriangleList(const GPU_Triangle_List_Data& list, reflect::output<vkBufferResource>& port)
+{
+	//Vulkan can't create a zero sized buffer, so an empty list uploads one zeroed pair.
+	//Consumers take their counts from Geometry_Assets, never from the buffer size.
+	std::vector<aligned_uint> empty_pair{ aligned_uint{ 0 }, aligned_uint{ 0 } };
+	const std::vector<aligned_uint>& src = list.empty() ? empty_pair : list.data;
+
+	int n = src.size();
 
 	VkDeviceSize bufferSize = sizeof(aligned_uint) * n;
 
@@ -111,15 +122,15 @@ void Geometry_Module::init_area_light_buffer() {
 		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
 		VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 1);
 
-	stagingBuffer.writeToBuffer((void*)area_light_indices->data());
+	stagingBuffer.writeToBuffer((void*)src.data());
 
-	area_lights.X = vulkan->create_buffer(bufferSize,
-		VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, &area_lights);
+	port.X = vulkan->create_buffer(bufferSize,
+		VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, &port);
 
-	m_device->copyBuffer(stagingBuffer.getBuffer(), area_lights.X->Buffer, bufferSize);
+	m_device->copyBuffer(stagingBuffer.getBuffer(), port.X->Buffer, bufferSize);
 
-	area_lights.X->range = bufferSize;
-	area_lights.ready = true;
+	port.X->range = bufferSize;
+	port.ready = true;
 }
 
 void Geometry_Module::createUVBuffer()
@@ -194,7 +205,7 @@ void Geometry_Module::createOutputBuffer()
 void Geometry_Module::run()
 {
 	initBuffers();
-	init_area_light_buffer();
+	initTriangleListBuffers();
 	createOutputBuffer();
 }
 

@@ -24,7 +24,7 @@ void AreaLight_Module::initialize(Vulkan_App* vulkan)
 
 	indices_soa = &geo_assets->indices_soa;
 	vertices_soa = &geo_assets->vertices_soa;
-	lightsource_indices_soa = &geo_assets->area_light_indices;
+	lightsource_indices_soa = &geo_assets->triangle_lists[GPU_TRIS_AREA_LIGHT].data;
 	n_indices = geo_assets->indices_soa.data.size();
 	n_vertices = geo_assets->vertices_soa.data0.size();
 	n_nodes = geo_assets->bvh.node_count;

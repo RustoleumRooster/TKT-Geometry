@@ -32,7 +32,8 @@ public:
 	virtual void initialize(Vulkan_App* vulkan);
 
 	void initBuffers();
-	void init_area_light_buffer();
+	void initTriangleListBuffers();
+	void uploadTriangleList(const GPU_Triangle_List_Data& list, reflect::output<vkBufferResource>& port);
 
 	void createIndexBuffer();
 	void createVertexBuffer();
@@ -48,7 +49,9 @@ public:
 	reflect::output<vkBufferResource> bvh_nodes;
 	reflect::output<vkBufferResource> edges;
 	reflect::output<vkBufferResource> scratchpad;
+	//GPU triangle lists, one port per channel (see gpu_triangle_lists.h)
 	reflect::output<vkBufferResource> area_lights;
+	reflect::output<vkBufferResource> sky_triangles;
 
 	uint16_t n_indices = 0;
 	uint16_t n_vertices = 0;
@@ -57,7 +60,6 @@ public:
 	soa_struct_2<aligned_vec3, aligned_vec3>* vertices_soa = NULL;
 	soa_struct<aligned_uint>* indices_soa = NULL;
 	std::vector<aligned_uint>* triangle_edges = NULL;
-	std::vector<aligned_uint>* area_light_indices = NULL;
 	BVH_structure_triangles* bvh = NULL;
 
 	Geometry_Assets* geo_assets;

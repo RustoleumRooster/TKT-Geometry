@@ -319,6 +319,7 @@ void initialize_materials(geometry_scene* scene)
     m4.lightmap = false;
     m4.create_meshBuffer_Node = true;
     m4.meshBuffer_Node_typeName = "Reflected_MeshBuffer_Sky_SceneNode";
+    m4.gpu_triangle_list = GPU_TRIS_SKY;
 
     Material_Group m5{ "Water Surface",video::SColor(255,128,128,64) };
     m5.lightmap = false;
@@ -335,6 +336,7 @@ void initialize_materials(geometry_scene* scene)
     m7.create_meshBuffer_Node = true;
     m7.use_unlit_texture = true;
     m7.meshBuffer_Node_typeName = "Reflected_MeshBuffer_AreaLight_SceneNode";
+    m7.gpu_triangle_list = GPU_TRIS_AREA_LIGHT;
 
     Material_Group m8{ "Animated Texture",video::SColor(255,128,128,64) };
     m8.lightmap = true;

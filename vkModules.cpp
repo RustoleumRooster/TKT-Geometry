@@ -9,6 +9,7 @@
 #include "vkSunlightModule.h"
 #include "vkAreaLightModule.h"
 #include "my_reflected_nodes.h"
+#include "material_groups.h"
 #include <vulkan/vulkan.h>
 #include "reflect_custom_types.h"
 #include <chrono>
@@ -634,7 +635,8 @@ void Vulkan_App::print_run_stats(double total_ms)
 	cout << "Triangles:   " << geo_assets->master_triangle_list.size() << "\n";
 	cout << "BVH nodes:   " << geo_assets->bvh.nodes.size() << "\n";
 	cout << "Area lights: " << geo_assets->area_lights.size()
-		<< " (" << geo_assets->area_light_indices.size() / 2 << " light triangles)\n\n";
+		<< " (" << geo_assets->triangle_lists[GPU_TRIS_AREA_LIGHT].count() << " light triangles)\n";
+	cout << "Sky:         " << geo_assets->triangle_lists[GPU_TRIS_SKY].count() << " triangles\n\n";
 
 	u64 total_texels = 0;
 	u64 total_rays = 0;
@@ -699,8 +701,9 @@ Geometry_Assets::Geometry_Assets(geometry_scene* g_scene, Lightmap_Configuration
 	//
 	struct triangle_gpu_info_struct
 	{
-		u16 material_type;
-		u16 lightmap_no;
+		u16 material_type = 0;
+		u16 lightmap_no = 0;
+		u16 gpu_list = GPU_TRIS_NONE_PACKED;
 	};
 
 	vector<triangle_gpu_info_struct> triangle_gpu_info;
@@ -709,8 +712,19 @@ Geometry_Assets::Geometry_Assets(geometry_scene* g_scene, Lightmap_Configuration
 	//vector<u16> triangle_material_type;
 	//triangle_material_type.resize(indices_soa.data.size() / 3);
 
+	Material_Groups_Base* mg_base = Material_Groups_Tool::get_base();
+
+	auto gpu_list_of = [&](int material_group) -> int {
+		if (material_group < 0 || material_group >= mg_base->material_groups.size())
+			return GPU_TRIS_NONE;
+		return mg_base->material_groups[material_group].gpu_triangle_list;
+	};
+
 	for (const TextureMaterial& tm : config->get_materials())
 	{
+		int gpu_list = gpu_list_of(tm.materialGroup);
+		u16 gpu_list_packed = (gpu_list == GPU_TRIS_NONE) ? GPU_TRIS_NONE_PACKED : static_cast<u16>(gpu_list);
+
 		//cout << "material: " << tm.materialGroup << "\n";
 		for (int f_i : tm.faces)
 		{
@@ -722,6 +736,7 @@ Geometry_Assets::Geometry_Assets(geometry_scene* g_scene, Lightmap_Configuration
 				//triangle_material_type[b_offset + t_0 + i] = tm.materialGroup;
 				triangle_gpu_info[b_offset + t_0 + i].material_type = tm.materialGroup;
 				triangle_gpu_info[b_offset + t_0 + i].lightmap_no = tm.lightmap_no;
+				triangle_gpu_info[b_offset + t_0 + i].gpu_list = gpu_list_packed;
 			}
 		}
 	}
@@ -766,17 +781,28 @@ Geometry_Assets::Geometry_Assets(geometry_scene* g_scene, Lightmap_Configuration
 			{
 				u32 prim_no = static_cast<f32> (bvh.indices[bvh.nodes[i].first_prim + j]);
 
-				//Pack data about each triangle into the packing space 
+				//Pack data about each triangle into the packing space
+				//	packing[0] (padding.x): prim 0 triangle no | lightmap no << 16
+				//	packing[1] (padding.y): prim 0 material group | gpu triangle list << 16
+				//	packing[2] (padding.z): prim 1 triangle no | lightmap no << 16
+				//	packing[3] (padding.w): prim 1 material group | gpu triangle list << 16
+				//gpu triangle list is GPU_TRIS_NONE_PACKED (0xFFFF) for triangles not in any list
+
+				const triangle_gpu_info_struct& info = triangle_gpu_info[prim_no];
 
 				if (j == 0)
 				{
 					bvh.nodes[i].pack(0, prim_no);
-					bvh.nodes[i].pack(1, static_cast<u16> (triangle_gpu_info[prim_no].lightmap_no));
+					bvh.nodes[i].pack(1, info.lightmap_no);
+					bvh.nodes[i].pack(2, info.material_type);
+					bvh.nodes[i].pack(3, info.gpu_list);
 				}
 				else if (j == 1)
 				{
 					bvh.nodes[i].pack(4, prim_no);
-					bvh.nodes[i].pack(5, static_cast<u16> (triangle_gpu_info[prim_no].lightmap_no));
+					bvh.nodes[i].pack(5, info.lightmap_no);
+					bvh.nodes[i].pack(6, info.material_type);
+					bvh.nodes[i].pack(7, info.gpu_list);
 				}
 			}
 		}
@@ -841,12 +867,20 @@ Geometry_Assets::Geometry_Assets(geometry_scene* g_scene, Lightmap_Configuration
 	}
 
 	//==========================================================
-	// Make a list of area lights
+	// GPU triangle lists
+	// Every material group with a gpu_triangle_list channel sends its triangles
+	// to that channel as [triangle_idx, payload] pairs (see gpu_triangle_lists.h)
 	//
 
-	vector<pair<u32, u32>> intensities;
+	auto triangle_area = [&](u32 tri) -> f32 {
+		vector3df v0 = vertices_soa.data0[indices_soa.data[tri * 3].x].V;
+		vector3df v1 = vertices_soa.data0[indices_soa.data[tri * 3 + 1].x].V;
+		vector3df v2 = vertices_soa.data0[indices_soa.data[tri * 3 + 2].x].V;
+		return 0.5f * (v1 - v0).crossProduct(v2 - v0).getLength();
+	};
 
-	reflect::TypeDescriptor_Struct* MeshBufferNode_tD =
+	//area lights carry per-light settings on their meshbuffer nodes, so collect those first
+	reflect::TypeDescriptor_Struct* AreaLightNode_tD =
 		(reflect::TypeDescriptor_Struct*)(reflect::TypeResolver<Reflected_MeshBuffer_AreaLight_SceneNode>::get());
 
 	vector<Reflected_MeshBuffer_AreaLight_SceneNode*> light_source_nodes;
@@ -856,7 +890,7 @@ Geometry_Assets::Geometry_Assets(geometry_scene* g_scene, Lightmap_Configuration
 	for (; it != nodes.end(); ++it)
 	{
 		Reflected_SceneNode* node = (Reflected_SceneNode*)*it;
-		if (node->GetDynamicReflection()->isOfType(MeshBufferNode_tD))
+		if (node->GetDynamicReflection()->isOfType(AreaLightNode_tD))
 		{
 			Reflected_MeshBuffer_AreaLight_SceneNode* light_node = dynamic_cast<Reflected_MeshBuffer_AreaLight_SceneNode*>(node);
 			AreaLightInfoStruct light_info;
@@ -872,34 +906,48 @@ Geometry_Assets::Geometry_Assets(geometry_scene* g_scene, Lightmap_Configuration
 
 	for (const TextureMaterial& tm : config->get_materials())
 	{
-		if (tm.materialGroup == 7)
+		int channel = gpu_list_of(tm.materialGroup);
+
+		if (channel == GPU_TRIS_NONE)
+			continue;
+
+		for (const pair<int, int>& surf : tm.surfaces)
 		{
-			for (AreaLightInfoStruct& light : area_lights)
+			int element_n = g_scene->geoNode()->element_by_element_id[surf.first];
+			u32 offset = meshnode->surface_index.offset[element_n] + surf.second;
+
+			u32 first_tri = meshnode->surface_index.data[offset].begin_i / 3;
+			u32 n_tris = (meshnode->surface_index.data[offset].end_i - meshnode->surface_index.data[offset].begin_i) / 3;
+
+			switch (channel)
 			{
-				for (const pair<int, int>& face_id : tm.surfaces)
+			case GPU_TRIS_AREA_LIGHT:
+			{
+				//grouped per light below, so the buffer keeps each light's triangles together
+				for (AreaLightInfoStruct& light : area_lights)
 				{
-					if (face_id.first == light.element_id && face_id.second == light.face_id)
+					if (surf.first == light.element_id && surf.second == light.face_id)
 					{
-						AreaLightInfoStruct* light_info = &light;
-						int element_n = g_scene->geoNode()->element_by_element_id[light.element_id];
+						light.surface_normal = g_scene->geoNode()->get_element_by_id(light.element_id)->brush.faces[light.face_id].m_normal;
 
-						light_info->surface_normal = g_scene->geoNode()->get_element_by_id(light.element_id)->brush.faces[light.face_id].m_normal;
-
-						u32 offset = meshnode->surface_index.offset[element_n] + light.face_id;
-
-						int begin_i = meshnode->surface_index.data[offset].begin_i;
-						int end_i = meshnode->surface_index.data[offset].end_i;
-						int len = (end_i - begin_i) / 3;
-						for (int i = 0; i < len; i++)
-						{
-							light_info->indices.push_back(begin_i / 3 + i);
-						}
+						for (u32 i = 0; i < n_tris; i++)
+							light.indices.push_back(first_tri + i);
 					}
 				}
+			} break;
+			case GPU_TRIS_SKY:
+			{
+				for (u32 i = 0; i < n_tris; i++)
+					triangle_lists[GPU_TRIS_SKY].push(first_tri + i, static_cast<u32>(triangle_area(first_tri + i)));
+			} break;
+			default:
+				cout << "warning: no payload defined for gpu triangle list " << channel << "\n";
+				break;
 			}
 		}
 	}
-	//cout << "Light Power Values:\n";
+
+	//area light payload: intensity * area
 	for (int i = 0; i < area_lights.size(); i++)
 	{
 		const AreaLightInfoStruct& a = area_lights[i];
@@ -907,26 +955,11 @@ Geometry_Assets::Geometry_Assets(geometry_scene* g_scene, Lightmap_Configuration
 		u32 power = 0;
 		for (u32 idx : a.indices)
 		{
-			area_light_indices.push_back(aligned_uint{ idx });
-
-			u32 i0 = indices_soa.data[idx * 3].x;
-			u32 i1 = indices_soa.data[idx * 3 + 1].x;
-			u32 i2 = indices_soa.data[idx * 3 + 2].x;
-
-			vector3df v0 = vertices_soa.data0[i0].V;
-			vector3df v1 = vertices_soa.data0[i1].V;
-			vector3df v2 = vertices_soa.data0[i2].V;
-
-			vector3df e0 = v1 - v0;
-			vector3df e1 = v2 - v0;
-
-			f32 area = (0.5 * e0.crossProduct(e1).getLength());
-
-			u32 intensity = a.intensity * area;
+			u32 intensity = a.intensity * triangle_area(idx);
 
 			power += intensity;
 
-			area_light_indices.push_back(aligned_uint{ intensity });
+			triangle_lists[GPU_TRIS_AREA_LIGHT].push(idx, intensity);
 		}
 
 		light_source_nodes[i]->power = power;

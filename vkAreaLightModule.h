@@ -40,7 +40,6 @@ class AreaLight_Module : public Vulkan_Module
 		uint32_t lightmap_height;
 
 		uint32_t n_lights;
-
 	};
 
 public:

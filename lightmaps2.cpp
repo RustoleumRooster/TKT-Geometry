@@ -13,6 +13,7 @@
 #include "CMeshSceneNode.h"
 #include "file_open.h"
 #include "vkModules.h"
+#include "material_groups.h"
 
 using namespace irr;
 using namespace core;
@@ -830,8 +831,16 @@ void Lightmap_Configuration::split_material_groups()
 
 	auto materials_back = back_inserter(new_materials);
 
+	Material_Groups_Base* mg_base = Material_Groups_Tool::get_base();
+
 	for (; in_it != in_end; ++in_it)
 	{
+		//No Geometry surfaces stop here: everything downstream (final mesh, lightmap layout,
+		//Vulkan geometry) is built from this list, so they never become real triangles
+		if (in_it->materialGroup >= 0 && in_it->materialGroup < mg_base->material_groups.size() &&
+			mg_base->material_groups[in_it->materialGroup].no_geometry)
+			continue;
+
 		if (in_it->has_lightmap == false)
 		{
 			*materials_back = *in_it;

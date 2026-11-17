@@ -18,6 +18,7 @@
 #include <fstream>
 #include "tkt_set.h"
 #include "tkt_reflection_factory.h"
+#include "gpu_triangle_lists.h"
 
 
 class GeometryStack;
@@ -552,8 +553,10 @@ public:
 	soa_struct<MeshIndex_Chunk> surface_index;
 	std::vector<triangle_b> master_triangle_list;
 	std::vector<aligned_uint> triangle_edges;
-	std::vector<aligned_uint> area_light_indices;
+	GPU_Triangle_List_Data triangle_lists[GPU_TRIS_COUNT];   //one per channel, see gpu_triangle_lists.h
 	std::vector<AreaLightInfoStruct> area_lights;
+
+	GPU_Triangle_List_Data& get_triangle_list(int channel) { return triangle_lists[channel]; }
 	BVH_structure_triangles bvh;
 	int selected_triangle_index = 0;
 	int selected_triangle_mg = 0;

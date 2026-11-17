@@ -6,6 +6,7 @@
 #include <vector>
 #include "Reflection.h"
 #include "GUI_tools.h"
+#include "gpu_triangle_lists.h"
 
 using namespace irr;
 
@@ -20,6 +21,7 @@ struct Material_Group
     bool create_meshBuffer_Node = false;
     bool use_unlit_texture = false; //instead of letting the meshBuffer_node set the texture, just use unlit
     bool no_geometry = false;       //surface shows in the edit mesh only; dropped from the final mesh and lightmaps
+    int gpu_triangle_list = GPU_TRIS_NONE; //send this group's triangles to the GPU on this channel (see gpu_triangle_lists.h)
     const char* meshBuffer_Node_typeName = NULL;
 };
 
