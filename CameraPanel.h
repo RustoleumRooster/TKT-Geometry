@@ -390,7 +390,7 @@ public:
     virtual void startCameraPan(vector2di);
     virtual void cameraPan(vector2di);
 
-    bool TestPanel_2D::Get3DPosFromScreenCoords(core::vector2di sreen_pos, core::vector3df& out_coords);
+   // bool TestPanel_2D::Get3DPosFromScreenCoords(core::vector2di sreen_pos, core::vector3df& out_coords);
 
     core::dimension2du getViewSize() {
         return viewSize;

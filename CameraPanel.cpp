@@ -69,7 +69,7 @@ void CameraQuad::render()
 void CameraQuad::SetFullscreen(bool bFullscreen, ViewPanel* panel)
 {
 
-    if(bFullscreen)
+    if(bFullscreen && !m_bFullscreen)
     {
         //vp_FS->hookup(panel);
         //renderList->add(vp_FS);
@@ -84,8 +84,10 @@ void CameraQuad::SetFullscreen(bool bFullscreen, ViewPanel* panel)
         vp_TR->position(AbsoluteRect, 0, 0, 0);
         vp_BL->position(AbsoluteRect, 0, 0, 0);
         vp_BR->position(AbsoluteRect, 0, 0, 0);
+
+        m_bFullscreen = true;
     }
-    else
+    else if(!bFullscreen && m_bFullscreen)
     {
         //vp_FS->disconnect();
         //renderList->remove(vp_FS);
@@ -100,9 +102,23 @@ void CameraQuad::SetFullscreen(bool bFullscreen, ViewPanel* panel)
         vp_TR->position(AbsoluteRect, 0.5, 0.5, 1);
         vp_BL->position(AbsoluteRect, 0.5, 0.5, 2);
         vp_BR->position(AbsoluteRect, 0.5, 0.5, 3);
-    }
 
-    m_bFullscreen = bFullscreen;
+        m_bFullscreen = false;
+    }
+    else if (m_bFullscreen)
+    {
+        vp_TL->position(AbsoluteRect, 1.0, 1.0, 0);
+        ((MyEventReceiver*)device->getEventReceiver())->resizeView(vp_TL->getSize());
+    }
+    else if (!m_bFullscreen)
+    {
+        vp_TL->position(AbsoluteRect, 0.5, 0.5, 0);
+        ((MyEventReceiver*)device->getEventReceiver())->resizeView(vp_TL->getSize());
+
+        vp_TR->position(AbsoluteRect, 0.5, 0.5, 1);
+        vp_BL->position(AbsoluteRect, 0.5, 0.5, 2);
+        vp_BR->position(AbsoluteRect, 0.5, 0.5, 3);
+    }
 }
 
 void CameraQuad::initialize(geometry_scene* geo_scene)
@@ -212,6 +228,12 @@ void CameraQuad::resize(core::rect<s32> rect)
 void CameraQuad::hookup_aux_panel(TestPanel* pan)
 {
     vp_TR->hookup(pan);
+}
+
+void CameraQuad::hookup_fullscreen_panel(TestPanel* pan)
+{
+    vp_TL->hookup(pan);
+    SetFullscreen(true, 0);
 }
 
 vector3df CameraQuad::get_fp_camera_pos()

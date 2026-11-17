@@ -228,15 +228,8 @@ bool TestPanel_2D::OnEvent(const SEvent& event)
                             //Initiate Drag
                             if(!bMouseDown && !rMouseDown)
                             {
-                            vDragCameraInitialPosition = this->getCamera()->getAbsolutePosition();
-                            vDragCameraInitialTarget = this->getCamera()->getTarget();
-
-                            bDragCamera = true;
-                            bRotateCamera = false;
-                            bZoomCamera = false;
-
-
-                            bMouseDown=true;
+                                bDragCamera = true;
+                                startCameraPan(vector2di{ mousex,mousey });
                             }
                             else if(bMouseDown == false)
                             {
@@ -383,7 +376,7 @@ bool TestPanel_2D::OnEvent(const SEvent& event)
                         return true;
                     case EMIE_MOUSE_MOVED:
 
-                        if( bMouseDown == true && rMouseDown == true)
+                        if( bMouseDown == true && rMouseDown == true && bZoomAllowed)
                         {
                             if(bZoomCamera==false)
                             {
@@ -409,15 +402,20 @@ bool TestPanel_2D::OnEvent(const SEvent& event)
                                 this->viewSize.Height=oldViewSize.Height*(zoom_f);
                             }
                         }
+                        else if (bMouseDown == true && rMouseDown == true && !bZoomAllowed)
+                        {
+                            bDragCamera = false;
+                        }
                         else if(bDragCamera )
                         {
                             int ydif = mousey-clicky;
                             int xdif = mousex-clickx;
-                            core::vector3df vMove = xdif*this->vHorizontal+ydif*this->vVertical;
-                            vMove*=((f32)this->viewSize.Width / this->Texture->getOriginalSize().Width);
-                            this->getCamera()->setPosition(vDragCameraInitialPosition+vMove);
-                            this->getCamera()->setTarget(vDragCameraInitialTarget+vMove);
-                            this->getCamera()->updateAbsolutePosition();
+                            
+
+                            vector2di move{ xdif,ydif };
+
+                            cameraPan(move);
+
                         }
                         else if(bDragBrush)
                         {
@@ -536,6 +534,26 @@ bool TestPanel_2D::OnEvent(const SEvent& event)
 	}
     //return IGUIElement::OnEvent(event);
     return false;
+}
+
+void TestPanel_2D::startCameraPan(vector2di)
+{
+    vDragCameraInitialPosition = this->getCamera()->getAbsolutePosition();
+    vDragCameraInitialTarget = this->getCamera()->getTarget();
+
+    bRotateCamera = false;
+    bZoomCamera = false;
+
+    bMouseDown = true;
+}
+
+void TestPanel_2D::cameraPan(vector2di d)
+{
+    core::vector3df vMove = d.X * this->vHorizontal + d.Y * this->vVertical;
+    vMove *= ((f32)this->viewSize.Width / this->Texture->getOriginalSize().Width);
+    this->getCamera()->setPosition(vDragCameraInitialPosition + vMove);
+    this->getCamera()->setTarget(vDragCameraInitialTarget + vMove);
+    this->getCamera()->updateAbsolutePosition();
 }
 
 void TestPanel_2D::left_click(core::vector2di pos)
@@ -769,7 +787,47 @@ bool TestPanel_2D::GetOrthoScreenCoords(core::vector3df V, core::vector2di &out_
     return false;
 
 }
+/*
+bool TestPanel_2D::Get3DPosFromScreenCoords(core::vector2di screen_pos, core::vector3df& out_coords)
+{
+    core::dimension2d<u32> dim = this->getImage()->getOriginalSize();
 
+    f32 pos[4] = { screen_pos.X / dim.Width, screen_pos.Y / dim.Height, 1.0f , 1.0f };
+
+    core::matrix4 trans;
+    trans.setbyproduct_nocheck(this->getCamera()->getProjectionMatrix(), this->getCamera()->getViewMatrix());
+    trans.makeInverse();
+
+    trans.multiplyWith1x4Matrix(pos);
+    f32 w = pos[3];
+
+    pos[0] /= w;
+    pos[1] /= w;
+    pos[2] /= w;
+
+    out_coords = { pos[0],pos[1], pos[2] };
+    ///////
+    
+    //core::dimension2d<u32> dim = this->getImage()->getOriginalSize();
+
+    //dim.Width /= 2;
+    //dim.Height /= 2;
+
+    //f32 transformedPos[4] = { V.X, V.Y, V.Z, 1.0f };
+
+    //trans.multiplyWith1x4Matrix(transformedPos);
+
+    //const f32 zDiv = transformedPos[3] == 0.0f ? 1.0f :
+    //    core::reciprocal(transformedPos[3]);
+
+    //out_coords = vector2di(
+   //     dim.Width + core::round32(dim.Width * (transformedPos[0] * zDiv)),
+   //     dim.Height - core::round32(dim.Height * (transformedPos[1] * zDiv)));
+        
+
+    return true;
+}
+*/
 void TestPanel_2D::render()
 {
     driver->setRenderTarget(getImage(), true, true, video::SColor(255,16,16,16));

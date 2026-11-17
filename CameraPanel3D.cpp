@@ -767,7 +767,7 @@ void TestPanel_3D::left_click(core::vector2di pos)
 
     }
     //else if (this->bShowGeometry && this->view_style == PANEL3D_VIEW_RENDER)
-    else if (this->bShowGeometry)
+    else if (this->bShowGeometry && this->view_style != PANEL3D_VIEW_LOOPS)
     {
         core::vector3df hitvec;
         int selected_face = -1;
@@ -1217,107 +1217,7 @@ void TestPanel_3D::SetViewStyle(s32 vtype)
         this->graph2.lines.clear();
         this->graph2.points.clear();
 
-        //geo_scene->geoNode()->GetGeometryLoopLines(graph, graph2);
-       
-        geo_scene->drawGraph(this->graph2);
-
-        if(false)
-        for (geo_element& e : geo_scene->geoNode()->elements)
-        {
-            /*
-            e.brush.recalc_bbox();
-
-            for (int f_i = 0; f_i < e.brush.faces.size(); f_i++)
-            {
-                e.brush.calc_normal(f_i);
-
-                for (int p_i = 0; p_i < e.brush.faces[f_i].loops.size(); p_i++)
-                {
-                    e.brush.calc_loop_bbox(f_i, p_i);
-
-                    e.brush.set_loop_solid(f_i, p_i);
-                }
-            }*/
-            LineHolder nograph;
-
-            //e.brush.set_face_convex(7, this->graph2);
-            //e.brush.set_face_convex(10, this->graph2);
-            //e.brush.set_face_convex(11, this->graph2);
-
-            for (int f_i = 0; f_i < e.brush.faces.size(); f_i++)
-            {
-               // cout << f_i << ",";
-                if(f_i==7)
-                    e.brush.set_face_convex(f_i, this->graph2);
-                else
-                    e.brush.set_face_convex(f_i, nograph);
-
-                for (int p_i = 0; p_i < e.brush.faces[f_i].loops.size(); p_i++)
-                {
-                 //   e.brush.set_loop_solid(f_i, p_i);
-                }
-            }
-
-            //e.brush.set_face_convex(10, this->graph2);
-           // e.brush.set_face_convex(11, this->graph2);
-
-            //e.brush.recalc_faces();
-
-            for (const surface_group& sfg : e.brush.surface_groups)
-            {
-               // sfg.c_brush.visualize(&e.brush, this->graph);
-            }
-
-            if(false)
-            for (const poly_face& f : e.brush.faces)
-            {
-                vector3df v0 = f.m_center;
-                vector3df v1 = f.m_normal;
-
-                this->graph.lines.push_back(line3df(v0, v0 + v1 * 32));
-            }
-        }
-
-
-        MeshNode_Interface_Final* meshnode = &geo_scene->geoNode()->final_meshnode_interface;
-
-        if (geo_scene->getSelectedFaces().size() > 0)
-        {
-            typedef video::S3DVertex2TCoords vertexType;
-
-            GeometryStack* geo_node = geo_scene->geoNode();
-            int f_i = geo_scene->getSelectedFaces()[0];
-
-            //int mb_i = geo_scene->geoNode()->edit_meshnode_interface.get_buffer_index_by_face(f_i);
-            //int selected_triangle_mg = g_scene->geoNode()->edit_meshnode_interface.get_material_group_by_face(mb_i);
-
-
-            //int b_offset = indices_soa.offset[meshnode->get_buffer_index(f_i)] / 3;
-            //int first_index = geo_scene->getSelectedTriangle() * 3;
-            int first_index = geo_scene->get_last_click().triangle_n * 3;
-            cout << "first index=" << first_index << "\n";
-            //int selected_triangle_index = b_offset + tri_sel;
-            MeshBuffer_Chunk chunk = geo_scene->geoNode()->edit_meshnode_interface.get_mesh_buffer_by_face(f_i);
-
-            //for (int i = 0; i < chunk.buffer->getIndexCount(); i += 3)
-            {
-                int idx0 = chunk.buffer->getIndices()[first_index];
-                int idx1 = chunk.buffer->getIndices()[first_index + 1];
-                int idx2 = chunk.buffer->getIndices()[first_index + 2];
-
-                
-
-                vertexType* v0 = &((video::S3DVertex2TCoords*)chunk.buffer->getVertices())[idx0];
-                vertexType* v1 = &((video::S3DVertex2TCoords*)chunk.buffer->getVertices())[idx1];
-                vertexType* v2 = &((video::S3DVertex2TCoords*)chunk.buffer->getVertices())[idx2];
-
-                cout PRINTV(v0->Pos) <<"\n" PRINTV(v1->Pos) << "\n" PRINTV(v2->Pos) <<"\n";
-
-                this->graph.lines.push_back(line3df(v0->Pos, v1->Pos));
-                this->graph.lines.push_back(line3df(v2->Pos, v1->Pos));
-                this->graph.lines.push_back(line3df(v0->Pos, v2->Pos));
-            }
-        }
+        geo_scene->geoNode()->GetGeometryLoopLines(graph, graph2);
 
         if (geo_scene->getSelectedFaces().size() > 0)
         {
@@ -1458,11 +1358,11 @@ void TestPanel_3D::render()
 
         for (const core::line3df& aline : graph.lines)
         {
-            driver->draw3DLine(aline.start, aline.end, video::SColor(128, 255, 0, 255));
+            driver->draw3DLine(aline.start, aline.end, video::SColor(255, 96, 128, 96));
         }
         for (const core::line3df& aline : graph2.lines)
         {
-            driver->draw3DLine(aline.start, aline.end, video::SColor(255, 96, 128, 96));
+            driver->draw3DLine(aline.start, aline.end, video::SColor(255, 32, 0, 150));
         }
         /*
         for (const core::line3df& aline : graph2.lines)
