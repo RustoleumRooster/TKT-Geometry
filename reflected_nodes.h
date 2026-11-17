@@ -161,6 +161,14 @@ namespace reflect
         REFLECT_CUSTOM_STRUCT()
     };
 
+    //A push button in a scene node's properties panel. Has no data (serializes
+    //nothing); clicking it calls Reflected_SceneNode::onActionButton on the
+    //first selected node, with the member's name.
+    struct action_button
+    {
+        REFLECT_CUSTOM_STRUCT()
+    };
+
     /*
     struct TypeDescriptor_UID_Reference : TypeDescriptor {
         TypeDescriptor_UID_Reference() : TypeDescriptor{ "uid reference", sizeof(uid_reference) } {
@@ -235,6 +243,11 @@ public:
 
     virtual void on_connect_node(Reflected_SceneNode*) {}
     virtual void on_disconnect_node(Reflected_SceneNode*) {}
+
+    //Called when a reflect::action_button member is clicked; name is the member name.
+    //Return true if this opened a selection session, which must end by sending
+    //USER_EVENT_NODE_SELECTION_ENDED (that restores the properties panel's node selection).
+    virtual bool onActionButton(const std::string& name) { return false; }
 
     f32 getDistanceFromCamera(TestPanel* viewPanel);
 

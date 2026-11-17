@@ -204,8 +204,12 @@ void Reflected_SceneNode::draw_arrow(video::IVideoDriver* driver, core::vector3d
     driver->setTransform(video::ETS_WORLD, core::IdentityMatrix);
     driver->setMaterial(someMaterial);
 
-    core::vector3df x = z == core::vector3df(0,1,0) ? z.crossProduct(core::vector3df(1,0,0)) : z.crossProduct(core::vector3df(0,1,0));
+    //pick a helper axis that isn't (nearly) parallel to z; rotation leaves float noise,
+    //so an exact z == (0,1,0) test misses arrows pointing straight up/down
+    core::vector3df x = fabs(z.Y) > 0.99f ? z.crossProduct(core::vector3df(1,0,0)) : z.crossProduct(core::vector3df(0,1,0));
+    x.normalize();
     core::vector3df y = x.crossProduct(z);
+    y.normalize();
 
     core::vector3df v0 = v+z*len;
     driver->draw3DLine(v,v0,video::SColor(128,255,255,255));
@@ -837,6 +841,9 @@ REFLECT_STRUCT_END()
 
 REFLECT_CUSTOM_STRUCT_BEGIN(reflect::uid_reference)
     REFLECT_STRUCT_MEMBER(uids)
+REFLECT_STRUCT_END()
+
+REFLECT_CUSTOM_STRUCT_BEGIN(reflect::action_button)
 REFLECT_STRUCT_END()
 
 //=======================================================

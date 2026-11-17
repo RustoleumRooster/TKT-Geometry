@@ -299,6 +299,20 @@ namespace reflect
         }
     }
 
+    void action_button::my_typeDesc::addFormWidget(Reflected_GUI_Edit_Form* win, TypeDescriptor_Struct* type_struct, std::vector<int> tree, size_t offset_base, bool bVisible, bool bEditable, int tab)
+    {
+        if (!bEditable)
+            return;
+
+        int m_i = tree[tree.size() - 1];
+        size_t offset = type_struct->members[m_i].offset + offset_base;
+
+        ActionButton_FormField* f = new ActionButton_FormField();
+        f->init(type_struct->members[m_i].getDisplayName(), tree, offset, tab, bVisible);
+        f->member_name = type_struct->members[m_i].name;
+        win->addEditField(f);
+    }
+
 } // namespace reflect
 
 
@@ -1540,6 +1554,65 @@ int UID_Reference_StaticField::addWidget(Reflected_GUI_Edit_Form* win, int ID, i
     addStaticTextLabel(text, row, tab, ID);
 
     END_WIDGET()
+}
+
+//
+// Action Button
+//
+
+int ActionButton_FormField::addWidget(Reflected_GUI_Edit_Form* win, int ID, int row)
+{
+    BEGIN_WIDGET()
+
+    addStaticTextLabel(text, row, tab, ID);
+
+    //the button is added in postCreateElement, once the columns are laid out
+
+    END_WIDGET()
+}
+
+void ActionButton_FormField::postCreateElement(Reflected_GUI_Edit_Form* win)
+{
+    //may be called again if the cells are re-laid out; only add the button once
+    if (owner->getElementFromId(my_ID + 1, true))
+        return;
+
+    gui::IGUIEnvironment* env = device->getGUIEnvironment();
+
+    core::recti r = win->getCell(my_row, 1);
+
+    int button_width = env->getSkin()->getFont()->getDimension(L"Start").Width + 16;
+
+    core::recti r0(r.UpperLeftCorner.X, r.UpperLeftCorner.Y, r.UpperLeftCorner.X + button_width, r.LowerRightCorner.Y);
+
+    env->addButton(r0, win, my_ID + 1, L"Start");
+}
+
+bool ActionButton_FormField::clickButton(s32 id, reflected_tool_base* base)
+{
+    //only meaningful in the node properties panel
+    Node_Properties_Base* node_properties_base = dynamic_cast<Node_Properties_Base*>(base);
+
+    if (!bVisible || !node_properties_base || id != my_ID + 1)
+        return true;
+
+    //a session is already running (e.g. the button was clicked twice)
+    if (node_properties_base->waiting_for_item_selection)
+        return true;
+
+    //Freeze the panel's node selection: a session the node opens may change the
+    //selection (e.g. picking brushes in the views) and the panel must not rebuild meanwhile.
+    node_properties_base->choose_item_selection(this->tree_pos);
+
+    bool session_started = false;
+    if (node_properties_base->saved_selection.size() > 0)
+        session_started = node_properties_base->saved_selection[0]->onActionButton(member_name);
+
+    if (!session_started)
+        node_properties_base->item_selection_over();
+
+    //nothing to write back to the object
+    return true;
 }
 
 //

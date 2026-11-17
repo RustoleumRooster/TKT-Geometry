@@ -57,6 +57,8 @@ public:
     REFLECT2()
 };
 
+class GeometryStack;
+
 //Editor-only textured plane, e.g. for displaying a heightmap as a reference
 //while building geometry. Lies in its local XZ plane facing +Y, so with zero
 //rotation it is visible in the top 2D view. Not added to the game scene.
@@ -74,6 +76,17 @@ public:
     virtual const core::aabbox3df& getMyBoundingBox() const override;
 
     virtual void postEdit() override;
+    virtual bool onActionButton(const std::string& name) override;
+
+    //Image plane normal in world space (local +Y)
+    core::vector3df get_normal() const;
+
+    //Treats the texture as a heightmap and sets the world Y of every terrain tile vertex
+    //(vertices of a grid canonical brush) in the given brushes to
+    //    plane Y + brightness(0..1) * scale
+    //sampled where the vertex projects onto the plane. Vertices outside the plane are
+    //left alone. Returns the number of vertices moved.
+    int project_onto_terrain(GeometryStack* geo_stack, const std::vector<int>& brushes, f32 scale, int* n_outside = NULL);
 
     TextureInfo* texture = NULL;
     reflect::vector2 Size;
@@ -81,6 +94,8 @@ public:
     //Serialized stand-in for the texture pointer (TextureInfo* is saved as a
     //raw address, which is meaningless after reload). Has no GUI widget.
     std::string texture_name;
+
+    reflect::action_button ProjectToTerrain;
 
 private:
     void set_buffer();

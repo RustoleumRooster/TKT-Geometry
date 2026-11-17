@@ -12,6 +12,7 @@
 #include "my_nodes.h"
 #include "ShaderCallbacks.h"
 #include "texture_picker.h"
+#include "heightmap_projection.h"
 
 using namespace irr;
 using namespace video;
@@ -206,6 +207,8 @@ REFLECT_STRUCT2_BEGIN(Reflected_ReferenceImageNode)
     REFLECT_STRUCT2_MEMBER(texture)
     REFLECT_STRUCT2_MEMBER(Size)
     REFLECT_STRUCT2_MEMBER(texture_name)
+    REFLECT_STRUCT2_MEMBER(ProjectToTerrain)
+    REFLECT_STRUCT_MEMBER_ALIAS("Project to Terrain...")
 REFLECT_STRUCT2_END()
 
 Reflected_ReferenceImageNode::Reflected_ReferenceImageNode(USceneNode* parent, geometry_scene* geo_scene, irr::scene::ISceneManager* smgr, int id, const core::vector3df& pos)
@@ -314,10 +317,20 @@ void Reflected_ReferenceImageNode::render()
     //edge-on in the other 2D views, or when no texture is set
     draw_outline(driver);
 
+    //draw_arrow points along the rotated +Z, so pass the rotation that takes +Z onto the normal
     if (bSelected)
-        draw_arrow(driver, getPosition(), getRotation());
+        draw_arrow(driver, getPosition(), get_normal().getHorizontalAngle());
 
     draw_inputs(driver);
+}
+
+core::vector3df Reflected_ReferenceImageNode::get_normal() const
+{
+    core::vector3df n(0, 1, 0);
+    core::matrix4 R;
+    R.setRotationDegrees(getRotation());
+    R.rotateVect(n);
+    return n;
 }
 
 void Reflected_ReferenceImageNode::render_special(video::SMaterial& material)
@@ -361,6 +374,136 @@ void Reflected_ReferenceImageNode::postEdit()
 
     Reflected_SceneNode::postEdit();
     updateAbsolutePosition();
+}
+
+bool Reflected_ReferenceImageNode::onActionButton(const std::string& name)
+{
+    if (name == "ProjectToTerrain")
+        return Heightmap_Projection_Window::open(geo_scene, this);
+
+    return false;
+}
+
+//Bilinear sample of the image's brightness, 0..1. u,v in [0,1], (0,0) = top-left pixel.
+static f32 sample_brightness(video::IImage* img, f32 u, f32 v)
+{
+    core::dimension2du dim = img->getDimension();
+
+    f32 fx = core::clamp(u, 0.0f, 1.0f) * (dim.Width - 1);
+    f32 fy = core::clamp(v, 0.0f, 1.0f) * (dim.Height - 1);
+
+    u32 x0 = (u32)floorf(fx);
+    u32 y0 = (u32)floorf(fy);
+    u32 x1 = core::min_(x0 + 1, dim.Width - 1);
+    u32 y1 = core::min_(y0 + 1, dim.Height - 1);
+
+    f32 tx = fx - x0;
+    f32 ty = fy - y0;
+
+    auto px = [&](u32 x, u32 y) -> f32 { return img->getPixel(x, y).getAverage() / 255.0f; };
+
+    f32 top = px(x0, y0) * (1.0f - tx) + px(x1, y0) * tx;
+    f32 bottom = px(x0, y1) * (1.0f - tx) + px(x1, y1) * tx;
+
+    return top * (1.0f - ty) + bottom * ty;
+}
+
+int Reflected_ReferenceImageNode::project_onto_terrain(GeometryStack* geo_stack, const std::vector<int>& brushes, f32 scale, int* n_outside)
+{
+    if (n_outside)
+        *n_outside = 0;
+
+    if (!geo_stack || !texture || !texture->texture)
+    {
+        std::cout << "Reference Image: no texture set, nothing to project\n";
+        return 0;
+    }
+
+    video::IVideoDriver* driver = SceneManager->getVideoDriver();
+    video::ITexture* tex = texture->texture;
+
+    //Prefer the source file: exact pixel values, no GPU readback
+    video::IImage* img = driver->createImageFromFile(tex->getName().getPath());
+    if (!img)
+        img = driver->createImage(tex, core::position2di(0, 0), tex->getSize());
+
+    if (!img)
+    {
+        std::cout << "Reference Image: could not read pixels of " << core::stringc(texture->name).c_str() << "\n";
+        return 0;
+    }
+
+    //Editor nodes hang off a parent at the origin, so relative == world
+    core::matrix4 to_local;
+    getRelativeTransformation().getInverse(to_local);
+
+    const f32 base_y = getPosition().Y;
+    const f32 eps = 1e-4f;
+
+    int n_moved = 0;
+    int n_out = 0;
+
+    for (int b : brushes)
+    {
+        if (b < 0 || b >= (int)geo_stack->elements.size())
+            continue;
+
+        polyfold& pf = geo_stack->elements[b].brush;
+
+        //terrain tile vertices = vertices of any grid canonical brush (see make_terrain_grid)
+        std::vector<bool> is_tile_vertex(pf.vertices.size(), false);
+
+        for (const surface_group& sg : pf.surface_groups)
+        {
+            if (sg.type != SURFACE_GROUP_CANONICAL || sg.c_brush.n_cols == 0)
+                continue;
+
+            for (u16 v_i : sg.c_brush.vertices)
+                if (v_i < pf.vertices.size())
+                    is_tile_vertex[v_i] = true;
+        }
+
+        bool moved = false;
+
+        for (int v_i = 0; v_i < (int)pf.vertices.size(); v_i++)
+        {
+            if (!is_tile_vertex[v_i])
+                continue;
+
+            core::vector3df p = pf.vertices[v_i].V;
+            to_local.transformVect(p);
+
+            //same mapping as set_buffer: u along +X, v = 0 at the +Z edge
+            f32 u = p.X / Size.X + 0.5f;
+            f32 v = 0.5f - p.Z / Size.Y;
+
+            if (u < -eps || u > 1.0f + eps || v < -eps || v > 1.0f + eps)
+            {
+                n_out++;
+                continue;
+            }
+
+            pf.vertices[v_i].V.Y = base_y + sample_brightness(img, u, v) * scale;
+            n_moved++;
+            moved = true;
+        }
+
+        //same as a vertex drag: the next rebuild re-orients the brush and splits bent tiles
+        if (moved)
+            pf.topology = TOP_UNDEF;
+    }
+
+    img->drop();
+
+    if (n_outside)
+        *n_outside = n_out;
+
+    std::cout << "Reference Image: projected " << n_moved << " terrain vertices";
+    if (n_out > 0)
+        std::cout << " (" << n_out << " outside the image, left unchanged)";
+    std::cout << "\n";
+
+    return n_moved;
 }
 
 //============================================================================

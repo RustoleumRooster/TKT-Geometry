@@ -429,6 +429,25 @@ public:
 };
 
 //
+// Action Button (reflect::action_button)
+//
+
+class ActionButton_FormField : public FormField
+{
+public:
+    virtual int addWidget(Reflected_GUI_Edit_Form* win, int ID, int row);
+    virtual void readValue(void* obj) {}
+    virtual void writeValue(void* obj) {}
+    virtual bool is_equal(void* a, void* b) { return true; }
+    virtual int getButtonType() { return FORM_FIELD_BUTTON; }
+    virtual int getNumIds() override { return 2; }   //label, button
+    virtual void postCreateElement(Reflected_GUI_Edit_Form*) override;
+    virtual bool clickButton(s32 id, reflected_tool_base*) override;
+
+    std::string member_name;
+};
+
+//
 // Power2 Form Field
 //
 
