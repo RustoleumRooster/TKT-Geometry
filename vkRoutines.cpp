@@ -36,6 +36,13 @@ void Vulkan_Workflow::make_default_workflow()
 	Merge_Images_Module* merge_images = new Merge_Images_Module();
 	Merge_Images_Module* merge_images2 = new Merge_Images_Module();
 
+	//Sunlight gets its own images: AreaLight and Sunlight both write in place, and the
+	//edge correction needs each one's g = 1 "written" markers before they're combined
+	Create_Lightmap_Images_Module* create_images_sun = new Create_Lightmap_Images_Module();
+	Sunlight_Module* sunlight = new Sunlight_Module();
+	Lightmap_Edges_Module* edges_sun = new Lightmap_Edges_Module();
+	Merge_Images_Module* merge_direct = new Merge_Images_Module();
+
 	download_textures->bFlip = true;
 
 	ImageArray_To_MultiImage_Module* link0 = new ImageArray_To_MultiImage_Module();
@@ -61,11 +68,36 @@ void Vulkan_Workflow::make_default_workflow()
 	Modules.push_back(VkMod_Reference{ link2 });
 	Modules.push_back(VkMod_Reference{ link3 });
 
-	reflect::connect(&create_images->images_out, &arealights->images_in);
+	Modules.push_back(VkMod_Reference{ create_images_sun });
+	Modules.push_back(VkMod_Reference{ sunlight });
+	Modules.push_back(VkMod_Reference{ edges_sun });
+	Modules.push_back(VkMod_Reference{ merge_direct });
 
+	//==========================================
+	// Direct light: area lights + sunlight
+	//
+	//	create_images     -> arealights -> edges     --\
+	//	                                                 merge_direct -> (direct)
+	//	create_images_sun -> sunlight   -> edges_sun --/
+	//
+	// merge_direct adds images_in_0 into images_in_1 in place, so the direct light
+	// lives in edges_sun's images from here on
+	//
+
+	reflect::connect(&create_images->images_out, &arealights->images_in);
 	reflect::connect(&arealights->images_out, &edges->images_in);
 
-	reflect::connect(&edges->images_out, &link1->images_in);
+	reflect::connect(&create_images_sun->images_out, &sunlight->images_in);
+	reflect::connect(&sunlight->images_out, &edges_sun->images_in);
+
+	reflect::connect(&edges->images_out, &merge_direct->images_in_0);
+	reflect::connect(&edges_sun->images_out, &merge_direct->images_in_1);
+
+	//==========================================
+	// Bounced light, from the combined direct light
+	//
+
+	reflect::connect(&merge_direct->images_out, &link1->images_in);
 	reflect::connect(&link1->images_out, &bouncedLight->images_in);
 
 	reflect::connect(&bouncedLight->images_out, &link2->images_in);
@@ -81,7 +113,8 @@ void Vulkan_Workflow::make_default_workflow()
 	reflect::connect(&edges2->images_out, &merge_images->images_in_0);
 	reflect::connect(&edges3->images_out, &merge_images->images_in_1);
 
-	reflect::connect(&edges->images_out, &merge_images2->images_in_0);
+	//final = direct + (bounce 1 + bounce 2)
+	reflect::connect(&merge_direct->images_out, &merge_images2->images_in_0);
 	reflect::connect(&merge_images->images_out, &merge_images2->images_in_1);
 
 	reflect::connect(&merge_images2->images_out, &download_textures->images_in);

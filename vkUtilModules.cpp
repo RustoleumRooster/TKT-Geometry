@@ -252,6 +252,30 @@ void Create_Lightmap_Images_Module::createImages()
 		m_device->transitionImageLayout(images_out.X->Images[i].Image, VK_FORMAT_R8G8B8A8_UNORM,
 			VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
 	}
+
+	//==========================================
+	// Clear to zero. The light modules only write texels covered by a triangle and mark
+	// them with g = 1; Lightmap_Edges treats g == 0 as unwritten and fills it from its
+	// neighbours. Uninitialized memory would break that, and would be summed by Merge.
+	//
+	VkClearColorValue black = { { 0.0f, 0.0f, 0.0f, 0.0f } };
+
+	VkImageSubresourceRange range{};
+	range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	range.baseMipLevel = 0;
+	range.levelCount = 1;
+	range.baseArrayLayer = 0;
+	range.layerCount = 1;
+
+	VkCommandBuffer commandBuffer = m_device->beginSingleTimeCommands();
+
+	for (int i = 0; i < n_layers; i++)
+	{
+		vkCmdClearColorImage(commandBuffer, images_out.X->Images[i].Image, VK_IMAGE_LAYOUT_GENERAL, &black, 1, &range);
+	}
+
+	m_device->endSingleTimeCommands(commandBuffer);
+	vkDeviceWaitIdle(m_device->getDevice());
 }
 
 //==========================================

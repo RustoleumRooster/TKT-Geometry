@@ -256,6 +256,10 @@ void AreaLight_Module::run()
 	if (n_lightsource_indices == 0)
 	{
 		cout << "no lights present, cannot run shader\n";
+
+		//still pass the (cleared) images on, otherwise every module downstream waits forever
+		images_out.X = images_in.X;
+		images_out.ready = true;
 		return;
 	}
 
