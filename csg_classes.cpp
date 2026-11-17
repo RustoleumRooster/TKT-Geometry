@@ -798,19 +798,30 @@ void polyfold::calc_normal(int f_i)
 {
     this->calc_center(f_i);
 
-    if(this->faces[f_i].vertices.size()>2)
+    const std::vector<int>& fv = this->faces[f_i].vertices;
+    const int n = fv.size();
+
+    if(n>2)
         {
-            int v_i0 = this->faces[f_i].vertices[0];
-            int v_i1 = this->faces[f_i].vertices[1];
-            int v_i2 = this->faces[f_i].vertices[2];
+            // Use the first consecutive triple that isn't collinear/coincident.
+            // face.vertices can start with collinear points (e.g. after reduce_edges_vertices
+            // rebuilds it in loop order), which would otherwise give a zero normal.
+            for (int k = 0; k < n; k++)
+            {
+                core::vector3df v1 = vertices[fv[k]].V - vertices[fv[(k + 1) % n]].V;
+                core::vector3df v2 = vertices[fv[(k + 1) % n]].V - vertices[fv[(k + 2) % n]].V;
+               // core::vector3df cross = v1.crossProduct(v2);
+                core::vector3df cross = v2.crossProduct(v1);
 
-            core::vector3df v1 = vertices[v_i0].V - vertices[v_i1].V;
-            core::vector3df v2 = vertices[v_i1].V - vertices[v_i2].V;
-           // core::vector3df cross = v1.crossProduct(v2);
-            core::vector3df cross = v2.crossProduct(v1);
-            cross.normalize();
+                if (cross.getLengthSQ() > 1e-8 * v1.getLengthSQ() * v2.getLengthSQ() && cross.getLengthSQ() > 0)
+                {
+                    cross.normalize();
+                    this->faces[f_i].m_normal = cross;
+                    return;
+                }
+            }
 
-            this->faces[f_i].m_normal = cross;
+            std::cout << "**warning - calc_normal: degenerate face " << f_i << " (all vertices collinear)\n";
             //this->faces[f_i].bFlippedNormal = false;
         }
 }
