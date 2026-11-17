@@ -341,6 +341,9 @@ void initialize_materials(geometry_scene* scene)
     m8.create_meshBuffer_Node = true;
     m8.meshBuffer_Node_typeName = "Reflected_MeshBuffer_AnimatedTexture_SceneNode";
 
+    Material_Group m9{ "No Geometry",video::SColor(255,128,128,64) };
+    m9.lightmap = false;
+    m9.no_geometry = true;
 
     material_groups_base->material_groups.push_back(m0);
     material_groups_base->material_groups.push_back(m1);
@@ -351,6 +354,7 @@ void initialize_materials(geometry_scene* scene)
     material_groups_base->material_groups.push_back(m6);
     material_groups_base->material_groups.push_back(m7);
     material_groups_base->material_groups.push_back(m8);
+    material_groups_base->material_groups.push_back(m9);
 
     CloudsShaderCallBack::initialize();
     AnimatedLightmapShaderCallback::initialize();

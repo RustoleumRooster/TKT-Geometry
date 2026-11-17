@@ -733,7 +733,14 @@ Geometry_Assets::Geometry_Assets(geometry_scene* g_scene, Lightmap_Configuration
 
 		int mb_i = g_scene->geoNode()->edit_meshnode_interface.get_buffer_index_by_face(f_i);
 		selected_triangle_mg = g_scene->geoNode()->edit_meshnode_interface.get_material_group_by_face(mb_i);
-		
+	}
+
+	//selected face may have no final geometry (eg No Geometry material group)
+	if (g_scene->getSelectedFaces().size() > 0 && selected_triangle_mg >= 0 &&
+		meshnode->get_buffer_index_by_face(g_scene->getSelectedFaces()[0]) != -1)
+	{
+		int f_i = g_scene->getSelectedFaces()[0];
+
 		int lm_size = config->get_materials()[selected_triangle_mg].lightmap_size;
 
 		MeshBuffer_Chunk chunk = meshnode->get_mesh_buffer_by_face(f_i);

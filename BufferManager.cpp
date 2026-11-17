@@ -995,7 +995,8 @@ void MeshNode_Interface::fill_surface_index()
         offset += geo_scene->elements[i].surfaces.size();
     }
 
-    surface_index.data.resize(offset);
+    //reset, so surfaces skipped by the final mesh (No Geometry) don't keep stale ranges
+    surface_index.data.assign(offset, MeshIndex_Chunk{ 0,0,0 });
 }
 
 void MeshNode_Interface_Final::generate_mesh_buffer(SMesh* mesh)
@@ -1229,6 +1230,10 @@ void MeshNode_Interface_Final::copy_lightmap_uvs()
 
         MeshBuffer_Chunk chunk0 = geo_scene->edit_meshnode_interface.get_mesh_buffer_by_face(f_i);
         MeshBuffer_Chunk chunk1 = get_mesh_buffer_by_face(f_i);
+
+        //faces with no final geometry (eg No Geometry material group)
+        if (!chunk0.buffer || !chunk1.buffer)
+            continue;
 
         int i, j;
 

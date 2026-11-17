@@ -19,6 +19,7 @@ struct Material_Group
     bool lightmap = false;
     bool create_meshBuffer_Node = false;
     bool use_unlit_texture = false; //instead of letting the meshBuffer_node set the texture, just use unlit
+    bool no_geometry = false;       //surface shows in the edit mesh only; dropped from the final mesh and lightmaps
     const char* meshBuffer_Node_typeName = NULL;
 };
 
