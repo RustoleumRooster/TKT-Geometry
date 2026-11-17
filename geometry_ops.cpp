@@ -437,6 +437,11 @@ void GeometryStack::rebuild_geometry(bool only_build_new_geometry)
     for (int i = build_start; i < this->elements.size(); i++)
         this->elements[i].geometry = no_poly;
 
+    // Brush bboxes are used for the overlap tests below, but vertex editing doesn't update them
+    // (they otherwise only get refreshed inside make_convex/make_concave, after the overlap test).
+    for (int i = 1; i < this->elements.size(); i++)
+        this->elements[i].brush.recalc_bbox();
+
     // An element which produces no scene geometry still keeps one geometry face per brush face, with no loops
     auto make_empty_geometry = [](geo_element& el)
     {
@@ -800,6 +805,7 @@ void GeometryStack::clip_active_brush()
 
     polyfold cube = this->elements[0].brush;
     cube.make_concave();
+    cube.recalc_bbox();
 
     clip_results results;
     results.n_intersections = 0;
@@ -858,6 +864,7 @@ void GeometryStack::clip_active_brush()
 void GeometryStack::clip_active_brush_plane_geometry()
 {
     polyfold cube = this->elements[0].brush;
+    cube.recalc_bbox();
 
     clip_results results;
     results.n_intersections = 0;

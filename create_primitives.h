@@ -71,6 +71,16 @@ private:
     virtual void click_OK();
 };
 
+class EditTerrainGridWindow : public  EditWindow
+{
+public:
+    EditTerrainGridWindow(gui::IGUIEnvironment* env, gui::IGUIElement* parent, s32 id, core::rect<s32> rect)
+        : EditWindow(env, parent, NULL, id, rect) {}
+
+private:
+    virtual void click_OK();
+};
+
 
 class geometry_scene;
 
@@ -138,6 +148,15 @@ class GeometryFactory
         REFLECT()
     };
 
+    struct TerrainGrid
+    {
+        int height;
+        int gridSize;   // world size of one grid square (x = y)
+        int nX;         // # squares in X
+        int nY;         // # squares in Y
+        REFLECT()
+    };
+
 public:
 
     static Cube cube;
@@ -146,6 +165,7 @@ public:
     static Plane plane;
     static Cone cone;
     static Curve curve;
+    static TerrainGrid terrain_grid;
 
     static gui::IGUIEnvironment* env;
     static geometry_scene* g_scene;
@@ -167,6 +187,7 @@ public:
     static void MakePlaneWindow();
     static void MakeConeWindow();
     static void MakeCurveWindow();
+    static void MakeTerrainGridWindow();
 
     static void CreateCube(EditCubeWindow*);
     static void CreateCylinder(EditCylinderWindow*);
@@ -174,6 +195,7 @@ public:
     static void CreatePlane(EditPlaneWindow*);
     static void CreateCone(EditConeWindow*);
     static void CreateCurve(EditCurveWindow*);
+    static void CreateTerrainGrid(EditTerrainGridWindow*);
 };
 
 
@@ -182,6 +204,7 @@ geo_element make_poly_plane(int, int);
 geo_element make_cylinder(int height, int radius, int faces, int radius_type);
 geo_element make_sphere(int radius, int faces, int zen_faces, bool simplify);
 geo_element make_cone(int height, int radius, int faces);
+geo_element make_terrain_grid(int height, int gridSize, int nX, int nY);
 geo_element make_curve(int degrees_begin, int degrees_end, int inner_radius, int outer_radius, int height, int nSections, int radius_type);
 
 #endif

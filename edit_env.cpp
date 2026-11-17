@@ -277,6 +277,11 @@ void OnMenuItemSelected(IGUIContextMenu* menu)
             GeometryFactory::MakeCurveWindow();
             break;
         }
+    case GUI_ID_MENU_BRUSHES_TERRAIN_GRID:
+        {
+            GeometryFactory::MakeTerrainGridWindow();
+            break;
+        }
     case GUI_ID_MENU_FILE_NEW:
         {
             do_new_scene();
@@ -813,6 +818,7 @@ void GUI_layout::menu_layout()
     menu->addItem(L"Brushes", -1, true, true);
     submenu = menu->getSubMenu(4);
     submenu->addItem(L"Curve", GUI_ID_MENU_BRUSHES_CURVE, true, false, false, false);
+    submenu->addItem(L"Terrain Grid", GUI_ID_MENU_BRUSHES_TERRAIN_GRID, true, false, false, false);
 
     VToolBar* bar = new VToolBar(env, main_panel, -1, core::rect<s32>(0, 0, 10, 10));
 

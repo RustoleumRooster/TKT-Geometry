@@ -205,6 +205,158 @@ geo_element make_poly_cube(int height,int length,int width)
     return geo;
 }
 
+// A cube whose bottom face is split into an nX * nY grid of square faces.
+// Grid X runs along world X, grid Y runs along world Z; height is world Y.
+// The four side faces include the grid vertices along their bottom edges,
+// so every bottom cell shares its edges exactly with its neighbours / the sides.
+// Each face gets its own lightmap surface.
+geo_element make_terrain_grid(int height, int gridSize, int nX, int nY)
+{
+    geo_element geo;
+    polyfold& pf = geo.brush;
+
+    if (nX < 1) nX = 1;
+    if (nY < 1) nY = 1;
+    if (gridSize < 1) gridSize = 1;
+    if (height < 1) height = 1;
+
+    const int length = gridSize * nX; // world X
+    const int width = gridSize * nY;  // world Z
+
+    // --- vertices ---
+    // bottom grid: index = i * (nY+1) + j, i in [0,nX], j in [0,nY]
+    auto bv = [&](int i, int j) { return i * (nY + 1) + j; };
+
+    for (int i = 0; i <= nX; i++)
+        for (int j = 0; j <= nY; j++)
+            pf.vertices.push_back(poly_vert(i * gridSize, 0, j * gridSize));
+
+    const int t00 = pf.vertices.size();
+    pf.vertices.push_back(poly_vert(0, height, 0));
+    const int tX0 = pf.vertices.size();
+    pf.vertices.push_back(poly_vert(length, height, 0));
+    const int t0Y = pf.vertices.size();
+    pf.vertices.push_back(poly_vert(0, height, width));
+    const int tXY = pf.vertices.size();
+    pf.vertices.push_back(poly_vert(length, height, width));
+
+    // --- edges ---
+    // edges along X: b(i,j)-b(i+1,j), i in [0,nX), j in [0,nY]
+    auto ex = [&](int i, int j) { return i * (nY + 1) + j; };
+    for (int i = 0; i < nX; i++)
+        for (int j = 0; j <= nY; j++)
+            pf.edges.push_back(poly_edge(bv(i, j), bv(i + 1, j)));
+
+    // edges along Z: b(i,j)-b(i,j+1), i in [0,nX], j in [0,nY)
+    const int ez_base = pf.edges.size();
+    auto ez = [&](int i, int j) { return ez_base + i * nY + j; };
+    for (int i = 0; i <= nX; i++)
+        for (int j = 0; j < nY; j++)
+            pf.edges.push_back(poly_edge(bv(i, j), bv(i, j + 1)));
+
+    // vertical edges at the corners
+    const int v00 = pf.edges.size(); pf.edges.push_back(poly_edge(bv(0, 0), t00));
+    const int vX0 = pf.edges.size(); pf.edges.push_back(poly_edge(bv(nX, 0), tX0));
+    const int v0Y = pf.edges.size(); pf.edges.push_back(poly_edge(bv(0, nY), t0Y));
+    const int vXY = pf.edges.size(); pf.edges.push_back(poly_edge(bv(nX, nY), tXY));
+
+    // top edges
+    const int top_z0 = pf.edges.size(); pf.edges.push_back(poly_edge(t00, tX0));
+    const int top_zW = pf.edges.size(); pf.edges.push_back(poly_edge(t0Y, tXY));
+    const int top_x0 = pf.edges.size(); pf.edges.push_back(poly_edge(t00, t0Y));
+    const int top_xL = pf.edges.size(); pf.edges.push_back(poly_edge(tX0, tXY));
+
+    // --- faces ---
+    // Note: calc_normal uses the first 3 face vertices, which come from edge order,
+    // so each side face starts with a vertical edge to avoid a collinear first triple.
+    poly_face f;
+
+    // bottom grid cells
+    for (int i = 0; i < nX; i++)
+        for (int j = 0; j < nY; j++)
+        {
+            f.clear();
+            f.addEdge(ex(i, j));
+            f.addEdge(ez(i + 1, j));
+            f.addEdge(ex(i, j + 1));
+            f.addEdge(ez(i, j));
+            pf.faces.push_back(f);
+        }
+
+    // top
+    f.clear();
+    f.addEdge(top_z0);
+    f.addEdge(top_xL);
+    f.addEdge(top_zW);
+    f.addEdge(top_x0);
+    pf.faces.push_back(f);
+
+    // side z = 0
+    f.clear();
+    f.addEdge(v00);
+    for (int i = 0; i < nX; i++)
+        f.addEdge(ex(i, 0));
+    f.addEdge(vX0);
+    f.addEdge(top_z0);
+    pf.faces.push_back(f);
+
+    // side z = width
+    f.clear();
+    f.addEdge(v0Y);
+    for (int i = 0; i < nX; i++)
+        f.addEdge(ex(i, nY));
+    f.addEdge(vXY);
+    f.addEdge(top_zW);
+    pf.faces.push_back(f);
+
+    // side x = 0
+    f.clear();
+    f.addEdge(v00);
+    for (int j = 0; j < nY; j++)
+        f.addEdge(ez(0, j));
+    f.addEdge(v0Y);
+    f.addEdge(top_x0);
+    pf.faces.push_back(f);
+
+    // side x = length
+    f.clear();
+    f.addEdge(vX0);
+    for (int j = 0; j < nY; j++)
+        f.addEdge(ez(nX, j));
+    f.addEdge(vXY);
+    f.addEdge(top_xL);
+    pf.faces.push_back(f);
+
+    do_primitive_calculations(pf);
+
+    surface_group sg;
+
+    sg.type = SURFACE_GROUP_STANDARD;
+    sg.point = get_center(pf);
+    sg.vec = core::vector3df(0, 1, 0);
+    sg.vec1 = core::vector3df(0, 0, 1);
+
+    pf.surface_groups.push_back(sg);
+
+    for (poly_face& face : pf.faces)
+    {
+        face.surface_group = 0;
+        face.uv_origin = pf.vertices[face.vertices[0]].V;
+    }
+
+    // one lightmap surface per face (for now)
+    geo.surfaces.resize(pf.faces.size());
+
+    for (int i = 0; i < pf.faces.size(); i++)
+    {
+        geo.surfaces[i].surface_type = SURFACE_GROUP_STANDARD;
+        geo.surfaces[i].my_faces.push_back(i);
+        pf.faces[i].surface_no = i;
+    }
+
+    return geo;
+}
+
 geo_element make_poly_plane(int length, int width)
 {
     geo_element geo;

@@ -13,6 +13,7 @@ GeometryFactory::Sphere GeometryFactory::sphere{0,128,8,8,true};
 GeometryFactory::Plane GeometryFactory::plane{256,256};
 GeometryFactory::Cone GeometryFactory::cone{256,128,8};
 GeometryFactory::Curve GeometryFactory::curve{ 0,90,128,160,64,4 };
+GeometryFactory::TerrainGrid GeometryFactory::terrain_grid{ 128,64,8,8 };
 
 void geometry_scene::InitializeEmptyScene()
 {
@@ -33,6 +34,12 @@ void geometry_scene::InitializeEmptyScene()
 void EditCurveWindow::click_OK()
 {
     GeometryFactory::CreateCurve(this);
+    this->remove();
+}
+
+void EditTerrainGridWindow::click_OK()
+{
+    GeometryFactory::CreateTerrainGrid(this);
     this->remove();
 }
 
@@ -140,6 +147,17 @@ void GeometryFactory::CreateCurve(EditCurveWindow* win)
     g_scene->geoNode()->elements[0].brush.translate(M);
 }
 
+void GeometryFactory::CreateTerrainGrid(EditTerrainGridWindow* win)
+{
+    win->write(&terrain_grid);
+
+    core::matrix4 M;
+    M.setTranslation(g_scene->geoNode()->elements[0].brush.vertices[0].V);
+    g_scene->geoNode()->elements[0] = make_terrain_grid(terrain_grid.height, terrain_grid.gridSize, terrain_grid.nX, terrain_grid.nY);
+    g_scene->geoNode()->elements[0].type = GEO_RED;
+    g_scene->geoNode()->elements[0].brush.translate(M);
+}
+
 
 void GeometryFactory::MakePlaneWindow()
 {
@@ -198,6 +216,16 @@ void GeometryFactory::MakeCurveWindow()
 
     reflect::TypeDescriptor_Struct* typeDesc = (reflect::TypeDescriptor_Struct*)reflect::TypeResolver<Curve>::get();
     win->Show(typeDesc, &curve);
+    win->drop();
+}
+
+void GeometryFactory::MakeTerrainGridWindow()
+{
+    EditTerrainGridWindow* win = new EditTerrainGridWindow(env, env->getRootGUIElement(), -1, core::rect<s32>(140, 200, 16 + 196, 64 + 196));
+    win->setText(L"Make a terrain grid");
+
+    reflect::TypeDescriptor_Struct* typeDesc = (reflect::TypeDescriptor_Struct*)reflect::TypeResolver<TerrainGrid>::get();
+    win->Show(typeDesc, &terrain_grid);
     win->drop();
 }
 
@@ -264,4 +292,14 @@ REFLECT_STRUCT_BEGIN(GeometryFactory::Curve)
         REFLECT_STRUCT_MEMBER_ALIAS("# sections")
     REFLECT_STRUCT_MEMBER(radius_type)
         REFLECT_STRUCT_MEMBER_ALIAS("radius type")
+REFLECT_STRUCT_END()
+
+REFLECT_STRUCT_BEGIN(GeometryFactory::TerrainGrid)
+    REFLECT_STRUCT_MEMBER(height)
+    REFLECT_STRUCT_MEMBER(gridSize)
+        REFLECT_STRUCT_MEMBER_ALIAS("grid size")
+    REFLECT_STRUCT_MEMBER(nX)
+        REFLECT_STRUCT_MEMBER_ALIAS("# squares X")
+    REFLECT_STRUCT_MEMBER(nY)
+        REFLECT_STRUCT_MEMBER_ALIAS("# squares Y")
 REFLECT_STRUCT_END()
