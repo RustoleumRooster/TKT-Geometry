@@ -10,7 +10,7 @@
 
 class LM_Viewer_Window;
 
-class TextureInfo;
+struct TextureInfo;
 
 struct material_group_struct
 {

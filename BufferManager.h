@@ -49,7 +49,7 @@ struct MeshIndex_Chunk
     unsigned int end_i;
 };
 
-class TextureInfo;
+struct TextureInfo;
 
 struct TextureMaterial
 {

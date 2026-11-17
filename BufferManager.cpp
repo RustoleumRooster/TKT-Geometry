@@ -378,6 +378,10 @@ void MeshNode_Interface::recalc_uvs_for_face_canonical(int e_i, int f_i, int f_j
 
     if (chunk.buffer)
     {
+        // the c_brush uvs may currently hold the lightmap layout
+        polyfold* brush = &geo_scene->elements[e_i].brush;
+        brush->surface_groups[brush->faces[f_i].surface_group].c_brush.layout_uvs_texture_auto(brush);
+
         calculate_meshbuffer_uvs_canonical(geo_scene, e_i, f_i, chunk.buffer, chunk.begin_i, chunk.end_i);
     }
 }
@@ -628,9 +632,7 @@ void MeshNode_Interface::generate_uvs()
 
                     surface_group& sfg = brush->surface_groups[f->surface_group];
 
-                    int n_sections = sfg.c_brush.n_quads;
-
-                    sfg.c_brush.layout_uvs_texture(n_sections, 1.0);
+                    sfg.c_brush.layout_uvs_texture_auto(brush);
 
                     if (chunk.buffer)
                     {

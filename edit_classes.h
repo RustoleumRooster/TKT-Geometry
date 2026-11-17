@@ -556,7 +556,7 @@ public:
 //
 // Texture
 //
-class TextureInfo;
+struct TextureInfo;
 
 class Texture_FormField : public FormField
 {

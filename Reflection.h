@@ -13,7 +13,7 @@
 
 class Reflected_GUI_Edit_Form;
 class Reflected_SceneNode;
-class TextureInfo;
+struct TextureInfo;
 
 
 #define ALIGN_BYTES 8

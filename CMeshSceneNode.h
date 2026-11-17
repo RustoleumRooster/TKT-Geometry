@@ -8,7 +8,7 @@
 #include "IMeshSceneNode.h"
 #include "IMesh.h"
 
-class TextureInfo;
+struct TextureInfo;
 
 namespace irr
 {
