@@ -1159,6 +1159,9 @@ void  GeometryStack::GetGeometryLoopLines(LineHolder& lines0, LineHolder& lines1
         {
             for (const poly_loop& p : face.loops)
             {
+                if (p.vertices.size() < 2)
+                    continue;
+
                 LineHolder& line = (p.depth % 2 == 0) ? lines0 : lines1;
                 int v0, v1;
 
