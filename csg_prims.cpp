@@ -209,7 +209,8 @@ geo_element make_poly_cube(int height,int length,int width)
 // Grid X runs along world X, grid Y runs along world Z; height is world Y.
 // The four side faces include the grid vertices along their bottom edges,
 // so every bottom cell shares its edges exactly with its neighbours / the sides.
-// Each face gets its own lightmap surface.
+// The bottom cells form one canonical (grid) surface group and one SURFACE_GROUP_TERRAIN
+// lightmap surface; the top and sides get a lightmap surface each.
 geo_element make_terrain_grid(int height, int gridSize, int nX, int nY)
 {
     geo_element geo;
@@ -327,20 +328,45 @@ geo_element make_terrain_grid(int height, int gridSize, int nX, int nY)
     f.addEdge(top_xL);
     pf.faces.push_back(f);
 
-    do_primitive_calculations(pf);
+    const int n_floor_faces = nX * nY;
 
-    surface_group sg;
+    // --- floor: one canonical grid brush ---
+    // Built with the original vertex indices and attached BEFORE do_primitive_calculations:
+    // that ends in reduce_edges_vertices(), which renumbers the vertices and remaps any
+    // c_brush in pf.surface_groups to match.
+    // Every tile is pre-triangulated along its v0-v2 diagonal. A tile stays a single quad
+    // face while it is planar; if vertex editing bends it, split_terrain_tiles (geometry_ops.cpp)
+    // splits it along this same diagonal.
+    // Grid column = i (world X), row = j (world Z), cell = j * nX + i.
+    canonical_brush c_brush;
+    c_brush.initialize_grid(nX, nY);
 
-    sg.type = SURFACE_GROUP_STANDARD;
-    sg.point = get_center(pf);
-    sg.vec = core::vector3df(0, 1, 0);
-    sg.vec1 = core::vector3df(0, 0, 1);
+    for (int i = 0; i < nX; i++)
+        for (int j = 0; j < nY; j++)
+        {
+            int f_no = i * nY + j; // order the floor faces were created in
+            int q = j * nX + i;
+            c_brush.init_quad(q, &pf, f_no, bv(i, j), bv(i + 1, j), bv(i + 1, j + 1), bv(i, j + 1));
+        }
+
+    surface_group sg_floor;
+    sg_floor.type = SURFACE_GROUP_CANONICAL;
+    sg_floor.point = get_center(pf);
+    sg_floor.vec = core::vector3df(0, 1, 0);
+    sg_floor.vec1 = core::vector3df(0, 0, 1);
+    sg_floor.c_brush = c_brush;
+
+    surface_group sg_box;
+    sg_box.type = SURFACE_GROUP_STANDARD;
+    sg_box.point = get_center(pf);
+    sg_box.vec = core::vector3df(0, 1, 0);
+    sg_box.vec1 = core::vector3df(0, 0, 1);
 
     // surface group 0: the floor grid cells, surface group 1: top and sides
-    pf.surface_groups.push_back(sg);
-    pf.surface_groups.push_back(sg);
+    pf.surface_groups.push_back(sg_floor);
+    pf.surface_groups.push_back(sg_box);
 
-    const int n_floor_faces = nX * nY;
+    do_primitive_calculations(pf);
 
     for (int i = 0; i < pf.faces.size(); i++)
     {
@@ -349,14 +375,24 @@ geo_element make_terrain_grid(int height, int gridSize, int nX, int nY)
         face.uv_origin = pf.vertices[face.vertices[0]].V;
     }
 
-    // one lightmap surface per face (for now)
-    geo.surfaces.resize(pf.faces.size());
+    // --- lightmap surfaces ---
+    // surface 0: the whole floor, laid out as one grid block
+    // surfaces 1..5: top and the four sides, one each
+    geo.surfaces.resize(1 + pf.faces.size() - n_floor_faces);
 
-    for (int i = 0; i < pf.faces.size(); i++)
+    geo.surfaces[0].surface_type = SURFACE_GROUP_TERRAIN;
+    for (int i = 0; i < n_floor_faces; i++)
     {
-        geo.surfaces[i].surface_type = SURFACE_GROUP_STANDARD;
-        geo.surfaces[i].my_faces.push_back(i);
-        pf.faces[i].surface_no = i;
+        geo.surfaces[0].my_faces.push_back(i);
+        pf.faces[i].surface_no = 0;
+    }
+
+    for (int i = n_floor_faces; i < pf.faces.size(); i++)
+    {
+        int s = 1 + i - n_floor_faces;
+        geo.surfaces[s].surface_type = SURFACE_GROUP_STANDARD;
+        geo.surfaces[s].my_faces.push_back(i);
+        pf.faces[i].surface_no = s;
     }
 
     return geo;

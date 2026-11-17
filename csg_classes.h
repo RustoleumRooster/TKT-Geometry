@@ -17,12 +17,26 @@ public:
     int length = 0;
     int height = 0;
 
+    // Grid layout (terrain). n_cols/n_rows == 0 means the usual 1 x n_quads strip.
+    // quad_cell[q] is the grid cell (row * n_cols + col) of quad q; more than one quad
+    // can share a cell when a tile has been split into two triangle faces.
+    int n_cols = 0;
+    int n_rows = 0;
+
     std::vector<u16> vertices;
     std::vector<aligned_vec3> uvs;
     std::vector<int> face_ref;
+    std::vector<int> quad_cell;
     void visualize(const polyfold*, LineHolder&) const;
     void initialize(int n);
+    void initialize_grid(int cols, int rows);
     void init_quad(int n, polyfold* pf, int f, int v0, int v1, int v2, int v3);
+    int add_quad_copy(int q, int f);
+    int find_quad_by_face(int f) const;
+    void get_grid_extent(const polyfold* pf, f32& len, f32& height) const;
+    void layout_uvs_grid(f32 len, f32 height);
+    void layout_uvs_texture_grid(const polyfold* pf);
+    void layout_uvs_texture_auto(const polyfold* pf);
     void dump_quad(polyfold* pf, int n);
     int get_real_length(polyfold* pf);
     int get_real_height(polyfold* pf);
@@ -149,7 +163,8 @@ enum
     SURFACE_GROUP_DOME,
     SURFACE_GROUP_CANONICAL,
     SURFACE_GROUP_CUSTOM_UVS_BRUSH,
-    SURFACE_GROUP_CUSTOM_UVS_GEOMETRY
+    SURFACE_GROUP_CUSTOM_UVS_GEOMETRY,
+    SURFACE_GROUP_TERRAIN   // poly_surface lightmap type: grid canonical brush (see make_terrain_grid)
 };
 
 struct point_texcoord

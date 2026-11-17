@@ -309,13 +309,39 @@ void calculate_meshbuffer_uvs_canonical(GeometryStack* g_scene, int e_i, int f_i
 
     video::S3DVertex2TCoords* vtx;
 
+    bool reported = false;
+
     for (int i = v_start; i < v_end; i++)
     {
         u16 idx = buffer->getIndices()[i];
         vtx = &((video::S3DVertex2TCoords*)buffer->getVertices())[idx];
 
-        if (sfg.c_brush.map_point(brush, face->face_id, vtx->Pos, w) == false)
-            cout << "mapping error\n";
+        if (sfg.c_brush.map_point(brush, face->face_id, vtx->Pos, w) == false && !reported)
+        {
+            // one report per face (per-vertex printing floods the console)
+            reported = true;
+            const canonical_brush& cb = sfg.c_brush;
+            int q = cb.find_quad_by_face(face->face_id);
+
+            cout << "canonical mapping error: element " << e_i << ", face " << f_i
+                << ", face_id " << face->face_id << ", edges " << face->edges.size()
+                << ", n_quads " << cb.n_quads << ", quad " << q
+                << ", brush verts " << brush->vertices.size() << "\n";
+            cout << "   point " << vtx->Pos.X << "," << vtx->Pos.Y << "," << vtx->Pos.Z << "\n";
+
+            if (q != -1)
+            {
+                for (int k = 0; k < 4; k++)
+                {
+                    u16 v = cb.vertices[q * 4 + k];
+                    cout << "   v" << k << " [" << v << "] ";
+                    if (v < brush->vertices.size())
+                        cout << brush->vertices[v].V.X << "," << brush->vertices[v].V.Y << "," << brush->vertices[v].V.Z << "\n";
+                    else
+                        cout << "OUT OF RANGE\n";
+                }
+            }
+        }
 
         face->uv_mat.transformVect(w.V);
         face->uv_mat.translateVect(w.V);

@@ -479,6 +479,18 @@ void initialize_lightmap_block(GeometryStack* geo_node, int element_id, int surf
 				b.faces = surface;
 
 			} break;
+
+			case SURFACE_GROUP_TERRAIN:
+			{
+				f32 len, ht;
+				sfg.c_brush.get_grid_extent(pf, len, ht);
+
+				b.width = reduce_dimension_base2(len, reduce);
+				b.height = reduce_dimension_base2(ht, reduce);
+
+				b.faces = surface;
+
+			} break;
 			case SURFACE_GROUP_DOME:
 			case SURFACE_GROUP_SPHERE:
 			{
@@ -598,10 +610,19 @@ void Lightmap_Configuration::calc_lightmap_uvs(GeometryStack* geo_node, Lightmap
 
 	case SURFACE_GROUP_CYLINDER:
 	case SURFACE_GROUP_CANONICAL:
+	case SURFACE_GROUP_TERRAIN:
 	{
 		MeshNode_Interface_Edit* mesh_node = &geo_node->edit_meshnode_interface;
 
-		sfg.c_brush.layout_uvs(b.width, b.height);
+		//layout_uvs works in the brush's own length/height space; a flipped block has had its
+		//dimensions swapped, and the uvs get transposed back by flip_mat in transform_lightmap_uvs
+		f32 len = b.bFlipped ? b.height : b.width;
+		f32 ht = b.bFlipped ? b.width : b.height;
+
+		if (element->surfaces[b.surface_no].surface_type == SURFACE_GROUP_TERRAIN)
+			sfg.c_brush.layout_uvs_grid(len, ht);
+		else
+			sfg.c_brush.layout_uvs(len, ht);
 
 		for (int b_i : b.faces)
 		{

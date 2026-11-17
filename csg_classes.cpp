@@ -62,6 +62,140 @@ void canonical_brush::init_quad(int n, polyfold* pf, int f, int v0, int v1, int 
     vertices[n * 4 + 3] = v3;
 }
 
+void canonical_brush::initialize_grid(int cols, int rows)
+{
+    initialize(cols * rows);
+    n_cols = cols;
+    n_rows = rows;
+    quad_cell.resize(cols * rows);
+    for (int i = 0; i < cols * rows; i++)
+        quad_cell[i] = i;
+}
+
+// Duplicate quad q for face f (same vertices, uvs and grid cell). Used when a tile
+// is split into two triangle faces: both faces map through the same quad.
+int canonical_brush::add_quad_copy(int q, int f)
+{
+    for (int k = 0; k < 4; k++)
+    {
+        vertices.push_back(vertices[q * 4 + k]);
+        uvs.push_back(uvs[q * 4 + k]);
+    }
+    face_ref.push_back(f);
+    if (q < quad_cell.size())
+        quad_cell.push_back(quad_cell[q]);
+    n_quads++;
+    return n_quads - 1;
+}
+
+int canonical_brush::find_quad_by_face(int f) const
+{
+    for (int i = 0; i < n_quads; i++)
+        if (face_ref[i] == f)
+            return i;
+    return -1;
+}
+
+// World-space footprint of the grid: len along the quads' v0->v1 direction, height along v0->v3
+void canonical_brush::get_grid_extent(const polyfold* pf, f32& len, f32& height) const
+{
+    len = 0;
+    height = 0;
+    if (n_cols == 0 || n_rows == 0)
+        return;
+
+    // every cell is the same size; sum one row / one column of cells
+    std::vector<bool> col_done(n_cols, false), row_done(n_rows, false);
+    for (int i = 0; i < n_quads; i++)
+    {
+        int col = quad_cell[i] % n_cols;
+        int row = quad_cell[i] / n_cols;
+        const vector3df& v0 = pf->vertices[vertices[i * 4]].V;
+        const vector3df& v1 = pf->vertices[vertices[i * 4 + 1]].V;
+        const vector3df& v3 = pf->vertices[vertices[i * 4 + 3]].V;
+
+        // vertices only move vertically, so measure in the horizontal plane
+        if (!col_done[col])
+        {
+            len += core::vector2df(v1.X - v0.X, v1.Z - v0.Z).getLength();
+            col_done[col] = true;
+        }
+        if (!row_done[row])
+        {
+            height += core::vector2df(v3.X - v0.X, v3.Z - v0.Z).getLength();
+            row_done[row] = true;
+        }
+    }
+}
+
+// Same conventions as layout_uvs (1 texel border, 1 texel gap between quads), in two dimensions
+void canonical_brush::layout_uvs_grid(f32 len, f32 height)
+{
+    this->length = len;
+    this->height = height;
+
+    if (n_cols == 0 || n_rows == 0)
+        return;
+
+    f32 w = (len - (n_cols - 1) - 2) / n_cols;
+    f32 h = (height - (n_rows - 1) - 2) / n_rows;
+
+    // quad corner -> (col offset, row offset); v0-v1 runs along columns, v0-v3 along rows
+    const int corner_a[4] = { 0, 1, 1, 0 };
+    const int corner_b[4] = { 0, 0, 1, 1 };
+
+    for (int i = 0; i < n_quads; i++)
+    {
+        f32 col = (f32)(quad_cell[i] % n_cols);
+        f32 row = (f32)(quad_cell[i] / n_cols);
+
+        for (int k = 0; k < 4; k++)
+        {
+            uvs[i * 4 + k].V.X = 1.f + col + (col + corner_a[k]) * w;
+            uvs[i * 4 + k].V.Y = 1.f + row + (row + corner_b[k]) * h;
+        }
+    }
+}
+
+// Texture uvs for a grid: continuous (no gaps), 128 world units per texture repeat,
+// matching the scale used by calculate_meshbuffer_uvs_cube
+void canonical_brush::layout_uvs_texture_grid(const polyfold* pf)
+{
+    if (n_cols == 0 || n_rows == 0)
+        return;
+
+    f32 len, ht;
+    get_grid_extent(pf, len, ht);
+
+    f32 w = len / 128.f / n_cols;
+    f32 h = ht / 128.f / n_rows;
+
+    const int corner_a[4] = { 0, 1, 1, 0 };
+    const int corner_b[4] = { 0, 0, 1, 1 };
+
+    for (int i = 0; i < n_quads; i++)
+    {
+        int col = quad_cell[i] % n_cols;
+        int row = quad_cell[i] / n_cols;
+
+        for (int k = 0; k < 4; k++)
+        {
+            uvs[i * 4 + k].V.X = (col + corner_a[k]) * w;
+            uvs[i * 4 + k].V.Y = (row + corner_b[k]) * h;
+        }
+    }
+}
+
+// The uvs array is shared between the texture and lightmap layouts, so texture
+// mapping re-lays it out before use.
+void canonical_brush::layout_uvs_texture_auto(const polyfold* pf)
+{
+    if (n_cols > 0 && n_rows > 0)
+        layout_uvs_texture_grid(pf);
+    else
+        layout_uvs_texture(n_quads, 1.0);
+}
+
 void canonical_brush::dump_quad(polyfold* pf, int n)
 {
     std::cout << face_ref[n] << ": ";
@@ -1690,6 +1824,9 @@ REFLECT_STRUCT_BEGIN(canonical_brush)
     REFLECT_STRUCT_MEMBER(vertices)
     REFLECT_STRUCT_MEMBER(uvs)
     REFLECT_STRUCT_MEMBER(face_ref)
+    REFLECT_STRUCT_MEMBER(n_cols)
+    REFLECT_STRUCT_MEMBER(n_rows)
+    REFLECT_STRUCT_MEMBER(quad_cell)
 REFLECT_STRUCT_END()
 
 REFLECT_STRUCT_BEGIN(surface_group)

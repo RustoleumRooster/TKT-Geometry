@@ -939,7 +939,11 @@ void geometry_scene::selectSurfaceGroup()
             for (int j : sel)
                 total_sel.push_back(j);
         }
-        
+
+        // setSelectedFaces toggles off a re-selected single face; nothing to do if unchanged
+        if (total_sel == selected_faces)
+            return;
+
         setSelectedFaces(total_sel);
     }
     

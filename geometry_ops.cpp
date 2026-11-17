@@ -418,6 +418,116 @@ void GeometryStack::build_intersecting_target(const polyfold& pf, polyfold& out)
     }
 }
 
+// Terrain: vertex editing can bend a floor tile out of plane. Tiles belong to a
+// SURFACE_GROUP_TERRAIN lightmap surface whose surface group carries a grid canonical
+// brush; each canonical quad (v0,v1,v2,v3) already defines the tile's two triangles,
+// (v0,v1,v2) and (v2,v3,v0). A bent tile is split into exactly those two faces:
+// the first reuses the tile's face slot (so existing face indices stay valid), the second
+// is appended, and the canonical quad is duplicated so both faces map through it.
+// Normals are left for make_convex/make_concave to orient (brush topology is TOP_UNDEF).
+static void split_terrain_tiles(geo_element& el)
+{
+    polyfold& pf = el.brush;
+    LineHolder nograph;
+
+    const int n_faces = pf.faces.size();
+
+    for (int f_i = 0; f_i < n_faces; f_i++)
+    {
+        const poly_face& face0 = pf.faces[f_i];
+
+        if (face0.edges.size() != 4) // already split (or not a tile)
+            continue;
+
+        if (face0.surface_no < 0 || face0.surface_no >= el.surfaces.size() ||
+            el.surfaces[face0.surface_no].surface_type != SURFACE_GROUP_TERRAIN)
+            continue;
+
+        canonical_brush& cb = pf.surface_groups[face0.surface_group].c_brush;
+
+        int q = cb.find_quad_by_face(f_i);
+        if (q == -1)
+            continue;
+
+        const int v[4] = { cb.vertices[q * 4], cb.vertices[q * 4 + 1], cb.vertices[q * 4 + 2], cb.vertices[q * 4 + 3] };
+        const core::vector3df& p0 = pf.vertices[v[0]].V;
+        const core::vector3df& p1 = pf.vertices[v[1]].V;
+        const core::vector3df& p2 = pf.vertices[v[2]].V;
+        const core::vector3df& p3 = pf.vertices[v[3]].V;
+
+        core::vector3df N = (p1 - p0).crossProduct(p2 - p0);
+        if (N.getLengthSQ() < 1e-8)
+            continue;
+        N.normalize();
+
+        if (fabs(N.dotProduct(p3 - p0)) <= POINT_IS_COPLANAR_DIST)
+            continue; // planar, leave it alone
+
+        // the tile's four sides, before the diagonal is added
+        int side[4];
+        bool ok = true;
+        for (int k = 0; k < 4; k++)
+        {
+            side[k] = pf.find_edge(f_i, v[k], v[(k + 1) % 4]);
+            if (side[k] == -1)
+                ok = false;
+        }
+        if (!ok)
+        {
+            std::cout << "split_terrain_tiles: face " << f_i << " edges don't match its canonical quad\n";
+            continue;
+        }
+
+        const int diag = pf.get_edge_or_add(v[0], v[2], 0);
+
+        poly_face parent = pf.faces[f_i];
+
+        auto build_tri = [&](poly_face& face, int e0, int e1, int e2, int a, int b, int c)
+        {
+            face.edges.clear();
+            face.vertices.clear();
+            face.loops.clear();
+            face.addEdge(e0);
+            face.addEdge(e1);
+            face.addEdge(e2);
+            face.addVertex(v[a]);
+            face.addVertex(v[b]);
+            face.addVertex(v[c]);
+        };
+
+        // (v0,v1,v2) takes the tile's slot
+        build_tri(pf.faces[f_i], side[0], side[1], diag, 0, 1, 2);
+
+        // (v2,v3,v0) is appended, in the same surface group and lightmap surface
+        poly_face new_face;
+        new_face.copy_properties(parent);
+        new_face.uv_mat0 = parent.uv_mat0;
+        new_face.topo_group = parent.topo_group;
+        build_tri(new_face, side[2], side[3], diag, 2, 3, 0);
+
+        const int new_f = pf.faces.size();
+        new_face.face_id = new_f;
+
+        el.surfaces[parent.surface_no].my_faces.push_back(new_f);
+        cb.add_quad_copy(q, new_f);
+
+        pf.faces.push_back(new_face);
+
+        for (int f_j : { f_i, new_f })
+        {
+            pf.calc_normal(f_j);
+            pf.calc_loops(f_j, nograph);
+            for (int p_i = 0; p_i < pf.faces[f_j].loops.size(); p_i++)
+            {
+                pf.calc_loop_bbox(f_j, p_i);
+                pf.set_loop_solid(f_j, p_i);
+            }
+        }
+
+        std::cout << "split terrain tile " << f_i << " -> faces " << f_i << ", " << new_f << "\n";
+    }
+}
+
 void GeometryStack::rebuild_geometry(bool only_build_new_geometry)
 {
 
@@ -436,6 +546,11 @@ void GeometryStack::rebuild_geometry(bool only_build_new_geometry)
 
     for (int i = build_start; i < this->elements.size(); i++)
         this->elements[i].geometry = no_poly;
+
+    // Vertex editing leaves the brush at TOP_UNDEF; fix up any quads it bent out of plane
+    for (int i = build_start; i < this->elements.size(); i++)
+        if (this->elements[i].brush.topology == TOP_UNDEF)
+            split_terrain_tiles(this->elements[i]);
 
     // Brush bboxes are used for the overlap tests below, but vertex editing doesn't update them
     // (they otherwise only get refreshed inside make_convex/make_concave, after the overlap test).
@@ -715,6 +830,9 @@ void GeometryStack::make_index_lists()
         {
             elements[i].surfaces[j].face_index_offset = cc;
         }
+
+        // face count can change after creation (e.g. split_terrain_tiles)
+        elements[i].reverse_index.resize(elements[i].brush.faces.size());
 
         for (int j = 0; j < elements[i].brush.faces.size(); j++)
         {
