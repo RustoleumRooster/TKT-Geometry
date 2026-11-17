@@ -928,6 +928,7 @@ void TestPanel_3D::right_click(core::vector2di pos)
         menu->addItem(L"Choose Texture", GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_CHOOSE_TEXTURE, true, false, false, false);
         menu->addItem(L"Align Texture", GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_ADJUST_TEXTURE, true, false, false, false);
         menu->addSeparator();
+        menu->addItem(L"Select Surface Group", GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_SELECT_SURFACE_GROUP, true, false, false, false);
         menu->addItem(L"Set Material Group", GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_MATERIAL_GROUP, true, false, false, false);
         menu->addSeparator();
         menu->addItem(L"Add Light", GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_ADD_LIGHT, true, false, false, false);
@@ -1126,6 +1127,13 @@ void TestPanel_3D::OnMenuItemSelected(IGUIContextMenu* menu)
         break;
     case GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_MATERIAL_GROUP:
         Material_Groups_Tool::show();
+        break;
+    case GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_SELECT_SURFACE_GROUP:
+        if (this->geo_scene)
+        {
+            this->geo_scene->selectSurfaceGroup();
+            this->geo_scene->selectionChanged();
+        }
         break;
     case GUI_ID_VIEWPORT_3D_RIGHTCLICK_MENU_ITEM_CHOOSE_TEXTURE:
         TexturePicker_Tool::show();

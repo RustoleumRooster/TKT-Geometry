@@ -336,11 +336,16 @@ geo_element make_terrain_grid(int height, int gridSize, int nX, int nY)
     sg.vec = core::vector3df(0, 1, 0);
     sg.vec1 = core::vector3df(0, 0, 1);
 
+    // surface group 0: the floor grid cells, surface group 1: top and sides
+    pf.surface_groups.push_back(sg);
     pf.surface_groups.push_back(sg);
 
-    for (poly_face& face : pf.faces)
+    const int n_floor_faces = nX * nY;
+
+    for (int i = 0; i < pf.faces.size(); i++)
     {
-        face.surface_group = 0;
+        poly_face& face = pf.faces[i];
+        face.surface_group = (i < n_floor_faces) ? 0 : 1;
         face.uv_origin = pf.vertices[face.vertices[0]].V;
     }
 
