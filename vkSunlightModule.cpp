@@ -25,13 +25,23 @@ void Sunlight_Module::initialize(Vulkan_App* vulkan)
 	n_nodes = geo_assets->bvh.node_count;
 	n_sky_triangles = geo_assets->triangle_lists[GPU_TRIS_SKY].count();
 
+	has_selected_triangle = geo_assets->has_selected_triangle;
+	selected_triangle_index = geo_assets->selected_triangle_index;
+	selected_triangle_mg = geo_assets->selected_triangle_mg;
+	selected_triangle_bary_coords = geo_assets->selected_triangle_bary_coords;
+
 	materials = &configuration->get_materials();
+
+	//a Sunlight node in the scene overrides the default direction
+	if (geo_assets->has_sun_node)
+		sun_direction = geo_assets->sun_direction;
 
 	reflect::connect(&geo_mod->vertices, &this->vertices);
 	reflect::connect(&geo_mod->indices, &this->indices);
 	reflect::connect(&geo_mod->lm_uvs, &this->lm_uvs);
 	reflect::connect(&geo_mod->bvh_nodes, &this->bvh_nodes);
 	reflect::connect(&geo_mod->edges, &this->edges);
+	reflect::connect(&geo_mod->scratchpad, &this->scratchpad);
 }
 
 void Sunlight_Module::createDescriptorSets(int lightmap_n)
@@ -47,13 +57,14 @@ void Sunlight_Module::createDescriptorSets(int lightmap_n)
 	writer.writeBuffer(4, bvh_nodes.X->getDescriptorBufferInfo());
 	writer.writeBuffer(5, edges.X->getDescriptorBufferInfo());
 	writer.writeImage(6, images_in.X->getDescriptorBufferInfo(lightmap_n));
+	writer.writeBuffer(7, scratchpad.X->getDescriptorBufferInfo());
 	writer.build(descriptorSets[0]);
 }
 
 void Sunlight_Module::createDescriptorSetLayout()
 {
 	std::vector<VkDescriptorSetLayoutBinding> bindings;
-	bindings.resize(7);
+	bindings.resize(8);
 
 	bindings[0] = ubo.getDescriptorSetLayout(0);
 	bindings[1] = indices.X->getDescriptorSetLayout(1);
@@ -62,6 +73,7 @@ void Sunlight_Module::createDescriptorSetLayout()
 	bindings[4] = bvh_nodes.X->getDescriptorSetLayout(4);
 	bindings[5] = edges.X->getDescriptorSetLayout(5);
 	bindings[6] = images_out.X->getDescriptorSetLayout(6);
+	bindings[7] = scratchpad.X->getDescriptorSetLayout(7);
 
 	descriptorSetLayout = new MyDescriptorSetLayout(m_device, bindings);
 }
@@ -75,7 +87,7 @@ void Sunlight_Module::createUBO()
 		ubo.BufferMemory);
 }
 
-void Sunlight_Module::writeUBO(int info_n)
+void Sunlight_Module::writeUBO(int info_n, int debug, int triangle_offset)
 {
 	SunTraceInfo info{};
 
@@ -83,9 +95,33 @@ void Sunlight_Module::writeUBO(int info_n)
 	info.n_triangles = n_indices / 3;
 	info.n_nodes = n_nodes;
 
-	info.face_index_offset = indices_soa->offset[info_n];
-	info.face_n_indices = indices_soa->len[info_n];
+	if (triangle_offset >= 0)
+	{
+		//single triangle: one workgroup, starting at the triangle's first index
+		info.face_index_offset = triangle_offset;
+		info.face_n_indices = 3;
+	}
+	else
+	{
+		info.face_index_offset = indices_soa->offset[info_n];
+		info.face_n_indices = indices_soa->len[info_n];
+	}
 	info.face_vertex_offset = vertices_soa->offset[info_n];
+
+	info.debug_mode = debug;
+	info.in_coords = vector3df(0, 0, 0);
+
+	if (triangle_offset >= 0)
+	{
+		//lightmap uv of the clicked point (data1 is the lightmap uv, as the shader sees it)
+		u32 idx0 = indices_soa->data[triangle_offset].x;
+		u32 idx1 = indices_soa->data[triangle_offset + 1].x;
+		u32 idx2 = indices_soa->data[triangle_offset + 2].x;
+
+		info.in_coords = vertices_soa->data1[idx0].V * selected_triangle_bary_coords.X +
+			vertices_soa->data1[idx1].V * selected_triangle_bary_coords.Y +
+			vertices_soa->data1[idx2].V * selected_triangle_bary_coords.Z;
+	}
 
 	info.lightmap_width = materials->data()[info_n].lightmap_size;
 	info.lightmap_height = materials->data()[info_n].lightmap_size;
@@ -145,6 +181,134 @@ void Sunlight_Module::runMaterial(int mat_n)
 	estimateRays(mat_n);
 }
 
+void Sunlight_Module::runTriangle(int mat_n, int triangle_offset)
+{
+	writeUBO(mat_n, debug_mode, triangle_offset);
+
+	createDescriptorSets(materials->data()[mat_n].lightmap_no);
+
+	VkCommandBuffer commandBuffer = m_device->beginSingleTimeCommands();
+
+	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE,
+		pipeline->getPipeline());
+
+	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineLayout, 0, 1,
+		&descriptorSets[0], 0, 0);
+
+	std::cout << "sunlight: debug run of material " << mat_n << ", triangle index " << triangle_offset << "\n";
+
+	m_device->dispatch(commandBuffer, 1, 1, 1);
+
+	m_device->endSingleTimeCommands(commandBuffer);
+
+	m_DescriptorPool->freeDescriptorsSets(descriptorSets);
+
+	vkDeviceWaitIdle(m_device->getDevice());
+
+	read_debug_results(mat_n, triangle_offset);
+}
+
+void Sunlight_Module::read_debug_results(int mat_n, int triangle_offset)
+{
+	const u32 n = 512;
+
+	std::vector<aligned_vec3> hits(n);
+
+	MyBufferObject stagingBuffer(m_device, sizeof(aligned_vec3), n, VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+		VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 1);
+
+	m_device->copyBuffer(scratchpad.X->Buffer, stagingBuffer.getBuffer(), sizeof(aligned_vec3) * n);
+
+	stagingBuffer.readFromBuffer((void*)hits.data());
+
+	LineHolder& graph = vulkan->geo_assets->debug_graph;
+
+	u32 lm_size = materials->data()[mat_n].lightmap_size;
+
+	//triangle in world space and in texels, for reference
+	cout << "sunlight debug: lightmap " << materials->data()[mat_n].lightmap_no << ", size " << lm_size << "\n";
+	for (int k = 0; k < 3; k++)
+	{
+		u32 idx = indices_soa->data[triangle_offset + k].x;
+		vector3df P = vertices_soa->data0[idx].V;
+		vector3df uv = vertices_soa->data1[idx].V * (f32)lm_size;
+
+		cout << "  v" << k << " pos (" << P.X << ", " << P.Y << ", " << P.Z << ")  uv in texels ("
+			<< uv.X << ", " << uv.Y << ")\n";
+
+		vector3df P1 = vertices_soa->data0[indices_soa->data[triangle_offset + (k + 1) % 3].x].V;
+		graph.lines.push_back(core::line3df(P, P1));
+	}
+
+	if (debug_mode == SUN_DEBUG_RAYS)
+	{
+		u32 n_rays = 0;
+
+		for (u32 t = 0; t < 256; t++)
+		{
+			if (hits[t].V == hits[256 + t].V)
+				continue;
+
+			graph.lines.push_back(core::line3df(hits[t].V, hits[256 + t].V));
+			n_rays++;
+		}
+
+		vector3df uv = vector3df(0, 0, 0);
+		{
+			u32 idx0 = indices_soa->data[triangle_offset].x;
+			u32 idx1 = indices_soa->data[triangle_offset + 1].x;
+			u32 idx2 = indices_soa->data[triangle_offset + 2].x;
+			uv = (vertices_soa->data1[idx0].V * selected_triangle_bary_coords.X +
+				vertices_soa->data1[idx1].V * selected_triangle_bary_coords.Y +
+				vertices_soa->data1[idx2].V * selected_triangle_bary_coords.Z) * (f32)lm_size;
+		}
+
+		cout << "  clicked texel (" << floor(uv.X) << ", " << floor(uv.Y) << "): " << n_rays
+			<< " of 256 threads had a valid sample\n";
+	}
+	else if (debug_mode == SUN_DEBUG_TEXELS)
+	{
+		u32 n_visited = (u32)hits[0].V.X;
+		u32 n_written = (u32)hits[256].V.X;
+		bool degenerate = hits[0].V.Y != 0;
+		u32 n_rows = (u32)hits[0].V.Z;
+
+		cout << "  rows walked " << n_rows << ", texels visited " << n_visited << ", written " << n_written
+			<< (degenerate ? "  (UV DEGENERATE: zero area in lightmap space)" : "") << "\n";
+		cout << "  (written needs more than " << 32 * std::max(1u, n_passes) << " valid samples)\n";
+
+		//normal length for the written texels: a texel's width in world units would be ideal,
+		//this is a fixed fraction of the triangle's size instead
+		vector3df a = vertices_soa->data0[indices_soa->data[triangle_offset].x].V;
+		vector3df b = vertices_soa->data0[indices_soa->data[triangle_offset + 1].x].V;
+		vector3df c = vertices_soa->data0[indices_soa->data[triangle_offset + 2].x].V;
+		vector3df N = (b - a).crossProduct(c - b);
+		N.normalize();
+
+		f32 len = 8.0f;
+		u32 samples_max = 256 * std::max(1u, n_passes);
+
+		for (u32 k = 0; k < std::min(n_visited, 255u); k++)
+		{
+			vector3df texel = hits[1 + k].V;
+			vector3df centre = hits[257 + k].V;
+			bool written = texel.Z > 32 * std::max(1u, n_passes);
+
+			cout << "    texel (" << (int)texel.X << ", " << (int)texel.Y << ")  samples " << (int)texel.Z
+				<< " / " << samples_max << (written ? "  written" : "  -- not written") << "\n";
+
+			if (written)
+				graph.lines.push_back(core::line3df(centre, centre + N * len));
+			else
+				graph.points.push_back(centre);
+		}
+
+		if (n_visited > 255)
+			cout << "    (" << n_visited - 255 << " more not recorded)\n";
+	}
+}
+
 void Sunlight_Module::estimateRays(int mat_n)
 {
 	//Per texel every thread (256) traces one ray per pass. Unlike area lights there's
@@ -174,6 +338,13 @@ void Sunlight_Module::run()
 		return;
 	}
 
+	{
+		vector3df d = sun_direction;
+		d.normalize();
+		cout << "sunlight: direction toward sun (" << d.X << ", " << d.Y << ", " << d.Z << ")"
+			<< (vulkan->geo_assets->has_sun_node ? " from Sunlight node\n" : " (default, no Sunlight node)\n");
+	}
+
 	createDescriptorSetLayout();
 	createComputePipeline("shaders/sunlight.spv");
 	createUBO();
@@ -184,6 +355,20 @@ void Sunlight_Module::run()
 	{
 		if (materials->data()[i].has_lightmap)
 			runMaterial(i);
+	}
+
+	//==================================
+	// Single triangle debug run, on top of the full bake
+	//
+	if (debug_mode != SUN_DEBUG_OFF)
+	{
+		if (!has_selected_triangle)
+			cout << "sunlight: debug mode is on but no face is selected (click a face first)\n";
+		else if (selected_triangle_mg < 0 || selected_triangle_mg >= (int)materials->size() ||
+			!materials->data()[selected_triangle_mg].has_lightmap)
+			cout << "sunlight: selected triangle's material " << selected_triangle_mg << " has no lightmap\n";
+		else
+			runTriangle(selected_triangle_mg, selected_triangle_index);
 	}
 
 	delete triangle_trans;

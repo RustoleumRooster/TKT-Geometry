@@ -139,6 +139,29 @@ public:
     REFLECT2()
 };
 
+//Editor-only marker for the lightmapper's Sunlight_Module. When one is present in
+//the scene, its arrow (the node's rotated +Z) is the direction sunlight travels,
+//and the module lights the scene from the opposite direction (toward the sun).
+//Not added to the game scene.
+class Reflected_SunlightNode : public Reflected_Sprite_SceneNode
+{
+public:
+    //Default rotation pitches the arrow 60 degrees below horizontal. At zero rotation the
+    //arrow (+Z) is horizontal, i.e. a sun on the horizon, which leaves floors unlit.
+    Reflected_SunlightNode(USceneNode* parent, geometry_scene* geo_scene, irr::scene::ISceneManager* smgr, int id, const core::vector3df& pos) :
+        Reflected_Sprite_SceneNode(parent, geo_scene, smgr, id, pos)
+    {
+        setRotation(core::vector3df(60, 30, 0));
+    }
+
+    virtual bool bShowEditorArrow() { return true; }
+
+    //unit vector pointing TOWARD the sun (what Sunlight_Module expects)
+    core::vector3df get_sun_direction() { return -get_direction_vector(); }
+
+    REFLECT2()
+};
+
 class Reflected_WaterSurfaceNode : public Reflected_Sprite_SceneNode
 {
 public:

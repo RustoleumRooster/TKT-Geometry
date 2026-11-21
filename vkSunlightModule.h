@@ -56,6 +56,10 @@ class Sunlight_Module : public Vulkan_Module
 
 		uint32_t miss_is_sky;
 		uint32_t seed;
+
+		//single triangle debugging (shader_sunlight.comp "Debug output")
+		uint32_t debug_mode;
+		alignas(16) vector3df in_coords;	//lightmap uv of the clicked point
 	};
 
 public:
@@ -72,8 +76,10 @@ public:
 	void cleanup();
 
 	void runMaterial(int);
+	void runTriangle(int mat_n, int triangle_offset);
 	void estimateRays(int);
-	void writeUBO(int);
+	void writeUBO(int mat_n, int debug = SUN_DEBUG_OFF, int triangle_offset = -1);
+	void read_debug_results(int mat_n, int triangle_offset);
 
 	//=================================
 	// Sun parameters (not reflected yet)
@@ -84,6 +90,20 @@ public:
 	u32 n_passes = 1;			//rays per texel = 256 * n_passes
 	bool miss_is_sky = false;	//treat rays that escape the level as reaching the sky (leaky / unsealed test scenes)
 
+	//=================================
+	// Single triangle debugging
+	//
+	// With a face selected (the last click picks the triangle and texel), the selected
+	// triangle is run once more after the full bake with debug output on. The results
+	// are printed and drawn in the 3D view (Triangles view, special_graph).
+	//
+	//	SUN_DEBUG_RAYS:   the clicked texel's sample points and rays (to their hit, or toward the sun)
+	//	SUN_DEBUG_TEXELS: every texel the rasteriser visits for the triangle; written texels are
+	//	                  drawn as a normal, unwritten ones as a cross, plus a console table
+	//
+	enum { SUN_DEBUG_OFF = 0, SUN_DEBUG_RAYS = 1, SUN_DEBUG_TEXELS = 2 };
+	int debug_mode = SUN_DEBUG_OFF;
+
 	const std::vector<TextureMaterial>* materials = NULL;
 
 	vkUniformBufferResource ubo;
@@ -93,6 +113,7 @@ public:
 	reflect::input<vkBufferResource> lm_uvs;
 	reflect::input<vkBufferResource> bvh_nodes;
 	reflect::input<vkBufferResource> edges;
+	reflect::input<vkBufferResource> scratchpad;
 	reflect::input<vkMultiImageResource> images_in;
 
 	reflect::output<vkMultiImageResource> images_out;
@@ -103,6 +124,11 @@ public:
 	uint32_t n_vertices = 0;
 	uint32_t n_nodes = 0;
 	uint32_t n_sky_triangles = 0;
+
+	bool has_selected_triangle = false;
+	int selected_triangle_index = 0;
+	int selected_triangle_mg = 0;
+	vector3df selected_triangle_bary_coords{ 0,0,0 };
 
 	soa_struct_2<aligned_vec3, aligned_vec3>* vertices_soa = NULL;
 	soa_struct<aligned_uint>* indices_soa = NULL;

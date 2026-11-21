@@ -556,11 +556,22 @@ public:
 	GPU_Triangle_List_Data triangle_lists[GPU_TRIS_COUNT];   //one per channel, see gpu_triangle_lists.h
 	std::vector<AreaLightInfoStruct> area_lights;
 
+	//set from a Reflected_SunlightNode in the scene, if there is one
+	bool has_sun_node = false;
+	vector3df sun_direction{ 0,1,0 };	//toward the sun
+
 	GPU_Triangle_List_Data& get_triangle_list(int channel) { return triangle_lists[channel]; }
 	BVH_structure_triangles bvh;
+	//selected_triangle_index is the index of the triangle's first index (into indices_soa.data),
+	//selected_triangle_mg is the material / final mesh buffer it belongs to
+	bool has_selected_triangle = false;
 	int selected_triangle_index = 0;
 	int selected_triangle_mg = 0;
 	vector3df selected_triangle_bary_coords{ 0,0,0 };
+
+	//modules write debug lines / points here; Lightmap_Routine copies them to the scene's
+	//special_graph, which the 3D panel draws in Triangles view
+	LineHolder debug_graph;
 
 };
 

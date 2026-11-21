@@ -45,6 +45,11 @@ void Vulkan_Workflow::make_default_workflow()
 
 	download_textures->bFlip = true;
 
+	//single triangle debugging: click a face, bake, then switch the 3D view to Triangles
+	//	SUN_DEBUG_RAYS   - rays of the clicked texel
+	//	SUN_DEBUG_TEXELS - texels the rasteriser visits for the clicked triangle
+	sunlight->debug_mode = Sunlight_Module::SUN_DEBUG_OFF;
+
 	ImageArray_To_MultiImage_Module* link0 = new ImageArray_To_MultiImage_Module();
 	MultiImage_To_ImageArray_Module* link1 = new MultiImage_To_ImageArray_Module();
 	ImageArray_To_MultiImage_Module* link2 = new ImageArray_To_MultiImage_Module();
@@ -196,6 +201,13 @@ void Lightmap_Routine(geometry_scene* g_scene, Lightmap_Configuration* configura
 	workflow.make_default_workflow();
 	workflow.initialize_and_run(&vulkan);
 	workflow.save();
+
+	//debug lines from the modules, drawn by the 3D panel in Triangles view
+	if (geo_assets.debug_graph.lines.size() > 0 || geo_assets.debug_graph.points.size() > 0)
+	{
+		g_scene->special_graph.lines = geo_assets.debug_graph.lines;
+		g_scene->special_graph.points = geo_assets.debug_graph.points;
+	}
 
 	textures = workflow.texture_module->textures;
 }

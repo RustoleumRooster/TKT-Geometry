@@ -15,6 +15,7 @@
 #include <chrono>
 #include <iomanip>
 #include <algorithm>
+#include <cfloat>
 
 using namespace irr;
 using namespace core;
@@ -741,31 +742,62 @@ Geometry_Assets::Geometry_Assets(geometry_scene* g_scene, Lightmap_Configuration
 		}
 	}
 
-	if (g_scene->getSelectedFaces().size() > 0)
-	{
-		GeometryStack* geo_node = g_scene->geoNode();
-		int f_i = g_scene->getSelectedFaces()[0];
-
-		int mb_i = g_scene->geoNode()->edit_meshnode_interface.get_buffer_index_by_face(f_i);
-		selected_triangle_mg = g_scene->geoNode()->edit_meshnode_interface.get_material_group_by_face(mb_i);
-	}
-
+	//==========================================================
+	// Selected triangle, for the single triangle debug paths
+	//
+	// The final mesh buffer index doubles as the material index (indices_soa.offset[i]
+	// and config->get_materials()[i] line up). The click's triangle_n / bary_coords come
+	// from the edit mesh, so the triangle is picked again here in the final mesh, from
+	// the click position.
+	//
 	//selected face may have no final geometry (eg No Geometry material group)
-	if (g_scene->getSelectedFaces().size() > 0 && selected_triangle_mg >= 0 &&
+	if (g_scene->getSelectedFaces().size() > 0 &&
 		meshnode->get_buffer_index_by_face(g_scene->getSelectedFaces()[0]) != -1)
 	{
 		int f_i = g_scene->getSelectedFaces()[0];
-
-		int lm_size = config->get_materials()[selected_triangle_mg].lightmap_size;
+		int buffer_index = meshnode->get_buffer_index_by_face(f_i);
 
 		MeshBuffer_Chunk chunk = meshnode->get_mesh_buffer_by_face(f_i);
+		vector3df p = g_scene->get_last_click().hitvec;
 
-		int buffer_index = meshnode->get_buffer_index_by_face(f_i);
-		int face_offset = indices_soa.offset[buffer_index] + chunk.begin_i;
-		int tri_sel = g_scene->get_last_click().triangle_n;
+		f32 best_score = -FLT_MAX;
 
-		selected_triangle_index = face_offset +tri_sel * 3;
-		selected_triangle_bary_coords = g_scene->get_last_click().bary_coords;
+		for (int i = (int)chunk.begin_i; i + 2 < (int)chunk.end_i; i += 3)
+		{
+			int i_0 = indices_soa.offset[buffer_index] + i;
+
+			vector3df a = vertices_soa.data0[indices_soa.data[i_0].x].V;
+			vector3df b = vertices_soa.data0[indices_soa.data[i_0 + 1].x].V;
+			vector3df c = vertices_soa.data0[indices_soa.data[i_0 + 2].x].V;
+
+			//barycentrics of p projected onto the triangle's plane
+			vector3df v0 = b - a, v1 = c - a, v2 = p - a;
+			f64 d00 = v0.dotProduct(v0), d01 = v0.dotProduct(v1), d11 = v1.dotProduct(v1);
+			f64 d20 = v2.dotProduct(v0), d21 = v2.dotProduct(v1);
+			f64 denom = d00 * d11 - d01 * d01;
+
+			if (fabs(denom) < 1e-12)
+				continue;
+
+			f32 v = (f32)((d11 * d20 - d01 * d21) / denom);
+			f32 w = (f32)((d00 * d21 - d01 * d20) / denom);
+			f32 u = 1.0f - v - w;
+
+			//the most inside triangle wins (min bary is >= 0 for the one containing p)
+			f32 score = std::min(u, std::min(v, w));
+			if (score > best_score)
+			{
+				best_score = score;
+				selected_triangle_index = i_0;
+				selected_triangle_bary_coords = vector3df(u, v, w);
+			}
+		}
+
+		if (best_score > -FLT_MAX)
+		{
+			selected_triangle_mg = buffer_index;
+			has_selected_triangle = true;
+		}
 	}
 
 	bvh.build(vertices_soa.data0.data(), master_triangle_list.data(), master_triangle_list.size(), NULL);
@@ -901,6 +933,20 @@ Geometry_Assets::Geometry_Assets(geometry_scene* g_scene, Lightmap_Configuration
 
 			area_lights.push_back(light_info);
 			light_source_nodes.push_back(light_node);
+		}
+		else if (Reflected_SunlightNode* sun_node = dynamic_cast<Reflected_SunlightNode*>(node))
+		{
+			if (has_sun_node)
+				std::cout << "warning: more than one Sunlight node in the scene, using the first\n";
+			else
+			{
+				has_sun_node = true;
+				sun_direction = sun_node->get_sun_direction();
+
+				if (sun_direction.Y <= 0.01f)
+					std::cout << "warning: Sunlight node's arrow isn't pointing downward (the sun is at or below the horizon),"
+					             " floors will be unlit. The arrow is the direction the light travels.\n";
+			}
 		}
 	}
 

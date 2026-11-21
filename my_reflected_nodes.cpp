@@ -70,6 +70,16 @@ bool Reflected_LightSceneNode::addSelfToScene(USceneNode* parent, irr::scene::IS
 
 
 //============================================================================
+//  Reflected_SunlightNode
+//
+
+REFLECT_STRUCT2_BEGIN(Reflected_SunlightNode)
+    ALIAS("Sunlight")
+    INHERIT_FROM(Reflected_Sprite_SceneNode)
+REFLECT_STRUCT2_END()
+
+
+//============================================================================
 //  Reflected_SimpleEmitterSceneNode
 //
 
