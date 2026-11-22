@@ -5,6 +5,7 @@
 
 #include <vector>
 #include <irrlicht.h>
+#include "Reflection.h"
 
 struct aligned_uint {
 	alignas(16) uint32_t x;
@@ -15,6 +16,7 @@ struct aligned_vec3 {
 };
 
 using namespace std;
+using namespace irr;
 
 struct soa_offsets
 {
@@ -236,6 +238,26 @@ inline void add_data_offsets(soa_struct<aligned_uint>& indices, const soa_offset
 void fill_vertex_struct(irr::scene::SMesh* mesh, soa_struct_2<aligned_vec3, aligned_vec3>& dest);
 void fill_index_struct_with_offsets(irr::scene::SMesh* mesh, soa_struct<aligned_uint>& dest);
 
+
+namespace reflect
+{
+	struct TypeDescriptor_Aligned_Vector3 : TypeDescriptor {
+		TypeDescriptor_Aligned_Vector3() : TypeDescriptor{ "aligned_vector3", sizeof(aligned_vec3) } {
+		}
+		virtual void dump(const void* obj, int /* unused */) const override {
+			std::cout << "aligned_vector3{" << *(const float*)(char*)obj << "," <<
+				*(const float*)((char*)obj + sizeof(float)) << "," <<
+				*(const float*)((char*)obj + sizeof(float)) << "," <<
+				*(const float*)((char*)obj + sizeof(float) * 2) <<
+				"}";
+		}
+
+		virtual bool expandable() { return true; }
+		virtual void addFormWidget(Reflected_GUI_Edit_Form*, TypeDescriptor_Struct*, std::vector<int> tree, size_t offset, bool bVisible, bool bEditable, int tab) override
+		{}
+	};
+
+}
 #endif
 
 

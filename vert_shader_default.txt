@@ -1,0 +1,14 @@
+
+uniform mat4 MV;
+uniform mat4 P;
+
+varying vec3 vertex;
+
+void main(void)
+{
+	gl_TexCoord[0] = gl_MultiTexCoord0;
+
+	gl_Position = P * MV * gl_Vertex;
+
+	vertex = gl_Vertex.xyz;
+}

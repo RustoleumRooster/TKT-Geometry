@@ -1,0 +1,102 @@
+
+uniform sampler2D myTexture;
+uniform sampler2D myTexture2;
+uniform sampler2D myTexture3;
+uniform vec3 mCamPos;
+
+uniform float Time;
+
+varying vec3 vertex;
+
+const vec4 SKY_COL = vec4(0.529, 0.808, 0.922, 1.0); // sky blue #87CEEB
+
+const float SCALE = 75.0;
+
+// 0 below a, 1 above b, linear in between
+float linearstep(float a, float b, float z)
+{
+	return clamp((z - a) / (b - a), 0.0, 1.0);
+}
+
+// a at z = 0, b at z = 1, unclamped
+float lerp(float a, float b, float z)
+{
+	return a + (b - a) * z;
+}
+
+// Sum of three scrolling noise octaves, remapped to a 0..1 cloud density
+float cloud_density(vec2 p, float time)
+{
+	float n1 = texture2D(myTexture,  vec2(p.x - time * 1.0, p.y) / SCALE).r;
+	float n2 = texture2D(myTexture2, vec2(p.x + time * 1.5, p.y) / SCALE).r;
+	float n3 = texture2D(myTexture3, vec2(p.x, p.y + time * 6.0) / SCALE).r;
+
+	return linearstep(0.10, 1.0, n1 * 0.5 + n2 * 0.25 + n3 * 0.125);
+}
+
+void main (void)
+{
+	vec3 R = vertex;
+	vec3 ray = normalize(R - mCamPos);
+	vec3 SUN_VEC = normalize(vec3(1.0, 1.0, 1.0));
+	float time = 3912.0 + Time * 0.4;
+
+	// Binary search along the sun direction for where the ray height
+	// crosses the density field, treating density as a heightmap
+	float t = 0.8;
+	float t1 = 0.8;
+	float inc = 0.25;
+	float inc1 = 0.25;
+	float density,density1;
+
+	for(int i = 0; i < 10; i++)
+	{
+		//density = cloud_density(R.xz + SUN_VEC.xz * t, time);
+		density = cloud_density(R.xz + ray.xz * t, time);
+		density1 = cloud_density(R.xz + SUN_VEC.xz * t, time);
+
+
+		if(ray.y * t > density)
+			t -= inc;
+		else
+			t += inc;
+
+		if(SUN_VEC.y * t1 > density1)
+			t1 -= inc;
+		else
+			t1 += inc;
+
+
+		inc *= 0.5;
+	}
+
+//	density= 0.1;
+
+	density = t;	//in direction of eye-ray
+	density1 = t1;	//in direction of sun
+
+//	density = clamp((t-0.25)*0.8,0.0,1.0);
+//
+//	density = cloud_density(R.xz + SUN_VEC.xz * t, time);
+
+	// Thicker clouds give a tighter forward-scattering lobe around the sun
+	float transmittance = exp2( ((1.0-density) * 4.0) - 4.0 ); //some factor
+	float transmittance1 = exp2( -density1 * 4.0 ); //some factor
+
+	float exponent = 16.0 * transmittance1;
+	//float intensity = (exponent + 1.0) / 2.0; //cheap normalization
+	float intensity = clamp(( 1.0-((0.3-density)*(0.3-density)) ),0.0,1.0) * (exponent + 1.0) / 2.0; //cheap normalization
+
+	//float forward_scattering = pow(dot(SUN_VEC, ray),exponent) * intensity;
+	vec4 forward_scattering = vec4(vec3(pow(max(0.0,dot(SUN_VEC, ray)), 3)), 1.0) * 6 * transmittance;
+
+	//vec4 color = vec4(1.0, 1.0, 1.0, 1.0) * forward_scattering; 
+	vec4 color = vec4(0.7) + clamp (forward_scattering,0.0,0.5);
+
+	float alpha = clamp( 1.0 - transmittance, 0.0, 1.0);
+	gl_FragColor = mix(SKY_COL, color, alpha);
+	gl_FragColor = vec4(forward_scattering);
+	//gl_FragColor = vec4(1.0-transmittance);
+	//gl_FragColor = vec4(vec3(pow(dot(SUN_VEC, ray), 8.0)), 1.0);
+
+}

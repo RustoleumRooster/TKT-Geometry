@@ -1,9 +1,14 @@
 
 uniform mat4 mWorldView;
+//uniform mat4 mWorld;
+//uniform mat4 mView;
 uniform mat4 mProj;
 
 void main(void)
 {
 	gl_Position = mProj * mWorldView * gl_Vertex;
 	gl_TexCoord[0] = gl_MultiTexCoord0;
+
+	//vec4 plane0 = vec4(1,1,0,0);
+	//gl_ClipDistance[0] = dot(plane0, mWorld * gl_Vertex);
 }

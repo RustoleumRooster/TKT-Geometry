@@ -1,0 +1,27 @@
+
+//uniform sampler2D myTexture;
+uniform sampler2D myTexture2;
+
+varying vec4 v;
+void main (void)
+{
+    //vec4 col = texture2D(myTexture, vec2(gl_TexCoord[0]));
+    vec2 texCoords = (v.xy /v.w )* 0.5 + vec2(0.5,0.5);
+
+    vec4 col2;
+
+    //if(v.y>-256 && v.y <256 && v.x> -256 && v.x <256)
+    //	col2 = texture2D(myTexture2,texCoords);
+    //else
+
+    col2 = vec4(0,0,0,0);
+
+    //float x = abs(texCoords.x)-floor(abs(texCoords.x));
+    //float y = abs(texCoords.y)-floor(abs(texCoords.y));
+
+    if(texCoords.y>0 && texCoords.y <1 && texCoords.x> 0 && texCoords.x <1)
+    	//col2 = vec4(x,y,0,0);
+	col2 = texture2D(myTexture2,texCoords);
+   
+    gl_FragColor = col2;
+}

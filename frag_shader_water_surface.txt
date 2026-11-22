@@ -21,8 +21,10 @@ void main (void)
     vec3 eye_ray = normalize(CamPos - world_pos);
     float p = dot(eye_ray,vec3(0,1,0));
     p = p*p;
-   // if(texCoords.y>0 && texCoords.y <1 && texCoords.x> 0 && texCoords.x <1)
-//	col2 = texture2D(myTexture2,texCoords);
-   
-    gl_FragColor = col*(1.0-p) + col2 * p;
+    // if(texCoords.y>0 && texCoords.y <1 && texCoords.x> 0 && texCoords.x <1)
+    //	col2 = texture2D(myTexture2,texCoords);
+    //p=0.5;
+    
+    gl_FragColor = col*(1.0-p)*0.8 + col2 * p;
+    //gl_FragColor = col;
 }

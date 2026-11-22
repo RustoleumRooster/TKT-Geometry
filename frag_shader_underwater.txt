@@ -1,0 +1,47 @@
+
+uniform sampler2D myTexture;
+uniform sampler2D myTexture2;
+uniform vec3 CamPos;
+uniform vec4 plane;
+
+varying vec3 world_pos;
+varying vec2 texcoord;
+varying vec2 texcoord2;
+
+void main (void)
+{
+    	vec4 col = texture2D(myTexture, texcoord);
+
+	float light = 0.2 + 0.8* texture2D(myTexture2, texcoord2).r;
+
+	vec3 eye_ray = CamPos - world_pos;
+	eye_ray = normalize(eye_ray);
+	float t = -(dot(plane.xyz,world_pos) + plane.w) / dot(plane.xyz,eye_ray);
+
+	float fog;
+
+	if(t>512.0)
+		fog = 1.0;
+	else
+		fog = t/512.0;
+
+	clamp(light,0,1);
+
+	float depth_fog; 
+
+	if(world_pos.z < -512.0)
+		depth_fog = 1.0;
+	else
+		depth_fog = - world_pos.z / 512.0;
+
+	fog += depth_fog;
+
+	clamp(fog,0,1);
+
+	col = col * light;
+	col = fog * vec4(0.1,0.2,0.5,1.0) + (1.0-fog) * col;
+
+    	gl_FragColor = col;
+	//gl_FragColor = vec4(1,1,1,1) * light;
+	//gl_FragColor = vec4(1,0,0,0);
+}
