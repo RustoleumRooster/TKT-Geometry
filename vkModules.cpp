@@ -557,6 +557,11 @@ void Vulkan_App::run_workflow()
 		for (reflect::Member& m : tD->members)
 		{
 			reflect::TypeDescriptor_Struct* m_tD = (reflect::TypeDescriptor_Struct*)m.type;
+
+			//only inputs have a connection status; other members aren't input_type
+			if (m_tD->inherited_type != &reflect::input_type::Reflection)
+				continue;
+
 			reflect::input_type* in = (reflect::input_type*)m.get(vk);
 			if (in->status == reflect::INPUT_NOT_CONNECTED)
 			{
@@ -1444,6 +1449,7 @@ namespace reflect
 							{
 								out->dest_inputs.push_back(in);
 								in->src_output = out;
+								in->status = reflect::INPUT_WAITING; //as reflect::connect does; not serialized
 							}
 							else
 							{

@@ -203,6 +203,8 @@ public:
     void setCameraQuad(CameraQuad* cameraQuad_) { cameraQuad = cameraQuad_; }
     void close_uv_panel();
     void refresh_panel_view();
+    void auto_layout_modules();
+    void rebuild_graph_view();
 
     virtual void* getObj() {
         return &m_struct;
@@ -234,7 +236,7 @@ public:
 
     std::vector<std::pair<Hookup_GUI_Element*, Hookup_GUI_Element*>> gui_connections;
 
-    Vulkan_Workflow* workflow = NULL;
+    Vulkan_Workflow* workflow = NULL; //not owned: the current scene's (geometry_scene::get_lightmap_workflow)
 
     int selection = -1;
 

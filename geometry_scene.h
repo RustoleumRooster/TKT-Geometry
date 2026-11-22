@@ -17,6 +17,7 @@ class GeometryStack;
 class Node_Classes_Base;
 class Lightmap_Manager;
 class SceneCoordinator;
+class Vulkan_Workflow;
 
 struct scene_selection
 {
@@ -186,9 +187,16 @@ public:
     std::string get_lightmap_file_string();
     std::string get_lightmap_file_string(int);
 
-    
+    //per-scene lightmap workflow (module graph). Created from make_default_workflow on first use.
+    //Defined in vkRoutines.cpp to keep the Vulkan headers out of geometry_scene.cpp
+    Vulkan_Workflow* get_lightmap_workflow();
+    bool save_lightmap_workflow(const std::string& fname);
+    bool load_lightmap_workflow(const std::string& fname);
+
 private:
-    
+    void free_lightmap_workflow();
+    Vulkan_Workflow* lightmap_workflow = NULL;
+
     int build_progress=0;
     bool progressive_build=true;
 

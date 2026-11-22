@@ -10,6 +10,7 @@
 #include "vkAreaLightModule.h"
 #include "vkBouncedLightModule.h"
 #include <vulkan/vulkan.h>
+#include <cstdio>
 
 using namespace irr;
 using namespace core;
@@ -142,30 +143,31 @@ void Vulkan_Workflow::initialize_and_run(Vulkan_App* vulkan)
 	vulkan->cleanup();
 }
 
-void Vulkan_Workflow::save()
+bool Vulkan_Workflow::save(const std::string& fname)
 {
-	ofstream wf("Vulkan_System", ios::out | ios::binary);
+	ofstream wf(fname, ios::out | ios::binary);
 
 	if (!wf)
 	{
-		cout << "Cannot open file\n";
-		return;
+		cout << "Cannot open file " << fname << "\n";
+		return false;
 	}
 
 	reflect::TypeDescriptor_Struct* tD = &Vulkan_Workflow::Reflection;
 	//tD->dump(this, 0);
 	tD->serialize(wf, this);
 
+	return wf.good();
 }
 
-void Vulkan_Workflow::load()
+bool Vulkan_Workflow::load(const std::string& fname)
 {
-	ifstream rf("Vulkan_System", ios::in | ios::binary);
+	ifstream rf(fname, ios::in | ios::binary);
 
 	if (!rf)
 	{
-		cout << "Cannot open file\n";
-		return;
+		cout << "Cannot open file " << fname << "\n";
+		return false;
 	}
 
 	reflect::TypeDescriptor_Struct* tD = &Vulkan_Workflow::Reflection;
@@ -173,9 +175,70 @@ void Vulkan_Workflow::load()
 	//tD->dump(this, 0);
 
 	items.clear();
+	texture_module = NULL;
 	for (VkMod_Reference& ref : Modules)
+	{
 		items.push_back(ref.X);
 
+		if (!texture_module)
+			texture_module = dynamic_cast<Download_Textures_Module*>(ref.X);
+	}
+
+	return true;
+}
+
+bool Vulkan_Workflow::clone_from(Vulkan_Workflow* src)
+{
+	//round trip through the serializer, which only takes file streams
+	const char* tmp_name = "lm_workflow_clone.tmp";
+
+	if (!src || !src->save(tmp_name))
+		return false;
+
+	bool ok = load(tmp_name);
+	std::remove(tmp_name);
+	return ok;
+}
+
+//================================================================
+// geometry_scene lightmap workflow
+//
+
+Vulkan_Workflow* geometry_scene::get_lightmap_workflow()
+{
+	if (!lightmap_workflow)
+	{
+		lightmap_workflow = new Vulkan_Workflow();
+		lightmap_workflow->make_default_workflow();
+	}
+	return lightmap_workflow;
+}
+
+bool geometry_scene::save_lightmap_workflow(const std::string& fname)
+{
+	return get_lightmap_workflow()->save(fname);
+}
+
+bool geometry_scene::load_lightmap_workflow(const std::string& fname)
+{
+	Vulkan_Workflow* wf = new Vulkan_Workflow();
+
+	if (!wf->load(fname))
+	{
+		delete wf;
+		return false;
+	}
+
+	free_lightmap_workflow();
+	lightmap_workflow = wf;
+	return true;
+}
+
+void geometry_scene::free_lightmap_workflow()
+{
+	if (lightmap_workflow)
+		delete lightmap_workflow;
+	lightmap_workflow = NULL;
 }
 
 Vulkan_Workflow::~Vulkan_Workflow()
@@ -196,11 +259,23 @@ void Lightmap_Routine(geometry_scene* g_scene, Lightmap_Configuration* configura
 
 	Vulkan_App vulkan(&geo_assets,configuration, device->getVideoDriver());
 
-	Vulkan_Workflow workflow;
-	
-	workflow.make_default_workflow();
-	workflow.initialize_and_run(&vulkan);
-	workflow.save();
+	//run a copy of the scene's workflow: running changes module/input state, and the
+	//scene's copy is also what the editor graph view displays
+	Vulkan_Workflow* workflow = new Vulkan_Workflow();
+
+	if (!workflow->clone_from(g_scene->get_lightmap_workflow()) || !workflow->texture_module)
+	{
+		cout << "could not copy the scene's lightmap workflow, using the default\n";
+		delete workflow;
+		workflow = new Vulkan_Workflow();
+		workflow->make_default_workflow();
+	}
+
+	//bFlip isn't serialized (module member lists are assumed to hold only inputs/outputs),
+	//so restore what make_default_workflow sets
+	workflow->texture_module->bFlip = true;
+
+	workflow->initialize_and_run(&vulkan);
 
 	//debug lines from the modules, drawn by the 3D panel in Triangles view
 	if (geo_assets.debug_graph.lines.size() > 0 || geo_assets.debug_graph.points.size() > 0)
@@ -209,5 +284,6 @@ void Lightmap_Routine(geometry_scene* g_scene, Lightmap_Configuration* configura
 		g_scene->special_graph.points = geo_assets.debug_graph.points;
 	}
 
-	textures = workflow.texture_module->textures;
+	textures = workflow->texture_module->textures;
+	delete workflow;
 }

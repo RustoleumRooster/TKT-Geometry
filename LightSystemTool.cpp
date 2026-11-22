@@ -5,6 +5,11 @@
 #include "vkModules.h"
 #include "edit_classes.h"
 #include "ex_gui_elements.h"
+#include "geometry_scene.h"
+#include <map>
+#include <set>
+#include <functional>
+#include <algorithm>
 
 using namespace irr;
 using namespace gui;
@@ -806,8 +811,9 @@ void Light_System_Base::refresh_panel_view()
         }
 
         m_panel->clear_childern();
+        gui_connections.clear(); //the hookup elements were just destroyed
 
-        if (m_panel->getViewPanel())
+        if (m_panel->getViewPanel() && workflow)
         {
             recti r{ position2di{0,0}, m_panel->getViewPanel()->getAbsoluteClippingRect().getSize() };
             
@@ -872,6 +878,174 @@ void Light_System_Base::refresh_panel_view()
     }
 }
 
+//Default layout for the module graph. Only applied when no visible module has a position yet
+//(e.g. a workflow saved straight from make_default_workflow), so user arrangements are kept.
+//
+//  column X = 1 + highest column of any input (0 for modules with no inputs)
+//  rows: each X=0 module starts a new band below everything placed so far; its downstream
+//        modules take the lowest free row (from 0) in their own column
+//
+//Transition modules are hidden in the view, so connections are followed through them.
+void Light_System_Base::auto_layout_modules()
+{
+    if (!workflow)
+        return;
+
+    auto is_transition = [](Vulkan_Module* mod) {
+        reflect::TypeDescriptor_VkMod_Struct* tD = (reflect::TypeDescriptor_VkMod_Struct*)mod->GetDynamicReflection();
+        return (tD->flags & REFLECT_VKMOD_FLAG_TRANSITION_MODULE) != 0;
+    };
+
+    std::vector<Vulkan_Module*> visible;
+    for (Vulkan_Module* mod : workflow->items)
+        if (!is_transition(mod))
+            visible.push_back(mod);
+
+    for (Vulkan_Module* mod : visible)
+        if (mod->pos.X != 0 || mod->pos.Y != 0)
+            return;
+
+    //map each input/output back to the module that owns it (owner isn't guaranteed after load)
+    std::map<reflect::input_type*, Vulkan_Module*> input_owner;
+    std::map<reflect::output_type*, Vulkan_Module*> output_owner;
+    std::map<Vulkan_Module*, std::vector<reflect::input_type*>> mod_inputs;
+    std::map<Vulkan_Module*, std::vector<reflect::output_type*>> mod_outputs;
+
+    for (Vulkan_Module* mod : workflow->items)
+    {
+        reflect::TypeDescriptor_Struct* tD = mod->GetDynamicReflection();
+        for (reflect::Member& m : tD->members)
+        {
+            reflect::TypeDescriptor_Struct* m_tD = (reflect::TypeDescriptor_Struct*)m.type;
+
+            if (m_tD->inherited_type == &reflect::input_type::Reflection)
+            {
+                reflect::input_type* in = (reflect::input_type*)m.get(mod);
+                input_owner[in] = mod;
+                mod_inputs[mod].push_back(in);
+            }
+            else if (m_tD->inherited_type == &reflect::output_type::Reflection)
+            {
+                reflect::output_type* out = (reflect::output_type*)m.get(mod);
+                output_owner[out] = mod;
+                mod_outputs[mod].push_back(out);
+            }
+        }
+    }
+
+    //visible upstream / downstream neighbours, skipping over transition modules
+    std::function<void(Vulkan_Module*, std::vector<Vulkan_Module*>&, int)> collect_preds =
+        [&](Vulkan_Module* mod, std::vector<Vulkan_Module*>& res, int depth) {
+        if (depth > 32) return;
+        for (reflect::input_type* in : mod_inputs[mod])
+        {
+            if (!in->src_output || output_owner.count(in->src_output) == 0)
+                continue;
+            Vulkan_Module* src = output_owner[in->src_output];
+            if (is_transition(src))
+                collect_preds(src, res, depth + 1);
+            else if (std::find(res.begin(), res.end(), src) == res.end())
+                res.push_back(src);
+        }
+    };
+
+    std::function<void(Vulkan_Module*, std::vector<Vulkan_Module*>&, int)> collect_succs =
+        [&](Vulkan_Module* mod, std::vector<Vulkan_Module*>& res, int depth) {
+        if (depth > 32) return;
+        for (reflect::output_type* out : mod_outputs[mod])
+        {
+            for (reflect::input_type* in : out->dest_inputs)
+            {
+                if (input_owner.count(in) == 0)
+                    continue;
+                Vulkan_Module* dst = input_owner[in];
+                if (is_transition(dst))
+                    collect_succs(dst, res, depth + 1);
+                else if (std::find(res.begin(), res.end(), dst) == res.end())
+                    res.push_back(dst);
+            }
+        }
+    };
+
+    std::map<Vulkan_Module*, std::vector<Vulkan_Module*>> preds, succs;
+    for (Vulkan_Module* mod : visible)
+    {
+        collect_preds(mod, preds[mod], 0);
+        collect_succs(mod, succs[mod], 0);
+    }
+
+    //columns: longest path from a source (state 1 = in progress, guards against cycles)
+    std::map<Vulkan_Module*, int> col;
+    std::map<Vulkan_Module*, int> state;
+    std::function<int(Vulkan_Module*)> get_col = [&](Vulkan_Module* mod) -> int {
+        if (state[mod] == 2) return col[mod];
+        if (state[mod] == 1) return -1;
+        state[mod] = 1;
+        int a = -1;
+        for (Vulkan_Module* p : preds[mod])
+            a = std::max(a, get_col(p));
+        col[mod] = a + 1;
+        state[mod] = 2;
+        return col[mod];
+    };
+    for (Vulkan_Module* mod : visible)
+        get_col(mod);
+
+    //rows
+    std::map<Vulkan_Module*, int> row;
+    std::map<int, std::set<int>> occupied; //column -> used rows
+    int max_row = -1;
+
+    auto place = [&](Vulkan_Module* mod, int start) {
+        int y = start;
+        while (occupied[col[mod]].count(y)) y++;
+        row[mod] = y;
+        occupied[col[mod]].insert(y);
+        max_row = std::max(max_row, y);
+    };
+
+    auto place_chain = [&](Vulkan_Module* root, int root_row) {
+        place(root, root_row);
+        std::vector<Vulkan_Module*> queue{ root };
+        for (size_t i = 0; i < queue.size(); i++)
+        {
+            for (Vulkan_Module* s : succs[queue[i]])
+            {
+                if (row.count(s)) continue;
+                place(s, 0);
+                queue.push_back(s);
+            }
+        }
+    };
+
+    for (Vulkan_Module* mod : visible)
+        if (col[mod] == 0 && row.count(mod) == 0)
+            place_chain(mod, max_row + 1);
+
+    //anything left over (only reachable through a cycle)
+    for (Vulkan_Module* mod : visible)
+        if (row.count(mod) == 0)
+            place_chain(mod, 0);
+
+    //grid -> screen space: module body is 128 wide plus 16px hookups each side, title sits 24px above
+    int max_h = 0;
+    for (Vulkan_Module* mod : visible)
+    {
+        reflect::TypeDescriptor_VkMod_Struct* tD = (reflect::TypeDescriptor_VkMod_Struct*)mod->GetDynamicReflection();
+        max_h = std::max(max_h, tD->calculate_height());
+    }
+
+    const int col_spacing = 128 + 32 + 96;
+    const int row_spacing = max_h + 24 + 32;
+    const vector2di origin{ 48, 48 };
+
+    for (Vulkan_Module* mod : visible)
+    {
+        mod->pos.X = origin.X + col[mod] * col_spacing;
+        mod->pos.Y = origin.Y + row[mod] * row_spacing;
+    }
+}
+
 void Light_System_Base::init_member(reflect::TypeDescriptor_Struct* flat_typeDescriptor, std::vector<int> tree_pos)
 {
 }
@@ -882,27 +1056,35 @@ void Light_System_Base::write_attributes(reflect::TypeDescriptor_Struct* flat_ty
 
 void Light_System_Base::save_workflow()
 {
-    workflow->save();
-    cout << "workflow saved\n";
+    //the workflow belongs to the scene and is written with it (lm_workflow<n>.dat)
+    cout << "lightmap workflow is saved with the scene\n";
 }
 
 Light_System_Base::~Light_System_Base()
 {
 }
 
+//rebuilds the graph view for the current scene's workflow
+void Light_System_Base::rebuild_graph_view()
+{
+    auto_layout_modules();
+
+    for (int i = 0; i < 2; i++)
+    {
+        if (cached_texts[i])
+            delete cached_texts[i];
+        cached_texts[i] = new CachedText_Manager((AGG_TT_Font*)env->getSkin()->getFont());
+    }
+
+    refresh_panel_view();
+
+    cached_texts[0]->fill_positions();
+    cached_texts[1]->fill_positions();
+}
+
 void Light_System_Base::show()
 {
-    if (workflow)
-        delete workflow;
-
-    workflow = new Vulkan_Workflow();
-    //workflow->make_default_workflow();
-    workflow->load();
-    
-    //modules.clear();
-
-    cached_texts[0] = new CachedText_Manager((AGG_TT_Font*)env->getSkin()->getFont());
-    cached_texts[1] = new CachedText_Manager((AGG_TT_Font*)env->getSkin()->getFont());
+    workflow = g_scene ? g_scene->get_lightmap_workflow() : NULL;
 
     core::rect<s32> client_rect(core::vector2di(0, 0),
         core::dimension2du(this->panel->getClientRect()->getAbsolutePosition().getWidth(),
@@ -912,11 +1094,8 @@ void Light_System_Base::show()
 
     widget->show();
     widget->drop();
-    
-    refresh_panel_view();
 
-    cached_texts[0]->fill_positions();
-    cached_texts[1]->fill_positions();
+    rebuild_graph_view();
 }
 
 s32 Light_System_Base::getWidgetHeight()
@@ -965,6 +1144,13 @@ void Light_System_Base::set_scene(geometry_scene* gs)
 
     if (m_panel)
         m_panel->set_scene(gs);
+
+    //the old workflow may be gone (file load deletes the scenes), so never keep pointing at it
+    workflow = gs ? gs->get_lightmap_workflow() : NULL;
+
+    //graph view already open: show the new scene's workflow
+    if (cached_texts[0] && m_panel && m_panel->hooked_up())
+        rebuild_graph_view();
 }
 
 REFLECT_STRUCT_BEGIN(lm_system_struct)

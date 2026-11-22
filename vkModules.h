@@ -706,8 +706,9 @@ public:
 	void make_default_workflow();
 	void initialize_and_run(Vulkan_App* vulkan);
 
-	void save();
-	void load();
+	bool save(const std::string& fname);
+	bool load(const std::string& fname); //call on an empty workflow only
+	bool clone_from(Vulkan_Workflow* src); //fresh copy for running; a run mutates module state
 
 	Vulkan_Module* get_module_by_uid(u64 uid)
 	{

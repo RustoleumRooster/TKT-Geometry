@@ -71,9 +71,13 @@ void Geometry_Scene_File_IO::WriteToFiles(SceneCoordinator* sc)
         std::stringstream serial_name;
         serial_name << "refl_serial" << i << ".dat";
 
+        std::stringstream workflow_name;
+        workflow_name << "lm_workflow" << i << ".dat";
+
         SerializeSceneNodesToFile(sc->scenes[i], nodes_name.str().c_str());
         WriteTextureNames(sc->scenes[i], texture_name.str().c_str());
         SerializeGeometryToFile(sc->scenes[i], serial_name.str().c_str());
+        sc->scenes[i]->save_lightmap_workflow(workflow_name.str());
     }
 }
 
@@ -116,6 +120,11 @@ void Geometry_Scene_File_IO::ReadFromFiles(SceneCoordinator* sc)
 
             DeserializeGeometryFromFile(scene0, serial_name.str().c_str(), texture_name.str().c_str());
             DeserializeSceneNodesFromFile(scene0, nodes_name.str().c_str());
+
+            //projects saved before per-scene workflows have no file: the scene gets the default
+            std::stringstream workflow_name;
+            workflow_name << "lm_workflow" << i << ".dat";
+            scene0->load_lightmap_workflow(workflow_name.str());
             //==============================
 
             //scene0->geoNode()->set_originals();
@@ -696,6 +705,8 @@ geometry_scene::geometry_scene(video::IVideoDriver* driver_, MyEventReceiver* re
 geometry_scene::~geometry_scene()
 {
     event_receiver->UnRegister(this);
+
+    free_lightmap_workflow();
 
     if (actual_nodes)
         actual_nodes->remove();
