@@ -41,6 +41,7 @@ public:
 
     ~tkt_properties_base() {}
 
+    // TODO: remove this dependency
     // If g_scene_ is also a tkt_set<T>, update m_source automatically.
     // For T = Reflected_SceneNode this fires because geometry_scene IS-A tkt_set<Reflected_SceneNode>.
     virtual void set_scene(geometry_scene* g_scene_) override
@@ -116,7 +117,8 @@ public:
         saved_selection = m_source->getSelected();
         waiting_for_item_selection = true;
         item_selection_member = tree_pos;
-        // TODO: Node_Selector_Tool::show(); — deferred pending UID abstraction
+        // the caller opens the item picker (e.g. Node_Selector_Tool for uid references),
+        // which keeps this template independent of the scene node tools
     }
 
     void clear_item_selection(std::vector<int> tree_pos)
