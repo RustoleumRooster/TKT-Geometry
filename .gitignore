@@ -361,3 +361,60 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+/unused*
+/unused.cpp
+/nodes.dat
+/poly.dat
+/poly_underground.dat
+/Refl_Primitives - Copy.cpp
+/ship3.3ds
+/temple_floor.jpg
+/temple_wall.jpg
+/TKT-dev - Shortcut.lnk
+/tutorial.html
+/unused2.cpp
+/unused3.cpp
+/unused4.cpp
+/unused5.cpp
+/unused6.cpp
+/unused7.cpp
+/unused8.cpp
+/unused_glsl.txt
+/unused_main.cpp
+/backup.pol
+/checkers.bmp
+/clip00.cpp
+/clip2.cpp.save-failed
+/clip3.cpp
+/clip4.cpp
+/clip5.cpp
+/clip_poly.cpp.save-failed
+/CSG_test.cbp
+/CSG_test.depend
+/CSG_test.layout
+/final_mesh.msh
+/fireball.bmp
+/irrlicht2_bk.jpg
+/irrlicht2_dn.jpg
+/irrlicht2_ft.jpg
+/irrlicht2_lf.jpg
+/irrlicht2_rt.jpg
+/irrlicht2_up.jpg
+/wall.bmp
+/wall.jpg
+/LightMaps - Copy.cpp
+/LightMaps - Copy.h
+/LightMaps_Rendering - Copy.cpp
+/LightMaps.cpp
+
+# Build outputs / runtime binaries
+*.exe
+*.dll
+
+# Compiled SPIR-V shaders
+*.spv
+
+# Editor runtime / saved state data
+*.dat
+/bmpTest.bmp
+/Vulkan_System

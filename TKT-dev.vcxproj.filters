@@ -13,6 +13,12 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav</Extensions>
     </Filter>
+    <Filter Include="Shaders">
+      <UniqueIdentifier>{b30dae18-de88-4e84-a9a0-33a4eea17777}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Agg Source Files">
+      <UniqueIdentifier>{e09acf0b-bdb3-4a84-8a4f-8315d79453d3}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="BufferManager.cpp">
@@ -75,9 +81,6 @@
     <ClCompile Include="ex_gui_elements.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="GeometryNode.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="geometry_scene.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -103,9 +106,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="scrollbar2.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="shapes.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="texture_adjust.cpp">
@@ -135,10 +135,13 @@
     <ClCompile Include="NodeInstancesTool.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="heightmap_projection.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="file_open.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="uv_tool.cpp">
+    <ClCompile Include="lightmaps_tool.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="BVH.cpp">
@@ -163,6 +166,165 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="lightmaps2.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="uv_mapping.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="CameraPanel3D.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="vkDevice.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="vkComputePipeline.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="vkDescriptors.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="vkBufferObject.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="vkModel.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="vkTextures.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="clip_test_2.cpp">
+      <Filter>Header Files</Filter>
+    </ClCompile>
+    <ClCompile Include="polyfold_soa.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="polyfold_soa_functions.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="uv_tool.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="my_reflected_nodes.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="RenderTargetsTool.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="initialization.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="SceneTool.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="my_nodes.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="uv_algo.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="vkModules.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="vkSunlightModule.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="vkAreaLightModule.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="vkRoutines.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="vkBouncedLightModule.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="vkUtilModules.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="fonts.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\agg\agg-2.6\agg-src\src\agg_arc.cpp">
+      <Filter>Agg Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\agg\agg-2.6\agg-src\src\agg_arrowhead.cpp">
+      <Filter>Agg Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\agg\agg-2.6\agg-src\src\agg_bezier_arc.cpp">
+      <Filter>Agg Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\agg\agg-2.6\agg-src\src\agg_bspline.cpp">
+      <Filter>Agg Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\agg\agg-2.6\agg-src\src\agg_color_rgba.cpp">
+      <Filter>Agg Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\agg\agg-2.6\agg-src\src\agg_curves.cpp">
+      <Filter>Agg Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\agg\agg-2.6\agg-src\src\agg_embedded_raster_fonts.cpp">
+      <Filter>Agg Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\agg\agg-2.6\agg-src\src\agg_gsv_text.cpp">
+      <Filter>Agg Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\agg\agg-2.6\agg-src\src\agg_image_filters.cpp">
+      <Filter>Agg Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\agg\agg-2.6\agg-src\src\agg_line_aa_basics.cpp">
+      <Filter>Agg Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\agg\agg-2.6\agg-src\src\agg_line_profile_aa.cpp">
+      <Filter>Agg Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\agg\agg-2.6\agg-src\src\agg_rounded_rect.cpp">
+      <Filter>Agg Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\agg\agg-2.6\agg-src\src\agg_sqrt_tables.cpp">
+      <Filter>Agg Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\agg\agg-2.6\agg-src\src\agg_trans_affine.cpp">
+      <Filter>Agg Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\agg\agg-2.6\agg-src\src\agg_trans_double_path.cpp">
+      <Filter>Agg Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\agg\agg-2.6\agg-src\src\agg_trans_single_path.cpp">
+      <Filter>Agg Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\agg\agg-2.6\agg-src\src\agg_trans_warp_magnifier.cpp">
+      <Filter>Agg Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\agg\agg-2.6\agg-src\src\agg_vcgen_bspline.cpp">
+      <Filter>Agg Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\agg\agg-2.6\agg-src\src\agg_vcgen_contour.cpp">
+      <Filter>Agg Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\agg\agg-2.6\agg-src\src\agg_vcgen_dash.cpp">
+      <Filter>Agg Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\agg\agg-2.6\agg-src\src\agg_vcgen_markers_term.cpp">
+      <Filter>Agg Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\agg\agg-2.6\agg-src\src\agg_vcgen_smooth_poly1.cpp">
+      <Filter>Agg Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\agg\agg-2.6\agg-src\src\agg_vcgen_stroke.cpp">
+      <Filter>Agg Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\agg\agg-2.6\agg-src\src\agg_vpgen_clip_polygon.cpp">
+      <Filter>Agg Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\agg\agg-2.6\agg-src\src\agg_vpgen_clip_polyline.cpp">
+      <Filter>Agg Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\agg\agg-2.6\agg-src\src\agg_vpgen_segmentator.cpp">
+      <Filter>Agg Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\agg\agg-2.6\agg-src\font_win32_tt\agg_font_win32_tt.cpp">
+      <Filter>Agg Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="LightSystemTool.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -210,9 +372,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="ex_gui_elements.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="GeometryNode.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="geometry_scene.h">
@@ -269,13 +428,16 @@
     <ClInclude Include="NodeInstancesTool.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="heightmap_projection.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="reflect_custom_types.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="file_open.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="uv_tool.h">
+    <ClInclude Include="lightmaps_tool.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="triangle.h">
@@ -299,8 +461,144 @@
     <ClInclude Include="clip_functions3.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="uv_mapping.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="vkDevice.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="vkComputePipeline.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="vkDescriptors.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="vkBufferObject.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="vkModel.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="vkTextures.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="vulkan_app.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="soa.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="polyfold_soa.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="vk_BVH.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="uv_tool.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="my_reflected_nodes.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="TwoTrianglesNode.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="GeometryStack.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="USceneNode.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="RenderTargetsTool.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="initialization.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SceneTool.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="my_nodes.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="uv_algo.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="vkModules.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="vkSunlightModule.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="vkAreaLightModule.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="vkBouncedLightModule.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="vkUtilModules.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="fonts.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="LightSystemTool.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="tkt_reflection_factory.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="tkt_set.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="gpu_triangle_lists.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="tkt_properties.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="tutorial.html" />
+    <None Include="shader_compile.bat">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="shader_lm_edges.comp">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="shader_mesh_triangles.comp">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="shader_occlusion_v4.comp">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="shader_point_light.comp">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="shader_raytrace_test.comp">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="shader_test_mc.comp">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="shader_multipass_light.comp">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="shader_soft_light.comp">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="shader_sunlight.comp">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="shader_lm_copy.comp">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="shader_arealight.comp">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="shader_bounced_light.comp">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="shader_merge_images.comp" />
   </ItemGroup>
 </Project>

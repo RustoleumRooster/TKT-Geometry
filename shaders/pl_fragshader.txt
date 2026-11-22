@@ -1,0 +1,118 @@
+
+uniform sampler2D myTexture;
+uniform sampler2D myTexture2;
+uniform sampler2D myTexture3;
+uniform vec3 mCamPos;
+uniform mat4 mProj;
+uniform mat4 mWorldView;
+//uniform vec4 Color;
+//uniform vec3 sun_pos;
+uniform float Time;
+varying vec3 vNear;
+varying vec3 vFar;
+//varying vec4 fogColor;
+
+float computeDepth(vec3 pos) {
+	vec4 clip_space_pos = mProj * mWorldView * vec4(pos.xyz, 1.0);
+	float clip_space_depth = clip_space_pos.z / clip_space_pos.w;
+
+	float far = gl_DepthRange.far;
+	float near = gl_DepthRange.near;
+
+	float depth = (((far-near) * clip_space_depth) + near + far) / 2.0;
+
+	return depth;
+}
+
+vec4 col_lerp(vec4 col, vec4 col2, float a, float b, float z)
+{
+	if(z<a)
+		return col;
+	else if(z<b)
+		return col2*(z-a)/(b-a) + col*(1-(z-a)/(b-a));
+	else
+		return col2;
+}
+
+float madsat(float a, float b, float z)
+{
+	if(z<a)
+		return 0;
+	else if(z<b)
+		return (z-a)/(b-a);
+	else
+		return 1;
+}
+
+void main (void)
+{
+    	//vec4 col = texture2D(myTexture, vec2(gl_TexCoord[0]));
+	vec4 sky_col = vec4(0.44,0.44,0.76,1);
+	vec4 cloud_col = vec4(0.9,0.9,0.9,1);
+	float t = (-vNear.y + 20000) / ( vFar.y - vNear.y );
+
+	vec3 R = vNear + t * (vFar-vNear);
+	
+
+	vec3 d = mCamPos - R;
+
+	float len = length(d);
+
+	//vec3 ray = vFar-vNear;
+	vec3 ray = vec3(1.0,1.0,1.0);
+	ray=normalize(ray);
+	ray*=2.5;
+
+	float cum=0;
+	float f;
+	float time = Time*1000;
+	float scalef = 64000;
+	vec4 lay1;
+	vec4 lay2;
+	vec4 lay3;
+/*
+	for(int i=1;i<6;i++)
+	{
+		//vec4 samp = texture2D(myTexture, vec2((R.x+ray.x*i)/32000,(R.z+ray.z*i)/32000 ));
+
+		lay1 = texture2D(myTexture, vec2((R.x-time*0.3+ray.x*i)/scalef,(R.z+ray.z*i)/scalef ));
+		lay2 = texture2D(myTexture2, vec2((R.x+time*0.6+ray.x*i)/scalef,(R.z+ray.z*i)/scalef ));
+		lay3 = texture2D(myTexture2, vec2((R.x+ray.x*i)/scalef,(R.z+time+ray.z*i)/scalef ));
+		f = madsat( 0.45,0.9, lay1.r*0.5+lay2.r*0.25+lay3.r*0.125);
+
+		if(f>(i*0.10))
+			{
+			cum+=1;
+			}
+		else break;
+	}
+*/
+	//vec4 col = vec4(1);
+	lay1 = texture2D(myTexture, vec2((R.x-time*0.3)/scalef,(R.z)/scalef ));
+	lay2 = texture2D(myTexture2, vec2((R.x+time*0.6)/scalef,(R.z)/scalef ));
+	lay3 = texture2D(myTexture2, vec2((R.x)/scalef,(R.z+time)/scalef ));
+	f = madsat( 0.45,0.6, lay1.r*0.5+lay2.r*0.25+lay3.r*0.125);
+		
+
+	//float z = col.r;
+	//cloud_col = vec4(1)*(1-cum);
+	//vec4 col = col_lerp(sky_col,cloud_col,0.0,0.5,cum);
+
+	
+
+	vec4 col = col_lerp(sky_col,vec4(1),0.0,1.0,f);
+	//col -= vec4(1)*(cum*cum)/64;
+	//col.a=f;
+
+	//if(len > 100000) col.a=0;
+	//else if (len > 95000) col.a*=1-(len-95000)/5000;
+
+	float depth = computeDepth(R);
+
+	col *= float(t>0 );
+
+	gl_FragDepth = depth;
+    	gl_FragColor = col;
+
+	//gl_FragColor = fogColor;
+}

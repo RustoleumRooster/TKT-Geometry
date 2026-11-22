@@ -1,0 +1,32 @@
+
+//Vertex Shader
+uniform mat4 mInvProj;
+uniform mat4 iMV;
+uniform vec3 mCamPos;
+
+varying vec3 vNear;
+varying vec3 vFar;
+varying vec4 fogColor;
+
+
+void main(void)
+{
+
+	gl_Position = gl_Vertex;
+
+	vec4 _vNear = mInvProj * vec4(gl_Vertex.xy,-1,1);
+	vec4 _vFar = mInvProj * vec4(gl_Vertex.xy,1.0,1);
+
+	_vNear /= _vNear.w;
+	_vFar  /= _vFar.w;
+
+	_vNear = iMV * _vNear;
+	_vFar = iMV * _vFar;
+
+	vNear = _vNear.xyz;
+	vFar = _vFar.xyz;
+
+	gl_TexCoord[0] = gl_MultiTexCoord0;
+
+	
+}

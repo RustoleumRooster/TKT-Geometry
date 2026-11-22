@@ -93,12 +93,12 @@
     <ClCompile>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <WarningLevel>Level3</WarningLevel>
-      <AdditionalIncludeDirectories>C:\Users\nateh\Documents\Visual Studio 2022\irrlicht\include;C:\Users\nateh\eigen;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\nateh\Documents\Visual Studio 2022\Projects\agg\agg-2.6\agg-src\font_win32_tt;C:\Users\nateh\Documents\Visual Studio 2022\Projects\agg\agg-2.6\agg-src\include;C:\Users\nateh\Documents\Visual Studio 2022\irrlicht\include;C:\Users\nateh\Documents\Visual Studio 2022\Libraries\stb;C:\VulkanSDK\1.3.268.0\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Console</SubSystem>
-      <AdditionalDependencies>C:\Users\nateh\Documents\Visual Studio 2022\irrlicht\lib\Win64-visualStudio\Irrlicht.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>C:\Users\nateh\Documents\Visual Studio 2022\irrlicht\lib\Win64-visualStudio\Irrlicht.lib;C:\VulkanSDK\1.3.268.0\Lib\vulkan-1.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -120,23 +120,52 @@
     <ClCompile>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <WarningLevel>Level3</WarningLevel>
-      <AdditionalIncludeDirectories>C:\Users\nateh\Documents\Visual Studio 2022\irrlicht\include;C:\Users\nateh\eigen;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\nateh\Documents\Visual Studio 2022\Projects\agg\agg-2.6\agg-src\font_win32_tt;C:\Users\nateh\Documents\Visual Studio 2022\Projects\agg\agg-2.6\agg-src\include;C:\Users\nateh\Documents\Visual Studio 2022\irrlicht\include;C:\Users\nateh\Documents\Visual Studio 2022\Libraries\stb;C:\VulkanSDK\1.3.268.0\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>C:\Users\nateh\Documents\Visual Studio 2022\irrlicht\lib\Win64-visualStudio\Irrlicht.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>C:\Users\nateh\Documents\Visual Studio 2022\irrlicht\lib\Win64-visualStudio\Irrlicht.lib;C:\VulkanSDK\1.3.268.0\Lib\vulkan-1.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\agg\agg-2.6\agg-src\font_win32_tt\agg_font_win32_tt.cpp" />
+    <ClCompile Include="..\agg\agg-2.6\agg-src\src\agg_arc.cpp" />
+    <ClCompile Include="..\agg\agg-2.6\agg-src\src\agg_arrowhead.cpp" />
+    <ClCompile Include="..\agg\agg-2.6\agg-src\src\agg_bezier_arc.cpp" />
+    <ClCompile Include="..\agg\agg-2.6\agg-src\src\agg_bspline.cpp" />
+    <ClCompile Include="..\agg\agg-2.6\agg-src\src\agg_color_rgba.cpp" />
+    <ClCompile Include="..\agg\agg-2.6\agg-src\src\agg_curves.cpp" />
+    <ClCompile Include="..\agg\agg-2.6\agg-src\src\agg_embedded_raster_fonts.cpp" />
+    <ClCompile Include="..\agg\agg-2.6\agg-src\src\agg_gsv_text.cpp" />
+    <ClCompile Include="..\agg\agg-2.6\agg-src\src\agg_image_filters.cpp" />
+    <ClCompile Include="..\agg\agg-2.6\agg-src\src\agg_line_aa_basics.cpp" />
+    <ClCompile Include="..\agg\agg-2.6\agg-src\src\agg_line_profile_aa.cpp" />
+    <ClCompile Include="..\agg\agg-2.6\agg-src\src\agg_rounded_rect.cpp" />
+    <ClCompile Include="..\agg\agg-2.6\agg-src\src\agg_sqrt_tables.cpp" />
+    <ClCompile Include="..\agg\agg-2.6\agg-src\src\agg_trans_affine.cpp" />
+    <ClCompile Include="..\agg\agg-2.6\agg-src\src\agg_trans_double_path.cpp" />
+    <ClCompile Include="..\agg\agg-2.6\agg-src\src\agg_trans_single_path.cpp" />
+    <ClCompile Include="..\agg\agg-2.6\agg-src\src\agg_trans_warp_magnifier.cpp" />
+    <ClCompile Include="..\agg\agg-2.6\agg-src\src\agg_vcgen_bspline.cpp" />
+    <ClCompile Include="..\agg\agg-2.6\agg-src\src\agg_vcgen_contour.cpp" />
+    <ClCompile Include="..\agg\agg-2.6\agg-src\src\agg_vcgen_dash.cpp" />
+    <ClCompile Include="..\agg\agg-2.6\agg-src\src\agg_vcgen_markers_term.cpp" />
+    <ClCompile Include="..\agg\agg-2.6\agg-src\src\agg_vcgen_smooth_poly1.cpp" />
+    <ClCompile Include="..\agg\agg-2.6\agg-src\src\agg_vcgen_stroke.cpp" />
+    <ClCompile Include="..\agg\agg-2.6\agg-src\src\agg_vpgen_clip_polygon.cpp" />
+    <ClCompile Include="..\agg\agg-2.6\agg-src\src\agg_vpgen_clip_polyline.cpp" />
+    <ClCompile Include="..\agg\agg-2.6\agg-src\src\agg_vpgen_segmentator.cpp" />
     <ClCompile Include="BufferManager.cpp" />
     <ClCompile Include="build_meshes.cpp" />
     <ClCompile Include="BVH.cpp" />
     <ClCompile Include="calc_loops.cpp" />
     <ClCompile Include="CameraPanel.cpp" />
     <ClCompile Include="CameraPanel2D.cpp" />
+    <ClCompile Include="CameraPanel3D.cpp" />
     <ClCompile Include="CGUIButton.cpp" />
     <ClCompile Include="CGUIEditBox2.cpp" />
     <ClCompile Include="CGUIImage.cpp" />
@@ -147,39 +176,62 @@
     <ClCompile Include="clip_functions.cpp" />
     <ClCompile Include="clip_poly.cpp" />
     <ClCompile Include="clip_test.cpp" />
+    <ClCompile Include="clip_test_2.cpp" />
     <ClCompile Include="CMeshSceneNode.cpp" />
     <ClCompile Include="CPLYMeshWriter.cpp" />
     <ClCompile Include="create_primitives.cpp" />
     <ClCompile Include="csg_classes.cpp" />
     <ClCompile Include="csg_prims.cpp" />
+    <ClCompile Include="fonts.cpp" />
+    <ClCompile Include="LightSystemTool.cpp" />
+    <ClCompile Include="vkAreaLightModule.cpp" />
+    <ClCompile Include="vkBouncedLightModule.cpp" />
+    <ClCompile Include="vkModules.cpp" />
+    <ClCompile Include="my_nodes.cpp" />
+    <ClCompile Include="my_reflected_nodes.cpp" />
     <ClCompile Include="edit_classes.cpp" />
     <ClCompile Include="edit_env.cpp" />
     <ClCompile Include="ex_gui_elements.cpp" />
     <ClCompile Include="file_open.cpp" />
-    <ClCompile Include="GeometryNode.cpp" />
     <ClCompile Include="geometry_ops.cpp" />
     <ClCompile Include="geometry_scene.cpp" />
     <ClCompile Include="geo_scene_settings.cpp" />
     <ClCompile Include="GUI_tools.cpp" />
+    <ClCompile Include="initialization.cpp" />
     <ClCompile Include="lightmaps2.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="material_groups.cpp" />
     <ClCompile Include="NodeInstancesTool.cpp" />
+    <ClCompile Include="heightmap_projection.cpp" />
     <ClCompile Include="node_properties.cpp" />
     <ClCompile Include="os.cpp" />
     <ClCompile Include="points_lines_planes.cpp" />
+    <ClCompile Include="polyfold_soa.cpp" />
+    <ClCompile Include="polyfold_soa_functions.cpp" />
     <ClCompile Include="reflected_nodes.cpp" />
     <ClCompile Include="Refl_Primitives.cpp" />
+    <ClCompile Include="RenderTargetsTool.cpp" />
+    <ClCompile Include="SceneTool.cpp" />
     <ClCompile Include="scrollbar2.cpp" />
-    <ClCompile Include="shapes.cpp" />
     <ClCompile Include="NodeClassesTool.cpp" />
-    <ClCompile Include="uv_tool.cpp" />
+    <ClCompile Include="uv_mapping.cpp" />
+    <ClCompile Include="lightmaps_tool.cpp" />
     <ClCompile Include="texture_adjust.cpp" />
     <ClCompile Include="texture_icon.cpp" />
     <ClCompile Include="texture_picker.cpp" />
     <ClCompile Include="triangle.cpp" />
     <ClCompile Include="utils.cpp" />
+    <ClCompile Include="uv_tool.cpp" />
     <ClCompile Include="vertices_and_edges.cpp" />
+    <ClCompile Include="vkBufferObject.cpp" />
+    <ClCompile Include="vkComputePipeline.cpp" />
+    <ClCompile Include="vkDescriptors.cpp" />
+    <ClCompile Include="vkDevice.cpp" />
+    <ClCompile Include="vkModel.cpp" />
+    <ClCompile Include="vkRoutines.cpp" />
+    <ClCompile Include="vkSunlightModule.cpp" />
+    <ClCompile Include="vkTextures.cpp" />
+    <ClCompile Include="vkUtilModules.cpp" />
     <ClCompile Include="vtoolbar.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -199,36 +251,80 @@
     <ClInclude Include="CPLYMeshWriter.h" />
     <ClInclude Include="create_primitives.h" />
     <ClInclude Include="csg_classes.h" />
+    <ClInclude Include="fonts.h" />
+    <ClInclude Include="LightSystemTool.h" />
+    <ClInclude Include="tkt_properties.h" />
+    <ClInclude Include="tkt_reflection_factory.h" />
+    <ClInclude Include="tkt_set.h" />
+    <ClInclude Include="gpu_triangle_lists.h" />
+    <ClInclude Include="vkAreaLightModule.h" />
+    <ClInclude Include="vkBouncedLightModule.h" />
+    <ClInclude Include="vkModules.h" />
+    <ClInclude Include="my_nodes.h" />
+    <ClInclude Include="my_reflected_nodes.h" />
     <ClInclude Include="edit_classes.h" />
     <ClInclude Include="edit_env.h" />
     <ClInclude Include="ex_gui_elements.h" />
     <ClInclude Include="file_open.h" />
-    <ClInclude Include="GeometryNode.h" />
+    <ClInclude Include="GeometryStack.h" />
     <ClInclude Include="geometry_scene.h" />
     <ClInclude Include="geo_scene_settings.h" />
     <ClInclude Include="GUI_tools.h" />
+    <ClInclude Include="initialization.h" />
     <ClInclude Include="LightMaps.h" />
     <ClInclude Include="material_groups.h" />
+    <ClInclude Include="TwoTrianglesNode.h" />
     <ClInclude Include="NodeClassesTool.h" />
     <ClInclude Include="NodeInstancesTool.h" />
+    <ClInclude Include="heightmap_projection.h" />
     <ClInclude Include="node_properties.h" />
     <ClInclude Include="os.h" />
+    <ClInclude Include="polyfold_soa.h" />
     <ClInclude Include="reflected_nodes.h" />
     <ClInclude Include="Reflection.h" />
     <ClInclude Include="reflect_custom_types.h" />
+    <ClInclude Include="RenderTargetsTool.h" />
+    <ClInclude Include="SceneTool.h" />
     <ClInclude Include="scrollbar2.h" />
     <ClInclude Include="ShaderCallbacks.h" />
+    <ClInclude Include="soa.h" />
     <ClInclude Include="texture_adjust.h" />
     <ClInclude Include="texture_icon.h" />
     <ClInclude Include="texture_picker.h" />
     <ClInclude Include="tolerances.h" />
     <ClInclude Include="tree_struct.h" />
     <ClInclude Include="triangle.h" />
+    <ClInclude Include="USceneNode.h" />
     <ClInclude Include="utils.h" />
+    <ClInclude Include="uv_mapping.h" />
+    <ClInclude Include="lightmaps_tool.h" />
     <ClInclude Include="uv_tool.h" />
+    <ClInclude Include="vkBufferObject.h" />
+    <ClInclude Include="vkComputePipeline.h" />
+    <ClInclude Include="vkDescriptors.h" />
+    <ClInclude Include="vkDevice.h" />
+    <ClInclude Include="vkModel.h" />
+    <ClInclude Include="vkSunlightModule.h" />
+    <ClInclude Include="vkTextures.h" />
+    <ClInclude Include="vkUtilModules.h" />
+    <ClInclude Include="vk_BVH.h" />
     <ClInclude Include="vtoolbar.h" />
+    <ClInclude Include="vulkan_app.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="shader_arealight.comp" />
+    <None Include="shader_bounced_light.comp" />
+    <None Include="shader_compile.bat" />
+    <None Include="shader_lm_copy.comp" />
+    <None Include="shader_lm_edges.comp" />
+    <None Include="shader_merge_images.comp" />
+    <None Include="shader_mesh_triangles.comp" />
+    <None Include="shader_occlusion_v4.comp" />
+    <None Include="shader_point_light.comp" />
+    <None Include="shader_raytrace_test.comp" />
+    <None Include="shader_soft_light.comp" />
+    <None Include="shader_sunlight.comp" />
+    <None Include="shader_test_mc.comp" />
     <None Include="tutorial.html" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

@@ -1,0 +1,37 @@
+
+//Vertex Shader
+
+uniform mat4 MV;
+uniform mat4 P;
+
+//varying float theta;
+//varying float alpha;
+
+float PI = 3.1415926539;
+float rad = 1000;
+
+varying vec3 vertex;
+
+varying vec4 v;
+
+void main(void)
+{
+	
+	gl_Position = P * MV * gl_Vertex;
+	v = P * MV * gl_Vertex;
+	vertex = gl_Vertex.xyz;
+
+	//float x = gl_Vertex.x / rad;
+	//float y = gl_Vertex.y / rad;
+	//float z = gl_Vertex.z / rad;
+
+	//theta = asin(y);
+	//float u = asin(y);
+	//float el = cos(u);	
+	//alpha = (PI+atan(x,z))/(PI*2);
+
+	//float v = acos(z/el);
+	//theta = 0;(v+PI)/(PI*2);
+	gl_TexCoord[0] = gl_MultiTexCoord0;
+
+}
