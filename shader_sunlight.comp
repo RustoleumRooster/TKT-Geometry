@@ -64,6 +64,10 @@ layout (binding = 0) uniform sunTraceParams
 
 	uint miss_is_sky;
 	uint seed;
+
+	//single triangle debugging, see "Debug output" below
+	uint debug_mode;
+	vec3 in_coords;		//lightmap uv of the clicked point (debug mode 1)
 } params;
 
 layout(std140, binding = 1) readonly buffer indexUBO
@@ -92,6 +96,34 @@ layout(std140, binding = 5) readonly buffer edgesUBO
 };
 
 layout(binding = 6, rgba8) uniform image2D imageOut;
+
+//==================================================
+// Debug output (Geometry_Module scratchpad, 512 vec3)
+//
+// Only written when params.debug_mode != 0, and the host only sets that on a
+// single workgroup dispatch of the selected triangle.
+//
+// debug_mode 1 (rays of the clicked texel):
+//		hits[t]       = sample position of thread t (last pass)
+//		hits[256 + t] = end of its ray: the hit point, or a fixed length on the way to the sky
+//		hits[0..255] are left zero for threads with no valid sample
+//		nothing else, so hits[t] == hits[256 + t] == 0 means "no sample"
+//
+// debug_mode 2 (texels visited by the rasteriser):
+//		hits[0]       = (texels visited, uv_degenerate, rows walked)
+//		hits[1 + k]   = (texel x, texel y, valid sample count)    k < 255
+//		hits[257 + k] = world position of the texel centre (extrapolated off the triangle if need be)
+//		hits[256]     = (written count, 0, 0)
+//
+
+#define DEBUG_RAYS		1
+#define DEBUG_TEXELS	2
+#define DEBUG_RAY_LEN	64.0
+
+layout(std140, binding = 7) buffer hitResults
+{
+	vec3 hits[];
+};
 
 //==================================================
 // Random numbers (Tiny Encryption Algorithm)
@@ -379,10 +411,10 @@ float trace_scene_hit(vec3 eye, vec3 ray, out uint hit_list)
 	return best;
 }
 
-bool ray_reaches_sky(vec3 eye, vec3 ray)
+bool ray_reaches_sky(vec3 eye, vec3 ray, out float d)
 {
 	uint hit_list;
-	float d = trace_scene_hit(eye, ray, hit_list);
+	d = trace_scene_hit(eye, ray, hit_list);
 
 	if(hit_list == NO_HIT)
 		return params.miss_is_sky != 0;
@@ -404,44 +436,63 @@ shared float m0,m1,m2;
 shared bool b0,b1,bNegativeX;
 shared uint i_0;
 shared uint v_0,v_1,v_2;
-shared vec2 w0,w1,w2;
+shared vec2 w0,w1,w2;		//uvs snapped to texel centres: only used to walk the rows
+shared vec2 uv0,uv1,uv2;	//true uvs: used for sample placement
+shared float inv_uv_det;
+shared bool uv_degenerate;
 shared float y0;
 shared vec3 Normal;
-shared mat4 uv2worldMat;
 shared uint x0,x1;
 shared uint edges[3];
 shared vec3 EdgeNormal0,EdgeNormal1,EdgeNormal2;
 shared float shared_total;
 shared float ray_count;
 shared uint point_type;
+shared uint debug_n_texels;
+shared uint debug_n_written;
+shared uint debug_n_rows;
 
 //==================================================
 // Functions that use shared variables
 //
 
-bool is_point_on_triangle(vec3 p)
+//Barycentric coords of a lightmap uv against the triangle's true uvs.
+//Working in uv space keeps the test independent of world scale and of
+//how thin the triangle is.
+vec3 uv_barycentric(vec2 uv)
 {
-	vec3 AB = global_vertices[v_1] - global_vertices[v_0];
-	vec3 BC = global_vertices[v_2] - global_vertices[v_1];
-	vec3 CA = global_vertices[v_0] - global_vertices[v_2];
-	vec3 AC = global_vertices[v_2] - global_vertices[v_0];
+	vec2 d = uv1 - uv0;
+	vec2 e = uv2 - uv0;
+	vec2 f = uv  - uv0;
 
-	float a = 0.5 * length(cross(AB,AC));
-	float aa = 0;
+	float b1 = (f.x * e.y - f.y * e.x) * inv_uv_det;
+	float b2 = (d.x * f.y - d.y * f.x) * inv_uv_det;
 
-	vec3 AP = p - global_vertices[v_0];
-	aa += 0.5 * length(cross(AB,AP));
+	return vec3(1.0 - b1 - b2, b1, b2);
+}
 
-	AP = p - global_vertices[v_1];
-	aa += 0.5 * length(cross(BC,AP));
+#define BARY_EPS 0.0001
 
-	AP = p - global_vertices[v_2];
-	aa += 0.5 * length(cross(CA,AP));
+bool uv_inside(vec2 uv)
+{
+	if(uv_degenerate)
+		return false;
 
-	if(abs(aa - a) < 0.001)
-		return true;
+	vec3 b = uv_barycentric(uv);
+	return b.x >= -BARY_EPS && b.y >= -BARY_EPS && b.z >= -BARY_EPS;
+}
 
-	return false;
+//World position of a lightmap uv; always exactly on the triangle's plane.
+//Returns whether the uv lies on the triangle.
+bool uv_to_world(vec2 uv, out vec3 pos)
+{
+	vec3 b = uv_barycentric(uv);
+
+	pos = b.x * global_vertices[v_0] +
+		  b.y * global_vertices[v_1] +
+		  b.z * global_vertices[v_2];
+
+	return !uv_degenerate && b.x >= -BARY_EPS && b.y >= -BARY_EPS && b.z >= -BARY_EPS;
 }
 
 bool is_on_edge(vec3 P, uint v0, uint v1)
@@ -465,14 +516,6 @@ bool edges_allow_ray(vec3 P, vec3 ray)
 		return false;
 
 	return true;
-}
-
-vec3 uv_to_vec3(in vec2 uv)
-{
-	vec4 V0 = vec4(uv,0,1);
-	vec4 ret = uv2worldMat * V0;
-
-	return ret.xyz;
 }
 
 float floor_y_value(float y)
@@ -561,22 +604,23 @@ void main()
 		v_1 = indexed(i_0,v_1);
 		v_2 = indexed(i_0,v_2);
 
-		w0 = vec2(floor_x_value(map_uvs[v_0].x),floor_y_value(map_uvs[v_0].y));
-		w1 = vec2(floor_x_value(map_uvs[v_1].x),floor_y_value(map_uvs[v_1].y));
-		w2 = vec2(floor_x_value(map_uvs[v_2].x),floor_y_value(map_uvs[v_2].y));
+		uv0 = map_uvs[v_0].xy;
+		uv1 = map_uvs[v_1].xy;
+		uv2 = map_uvs[v_2].xy;
 
-		m0 = (w1.x - w0.x) / (w1.y - w0.y);
-		m1 = (w2.x - w0.x) / (w2.y - w0.y);
-		m2 = (w1.x - w2.x) / (w1.y - w2.y);
+		w0 = vec2(floor_x_value(uv0.x),floor_y_value(uv0.y));
+		w1 = vec2(floor_x_value(uv1.x),floor_y_value(uv1.y));
+		w2 = vec2(floor_x_value(uv2.x),floor_y_value(uv2.y));
 
-		b0=false;
-		b1=false;
+		//rows are decided on the snapped uvs, so the row tests and the slopes agree
+		float half_row = 0.5 / params.lm_height;
 
-		if(map_uvs[v_2].y > map_uvs[v_0].y+0.0001)
-			b0 = true;
+		b0 = w2.y > w0.y + half_row;
+		b1 = w1.y > w2.y + half_row;
 
-		if(map_uvs[v_1].y > map_uvs[v_2].y+0.0001)
-			b1 = true;
+		m0 = (w1.y > w0.y + half_row) ? (w1.x - w0.x) / (w1.y - w0.y) : 0.0;
+		m1 = b0 ? (w2.x - w0.x) / (w2.y - w0.y) : 0.0;
+		m2 = b1 ? (w1.x - w2.x) / (w1.y - w2.y) : 0.0;
 
 		bNegativeX = false;
 
@@ -584,26 +628,13 @@ void main()
 			bNegativeX = true;
 
 		//==================================================
-		// Build a matrix to convert from UV to world coords
+		// UV -> world goes through barycentrics of the true uvs
 		//
 
-		vec3 V4 = vec3(w0,0) + cross( vec3(w1,0) - vec3(w0,0), vec3(w2,0) - vec3(w0,0));
+		float uv_det = (uv1.x - uv0.x) * (uv2.y - uv0.y) - (uv1.y - uv0.y) * (uv2.x - uv0.x);
 
-		mat4 T1 = mat4(	vec4(w0,0,1),
-						vec4(w1,0,1),
-						vec4(w2,0,1),
-						vec4(V4,1));
-
-		V4 = global_vertices[v_0] + cross(global_vertices[v_1] - global_vertices[v_0], global_vertices[v_2] - global_vertices[v_0]);
-
-		mat4 T2 = mat4( vec4(global_vertices[v_0],1),
-						vec4(global_vertices[v_1],1),
-						vec4(global_vertices[v_2],1),
-						vec4(V4,1));
-
-		T1 = inverse(T1);
-
-		uv2worldMat = T2 * T1;
+		uv_degenerate = abs(uv_det) < 1e-12;
+		inv_uv_det = uv_degenerate ? 0.0 : 1.0 / uv_det;
 
 		Normal = cross(global_vertices[indexed(i_0,1)] - global_vertices[indexed(i_0,0)], global_vertices[indexed(i_0,2)] - global_vertices[indexed(i_0,1)]);
 		Normal = normalize(Normal);
@@ -639,15 +670,28 @@ void main()
 	uint rand_state = tea(uint[2](thread_id, gl_WorkGroupID.x ^ params.seed))[0];
 	float ystep = 1.0 / params.lm_height;
 
+	//clicked texel, for DEBUG_RAYS
+	ivec2 debug_texel = ivec2(floor(params.in_coords.x * params.lm_width), floor(params.in_coords.y * params.lm_height));
+
+	if(params.debug_mode != 0)
+	{
+		hits[thread_id] = vec3(0);
+		hits[thread_id + 256] = vec3(0);
+	}
+
 	//========================================================
 	// Main loop
 	//
 
+	memoryBarrierBuffer();
 	barrier();
 
 	if(ix == 0 && iy == 0)
 	{
 		y0 = w0.y;
+		debug_n_texels = 0;
+		debug_n_written = 0;
+		debug_n_rows = 0;
 	}
 
 	barrier();
@@ -658,7 +702,13 @@ void main()
 
 		if(ix == 0 && iy == 0)
 		{
-			if(bNegativeX==false)
+			if(!b0 && !b1)
+			{
+				//whole triangle sits in one texel row
+				x0 = uint(params.lm_width * min(w0.x, min(w1.x, w2.x)));
+				x1 = uint(params.lm_width * max(w0.x, max(w1.x, w2.x)));
+			}
+			else if(bNegativeX==false)
 			{
 				x0 = uint(params.lm_width * MajorX(y0));
 				x1 = uint(params.lm_width * MinorX(y0));
@@ -690,23 +740,15 @@ void main()
 				// If no corner of the texel is off of the triangle we can treat it differently (faster)
 				//
 
-				vec3 pos2 = uv_to_vec3( vec2( (float(ipos.x)) / params.lm_width, (float(ipos.y)) / params.lm_height) );
+				vec2 texel_lo = vec2(float(ipos.x) / params.lm_width, float(ipos.y) / params.lm_height);
+				vec2 texel_hi = vec2((float(ipos.x) + 1.0) / params.lm_width, (float(ipos.y) + 1.0) / params.lm_height);
 
-				if(is_point_on_triangle(pos2))
+				if(uv_inside(texel_lo) &&
+				   uv_inside(vec2(texel_hi.x, texel_lo.y)) &&
+				   uv_inside(vec2(texel_lo.x, texel_hi.y)) &&
+				   uv_inside(texel_hi))
 				{
-					pos2 = uv_to_vec3( vec2( (float(ipos.x) + 1.0) / params.lm_width, (float(ipos.y)) / params.lm_height) );
-					if(is_point_on_triangle(pos2))
-					{
-						pos2 = uv_to_vec3( vec2( (float(ipos.x)) / params.lm_width, (float(ipos.y) + 1.0) / params.lm_height) );
-						if(is_point_on_triangle(pos2))
-						{
-							pos2 = uv_to_vec3( vec2( (float(ipos.x) + 1.0) / params.lm_width, (float(ipos.y) + 1.0) / params.lm_height) );
-							if(is_point_on_triangle(pos2))
-							{
-								point_type = 1;
-							}
-						}
-					}
+					point_type = 1;
 				}
 			}
 
@@ -723,21 +765,21 @@ void main()
 				uint[2] V = tea(uint[2](rand_state,0));
 				rand_state = V[1];
 
-				vec3 pos = uv_to_vec3( vec2( (float(ipos.x) + random_to_float01(V[0])) / params.lm_width,
-											 (float(ipos.y) + random_to_float01(V[1])) / params.lm_height) );
+				vec3 pos;
+				bool inside = uv_to_world( vec2( (float(ipos.x) + random_to_float01(V[0])) / params.lm_width,
+												 (float(ipos.y) + random_to_float01(V[1])) / params.lm_height), pos);
 
 				if(!valid_pos)
 				{
-					valid_pos = is_point_on_triangle(pos);
+					valid_pos = inside;
 
 					int k=0;
 					while(!valid_pos && k < 8)
 					{
 						V = tea(uint[2](rand_state,0));
 						rand_state = V[1];
-						pos = uv_to_vec3( vec2( (float(ipos.x) + random_to_float01(V[0])) / params.lm_width,
-												(float(ipos.y) + random_to_float01(V[1])) / params.lm_height) );
-						valid_pos = is_point_on_triangle(pos);
+						valid_pos = uv_to_world( vec2( (float(ipos.x) + random_to_float01(V[0])) / params.lm_width,
+													   (float(ipos.y) + random_to_float01(V[1])) / params.lm_height), pos);
 						k++;
 					}
 				}
@@ -751,10 +793,26 @@ void main()
 
 				float contribution = 0;
 
+				float d = 0;
+				bool traced = false;
+				bool lit = false;
+
 				if(valid_pos && cos_n > 0 && (point_type == 1 || edges_allow_ray(pos,ray)))
 				{
-					if(ray_reaches_sky(pos,ray))
+					traced = true;
+					lit = ray_reaches_sky(pos,ray,d);
+
+					if(lit)
 						contribution = cos_n;
+				}
+
+				if(params.debug_mode == DEBUG_RAYS && ipos == debug_texel && valid_pos)
+				{
+					//traced rays end at their hit (or DEBUG_RAY_LEN toward the sky);
+					//rejected rays (back facing / blocked by an edge) are a short stub
+					float len = traced ? (lit || d >= MISS_DISTANCE ? DEBUG_RAY_LEN : d) : DEBUG_RAY_LEN * 0.125;
+					hits[thread_id] = pos;
+					hits[thread_id + 256] = pos + ray * len;
 				}
 
 				//============================================
@@ -778,10 +836,28 @@ void main()
 			if(ix == 0 && iy == 0)
 			{
 				//too few samples landed on the triangle to trust (texel barely touches it)
-				if(ray_count > 32 * params.n_passes)
+				bool written = ray_count > 32 * params.n_passes;
+
+				if(written)
 				{
 					float p = params.intensity * shared_total / ray_count;
 					imageStore(imageOut,ipos,vec4(p,1,p,1));
+				}
+
+				if(params.debug_mode == DEBUG_TEXELS)
+				{
+					if(debug_n_texels < 255)
+					{
+						vec3 centre;
+						uv_to_world(vec2((float(ipos.x) + 0.5) / params.lm_width, (float(ipos.y) + 0.5) / params.lm_height), centre);
+
+						hits[1 + debug_n_texels] = vec3(ipos.x, ipos.y, ray_count);
+						hits[257 + debug_n_texels] = centre;
+					}
+
+					debug_n_texels++;
+					if(written)
+						debug_n_written++;
 				}
 			}
 
@@ -796,10 +872,17 @@ void main()
 		if(ix == 0 && iy == 0)
 		{
 			y0 += (ystep);
+			debug_n_rows++;
 		}
 
 		barrier();
 	} // main loop
+
+	if(params.debug_mode == DEBUG_TEXELS && ix == 0 && iy == 0)
+	{
+		hits[0] = vec3(debug_n_texels, uv_degenerate ? 1.0 : 0.0, debug_n_rows);
+		hits[256] = vec3(debug_n_written, 0, 0);
+	}
 
 	return;
 }
