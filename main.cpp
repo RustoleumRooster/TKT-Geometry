@@ -187,18 +187,8 @@ int main()
     texture_picker_base->addTexture("wall.bmp", "");
     texture_picker_base->addTexture("water3.jpg", "");
     texture_picker_base->addTexture("simple_light.png", "");
-    texture_picker_base->addTexture("../media/textures/greek_cornice.jpg","AI");
-    texture_picker_base->addTexture("../media/textures/temple_wall.jpg", "AI")
-        .set_height_map("../media/textures/temple_wall_height.jpg")
-        .set_normal_map("../media/textures/temple_wall_normal.jpg");
-    texture_picker_base->addTexture("../media/textures/temple_floor.jpg","AI")
-        .set_height_map("../media/textures/temple_floor_height.jpg")
-        .set_normal_map("../media/textures/temple_floor_normal.jpg");
-    texture_picker_base->addTexture("../media/textures/carved_stone_buddha.jpg","AI");
-    texture_picker_base->addTexture("../media/textures/ganesha_stone0.jpg","AI");
-    texture_picker_base->addTexture("../media/textures/ganesha_stone1.jpg","AI");
-    texture_picker_base->addTexture("../media/textures/greek_cornice.jpg","AI");
-    texture_picker_base->addTexture("../media/textures/kama_sutra.jpg","AI");
+    texture_picker_base->addTexturesFromFolder("../media/poly_render_images", "AI");
+    texture_picker_base->addTexture("../media/new_pnoise.bmp","Noise");
 
 
 
@@ -212,7 +202,7 @@ int main()
 
     //**AUTO LOAD SCENE**
     Geometry_Scene_File_IO file_io(device->getFileSystem());
-    file_io.AutoLoad(gs_coordinator, "../projects/test03");
+    //file_io.AutoLoad(gs_coordinator, "../projects/terrain_scene");
 
     //===============================================================
     //scene = *gs_coordinator->current_scene();
