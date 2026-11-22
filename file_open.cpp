@@ -27,15 +27,6 @@ REFLECT_STRUCT_END()
 DEFINE_TREE_FUNCTIONS(folder_tree_item)
 
 
-void folder_tree_item::write_attributes(reflect::Member* m_struct)
-{
-    folder_tree_item::my_typeDesc* m_type = (folder_tree_item::my_typeDesc*)(m_struct->type);
-
-    m_type->my_attributes.isDirectory = this->isDirectory;
-    m_type->my_attributes.selected = this->selected;
-    m_type->hasSubs = this->sub_classes.size() > 0;
-}
-
 void folder_tree_item::my_typeDesc::addFormWidget(Reflected_GUI_Edit_Form* win, TypeDescriptor_Struct* type_struct, std::vector<int> tree_0, size_t offset_base, bool bVisible, bool bEditable, int tab)
 {
     
@@ -45,7 +36,7 @@ void folder_tree_item::my_typeDesc::addFormWidget(Reflected_GUI_Edit_Form* win, 
         {
             size_t offset = type_struct->members[m_i].offset + offset_base;
 
-            if (my_attributes.isDirectory)
+            if (self_pointer->isDirectory)
             {
                 Icon_FormField* ff = new Icon_FormField();
                 ff->init("", tree_0, offset, tab, bVisible);
@@ -57,12 +48,12 @@ void folder_tree_item::my_typeDesc::addFormWidget(Reflected_GUI_Edit_Form* win, 
             f->init("                ", tree_0, offset + ALIGN_BYTES, tab, bVisible);
             f->bCanSelect = true;
 
-            if (my_attributes.isDirectory)
+            if (self_pointer->isDirectory)
             {
                 f->text_color = FORM_TEXT_COLOR_GREY;
                 
             }
-            if (my_attributes.selected)
+            if (self_pointer->selected)
             {
                 //f->bBorder = true;
                 f->bHighlight = true;
