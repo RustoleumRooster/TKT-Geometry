@@ -276,6 +276,26 @@ void polyfold::reduce_edges_vertices_accelerated(const polyfold& pf, LineHolder&
         }
     }
 
+    // canonical brushes index into the vertex list too; remap them the same way as the loops
+    // (reduce_edges_vertices does the equivalent)
+    for (surface_group& sfg : this->surface_groups)
+    {
+        for (u16& v : sfg.c_brush.vertices)
+        {
+            u16 node_id = bvh_vert_other.find_vertex_node_nocheck(vertices[v].V);
+            u16 slot = bvh_vert_other.nodes[node_id].first_prim;
+
+            if (bvh_vert_self.nodes[node_id].n_prims == 0)
+            {
+                // not used by any loop (e.g. its tile was clipped away): keep the point anyway
+                bvh_vert_self.nodes[node_id].n_prims = 1;
+                new_verts.push_back(poly_vert(vertices[bvh_vert_other.indices[slot]].V));
+                bvh_vert_self.indices[slot] = new_verts.size() - 1;
+            }
+            v = bvh_vert_self.indices[slot];
+        }
+    }
+
     vertices = new_verts;
     edges = new_edges;
 }
