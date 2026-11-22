@@ -354,6 +354,7 @@ struct TypeDescriptor_Struct : TypeDescriptor {
         }
 
         //std::cout << "delete " << this << "\n";
+
         delete this;
     }
 

@@ -342,6 +342,8 @@ void CMeshSceneNode::SetFaceTexture(int f_i, TextureInfo* texture)
     if(f_i < this->Mesh->getMeshBufferCount())
     {
         ((scene::SMeshBuffer*)this->Mesh->getMeshBuffer(f_i))->Material.setTexture(0,texture->texture);
+		if(texture->normal_map)
+			((scene::SMeshBuffer*)this->Mesh->getMeshBuffer(f_i))->Material.setTexture(2, texture->normal_map);
     }
     copyMaterials();
 }

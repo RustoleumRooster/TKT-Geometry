@@ -475,6 +475,8 @@ void polyfold::remove_empty_faces(std::vector<poly_surface>& surfaces)
         if (sg.c_brush.vertices.size() > 0)
         {
             canonical_brush new_c_brush;
+            new_c_brush.n_cols = sg.c_brush.n_cols;
+            new_c_brush.n_rows = sg.c_brush.n_rows;
 
             for (int q_i = 0; q_i < sg.c_brush.face_ref.size(); q_i++)
             {
@@ -483,6 +485,9 @@ void polyfold::remove_empty_faces(std::vector<poly_surface>& surfaces)
                     new_c_brush.n_quads++;
 
                     new_c_brush.face_ref.push_back(faces_ref[sg.c_brush.face_ref[q_i]]);
+
+                    if (q_i < sg.c_brush.quad_cell.size())
+                        new_c_brush.quad_cell.push_back(sg.c_brush.quad_cell[q_i]);
 
                     new_c_brush.vertices.push_back(sg.c_brush.vertices[q_i * 4]);
                     new_c_brush.vertices.push_back(sg.c_brush.vertices[q_i * 4 + 1]);

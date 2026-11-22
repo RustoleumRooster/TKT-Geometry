@@ -39,6 +39,8 @@ void clip_poly_no_acceleration(polyfold& pf, polyfold& pf2, int rule, int base_t
 void clip_poly_accelerated(polyfold& pf, polyfold& pf2, int rule, int base_type, clip_results& results, LineHolder& graph);
 void clip_poly_accelerated_single(polyfold& pf, polyfold& pf2, int rule, int base_type, clip_results& results, LineHolder& graph);
 
+void clip_poly_accelerated2(polyfold& pf, polyfold& pf2, int rule, int base_type, clip_results& results, LineHolder& graph);
+
 template<bool bAccelerate>
 int classify_loop(polyfold& pf, int f_i, int p_i, polyfold& pf2, int rule, int rule2, LineHolder& graph)
 {
@@ -71,12 +73,13 @@ int classify_loop(polyfold& pf, int f_i, int p_i, polyfold& pf2, int rule, int r
 
     if (pf.get_facial_point(f_i, e_i, p_i, v1, nograph))
     {
+        graph.points.push_back(v1);
         int RES = pf2.classify_point(v1, nograph);
 
         if (RES == TOP_UNDEF)
         {
             RES = pf2.classify_point(v1, graph);
-            graph.points.push_back(v1);
+//            graph.points.push_back(v1);
             std::cout << " classify point returned UNDEF, using default value\n";
 
             if (pf2.topology == TOP_CONCAVE)
@@ -130,7 +133,9 @@ void polyfold::finalize_clipped_poly(const polyfold& pf, LineHolder& graph)
             for (int p_i = 0; p_i < this->faces[f_i].loops.size(); p_i++)
             {
                 if (faces[f_i].loops[p_i].vertices.size() > 2)
+                {
                     new_loops.push_back(faces[f_i].loops[p_i]);
+                }
             }
 
             faces[f_i].loops = new_loops;

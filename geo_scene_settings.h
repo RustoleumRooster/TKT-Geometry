@@ -89,7 +89,7 @@ public:
 
     virtual void initialize(std::wstring name_, int my_id, gui::IGUIEnvironment* env_, geometry_scene* g_scene_, multi_tool_panel* panel_)
     {
-        tool_base::initialize(name_, my_id, env_, g_scene_, panel_);
+       // tool_base::initialize(name_, my_id, env_, g_scene_, panel_);
         m_settings.editor_settings.rotate_snap.value = 3;
         m_settings.editor_settings.snap_dist.value = 3;
         m_settings.build_settings.bAutoRebuildMeshes = true;

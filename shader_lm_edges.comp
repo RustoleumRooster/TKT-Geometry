@@ -52,8 +52,10 @@ void main()
 				float n=0;
 
 				bool edge= false;
-				
-				if (imageLoad(imageIn,ivec2(u,v)).g == 0.0)
+				float pass;
+				pass = imageLoad(imageIn,ivec2(u,v)).r;
+
+				if (imageLoad(imageIn,ivec2(u,v)).g == 0.0f)
 				//if(false)
 				{
 				edge=true;
@@ -62,7 +64,7 @@ void main()
 						{
 							if(i != 0 || j !=0)
 							{
-								if (imageLoad(imageIn,ivec2(u+i,v+j)).g == 1.0)
+								if (imageLoad(imageIn,ivec2(u+i,v+j)).g == 1.0f)
 								{
 									sum += imageLoad(imageIn,ivec2(u+i,v+j)).r;
 									n+=1.0;
@@ -73,6 +75,7 @@ void main()
 				else
 				{
 					sum = imageLoad(imageIn,ivec2(u,v)).b;
+					//sum = 1;
 					n=1.0;
 				}
 
@@ -80,6 +83,10 @@ void main()
 					sum /= n;
 					
 				imageStore(imageOut,ivec2(u,v),vec4(sum,sum,sum,1));
+				//if(edge)
+				//	imageStore(imageOut,ivec2(u,v),vec4(0.5,0,0,1));
+				//else
+				//	imageStore(imageOut,ivec2(u,v),vec4(pass,pass,pass,1));
 
 			}//if
 

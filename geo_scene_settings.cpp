@@ -149,7 +149,7 @@ void Geo_Settings_Widget::click_OK()
 {
 	//reflect::TypeDescriptor_Struct* td = (reflect::TypeDescriptor_Struct*)reflect::TypeResolver<geo_settings_struct>::get();
 
-	my_widget->write();
+	//my_widget->write();
 }
 
 
