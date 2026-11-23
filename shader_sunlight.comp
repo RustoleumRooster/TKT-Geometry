@@ -67,7 +67,9 @@ layout (binding = 0) uniform sunTraceParams
 
 	//single triangle debugging, see "Debug output" below
 	uint debug_mode;
+	float min_coverage;	//a texel is written when more than this fraction of its samples land on the triangle
 	vec3 in_coords;		//lightmap uv of the clicked point (debug mode 1)
+	float debug_ray_len;	//debug mode 1: length of rays drawn toward the sky
 } params;
 
 layout(std140, binding = 1) readonly buffer indexUBO
@@ -118,7 +120,6 @@ layout(binding = 6, rgba8) uniform image2D imageOut;
 
 #define DEBUG_RAYS		1
 #define DEBUG_TEXELS	2
-#define DEBUG_RAY_LEN	64.0
 
 layout(std140, binding = 7) buffer hitResults
 {
@@ -808,9 +809,9 @@ void main()
 
 				if(params.debug_mode == DEBUG_RAYS && ipos == debug_texel && valid_pos)
 				{
-					//traced rays end at their hit (or DEBUG_RAY_LEN toward the sky);
+					//traced rays end at their hit (or params.debug_ray_len toward the sky);
 					//rejected rays (back facing / blocked by an edge) are a short stub
-					float len = traced ? (lit || d >= MISS_DISTANCE ? DEBUG_RAY_LEN : d) : DEBUG_RAY_LEN * 0.125;
+					float len = traced ? (lit || d >= MISS_DISTANCE ? params.debug_ray_len : d) : params.debug_ray_len * 0.125;
 					hits[thread_id] = pos;
 					hits[thread_id + 256] = pos + ray * len;
 				}
@@ -836,7 +837,7 @@ void main()
 			if(ix == 0 && iy == 0)
 			{
 				//too few samples landed on the triangle to trust (texel barely touches it)
-				bool written = ray_count > 32 * params.n_passes;
+				bool written = ray_count > params.min_coverage * 256.0 * params.n_passes;
 
 				if(written)
 				{

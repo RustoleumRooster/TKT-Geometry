@@ -1,4 +1,5 @@
 #include <irrlicht.h>
+#include <cstring>
 #include "LightMaps.h"
 #include "vkModules.h"
 #include "vkUtilModules.h"
@@ -50,7 +51,7 @@ void Vulkan_Workflow::make_default_workflow()
 	//single triangle debugging: click a face, bake, then switch the 3D view to Triangles
 	//	SUN_DEBUG_RAYS   - rays of the clicked texel
 	//	SUN_DEBUG_TEXELS - texels the rasteriser visits for the clicked triangle
-	sunlight->debug_mode = Sunlight_Module::SUN_DEBUG_OFF;
+	sunlight->debug_mode.value = Sunlight_Module::SUN_DEBUG_OFF;
 
 	ImageArray_To_MultiImage_Module* link0 = new ImageArray_To_MultiImage_Module();
 	MultiImage_To_ImageArray_Module* link1 = new MultiImage_To_ImageArray_Module();
@@ -140,6 +141,12 @@ void Vulkan_Workflow::initialize_and_run(Vulkan_App* vulkan)
 	vulkan->cleanup();
 }
 
+//Workflow files start with a magic + version. Files from before the header start straight
+//with the module count (a small size_t), which can't match the magic.
+//	version 1: module settings blocks (TypeDescriptor_VkMod_Struct::serialize)
+static const char workflow_file_magic[8] = { 'T','K','T','V','K','W','F','\0' };
+static const u32 workflow_file_version = 1;
+
 bool Vulkan_Workflow::save(const std::string& fname)
 {
 	ofstream wf(fname, ios::out | ios::binary);
@@ -149,6 +156,9 @@ bool Vulkan_Workflow::save(const std::string& fname)
 		cout << "Cannot open file " << fname << "\n";
 		return false;
 	}
+
+	wf.write(workflow_file_magic, sizeof(workflow_file_magic));
+	wf.write((char*)&workflow_file_version, sizeof(u32));
 
 	reflect::TypeDescriptor_Struct* tD = &Vulkan_Workflow::Reflection;
 	//tD->dump(this, 0);
@@ -167,11 +177,34 @@ bool Vulkan_Workflow::load(const std::string& fname)
 		return false;
 	}
 
+	u32 version = 0;
+	{
+		char magic[sizeof(workflow_file_magic)] = {};
+		rf.read(magic, sizeof(magic));
+
+		if (rf && memcmp(magic, workflow_file_magic, sizeof(magic)) == 0)
+			rf.read((char*)&version, sizeof(u32));
+		else
+		{
+			rf.clear();
+			rf.seekg(0);
+		}
+	}
+
+	if (version > workflow_file_version)
+	{
+		cout << fname << ": workflow file version " << version << " is newer than this editor reads ("
+			<< workflow_file_version << ")\n";
+		return false;
+	}
+
 	//deserializing resizes items over the existing pointers, so free those first
 	clear();
 
 	reflect::TypeDescriptor_Struct* tD = &Vulkan_Workflow::Reflection;
+	reflect::TypeDescriptor_VkMod_Struct::load_version = version;
 	tD->deserialize(rf, this);
+	reflect::TypeDescriptor_VkMod_Struct::load_version = workflow_file_version;
 	//tD->dump(this, 0);
 
 	texture_module = NULL;

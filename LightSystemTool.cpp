@@ -259,9 +259,7 @@ int reflect::TypeDescriptor_VkMod_Struct::calculate_height()
 
     for (reflect::Member& m : this->members)
     {
-        reflect::TypeDescriptor_Struct* m_tD = (reflect::TypeDescriptor_Struct*)m.type;
-
-        if (m_tD->inherited_type == &reflect::input_type::Reflection)
+        if (reflect::is_input_member(m))
         {
         h += 20;
         n_inputs++;
@@ -273,9 +271,7 @@ int reflect::TypeDescriptor_VkMod_Struct::calculate_height()
 
     for (reflect::Member& m : this->members)
     {
-        reflect::TypeDescriptor_Struct* m_tD = (reflect::TypeDescriptor_Struct*)m.type;
-
-        if (m_tD->inherited_type == &reflect::output_type::Reflection)
+        if (reflect::is_output_member(m))
         {
             h += 20;
         }
@@ -290,9 +286,7 @@ reflect::input_type* reflect::TypeDescriptor_VkMod_Struct::get_input0(void* obj)
 {
     for (reflect::Member& m : this->members)
     {
-        reflect::TypeDescriptor_Struct* m_tD = (reflect::TypeDescriptor_Struct*)m.type;
-
-        if (m_tD->inherited_type == &reflect::input_type::Reflection)
+        if (reflect::is_input_member(m))
         {
             return (reflect::input_type*)m.get(obj);
         }
@@ -305,9 +299,7 @@ reflect::output_type* reflect::TypeDescriptor_VkMod_Struct::get_output0(void* ob
 {
     for (reflect::Member& m : this->members)
     {
-        reflect::TypeDescriptor_Struct* m_tD = (reflect::TypeDescriptor_Struct*)m.type;
-
-        if (m_tD->inherited_type == &reflect::output_type::Reflection)
+        if (reflect::is_output_member(m))
         {
             return (reflect::output_type*)m.get(obj);
         }
@@ -326,9 +318,7 @@ int reflect::TypeDescriptor_VkMod_Struct::addComponents(Light_System_Base* base,
 
     for (reflect::Member& m : this->members)
     {
-        reflect::TypeDescriptor_Struct* m_tD = (reflect::TypeDescriptor_Struct*)m.type;
-
-        if (m_tD->inherited_type == &reflect::input_type::Reflection)
+        if (reflect::is_input_member(m))
         {
             reflect::input_type* in = (reflect::input_type*)m.get(obj);
 
@@ -362,9 +352,7 @@ int reflect::TypeDescriptor_VkMod_Struct::addComponents(Light_System_Base* base,
     idx = 0;
     for (reflect::Member& m : this->members)
     {
-        reflect::TypeDescriptor_Struct* m_tD = (reflect::TypeDescriptor_Struct*)m.type;
-
-        if (m_tD->inherited_type == &reflect::output_type::Reflection)
+        if (reflect::is_output_member(m))
         {
             reflect::output_type* out = (reflect::output_type*)m.get(obj);
 
@@ -629,9 +617,26 @@ void LM_System_Panel::resize(core::dimension2d<u32> new_size)
 
 void LM_System_Panel::clear_childern()
 {
-    core::list<IGUIElement*>::Iterator it = m_viewPanel->getChildren().begin();
-    for (; it != m_viewPanel->getChildren().end(); ++it)
-        m_viewPanel->removeChild(*it);
+    system_gui_element = NULL;
+
+    if (!m_viewPanel)
+        return;
+
+    //removeChild erases from the list, so always take the front
+    while (!m_viewPanel->getChildren().empty())
+        m_viewPanel->removeChild(*m_viewPanel->getChildren().begin());
+}
+
+//The ViewPanel is shared with other tools: take the graph elements off it before
+//letting go, or they keep drawing there with a NULL view panel
+void LM_System_Panel::disconnect_panel()
+{
+    clear_childern();
+
+    if (m_base)
+        m_base->gui_connections.clear();
+
+    TestPanel_2D::disconnect_panel();
 }
 
 void LM_System_Panel::startCameraPan(vector2di r)
@@ -641,6 +646,9 @@ void LM_System_Panel::startCameraPan(vector2di r)
 
 void LM_System_Panel::cameraPan(vector2di mov)
 {
+    if (!system_gui_element)
+        return;
+
     core::list<IGUIElement*>::ConstIterator it = system_gui_element->getChildren().begin();
 
     for (; it != system_gui_element->getChildren().end(); ++it)
@@ -889,9 +897,7 @@ void Light_System_Base::refresh_panel_view()
                 {
                     for (reflect::Member& m : tD->members)
                     {
-                        reflect::TypeDescriptor_Struct* m_tD = (reflect::TypeDescriptor_Struct*)m.type;
-
-                        if (m_tD->inherited_type == &reflect::output_type::Reflection)
+                        if (reflect::is_output_member(m))
                         {
                             reflect::output_type* out = (reflect::output_type*)m.get(mod);
 
@@ -959,15 +965,13 @@ void Light_System_Base::auto_layout_modules()
         reflect::TypeDescriptor_Struct* tD = mod->GetDynamicReflection();
         for (reflect::Member& m : tD->members)
         {
-            reflect::TypeDescriptor_Struct* m_tD = (reflect::TypeDescriptor_Struct*)m.type;
-
-            if (m_tD->inherited_type == &reflect::input_type::Reflection)
+            if (reflect::is_input_member(m))
             {
                 reflect::input_type* in = (reflect::input_type*)m.get(mod);
                 input_owner[in] = mod;
                 mod_inputs[mod].push_back(in);
             }
-            else if (m_tD->inherited_type == &reflect::output_type::Reflection)
+            else if (reflect::is_output_member(m))
             {
                 reflect::output_type* out = (reflect::output_type*)m.get(mod);
                 output_owner[out] = mod;

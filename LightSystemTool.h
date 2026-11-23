@@ -109,6 +109,7 @@ public:
     virtual void resize(core::dimension2d<u32> new_size);
 
     void clear_childern();
+    virtual void disconnect_panel() override;
     virtual void startCameraPan(vector2di) override;
     virtual void cameraPan(vector2di) override;
 

@@ -45,7 +45,9 @@ void folder_tree_item::my_typeDesc::addFormWidget(Reflected_GUI_Edit_Form* win, 
 
             String_StaticField* f = new String_StaticField();
             f->setText(type_struct->members[m_i].name);
-            f->init("                ", tree_0, offset + ALIGN_BYTES, tab, bVisible);
+            // The label cell is sized from the init text, so use the real name
+            // (padded) rather than a fixed-width placeholder that truncates long names.
+            f->init(self_pointer->name + "  ", tree_0, offset + ALIGN_BYTES, tab, bVisible);
             f->bCanSelect = true;
 
             if (self_pointer->isDirectory)

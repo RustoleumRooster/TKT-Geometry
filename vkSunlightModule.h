@@ -59,8 +59,11 @@ class Sunlight_Module : public Vulkan_Module
 
 		//single triangle debugging (shader_sunlight.comp "Debug output")
 		uint32_t debug_mode;
+		float min_coverage;					//fraction of a texel's samples that must land on the triangle
 		alignas(16) vector3df in_coords;	//lightmap uv of the clicked point
+		float debug_ray_len;
 	};
+	static_assert(sizeof(SunTraceInfo) == 112, "SunTraceInfo must match sunTraceParams in shader_sunlight.comp");
 
 public:
 	Sunlight_Module();
@@ -81,14 +84,29 @@ public:
 	void writeUBO(int mat_n, int debug = SUN_DEBUG_OFF, int triangle_offset = -1);
 	void read_debug_results(int mat_n, int triangle_offset);
 
+	enum { SUN_DEBUG_OFF = 0, SUN_DEBUG_RAYS = 1, SUN_DEBUG_TEXELS = 2 };
+
+	struct Debug_Mode_Option {
+		int value = SUN_DEBUG_OFF;
+		REFLECT_MULTI_CHOICE()
+	};
+
 	//=================================
-	// Sun parameters (not reflected yet)
+	// Settings (REFLECT_VKMOD_SETTING, edited in the module properties widget)
 	//
+	f32 sun_angle = 0.53f;			//apparent diameter of the sun in degrees (real sun ~0.53)
+	f32 intensity = 1.0f;			//texel value for a fully lit surface facing the sun
+	u32 n_passes = 1;				//rays per texel = 256 * n_passes
+	f32 min_coverage = 0.125f;		//a texel is only written when more than this fraction of its
+									//samples land on the triangle (texels barely touching it are noisy)
+	u32 seed = 0;					//varies the noise pattern (0 = the original pattern)
+	bool miss_is_sky = false;		//treat rays that escape the level as reaching the sky (leaky / unsealed test scenes)
+	Debug_Mode_Option debug_mode;	//see "Single triangle debugging" below
+	f32 debug_ray_length = 64.0f;	//SUN_DEBUG_RAYS: length of rays drawn toward the sky
+
+	//Not a setting: the direction comes from a Sunlight node in the scene (Geometry_Assets),
+	//this is only the fallback when there isn't one
 	vector3df sun_direction{ 0.3f, 1.0f, 0.2f };	//toward the sun, normalized in writeUBO
-	f32 sun_angle = 0.53f;		//apparent diameter of the sun in degrees (real sun ~0.53)
-	f32 intensity = 1.0f;		//texel value for a fully lit surface facing the sun
-	u32 n_passes = 1;			//rays per texel = 256 * n_passes
-	bool miss_is_sky = false;	//treat rays that escape the level as reaching the sky (leaky / unsealed test scenes)
 
 	//=================================
 	// Single triangle debugging
@@ -101,8 +119,6 @@ public:
 	//	SUN_DEBUG_TEXELS: every texel the rasteriser visits for the triangle; written texels are
 	//	                  drawn as a normal, unwritten ones as a cross, plus a console table
 	//
-	enum { SUN_DEBUG_OFF = 0, SUN_DEBUG_RAYS = 1, SUN_DEBUG_TEXELS = 2 };
-	int debug_mode = SUN_DEBUG_OFF;
 
 	const std::vector<TextureMaterial>* materials = NULL;
 

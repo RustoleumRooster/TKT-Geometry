@@ -77,7 +77,22 @@ namespace reflect
 		int calculate_height();
 		input_type* get_input0(void* obj);
 		output_type* get_output0(void* obj);
+
+		//Members are written in order, except settings (REFLECT_VKMOD_SETTING), which follow
+		//as a block of (name, byte length, value). Settings are matched by name on load, so a
+		//module can gain, lose or reorder settings without breaking saved workflows.
+		virtual void serialize(std::ofstream& f, const void* obj) override;
+		virtual void deserialize(std::ifstream& f, void* obj) override;
+
+		//workflow file version being read, set by Vulkan_Workflow::load.
+		//0 = files from before settings existed (no settings blocks)
+		static int load_version;
 	};
+
+	//true if the member is a port. Members can be any reflected type (settings are
+	//primitives), so check the descriptor's kind before reading inherited_type
+	bool is_input_member(const Member& m);
+	bool is_output_member(const Member& m);
 
 	using TypeDescriptor_VkMod_Reference = TypeDescriptor_Typeless_Reference<Vulkan_Module>;
 
@@ -105,6 +120,12 @@ namespace reflect
             typeDesc->alias = typeDesc->name;\
 			((reflect::TypeDescriptor_VkMod_Struct*)typeDesc)->getNew = type::getNew;
 
+
+//a module setting, editable in the module properties widget and saved with the workflow
+#define REFLECT_VKMOD_SETTING(name, display_name) \
+			REFLECT_STRUCT_MEMBER(name) \
+			REFLECT_STRUCT_MEMBER_FLAG(FLAG_VKMOD_SETTING) \
+			REFLECT_STRUCT_MEMBER_ALIAS(display_name)
 
 #define REFLECT_VKMOD_FLAG(f) \
 			((reflect::TypeDescriptor_VkMod_Struct*)typeDesc)->flags |= f;

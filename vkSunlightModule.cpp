@@ -109,6 +109,7 @@ void Sunlight_Module::writeUBO(int info_n, int debug, int triangle_offset)
 	info.face_vertex_offset = vertices_soa->offset[info_n];
 
 	info.debug_mode = debug;
+	info.debug_ray_len = std::max(0.0f, debug_ray_length);
 	info.in_coords = vector3df(0, 0, 0);
 
 	if (triangle_offset >= 0)
@@ -138,16 +139,20 @@ void Sunlight_Module::writeUBO(int info_n, int debug, int triangle_offset)
 	vector3df bitan = tan.crossProduct(dir);
 	bitan.normalize();
 
-	f32 half_angle = 0.5f * sun_angle * core::DEGTORAD;
+	//settings come straight from the editor, so keep them in a sane range here
+	f32 half_angle = 0.5f * core::clamp(sun_angle, 0.0f, 180.0f) * core::DEGTORAD;
 
 	info.sun_dir = dir;
 	info.sun_tan = tan;
 	info.sun_bitan = bitan;
 	info.cos_max = cosf(half_angle);
-	info.intensity = intensity;
+	info.intensity = std::max(0.0f, intensity);
 	info.n_passes = std::max(1u, n_passes);
+	info.min_coverage = core::clamp(min_coverage, 0.0f, 1.0f);
 	info.miss_is_sky = miss_is_sky ? 1 : 0;
-	info.seed = info_n * 0x9E3779B9u;
+
+	//seed 0 gives the original per-material streams
+	info.seed = (info_n * 0x9E3779B9u) ^ (seed * 0x85EBCA6Bu);
 
 	ubo.writeToBuffer(m_device->getDevice(), (void*)&info);
 }
@@ -183,7 +188,7 @@ void Sunlight_Module::runMaterial(int mat_n)
 
 void Sunlight_Module::runTriangle(int mat_n, int triangle_offset)
 {
-	writeUBO(mat_n, debug_mode, triangle_offset);
+	writeUBO(mat_n, debug_mode.value, triangle_offset);
 
 	createDescriptorSets(materials->data()[mat_n].lightmap_no);
 
@@ -241,7 +246,7 @@ void Sunlight_Module::read_debug_results(int mat_n, int triangle_offset)
 		graph.lines.push_back(core::line3df(P, P1));
 	}
 
-	if (debug_mode == SUN_DEBUG_RAYS)
+	if (debug_mode.value == SUN_DEBUG_RAYS)
 	{
 		u32 n_rays = 0;
 
@@ -267,7 +272,7 @@ void Sunlight_Module::read_debug_results(int mat_n, int triangle_offset)
 		cout << "  clicked texel (" << floor(uv.X) << ", " << floor(uv.Y) << "): " << n_rays
 			<< " of 256 threads had a valid sample\n";
 	}
-	else if (debug_mode == SUN_DEBUG_TEXELS)
+	else if (debug_mode.value == SUN_DEBUG_TEXELS)
 	{
 		u32 n_visited = (u32)hits[0].V.X;
 		u32 n_written = (u32)hits[256].V.X;
@@ -276,7 +281,11 @@ void Sunlight_Module::read_debug_results(int mat_n, int triangle_offset)
 
 		cout << "  rows walked " << n_rows << ", texels visited " << n_visited << ", written " << n_written
 			<< (degenerate ? "  (UV DEGENERATE: zero area in lightmap space)" : "") << "\n";
-		cout << "  (written needs more than " << 32 * std::max(1u, n_passes) << " valid samples)\n";
+		//same test as the shader: ray_count > min_coverage * 256 * n_passes
+		u32 samples_max = 256 * std::max(1u, n_passes);
+		f32 samples_needed = core::clamp(min_coverage, 0.0f, 1.0f) * samples_max;
+
+		cout << "  (written needs more than " << samples_needed << " valid samples)\n";
 
 		//normal length for the written texels: a texel's width in world units would be ideal,
 		//this is a fixed fraction of the triangle's size instead
@@ -287,13 +296,12 @@ void Sunlight_Module::read_debug_results(int mat_n, int triangle_offset)
 		N.normalize();
 
 		f32 len = 8.0f;
-		u32 samples_max = 256 * std::max(1u, n_passes);
 
 		for (u32 k = 0; k < std::min(n_visited, 255u); k++)
 		{
 			vector3df texel = hits[1 + k].V;
 			vector3df centre = hits[257 + k].V;
-			bool written = texel.Z > 32 * std::max(1u, n_passes);
+			bool written = texel.Z > samples_needed;
 
 			cout << "    texel (" << (int)texel.X << ", " << (int)texel.Y << ")  samples " << (int)texel.Z
 				<< " / " << samples_max << (written ? "  written" : "  -- not written") << "\n";
@@ -360,7 +368,7 @@ void Sunlight_Module::run()
 	//==================================
 	// Single triangle debug run, on top of the full bake
 	//
-	if (debug_mode != SUN_DEBUG_OFF)
+	if (debug_mode.value != SUN_DEBUG_OFF)
 	{
 		if (!has_selected_triangle)
 			cout << "sunlight: debug mode is on but no face is selected (click a face first)\n";

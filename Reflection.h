@@ -173,6 +173,7 @@ struct EmptyStruct
 #define FLAG_NON_COLLAPSABLE 2
 #define FLAG_UINT_WIDGET_POWER2 4
 #define FLAG_HIDDEN 8               //never shown in editor forms (still serialized)
+#define FLAG_VKMOD_SETTING 16       //vk module setting: saved by name, see TypeDescriptor_VkMod_Struct
 
 struct Member {
 

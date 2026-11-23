@@ -197,9 +197,7 @@ bool Vulkan_Module::all_resources_ready()
 
 	for (reflect::Member& m : tD->members)
 	{
-		reflect::TypeDescriptor_Struct* m_tD = (reflect::TypeDescriptor_Struct*)m.type;
-
-		if (m_tD->inherited_type == &reflect::input_type::Reflection)
+		if (reflect::is_input_member(m))
 		{
 			reflect::input_type* in = (reflect::input_type*)m.get(this);
 			if (in->ready == false)
@@ -251,14 +249,12 @@ bool Vulkan_Module::signaled()
 
 		for (reflect::Member& m : tD->members)
 		{
-			reflect::TypeDescriptor_Struct* m_tD = (reflect::TypeDescriptor_Struct*)m.type;
-
-			if (m_tD->inherited_type == &reflect::input_type::Reflection)
+			if (reflect::is_input_member(m))
 			{
 				reflect::input_type* in = (reflect::input_type*)m.get(this);
 				in->src_output->consume(in);
 			}
-			else if (m_tD->inherited_type == &reflect::output_type::Reflection)
+			else if (reflect::is_output_member(m))
 			{
 				reflect::output_type* out = (reflect::output_type*)m.get(this);
 				if (out->ready)
@@ -289,9 +285,7 @@ void Vulkan_Module::run_and_push()
 
 		for (reflect::Member& m : tD->members)
 		{
-			reflect::TypeDescriptor_Struct* m_tD = (reflect::TypeDescriptor_Struct*)m.type;
-
-			if (m_tD->inherited_type == &reflect::output_type::Reflection)
+			if (reflect::is_output_member(m))
 			{
 				reflect::output_type* out = (reflect::output_type*)m.get(this);
 				if (out->ready)
@@ -307,14 +301,9 @@ void Vulkan_Module::set_ptrs()
 {
 	reflect::TypeDescriptor_Struct* tD = GetDynamicReflection();
 
-	reflect::TypeDescriptor* input_tD = reflect::TypeResolver<reflect::input_type>::get();
-	reflect::TypeDescriptor* output_tD = reflect::TypeResolver<reflect::output_type>::get();
-
 	for (reflect::Member& m : tD->members)
 	{
-		reflect::TypeDescriptor_Struct* m_tD = (reflect::TypeDescriptor_Struct*)m.type;
-
-		if(m_tD->inherited_type == input_tD)
+		if(reflect::is_input_member(m))
 		{
 			reflect::input_type* in = (reflect::input_type*)m.get(this);
 			in->owner = this;
@@ -325,7 +314,7 @@ void Vulkan_Module::set_ptrs()
 				in->forward_output = (reflect::output_type*)forward_m.get(this);
 			}
 		}
-		else if (m_tD->inherited_type == output_tD)
+		else if (reflect::is_output_member(m))
 		{
 			reflect::output_type* out = (reflect::output_type*)m.get(this);
 			out->owner = this;
@@ -339,19 +328,15 @@ reflect::input_type* Vulkan_Module::get_input_by_name(std::string str)
 
 	//tD->dump((void*)this, 0);
 
-	reflect::TypeDescriptor* input_tD = reflect::TypeResolver<reflect::input_type>::get();
-	reflect::TypeDescriptor* output_tD = reflect::TypeResolver<reflect::output_type>::get();
-	
 	for (reflect::Member& m : tD->members)
 	{
-		reflect::TypeDescriptor_Struct* m_tD = (reflect::TypeDescriptor_Struct*)m.type;
-
-		if (strcmp(m.name, str.c_str()) == 0)
+		//only ports: connections are saved by member name, settings are never connected
+		if (reflect::is_input_member(m) && strcmp(m.name, str.c_str()) == 0)
 		{
 			return (reflect::input_type*)m.get(this);
 		}
 		/*
-		if (m_tD->inherited_type == input_tD)
+		if (reflect::is_input_member(m))
 		{
 			reflect::input_type* in = (reflect::input_type*)m.get(this);
 			in->owner = this;
@@ -362,7 +347,7 @@ reflect::input_type* Vulkan_Module::get_input_by_name(std::string str)
 				in->forward_output = (reflect::output_type*)forward_m.get(this);
 			}
 		}
-		else if (m_tD->inherited_type == output_tD)
+		else if (reflect::is_output_member(m))
 		{
 			reflect::output_type* out = (reflect::output_type*)m.get(this);
 			out->owner = this;
@@ -519,9 +504,7 @@ void Vulkan_App::status()
 
 			for (reflect::Member& m : tD->members)
 			{
-				reflect::TypeDescriptor_Struct* m_tD = (reflect::TypeDescriptor_Struct*)m.type;
-
-				if (m_tD->inherited_type == &reflect::input_type::Reflection)
+				if (reflect::is_input_member(m))
 				{
 					reflect::input_type* in = (reflect::input_type*)m.get(vk);
 					if (!in->ready)
@@ -542,10 +525,8 @@ void Vulkan_App::run_workflow()
 
 		for (reflect::Member& m : tD->members)
 		{
-			reflect::TypeDescriptor_Struct* m_tD = (reflect::TypeDescriptor_Struct*)m.type;
-
 			//only inputs have a connection status; other members aren't input_type
-			if (m_tD->inherited_type != &reflect::input_type::Reflection)
+			if (!reflect::is_input_member(m))
 				continue;
 
 			reflect::input_type* in = (reflect::input_type*)m.get(vk);
@@ -1415,9 +1396,7 @@ namespace reflect
 
 			for (reflect::Member& m : tD->members)
 			{
-				reflect::TypeDescriptor_Struct* m_tD = (reflect::TypeDescriptor_Struct*)m.type;
-
-				if (m_tD->inherited_type == &reflect::output_type::Reflection)
+				if (reflect::is_output_member(m))
 				{
 					reflect::output_type* out = (reflect::output_type*)m.get(mod);
 					
@@ -1461,6 +1440,106 @@ namespace reflect
 	TypeDescriptor_VkMod_Struct::TypeDescriptor_VkMod_Struct(void (*init)(TypeDescriptor_Struct*)) : reflect::TypeDescriptor_Struct(init)
 	{
 		Vulkan_Module::factory.addType(this);
+	}
+
+	int TypeDescriptor_VkMod_Struct::load_version = 1;
+
+	void TypeDescriptor_VkMod_Struct::serialize(std::ofstream& f, const void* obj)
+	{
+		//everything but settings, in order (the original format)
+		u32 n_settings = 0;
+		for (const Member& m : members)
+		{
+			if (m.flags & FLAG_VKMOD_SETTING)
+				n_settings++;
+			else
+				m.type->serialize(f, (char*)obj + m.offset);
+		}
+
+		//settings: count, then (name\0, u32 byte length, value)
+		f.write((char*)&n_settings, sizeof(u32));
+
+		for (const Member& m : members)
+		{
+			if (!(m.flags & FLAG_VKMOD_SETTING))
+				continue;
+
+			f << m.name << '\0';
+
+			u32 len = 0;
+			std::streampos len_pos = f.tellp();
+			f.write((char*)&len, sizeof(u32));
+
+			std::streampos start = f.tellp();
+			m.type->serialize(f, (char*)obj + m.offset);
+			std::streampos end = f.tellp();
+
+			len = (u32)(end - start);
+			f.seekp(len_pos);
+			f.write((char*)&len, sizeof(u32));
+			f.seekp(end);
+		}
+	}
+
+	void TypeDescriptor_VkMod_Struct::deserialize(std::ifstream& f, void* obj)
+	{
+		for (const Member& m : members)
+		{
+			if (!(m.flags & FLAG_VKMOD_SETTING))
+				m.type->deserialize(f, (char*)obj + m.offset);
+		}
+
+		//older files have no settings: they keep the defaults the constructor set
+		if (load_version < 1)
+			return;
+
+		u32 n_settings = 0;
+		f.read((char*)&n_settings, sizeof(u32));
+
+		for (u32 i = 0; i < n_settings && f.good(); i++)
+		{
+			std::string setting_name;
+			std::getline(f, setting_name, '\0');
+
+			u32 len = 0;
+			f.read((char*)&len, sizeof(u32));
+			std::streampos end = f.tellg() + (std::streamoff)len;
+
+			const Member* found = NULL;
+			for (const Member& m : members)
+			{
+				if ((m.flags & FLAG_VKMOD_SETTING) && setting_name == m.name)
+				{
+					found = &m;
+					break;
+				}
+			}
+
+			if (!found)
+				cout << name << ": skipping unknown saved setting " << setting_name << "\n";
+			else
+			{
+				found->type->deserialize(f, (char*)obj + found->offset);
+
+				if (f.tellg() != end)
+					cout << name << ": saved setting " << setting_name << " didn't match its type's size (type changed?)\n";
+			}
+
+			//always resync on the recorded length, whatever was (or wasn't) read
+			f.seekg(end);
+		}
+	}
+
+	bool is_input_member(const Member& m)
+	{
+		const TypeDescriptor_Struct* st = dynamic_cast<const TypeDescriptor_Struct*>(m.type);
+		return st && st->inherited_type == &input_type::Reflection;
+	}
+
+	bool is_output_member(const Member& m)
+	{
+		const TypeDescriptor_Struct* st = dynamic_cast<const TypeDescriptor_Struct*>(m.type);
+		return st && st->inherited_type == &output_type::Reflection;
 	}
 }
 
