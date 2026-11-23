@@ -6,6 +6,7 @@
 #include "edit_classes.h"
 #include "ex_gui_elements.h"
 #include "geometry_scene.h"
+#include "vk_module_properties.h"
 #include <map>
 #include <set>
 #include <functional>
@@ -80,11 +81,16 @@ bool Module_GUI_Element::OnEvent(const SEvent& event)
         switch (event.MouseInput.Event)
         {
         case EMIE_LMOUSE_LEFT_UP:
-            bDragging = false;
             if (mouse_pos == click_pos)
             {
+                bShiftClick = event.MouseInput.Shift;
                 left_click();
             }
+            else if (bDragging && my_base->workflow && my_base->isModuleSelected(m_module))
+            {
+                my_base->workflow->notifyItemsChanged();   //pos changed: the properties panel re-reads it
+            }
+            bDragging = false;
             break;
         case EMIE_LMOUSE_PRESSED_DOWN:
             if (!bMouseDown)
@@ -115,8 +121,17 @@ void Module_GUI_Element::resize(core::dimension2di nsize)
     this->updateAbsolutePosition();
 }
 
+//select this module in the workflow; shift toggles it in the current selection
 void Module_GUI_Element::left_click()
 {
+    Vulkan_Workflow* wf = my_base->workflow;
+    if (!wf || !m_module)
+        return;
+
+    if (bShiftClick)
+        wf->setSelected_ShiftAdd(m_module);
+    else
+        wf->setSelected(std::vector<Vulkan_Module*>{ m_module });
 }
 
 void Module_GUI_Element::draw()
@@ -130,6 +145,18 @@ void Module_GUI_Element::draw()
     skin->draw3DToolBar(this,
        AbsoluteRect,
         &AbsoluteClippingRect);
+
+    if (my_base->isModuleSelected(m_module))
+    {
+        //2px highlight border, inside the rect so it isn't clipped
+        const video::SColor col(255, 230, 160, 60);
+        const s32 t = 2;
+        const recti& r = AbsoluteRect;
+        skin->draw2DRectangle(this, col, recti(r.UpperLeftCorner.X, r.UpperLeftCorner.Y, r.LowerRightCorner.X, r.UpperLeftCorner.Y + t), &AbsoluteClippingRect);
+        skin->draw2DRectangle(this, col, recti(r.UpperLeftCorner.X, r.LowerRightCorner.Y - t, r.LowerRightCorner.X, r.LowerRightCorner.Y), &AbsoluteClippingRect);
+        skin->draw2DRectangle(this, col, recti(r.UpperLeftCorner.X, r.UpperLeftCorner.Y, r.UpperLeftCorner.X + t, r.LowerRightCorner.Y), &AbsoluteClippingRect);
+        skin->draw2DRectangle(this, col, recti(r.LowerRightCorner.X - t, r.UpperLeftCorner.Y, r.LowerRightCorner.X, r.LowerRightCorner.Y), &AbsoluteClippingRect);
+    }
 
     IGUIElement::draw();
 }
@@ -657,10 +684,12 @@ bool LM_System_Panel::OnEvent(const SEvent& event)
     return TestPanel_2D::OnEvent(event);
 }
 
+//click on empty graph space: clear the module selection
+//(clicks on a module are taken by its Module_GUI_Element and never reach here)
 void LM_System_Panel::left_click(core::vector2di pos)
 {
-  
-    
+    if (m_base && m_base->workflow)
+        m_base->workflow->setSelected(std::vector<Vulkan_Module*>{});
 }
 
 void LM_System_Panel::right_click(core::vector2di)
@@ -780,6 +809,20 @@ void Light_System_Base::initialize()
     m_panel = new LM_System_Panel(env, device->getVideoDriver(), NULL, NULL, 0, core::recti());
     m_panel->Initialize(g_scene);
     m_panel->set_base(this);
+
+    if (!module_properties)
+        module_properties = new VkModule_Properties_Base(L"Module Properties", GUI_ID_VK_MODULE_PROPERTIES_BASE, env, panel);
+    module_properties->set_scene(g_scene);
+}
+
+bool Light_System_Base::isModuleSelected(Vulkan_Module* mod)
+{
+    if (!workflow || !mod)
+        return false;
+    for (Vulkan_Module* m : workflow->getSelected())
+        if (m == mod)
+            return true;
+    return false;
 }
 
 void Light_System_Base::close_uv_panel()
@@ -1095,6 +1138,16 @@ void Light_System_Base::show()
     widget->show();
     widget->drop();
 
+    //module properties below the options and the Ok button. A sibling of the
+    //Lighting widget (not a child), so its unhandled GUI events don't reach
+    //Light_System_Widget::OnEvent, which looks up ids in its own form.
+    if (module_properties)
+    {
+        s32 top = getWidgetHeight() + 24 + 8;
+        core::rect<s32> r(0, top, client_rect.getWidth(), std::max(top + 64, client_rect.getHeight()));
+        module_properties->create_widget(this->panel->getClientRect(), GUI_ID_VK_MODULE_PROPERTIES_BASE, r);
+    }
+
     rebuild_graph_view();
 }
 
@@ -1147,6 +1200,9 @@ void Light_System_Base::set_scene(geometry_scene* gs)
 
     //the old workflow may be gone (file load deletes the scenes), so never keep pointing at it
     workflow = gs ? gs->get_lightmap_workflow() : NULL;
+
+    if (module_properties)
+        module_properties->set_scene(gs);
 
     //graph view already open: show the new scene's workflow
     if (cached_texts[0] && m_panel && m_panel->hooked_up())

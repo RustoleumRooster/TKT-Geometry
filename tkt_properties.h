@@ -154,7 +154,7 @@ public:
 
         for (int i = (int)common_types.size() - 1; i >= 0; i--)
         {
-            if (common_types[i]->members.size() > 0)
+            if (common_types[i]->hasVisibleMembers())   //skip types with only hidden members (e.g. vk ports)
                 ret.push_back(common_types[i]);
         }
 
@@ -177,6 +177,7 @@ public:
         preEdit();
         saved_selection = selected();
         waiting_for_item_selection = true;
+        item_selection_active = true;
         item_selection_member = tree_pos;
         // the caller opens the item picker (e.g. Node_Selector_Tool for uid references),
         // which keeps this template independent of the scene node tools
@@ -192,7 +193,9 @@ public:
         SEvent event;
         event.EventType = EET_USER_EVENT;
         event.UserEvent.UserData1 = USER_EVENT_NODES_SELECTED;
+        item_selection_active = true;
         receiver->OnEvent(event);
+        item_selection_active = false;
     }
 
     void item_selection_made()
@@ -229,19 +232,28 @@ public:
                 m_source->setSelected(saved_selection);
             waiting_for_item_selection = false;
         }
+        item_selection_active = false;
     }
 
     // reflected_tool_base interface
 
+    // shown as a tool: fills the tool panel
     virtual void show() override
     {
         core::rect<s32> client_rect(core::vector2di(0, 0),
             core::dimension2du(this->panel->getClientRect()->getAbsolutePosition().getWidth(),
                 this->panel->getClientRect()->getAbsolutePosition().getHeight()));
 
+        create_widget(this->panel->getClientRect(), GUI_ID_GEO_SETTINGS_BASE, client_rect);
+    }
+
+    // creates and shows a widget under any parent, e.g. inside another tool's panel.
+    // The parent owns it.
+    void create_widget(gui::IGUIElement* parent, s32 id, core::rect<s32> rect)
+    {
         refresh_types();
 
-        tkt_properties_widget<T>* widget = new tkt_properties_widget<T>(env, this->panel->getClientRect(), g_scene, this, GUI_ID_GEO_SETTINGS_BASE, client_rect);
+        tkt_properties_widget<T>* widget = new tkt_properties_widget<T>(env, parent, g_scene, this, id, rect);
 
         for (T* item : selected())
             item->preEdit();
@@ -407,6 +419,7 @@ public:
     // Public state (accessed by tkt_properties_widget<T>)
     std::vector<reflect::TypeDescriptor_Struct*> my_typeDescriptors;
     bool waiting_for_item_selection = false;
+    bool item_selection_active = false;   //this editor started the current pick/clear (picker events are broadcast to every widget)
     std::vector<int> item_selection_member;
     std::vector<u64> saved_uids;
     std::vector<T*> saved_selection;
@@ -531,7 +544,7 @@ public:
                 onRefresh();
                 return true;
             }
-            else if (event.UserEvent.UserData1 == USER_EVENT_NODES_SELECTED)
+            else if (event.UserEvent.UserData1 == USER_EVENT_NODES_SELECTED && my_base->item_selection_active)
             {
                 my_base->item_selection_made();
 
@@ -556,7 +569,7 @@ public:
                 onRefresh();
                 return true;
             }
-            else if (event.UserEvent.UserData1 == USER_EVENT_NODE_SELECTION_ENDED)
+            else if (event.UserEvent.UserData1 == USER_EVENT_NODE_SELECTION_ENDED && my_base->item_selection_active)
             {
                 my_base->item_selection_over();
                 return true;

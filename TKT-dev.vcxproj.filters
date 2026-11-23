@@ -93,6 +93,9 @@
     <ClCompile Include="material_groups.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="vk_module_properties.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="node_properties.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -381,6 +384,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="material_groups.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="vk_module_properties.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="node_properties.h">

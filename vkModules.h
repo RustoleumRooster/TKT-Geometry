@@ -594,6 +594,10 @@ public:
 	u64 m_uid;
 	u64 UID() const { return m_uid; }
 
+	//called by the properties editor around edits (tkt_properties_base)
+	virtual void preEdit() {}
+	virtual void postEdit() {}
+
 	//Raytracing workload, filled in by modules that trace rays (estimated on the CPU, see count_texels)
 	u64 texels_shaded = 0;
 	u64 rays_traced = 0;

@@ -69,12 +69,18 @@ namespace reflect
         if(type_struct == NULL) 
             for(int i=0;i<members.size();i++)
             {
+                if (isMemberHidden(members[i]))
+                    continue;   //tree_pos still uses the real member index
+
                 std::vector<int> tree{i};
                 members[i].type->addFormWidget(win,this,tree,0, bVisible, bEditable && (members[i].flags & FLAG_NON_EDITABLE) == 0, tab+1);
             }
         else 
             for(int i=0;i<members.size();i++)
             {
+                if (isMemberHidden(members[i]))
+                    continue;
+
                 std::vector<int> tree = tree_0;
                 tree.push_back(i);
                 members[i].type->addFormWidget(win,this,tree,type_struct->members[m_i].offset + offset_base, type_struct->members[m_i].expanded && bVisible, bEditable && (members[i].flags & FLAG_NON_EDITABLE) == 0, tab+1);

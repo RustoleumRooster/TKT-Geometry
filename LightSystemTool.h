@@ -14,6 +14,7 @@ class Light_System_Base;
 class Vulkan_Module;
 class Module_GUI_Element;
 class Vulkan_Workflow;
+class VkModule_Properties_Base;
 
 class System_GUI_Element : public gui::IGUIElement
 {
@@ -57,6 +58,7 @@ public:
     vector2di drag_pos;
     bool bDragging = false;
     bool bMouseDown = false;
+    bool bShiftClick = false;
     Vulkan_Module* m_module = NULL;
     Light_System_Base* my_base;
     int module_index = 0;
@@ -237,6 +239,10 @@ public:
     std::vector<std::pair<Hookup_GUI_Element*, Hookup_GUI_Element*>> gui_connections;
 
     Vulkan_Workflow* workflow = NULL; //not owned: the current scene's (geometry_scene::get_lightmap_workflow)
+
+    //edits the workflow's selected modules; its widget sits below the Lighting options
+    VkModule_Properties_Base* module_properties = NULL;
+    bool isModuleSelected(Vulkan_Module* mod);
 
     int selection = -1;
 

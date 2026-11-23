@@ -172,6 +172,7 @@ struct EmptyStruct
 #define FLAG_NON_EDITABLE 1
 #define FLAG_NON_COLLAPSABLE 2
 #define FLAG_UINT_WIDGET_POWER2 4
+#define FLAG_HIDDEN 8               //never shown in editor forms (still serialized)
 
 struct Member {
 
@@ -211,9 +212,36 @@ struct TypeDescriptor_Struct : TypeDescriptor {
     std::string (*name_func)(void);
     std::vector<Member> members;
     bool expanded;
+    bool hidden_in_forms = false;   //set with HIDE_IN_FORMS(); inherited by derived types
 
     TypeDescriptor_Struct(void (*init)(TypeDescriptor_Struct*)) : TypeDescriptor{nullptr, 0} {
         init(this);
+    }
+
+    //true if this type, or any type it inherits from, is hidden in editor forms
+    bool isHiddenInForms() const
+    {
+        for (const TypeDescriptor_Struct* t = this; t != NULL; t = t->inherited_type)
+            if (t->hidden_in_forms)
+                return true;
+        return false;
+    }
+
+    //a member is hidden by FLAG_HIDDEN, or by its type being hidden
+    static bool isMemberHidden(const Member& m)
+    {
+        if (m.flags & FLAG_HIDDEN)
+            return true;
+        const TypeDescriptor_Struct* st = dynamic_cast<const TypeDescriptor_Struct*>(m.type);
+        return st && st->isHiddenInForms();
+    }
+
+    bool hasVisibleMembers() const
+    {
+        for (const Member& m : members)
+            if (!isMemberHidden(m))
+                return true;
+        return false;
     }
 
     virtual ~TypeDescriptor_Struct()
@@ -450,6 +478,10 @@ struct TypeDescriptor_Struct : TypeDescriptor {
 
 #define REFLECT_STRUCT_MEMBER_FLAG(flag) \
         typeDesc->members[typeDesc->members.size()-1].flags |= flag;
+
+//members of this type (or any type deriving from it) are left out of editor forms
+#define HIDE_IN_FORMS() \
+        typeDesc->hidden_in_forms = true;
 
 #define REFLECT_STRUCT_MEMBER_ALIAS(name) \
             typeDesc->members[typeDesc->members.size()-1].alias = name;

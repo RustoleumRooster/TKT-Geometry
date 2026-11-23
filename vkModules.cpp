@@ -96,10 +96,14 @@ REFLECT_CUSTOM_STRUCT_BEGIN_TEMPLATE(vkBufferResource, reflect::input)
 	REFLECT_STRUCT_MEMBER(input_member)
 REFLECT_STRUCT_END()
 
+//ports are graph wiring, edited in the node graph: editing their uids in a form
+//would leave the live connections (dest_inputs / src_output) out of step
 REFLECT_STRUCT3_BEGIN(reflect::input_type)
+	HIDE_IN_FORMS()
 REFLECT_STRUCT_END()
 
 REFLECT_STRUCT3_BEGIN(reflect::output_type)
+	HIDE_IN_FORMS()
 REFLECT_STRUCT_END()
 
 namespace reflect
@@ -1463,6 +1467,7 @@ namespace reflect
 REFLECT_VKMOD_BEGIN(Vulkan_Module)
 	REFLECT_STRUCT_MEMBER(pos);
 	REFLECT_STRUCT_MEMBER(m_uid);
+	REFLECT_STRUCT_MEMBER_FLAG(FLAG_HIDDEN)	//identity; ports refer to it
 REFLECT_STRUCT3_END()
 
 REFLECT_VK_WORKFLOW_BEGIN(Vulkan_Workflow)
