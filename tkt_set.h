@@ -5,6 +5,31 @@
 #include <vector>
 #include <cstddef>
 
+template <typename T> class tkt_set;
+
+//================================================================
+// tkt_selection_listener<T>
+//
+// Observes a tkt_set's selection, e.g. a property editor. The set
+// doesn't own its listeners; a listener removes itself when it goes
+// away, and is told if the set goes away first.
+//
+template <typename T>
+class tkt_selection_listener
+{
+public:
+    //only called when the selection actually changed
+    virtual void onSetSelectionChanged(tkt_set<T>* set) = 0;
+
+    //the items' values may have changed (e.g. a node was dragged); re-read them
+    virtual void onSetItemsChanged(tkt_set<T>* /*set*/) {}
+
+    //the set is being destroyed; drop any pointer to it (don't call back into it)
+    virtual void onSetDestroyed(tkt_set<T>* /*set*/) {}
+
+    virtual ~tkt_selection_listener() = default;
+};
+
 //================================================================
 // tkt_set<T>
 //
@@ -23,6 +48,42 @@ public:
         std::vector<T*> old_sel = m_selected;
         m_selected = new_sel;
         onSelectionChanged(old_sel, m_selected);
+
+        if (old_sel != m_selected)
+        {
+            //copy: a listener may add/remove listeners while being notified
+            std::vector<tkt_selection_listener<T>*> listeners = m_listeners;
+            for (tkt_selection_listener<T>* l : listeners)
+                l->onSetSelectionChanged(this);
+        }
+    }
+
+    //call after changing items outside the property editor, so listeners re-read them
+    void notifyItemsChanged()
+    {
+        std::vector<tkt_selection_listener<T>*> listeners = m_listeners;
+        for (tkt_selection_listener<T>* l : listeners)
+            l->onSetItemsChanged(this);
+    }
+
+    void addSelectionListener(tkt_selection_listener<T>* l)
+    {
+        for (tkt_selection_listener<T>* x : m_listeners)
+            if (x == l)
+                return;
+        m_listeners.push_back(l);
+    }
+
+    void removeSelectionListener(tkt_selection_listener<T>* l)
+    {
+        for (size_t i = 0; i < m_listeners.size(); i++)
+        {
+            if (m_listeners[i] == l)
+            {
+                m_listeners.erase(m_listeners.begin() + i);
+                return;
+            }
+        }
     }
 
     void setSelected_ShiftAdd(T* item)
@@ -37,9 +98,21 @@ public:
         setSelected(new_sel);
     }
 
+    //subclass hook; unlike listeners, called on every setSelected
     virtual void onSelectionChanged(const std::vector<T*>& /*old_sel*/,
                                     const std::vector<T*>& /*new_sel*/) {}
-    virtual ~tkt_set() = default;
+
+    tkt_set() = default;
+    tkt_set(const tkt_set&) = delete;            //listeners point at this set
+    tkt_set& operator=(const tkt_set&) = delete;
+
+    virtual ~tkt_set()
+    {
+        std::vector<tkt_selection_listener<T>*> listeners = m_listeners;
+        m_listeners.clear();
+        for (tkt_selection_listener<T>* l : listeners)
+            l->onSetDestroyed(this);
+    }
 
 protected:
     //call before an item goes away, so the selection never holds a dangling pointer
@@ -61,6 +134,7 @@ protected:
 
 private:
     std::vector<T*> m_selected;
+    std::vector<tkt_selection_listener<T>*> m_listeners;
 };
 
 //================================================================

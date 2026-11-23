@@ -962,6 +962,9 @@ void geometry_scene::selectSurfaceGroup()
 
 void geometry_scene::selectionChanged()
 {
+    //callers also use this after moving/rotating nodes, so node listeners re-read values
+    notifyItemsChanged();
+
     SEvent event;
     event.EventType = EET_USER_EVENT;
     event.UserEvent.UserData1 = USER_EVENT_SELECTION_CHANGED;

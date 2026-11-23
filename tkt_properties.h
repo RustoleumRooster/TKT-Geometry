@@ -24,22 +24,49 @@ template<typename T> class tkt_properties_widget;
 //
 // Generic property editor base for any tkt_set<T>.
 // Ported from Node_Properties_Base; all scene-node-specific
-// calls replaced with m_source->getSelected() / T duck-typed calls.
+// calls replaced with m_source's selection / T duck-typed calls.
+//
+// Listens to m_source: selection changes and notifyItemsChanged() bump
+// selection_version, and the widget rebuilds itself when it sees a new version.
 //
 
 template<typename T>
-class tkt_properties_base : public reflected_tool_base
+class tkt_properties_base : public reflected_tool_base, public tkt_selection_listener<T>
 {
 public:
     tkt_properties_base(
         std::wstring name, int my_id,
         gui::IGUIEnvironment* env, multi_tool_panel* panel,
         tkt_set<T>* source
-    ) : reflected_tool_base(name, my_id, env, panel), m_source(source)
+    ) : reflected_tool_base(name, my_id, env, panel)
     {
+        set_source(source);
     }
 
-    ~tkt_properties_base() {}
+    ~tkt_properties_base()
+    {
+        if (m_source)
+            m_source->removeSelectionListener(this);
+    }
+
+    // the set being edited; may be NULL
+    void set_source(tkt_set<T>* source)
+    {
+        if (source == m_source)
+            return;
+
+        if (m_source)
+            m_source->removeSelectionListener(this);
+
+        m_source = source;
+
+        if (m_source)
+            m_source->addSelectionListener(this);
+
+        selection_version++;
+    }
+
+    tkt_set<T>* get_source() const { return m_source; }
 
     // TODO: remove this dependency
     // If g_scene_ is also a tkt_set<T>, update m_source automatically.
@@ -48,12 +75,46 @@ public:
     {
         tool_base::set_scene(g_scene_);
         if (auto* src = dynamic_cast<tkt_set<T>*>(g_scene_))
-            m_source = src;
+            set_source(src);
+    }
+
+    // tkt_selection_listener<T>
+    // While the item picker runs, the source's selection is temporarily the picker's,
+    // so changes are ignored; that also keeps the picked value in the unapplied form.
+
+    virtual void onSetSelectionChanged(tkt_set<T>* /*set*/) override
+    {
+        if (!waiting_for_item_selection)
+            selection_version++;
+    }
+
+    virtual void onSetItemsChanged(tkt_set<T>* /*set*/) override
+    {
+        if (!waiting_for_item_selection)
+            selection_version++;
+    }
+
+    virtual void onSetDestroyed(tkt_set<T>* set) override
+    {
+        if (set == m_source)
+        {
+            m_source = NULL;
+            saved_selection.clear();
+            waiting_for_item_selection = false;
+            selection_version++;
+        }
+    }
+
+    std::vector<T*> selected() const
+    {
+        if (m_source)
+            return m_source->getSelected();
+        return std::vector<T*>{};
     }
 
     static std::vector<reflect::TypeDescriptor_Struct*> GetTypeDescriptors(tkt_set<T>* source)
     {
-        if (source->getSelected().size() == 0)
+        if (!source || source->getSelected().size() == 0)
             return std::vector<reflect::TypeDescriptor_Struct*>{};
 
         T* item_0 = source->getSelected()[0];
@@ -107,14 +168,14 @@ public:
 
     void preEdit()
     {
-        for (T* item : m_source->getSelected())
+        for (T* item : selected())
             item->preEdit();
     }
 
     void choose_item_selection(std::vector<int> tree_pos)
     {
         preEdit();
-        saved_selection = m_source->getSelected();
+        saved_selection = selected();
         waiting_for_item_selection = true;
         item_selection_member = tree_pos;
         // the caller opens the item picker (e.g. Node_Selector_Tool for uid references),
@@ -150,7 +211,7 @@ public:
                 reflect::Member* m = typeDesc->getTreeNode(branch);
                 size_t offset = typeDesc->getTreeNodeOffset(branch);
 
-                std::vector<T*> items = m_source->getSelected();
+                std::vector<T*> items = selected();
                 saved_uids.clear();
                 for (T* n : items)
                     saved_uids.push_back(n->UID());
@@ -162,8 +223,11 @@ public:
     {
         if (waiting_for_item_selection)
         {
+            //restore while still waiting, so the restore doesn't trigger a rebuild
+            //(which would throw away the picked value before it's applied)
+            if (m_source)
+                m_source->setSelected(saved_selection);
             waiting_for_item_selection = false;
-            m_source->setSelected(saved_selection);
         }
     }
 
@@ -179,7 +243,7 @@ public:
 
         tkt_properties_widget<T>* widget = new tkt_properties_widget<T>(env, this->panel->getClientRect(), g_scene, this, GUI_ID_GEO_SETTINGS_BASE, client_rect);
 
-        for (T* item : m_source->getSelected())
+        for (T* item : selected())
             item->preEdit();
 
         widget->show();
@@ -208,9 +272,9 @@ public:
 
     virtual void read_obj(void* obj) override
     {
-        if (m_source->getSelected().size() > 0)
+        if (selected().size() > 0)
         {
-            T* item = m_source->getSelected()[0];
+            T* item = selected()[0];
             for (reflect::TypeDescriptor_Struct* typeDesc : my_typeDescriptors)
                 typeDesc->copy((char*)obj, item);
         }
@@ -218,7 +282,7 @@ public:
 
     virtual void post_edit() override
     {
-        for (T* item : m_source->getSelected())
+        for (T* item : selected())
             item->postEdit();
     }
 
@@ -237,7 +301,7 @@ public:
             {
                 size_t offset = typeDesc->getTreeNodeOffset(branch);
 
-                for (T* item : m_source->getSelected())
+                for (T* item : selected())
                     m->type->copy((char*)item + offset, (char*)obj + offset);
 
                 m->modified = false;
@@ -280,18 +344,18 @@ public:
             reflect::Member* m2 = typeDesc->getTreeNode(branch);
             size_t offset = typeDesc->getTreeNodeOffset(branch);
 
-            std::vector<T*> selected = m_source->getSelected();
+            std::vector<T*> sel = selected();
 
-            if (selected.size() > 1)
+            if (sel.size() > 1)
             {
-                T* item_0 = selected[0];
+                T* item_0 = sel[0];
                 bool b = true;
 
                 if (m->modified)
                     m->readwrite = true;
                 else
                 {
-                    for (T* item : selected)
+                    for (T* item : sel)
                     {
                         if (m2->type->isEqual((char*)item + offset, (char*)item_0 + offset) == false)
                             b = false;
@@ -299,7 +363,7 @@ public:
                     m->readwrite = b;
                 }
             }
-            else if (selected.size() == 1)
+            else if (sel.size() == 1)
             {
                 m->readwrite = true;
             }
@@ -310,8 +374,8 @@ public:
 
     virtual void* getObj() override
     {
-        if (m_source->getSelected().size() > 0)
-            return m_source->getSelected()[0];
+        if (selected().size() > 0)
+            return selected()[0];
         return NULL;
     }
 
@@ -321,9 +385,9 @@ public:
         reflect::TypeDescriptor_Struct* ret = new reflect::TypeDescriptor_Struct(reflect::EmptyStruct::initReflection);
         ret->size = 0;
 
-        if (m_source->getSelected().size() > 0)
+        if (selected().size() > 0)
         {
-            T* item = m_source->getSelected()[0];
+            T* item = selected()[0];
             size_t size_inc = 0;
 
             for (reflect::TypeDescriptor_Struct* typeDesc : typeDescriptors)
@@ -346,9 +410,10 @@ public:
     std::vector<int> item_selection_member;
     std::vector<u64> saved_uids;
     std::vector<T*> saved_selection;
+    unsigned int selection_version = 0;   //bumped when the widget should rebuild
 
 private:
-    tkt_set<T>* m_source;
+    tkt_set<T>* m_source = NULL;
 };
 
 //====================================================
@@ -390,6 +455,8 @@ public:
 
         OK_BUTTON_ID = my_ID + 1;
 
+        built_version = my_base->selection_version;
+
         my_widget = new Reflected_Widget_EditArea(Environment, edit_panel, g_scene, my_base, my_ID + 2, pr);
         my_widget->show(true, my_base->getObj());
 
@@ -401,6 +468,41 @@ public:
 
         my_widget->drop();
         edit_panel->drop();
+    }
+
+    // rebuild the form for the source's current selection
+    void rebuild()
+    {
+        built_version = my_base->selection_version;
+
+        if (my_widget)
+            my_widget->remove();
+
+        my_base->refresh_types();
+        my_base->preEdit();
+
+        core::rect<s32> pr(0, 0, getRelativePosition().getWidth(), getRelativePosition().getHeight());
+        my_widget = new Reflected_Widget_EditArea(Environment, edit_panel, g_scene, my_base, my_ID + 2, pr);
+
+        my_widget->show(true, my_base->getObj());
+        my_widget->drop();
+
+        onRefresh();
+    }
+
+    // Rebuilding here rather than in the listener callback merges several changes
+    // (e.g. clear then select in one click) into one rebuild, and never removes GUI
+    // elements from inside another element's event handler. Children aren't drawn
+    // yet, so replacing them is safe.
+    virtual void draw() override
+    {
+        if (!IsVisible)
+            return;
+
+        if (edit_panel && built_version != my_base->selection_version && !my_base->waiting_for_item_selection)
+            rebuild();
+
+        IGUIElement::draw();
     }
 
     void onRefresh()
@@ -426,23 +528,6 @@ public:
         {
             if (event.UserEvent.UserData1 == USER_EVENT_REFLECTED_FORM_REFRESHED)
             {
-                onRefresh();
-                return true;
-            }
-            else if (event.UserEvent.UserData1 == USER_EVENT_SELECTION_CHANGED && my_base->waiting_for_item_selection == false)
-            {
-                if (my_widget)
-                    my_widget->remove();
-
-                my_base->refresh_types();
-                my_base->preEdit();
-
-                core::rect<s32> pr(0, 0, getRelativePosition().getWidth(), getRelativePosition().getHeight());
-                my_widget = new Reflected_Widget_EditArea(Environment, edit_panel, g_scene, my_base, my_ID + 2, pr);
-
-                my_widget->show(true, my_base->getObj());
-                my_widget->drop();
-
                 onRefresh();
                 return true;
             }
@@ -495,6 +580,7 @@ public:
 private:
     int OK_BUTTON_ID = 0;
     int my_ID;
+    unsigned int built_version = 0;   //my_base->selection_version the form was built at
 
     Reflected_Widget_EditArea* my_widget = NULL;
     Flat_Button* my_button = NULL;
