@@ -263,7 +263,7 @@ void BouncedLight_Module::run()
 
 	for (int i = 0; i < materials->size(); i++)
 	{
-		if (materials->data()[i].has_lightmap)
+		if (materials->data()[i].in_lightmap())
 			runMaterial(i);
 	}
 

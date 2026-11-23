@@ -21,6 +21,7 @@
 // shader can tell what kind of surface a ray hit (eg: a sun ray reaching sky).
 //
 // BVH leaf packing (Node.padding in the shaders, two triangles per leaf):
+//      (lightmap no is LIGHTMAP_NONE_PACKED for triangles without a lightmap)
 //      padding.x : prim 0 triangle no  | lightmap no << 16
 //      padding.y : prim 0 material grp | gpu list    << 16
 //      padding.z : prim 1 triangle no  | lightmap no << 16
@@ -44,6 +45,10 @@ enum GPU_Triangle_List
 
 //value packed into the BVH for triangles not in any list
 #define GPU_TRIS_NONE_PACKED 0xFFFF
+
+//value packed into the BVH (lightmap no) for triangles with no lightmap (unlit, sky, emitters...)
+//shaders must not sample a lightmap for these
+#define LIGHTMAP_NONE_PACKED 0xFFFF
 
 struct GPU_Triangle_List_Data
 {

@@ -1016,6 +1016,14 @@ void main()
 							
 						}
 
+					}
+
+					//Triangles without a lightmap (unlit, sky, emitters...) are packed with lightmap no 0xFFFF
+					//(LIGHTMAP_NONE_PACKED): they still block the ray, but have no stored light to bounce
+					bool hit_lit = hit && lightmap_no != 0xFFFF;
+
+					if(hit_lit)
+					{
 						//hits[ix + iy*32].x = (floatBitsToUint(global_nodes[hit_id0/2].padding[2])) & 0xFFFF ;
 						//hits[ix + iy*32].y = (floatBitsToUint(global_nodes[hit_id0/2].padding[2]) >> 16) & 0xFFFF ;
 						//hits[ix + iy*32].z = (floatBitsToUint(global_nodes[hit_id/2].padding[3])) & 0xFFFF ;
@@ -1063,7 +1071,7 @@ void main()
 					}
 
 					//Kept outside the branch so the whole subgroup reaches subgroupAdd
-					subgroup_total = subgroupAdd( hit && valid_pos ? p : 0 );
+					subgroup_total = subgroupAdd( hit_lit && valid_pos ? p : 0 );
 					//subgroup_total = subgroupAdd( hit && valid_pos ? 0.1 : 0 );
 
 					subgroupBarrier();

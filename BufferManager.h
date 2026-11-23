@@ -59,8 +59,11 @@ struct TextureMaterial
     int n_triangles = 0;
 
     bool has_lightmap = false;
-    int lightmap_size;
-    int lightmap_no;
+    int lightmap_size = 0;
+    int lightmap_no = -1;                       //-1 until layout_lightmaps places it on a lightmap page
+
+    //has a lightmap AND was placed on a page (a lightmap material with no usable blocks never is)
+    bool in_lightmap() const { return has_lightmap && lightmap_no >= 0; }
     int texture_idx;                            //index for accessing on the GPU
     //int original_material_no;
 

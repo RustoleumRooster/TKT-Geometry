@@ -361,7 +361,7 @@ void Sunlight_Module::run()
 
 	for (int i = 0; i < materials->size(); i++)
 	{
-		if (materials->data()[i].has_lightmap)
+		if (materials->data()[i].in_lightmap())
 			runMaterial(i);
 	}
 
@@ -373,7 +373,7 @@ void Sunlight_Module::run()
 		if (!has_selected_triangle)
 			cout << "sunlight: debug mode is on but no face is selected (click a face first)\n";
 		else if (selected_triangle_mg < 0 || selected_triangle_mg >= (int)materials->size() ||
-			!materials->data()[selected_triangle_mg].has_lightmap)
+			!materials->data()[selected_triangle_mg].in_lightmap())
 			cout << "sunlight: selected triangle's material " << selected_triangle_mg << " has no lightmap\n";
 		else
 			runTriangle(selected_triangle_mg, selected_triangle_index);

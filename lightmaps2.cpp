@@ -50,7 +50,7 @@ void Lightmap_Manager::setLightmapTextures(geometry_scene* geo_scene, const std:
 
 	for (int i = 0; i < material_groups.size(); i++)
 	{
-		if (material_groups[i].has_lightmap == false || material_groups[i].lightmap_no >= new_textures.size())
+		if (!material_groups[i].in_lightmap() || material_groups[i].lightmap_no >= (int)new_textures.size())
 		{
 			continue;
 		}
@@ -107,7 +107,7 @@ void Lightmap_Manager::loadLightmapTextures(geometry_scene* geo_scene)
 
 	for (int i = 0; i < material_groups.size(); i++)
 	{
-		if (material_groups[i].has_lightmap == false)
+		if (!material_groups[i].in_lightmap())
 		{
 			continue;
 		}
@@ -944,7 +944,11 @@ void Lightmap_Configuration::layout_lightmaps()
 	}
 
 	lightmap_dimensions.clear();
-	
+
+	//only materials placed on a page below get a lightmap_no
+	for (TextureMaterial& tm : materials)
+		tm.lightmap_no = -1;
+
 	for (int i = 0; i < bl_combined.size(); i++)
 	{
 		lightmap_dimensions.push_back(dimension2du(256, 256));

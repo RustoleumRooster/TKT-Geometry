@@ -675,7 +675,7 @@ Geometry_Assets::Geometry_Assets(geometry_scene* g_scene, Lightmap_Configuration
 	struct triangle_gpu_info_struct
 	{
 		u16 material_type = 0;
-		u16 lightmap_no = 0;
+		u16 lightmap_no = LIGHTMAP_NONE_PACKED;
 		u16 gpu_list = GPU_TRIS_NONE_PACKED;
 	};
 
@@ -697,6 +697,7 @@ Geometry_Assets::Geometry_Assets(geometry_scene* g_scene, Lightmap_Configuration
 	{
 		int gpu_list = gpu_list_of(tm.materialGroup);
 		u16 gpu_list_packed = (gpu_list == GPU_TRIS_NONE) ? GPU_TRIS_NONE_PACKED : static_cast<u16>(gpu_list);
+		u16 lightmap_no_packed = tm.in_lightmap() ? static_cast<u16>(tm.lightmap_no) : LIGHTMAP_NONE_PACKED;
 
 		//cout << "material: " << tm.materialGroup << "\n";
 		for (int f_i : tm.faces)
@@ -708,7 +709,7 @@ Geometry_Assets::Geometry_Assets(geometry_scene* g_scene, Lightmap_Configuration
 			{
 				//triangle_material_type[b_offset + t_0 + i] = tm.materialGroup;
 				triangle_gpu_info[b_offset + t_0 + i].material_type = tm.materialGroup;
-				triangle_gpu_info[b_offset + t_0 + i].lightmap_no = tm.lightmap_no;
+				triangle_gpu_info[b_offset + t_0 + i].lightmap_no = lightmap_no_packed;
 				triangle_gpu_info[b_offset + t_0 + i].gpu_list = gpu_list_packed;
 			}
 		}
