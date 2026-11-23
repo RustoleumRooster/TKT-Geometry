@@ -292,9 +292,6 @@ struct vkMultiImageResource : public vkMemoryResource
 };
 
 class Vulkan_Module;
-std::vector<Vulkan_Module*>* get_all_vk_modules();
-
-Vulkan_Module* get_module_by_uid(std::vector<Vulkan_Module*>*, u64 uid);
 
 class Hookup_GUI_Element;
 
@@ -449,24 +446,14 @@ namespace reflect
 		X->consume(in);
 	}
 
+	//hand X to every connected input; signal() also lets each destination module run.
+	//dest_inputs holds the live connections (input owners are set by set_ptrs), so no uid lookup
 	template <typename TY>
 	void output<TY>::push()
 	{
-		std::vector<Vulkan_Module*>* all_vulkan_modules = get_all_vk_modules();
-
-		for (int i = 0; i < this->output_uids.size(); i++)
+		for (input_type* dest : this->dest_inputs)
 		{
-			Vulkan_Module* module = get_module_by_uid(all_vulkan_modules, this->output_uids[i]);
-
-			if (!module)
-				return;
-
-			TypeDescriptor_Struct* in_td = module->GetDynamicReflection();
-
-			if (!in_td)
-				return;
-
-			input<TY>* in = (input<TY>*)this->dest_inputs[i];
+			input<TY>* in = (input<TY>*)dest;
 			in->X = this->X;
 			in->ready = true;
 		}
@@ -475,25 +462,14 @@ namespace reflect
 	template <typename TY>
 	void output<TY>::signal()
 	{
-		std::vector<Vulkan_Module*>* all_vulkan_modules = get_all_vk_modules();
-
-		for (int i = 0; i < this->output_uids.size(); i++)
+		for (input_type* dest : this->dest_inputs)
 		{
-			Vulkan_Module* module = get_module_by_uid(all_vulkan_modules, this->output_uids[i]);
-
-			if (!module)
-				return;
-
-			TypeDescriptor_Struct* in_td = module->GetDynamicReflection();
-
-			if (!in_td)
-				return;
-
-			input<TY>* in = (input<TY>*)this->dest_inputs[i];
+			input<TY>* in = (input<TY>*)dest;
 			in->X = this->X;
 			in->ready = true;
 
-			module->signaled();
+			if (in->owner)
+				in->owner->signaled();
 		}
 	}
 }

@@ -27,14 +27,7 @@ extern VkDevice vk_device = NULL;
 #define PRINTV(x) << x.X <<","<<x.Y<<","<<x.Z<<" "
 
 
-static std::vector<Vulkan_Module*>* all_vulkan_modules = NULL;
-
 reflect::Vulkan_Reflection_Factory Vulkan_Module::factory{};
-
-vector<Vulkan_Module*>* get_all_vk_modules()
-{
-	return  all_vulkan_modules;
-}
 
 /*
 REFLECT_CUSTOM_STRUCT_BEGIN_TEMPLATE(int, reflect::input)
@@ -154,8 +147,6 @@ Vulkan_App::Vulkan_App(Geometry_Assets* geo_assets, Lightmap_Configuration* conf
 : driver{ driver }, configuration{ configuration }, geo_assets{ geo_assets }
 {
 	initVulkan();
-
-	all_vulkan_modules = &all_modules;
 }
 
 void Vulkan_App::initVulkan()
@@ -372,15 +363,6 @@ reflect::input_type* Vulkan_Module::get_input_by_name(std::string str)
 			reflect::output_type* out = (reflect::output_type*)m.get(this);
 			out->owner = this;
 		}*/
-	}
-}
-
-Vulkan_Module* get_module_by_uid(std::vector<Vulkan_Module*>* modules, u64 uid)
-{
-	for (Vulkan_Module* m : *modules)
-	{
-		if (m->m_uid == uid)
-			return m;
 	}
 	return NULL;
 }
