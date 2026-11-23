@@ -583,10 +583,8 @@ enum
 	VK_MODULE_RAN
 };
 
-struct VkMod_Reference
-{
-	Vulkan_Module* X;
-};
+//owning slot in Vulkan_Workflow::items (serialized via TypeDescriptor_VkMod_Reference)
+using VkMod_Reference = tkt_owned<Vulkan_Module>;
 
 class Vulkan_Module
 {
@@ -618,6 +616,7 @@ public:
 	ComputePipeline* pipeline = NULL;
 
 	u64 m_uid;
+	u64 UID() const { return m_uid; }
 
 	//Raytracing workload, filled in by modules that trace rays (estimated on the CPU, see count_texels)
 	u64 texels_shaded = 0;
@@ -695,30 +694,20 @@ Vulkan_Module* Vulkan_App::create_module()
 	return module;
 }
 
-class Vulkan_Workflow : public tkt_set<Vulkan_Module>
+//owns its modules (tkt_owning_set::items, the reflected/serialized list)
+class Vulkan_Workflow : public tkt_owning_set<Vulkan_Module>
 {
 public:
-	~Vulkan_Workflow();
-
-	std::vector<VkMod_Reference> Modules;
-	Download_Textures_Module* texture_module = NULL; //not reflected
+	Download_Textures_Module* texture_module = NULL; //not reflected, not owned (it's in items)
 
 	void make_default_workflow();
 	void initialize_and_run(Vulkan_App* vulkan);
 
 	bool save(const std::string& fname);
-	bool load(const std::string& fname); //call on an empty workflow only
+	bool load(const std::string& fname); //replaces any modules already in the workflow
 	bool clone_from(Vulkan_Workflow* src); //fresh copy for running; a run mutates module state
 
-	Vulkan_Module* get_module_by_uid(u64 uid)
-	{
-		for (VkMod_Reference& m : Modules)
-		{
-			if (m.X->m_uid == uid)
-				return m.X;
-		}
-		return NULL;
-	}
+	void onItemRemoved(Vulkan_Module* mod) override;
 
 	REFLECT_VK_WORKFLOW()
 };

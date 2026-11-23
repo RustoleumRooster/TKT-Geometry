@@ -20,6 +20,7 @@ extern IrrlichtDevice* device;
 
 void Vulkan_Workflow::make_default_workflow()
 {
+	clear();
 
 	Create_Lightmap_Images_Module* create_images = new Create_Lightmap_Images_Module();
 	//Create_Texture_Images_Module create_textures(&vulkan, configuration);
@@ -57,27 +58,27 @@ void Vulkan_Workflow::make_default_workflow()
 	MultiImage_To_ImageArray_Module* link3 = new MultiImage_To_ImageArray_Module();
 
 	
-	Modules.push_back(VkMod_Reference{ create_images });
-	Modules.push_back(VkMod_Reference{ arealights });
-	Modules.push_back(VkMod_Reference{ edges });
-	Modules.push_back(VkMod_Reference{ edges2 });
-	Modules.push_back(VkMod_Reference{ edges3 });
-	Modules.push_back(VkMod_Reference{ copy_images });
-	Modules.push_back(VkMod_Reference{ bouncedLight });
-	Modules.push_back(VkMod_Reference{ bouncedLight2 });
-	Modules.push_back(VkMod_Reference{ download_textures });
-	Modules.push_back(VkMod_Reference{ merge_images });
-	Modules.push_back(VkMod_Reference{ merge_images2 });
+	add(create_images);
+	add(arealights);
+	add(edges);
+	add(edges2);
+	add(edges3);
+	add(copy_images);
+	add(bouncedLight);
+	add(bouncedLight2);
+	add(download_textures);
+	add(merge_images);
+	add(merge_images2);
 
-	Modules.push_back(VkMod_Reference{ link0 });
-	Modules.push_back(VkMod_Reference{ link1 });
-	Modules.push_back(VkMod_Reference{ link2 });
-	Modules.push_back(VkMod_Reference{ link3 });
+	add(link0);
+	add(link1);
+	add(link2);
+	add(link3);
 
-	Modules.push_back(VkMod_Reference{ create_images_sun });
-	Modules.push_back(VkMod_Reference{ sunlight });
-	Modules.push_back(VkMod_Reference{ edges_sun });
-	Modules.push_back(VkMod_Reference{ merge_direct });
+	add(create_images_sun);
+	add(sunlight);
+	add(edges_sun);
+	add(merge_direct);
 
 	//==========================================
 	// Direct light: area lights + sunlight
@@ -125,18 +126,14 @@ void Vulkan_Workflow::make_default_workflow()
 
 	reflect::connect(&merge_images2->images_out, &download_textures->images_in);
 
-	items.clear();
-	for (VkMod_Reference& ref : Modules)
-		items.push_back(ref.X);
-
 	texture_module = download_textures;
 }
 
 void Vulkan_Workflow::initialize_and_run(Vulkan_App* vulkan)
 {
-	for (VkMod_Reference& mod : Modules)
+	for (Vulkan_Module* mod : items)
 	{
-		mod.X->initialize(vulkan);
+		mod->initialize(vulkan);
 	}
 
 	vulkan->run_workflow();
@@ -170,18 +167,18 @@ bool Vulkan_Workflow::load(const std::string& fname)
 		return false;
 	}
 
+	//deserializing resizes items over the existing pointers, so free those first
+	clear();
+
 	reflect::TypeDescriptor_Struct* tD = &Vulkan_Workflow::Reflection;
 	tD->deserialize(rf, this);
 	//tD->dump(this, 0);
 
-	items.clear();
 	texture_module = NULL;
-	for (VkMod_Reference& ref : Modules)
+	for (Vulkan_Module* mod : items)
 	{
-		items.push_back(ref.X);
-
 		if (!texture_module)
-			texture_module = dynamic_cast<Download_Textures_Module*>(ref.X);
+			texture_module = dynamic_cast<Download_Textures_Module*>(mod);
 	}
 
 	return true;
@@ -241,12 +238,10 @@ void geometry_scene::free_lightmap_workflow()
 	lightmap_workflow = NULL;
 }
 
-Vulkan_Workflow::~Vulkan_Workflow()
+void Vulkan_Workflow::onItemRemoved(Vulkan_Module* mod)
 {
-	for (VkMod_Reference& mod : Modules)
-	{
-		delete mod.X;
-	}
+	if (mod == texture_module)
+		texture_module = NULL;
 }
 
 void Lightmap_Routine(geometry_scene* g_scene, Lightmap_Configuration* configuration, std::vector<irr::video::ITexture*>& textures, Lightmap_Configuration* configuration1)

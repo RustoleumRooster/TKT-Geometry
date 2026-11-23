@@ -1421,10 +1421,8 @@ namespace reflect
 		Vulkan_Workflow* workflow = (Vulkan_Workflow*)obj;
 
 		//Set input/output pointers
-		for (VkMod_Reference& m : workflow->Modules)
+		for (Vulkan_Module* mod : workflow->items)
 		{
-			Vulkan_Module* mod = m.X;
-
 			reflect::TypeDescriptor_Struct* tD = mod->GetDynamicReflection();
 
 			//tD->dump((void*)mod,0);
@@ -1439,7 +1437,7 @@ namespace reflect
 					
 					for (int i=0; i<out->output_uids.size() ; i++)
 					{
-						Vulkan_Module* mod2 = workflow->get_module_by_uid(out->output_uids[i]);
+						Vulkan_Module* mod2 = workflow->find(out->output_uids[i]);
 						if (mod2)
 						{
 							//reflect::input_type* in = (reflect::input_type *)mod2->get_inout_by_name(out->output_member[i]);
@@ -1486,5 +1484,5 @@ REFLECT_VKMOD_BEGIN(Vulkan_Module)
 REFLECT_STRUCT3_END()
 
 REFLECT_VK_WORKFLOW_BEGIN(Vulkan_Workflow)
-	REFLECT_STRUCT_MEMBER(Modules)
+	REFLECT_STRUCT_MEMBER(items) //tkt_owning_set::items; was "Modules" (same file format)
 REFLECT_STRUCT_END()
